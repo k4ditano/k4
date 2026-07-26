@@ -22,6 +22,7 @@ import "plugins/Ask"
 import "plugins/HyprTheme"
 import "plugins/Weather"
 import "plugins/Tray"
+import "plugins/Game"
 
 Scope {
     id: root
@@ -40,6 +41,7 @@ Scope {
     HyprThemePlugin { id: themePlugin; panel: panelPlugin }
     WeatherPlugin { id: weatherPlugin; panel: panelPlugin }
     TrayPlugin   { id: trayPlugin; panel: panelPlugin }
+    GamePlugin   { id: gamePlugin; panel: panelPlugin }
 
     readonly property var plugins: [
         idlePlugin,
@@ -52,7 +54,8 @@ Scope {
         askPlugin,
         themePlugin,
         weatherPlugin,
-        trayPlugin
+        trayPlugin,
+        gamePlugin
     ]
 
     // ── quién se queda la island ──────────────────────────────────
@@ -100,6 +103,7 @@ Scope {
         void Workspaces.list
         void Weather.located
         void Tray.count
+        void Game.cargado
     }
 
     // ── IPC ───────────────────────────────────────────────────────
@@ -143,6 +147,7 @@ Scope {
         function theme(): void { themePlugin.toggle() }
         function weather(): void { weatherPlugin.toggle() }
         function tray(): void { trayPlugin.toggle() }
+        function game(): void { gamePlugin.toggle() }
         function setMode(mode: string): void { Island.debugMode = mode }
     }
 

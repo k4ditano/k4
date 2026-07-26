@@ -69,6 +69,13 @@ Instanciar el servicio es lo que registra a k4 como anfitrión de bandeja, así
 que **las aplicaciones que ya estaban abiertas antes puede que no aparezcan
 hasta reiniciarlas**.
 
+**Mazmorra.** Un juego idle dentro de la island, con sprites de pixel art. Se
+matan monstruos a clic, con los compañeros pegando solos, y cada diez zonas
+espera un jefe con temporizador. Lo que ocurre con la barra cerrada se
+recupera al abrirla, con tope de ocho horas. La simulación vive en el
+servicio, así que avanza aunque el módulo no esté abierto. Ver
+[Los sprites](#los-sprites) para cómo se generaron.
+
 **El tiempo.** Estado actual, siguientes horas y seis días, con datos de
 [Open-Meteo](https://open-meteo.com) —sin clave ni cuenta—. La ubicación se
 adivina por IP la primera vez, que es aproximada, así que el buscador de
@@ -140,6 +147,7 @@ hl.bind("SUPER + CONTROL + G", hl.dsp.exec_cmd(k4 .. "askSelection"))
 | `theme` | módulo de tema de Hyprland |
 | `weather` | módulo del tiempo |
 | `tray` | bandeja del sistema |
+| `game` | la mazmorra |
 | `setMode <modo>` | fuerza un estado de la island (depuración) |
 
 Además, cada módulo publica su propio target. El de arriba se mantiene por
@@ -153,6 +161,7 @@ compatibilidad con los atajos ya configurados; en módulos nuevos usa el suyo:
 | `k4.theme` | `toggle` · `close` · `tab <pestaña>` · `preset <id>` · `wallpaper <ruta>` · `apply` · `save` |
 | `k4.weather` | `toggle` · `close` · `refresh` · `locate` · `place <ciudad>` |
 | `k4.tray` | `toggle` · `close` |
+| `k4.game` | `toggle` · `close` · `golpear` · `adelantar <segundos>` · `estado` |
 
 ## Dentro de la island
 
@@ -224,8 +233,8 @@ El `id: self` no es capricho: si lo llamas `plugin`, la línea
 `id` del padre— y la vista recibe `undefined`.
 
 Prioridades de los que ya hay: `idle` 0 · `volume` 40 · `clock` 50 ·
-`player` 55 · `panel` 60 · `weather` 62 · `tray` 63 · `hyprtheme` 65 ·
-`toast` 70 · `launcher` 80 · `ask` 90.
+`player` 55 · `panel` 60 · `weather` 62 · `tray` 63 · `game` 64 ·
+`hyprtheme` 65 · `toast` 70 · `launcher` 80 · `ask` 90.
 
 ## Tema de Hyprland
 
@@ -270,3 +279,28 @@ Algunas decisiones que no son evidentes leyendo el código:
 ## Licencia
 
 MIT. Ver [LICENSE](LICENSE).
+
+## Los sprites
+
+Los 60 sprites de la mazmorra —monstruos, jefes y héroes— se generaron con
+`imagegen`, que viene dentro de Codex, pidiendo hojas de 20 en rejilla de 4×5
+sobre fondo magenta plano. No hace falta instalar nada: basta `codex exec` con
+el mismo patrón que usa `ask.sh`.
+
+`tools/spritesheet.py` corta la hoja en PNG sueltos. Tres cosas que hicieron
+falta y no son evidentes:
+
+- **El fondo se quita por inundación desde los bordes**, no buscando el color
+  magenta por toda la imagen. Filtrando por color, una oruga morada pierde el
+  cuerpo, porque su tono cae dentro de lo que se considera fondo.
+- **Los huecos encerrados se barren aparte**, con tolerancia estrecha: el fondo
+  que queda entre las alas de un dragón no se alcanza desde fuera.
+- **Se cuantiza la paleta a 24 colores** tras escalar. Lo que devuelve el
+  generador es un render suave de ~280 px, no pixel art; sin cuantizar se ve
+  emborronado al tamaño al que se juega.
+
+Para generar más:
+
+```sh
+python3 tools/spritesheet.py hoja.png plugins/Game/assets/monstruos --lado 48 --prefijo m
+```
