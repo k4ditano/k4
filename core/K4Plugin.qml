@@ -55,4 +55,14 @@ QtObject {
     // lo de siempre: abrir el centro de control.
     property bool handlesBackgroundTap: false
     signal backgroundTapped()
+
+    // Módulos que se abren con el ratón y deben irse al sacarlo. El host emite
+    // `hoverTimedOut` cuando el puntero lleva `hoverExitDelay` fuera de la
+    // island; qué hacer entonces lo decide el plugin, porque no siempre es
+    // cerrar sin más (el panel, por ejemplo, se queda si el lanzador está
+    // encima). El temporizador solo se arma al salir, así que un módulo
+    // abierto por atajo sigue abierto hasta que lo toques.
+    property bool closeOnHoverExit: false
+    property int hoverExitDelay: 700
+    signal hoverTimedOut()
 }

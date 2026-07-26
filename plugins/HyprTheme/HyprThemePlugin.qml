@@ -33,6 +33,12 @@ K4Plugin {
     handlesBackgroundTap: true
     onBackgroundTapped: {}   // se traga el clic: cerrar es cosa del botón
 
+    // Se abre con el ratón, así que se va al sacarlo. Con más margen que el
+    // panel: aquí se arrastran deslizadores y es fácil pasarse del borde.
+    closeOnHoverExit: true
+    hoverExitDelay: 1000
+    onHoverTimedOut: close()
+
     readonly property string hyprDir: Quickshell.env("HOME") + "/.config/hypr"
     readonly property string themeFile: hyprDir + "/config/k4-theme.lua"
     readonly property string entryFile: hyprDir + "/hyprland.lua"

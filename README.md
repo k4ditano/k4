@@ -173,6 +173,12 @@ K4Plugin {
 }
 ```
 
+Si el módulo se abre con el ratón, `closeOnHoverExit: true` hace que el host
+avise con `hoverTimedOut` cuando el puntero lleva `hoverExitDelay` fuera de la
+island. Qué hacer entonces lo decide el plugin: el panel, por ejemplo, se
+queda abierto si el lanzador está encima. El temporizador solo se arma al
+salir, así que un módulo abierto por atajo sigue abierto hasta que lo toques.
+
 Registrarlo son dos líneas en `shell.qml`: el `import` de su carpeta y una
 entrada en la lista `plugins`. Las referencias entre módulos se inyectan ahí
 (`PanelPlugin { launcher: launcherPlugin }`), así ninguno importa a otro.

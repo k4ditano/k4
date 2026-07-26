@@ -209,14 +209,12 @@ Scope {
                     onHoveredChanged: {
                         if (hovered) {
                             hoverExitTimer.stop()
-                            panelPlugin.hoverEntered()
+                            root.holdHoverExit()
                             Island.hovered = true
                             Notifs.holdToast()
                         } else {
                             hoverExitTimer.restart()
-                            // solo se arma al salir, así que un panel abierto
-                            // por atajo sigue abierto hasta que lo toques
-                            panelPlugin.hoverExited()
+                            root.armHoverExit()
                             Notifs.resumeToast()
                         }
                     }
@@ -343,6 +341,30 @@ Scope {
         id: hoverExitTimer
         interval: 240
         onTriggered: Island.hovered = false
+    }
+
+    // ── salida del ratón ──────────────────────────────────────────
+    // Los módulos que se abren con el ratón se van al sacarlo, pero cada uno
+    // decide qué hacer: aquí solo se cuenta el tiempo y se avisa al activo.
+    function armHoverExit() {
+        const p = activePlugin
+        if (!p || !p.closeOnHoverExit)
+            return
+
+        pluginHoverExitTimer.interval = p.hoverExitDelay
+        pluginHoverExitTimer.restart()
+    }
+
+    function holdHoverExit() { pluginHoverExitTimer.stop() }
+
+    Timer {
+        id: pluginHoverExitTimer
+        interval: 700
+        onTriggered: {
+            const p = root.activePlugin
+            if (p && p.closeOnHoverExit)
+                p.hoverTimedOut()
+        }
     }
 
 }

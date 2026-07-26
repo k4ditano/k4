@@ -74,19 +74,11 @@ K4Plugin {
     }
 
     // Se cierra solo al salir el ratón, pero no si el lanzador está encima.
-    Timer {
-        id: closeTimer
-        interval: 700
-        onTriggered: {
-            if (!self.launcher || !self.launcher.open)
-                self.open = false
-        }
+    closeOnHoverExit: true
+    onHoverTimedOut: {
+        if (!launcher || !launcher.open)
+            open = false
     }
-
-    // El host avisa de la salida del ratón; abrirlo por atajo no lo arma, así
-    // que un panel abierto con el teclado sigue abierto hasta que lo toques.
-    function hoverExited() { if (open) closeTimer.restart() }
-    function hoverEntered() { closeTimer.stop() }
 
     IpcHandler {
         target: "k4.panel"
