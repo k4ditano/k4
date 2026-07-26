@@ -495,6 +495,54 @@ FadeIn {
                         anchors.rightMargin: 14
                         spacing: 10
 
+                        Text {
+                            text: Weather.current
+                                ? Weather.icon(Weather.current.code, Weather.current.isDay)
+                                : String.fromCodePoint(0xE374)
+                            color: Theme.muted
+                            font.family: Theme.iconFont
+                            font.pixelSize: 16
+                        }
+
+                        IslandLabel {
+                            text: Weather.current ? Weather.current.temp + "°" : "El tiempo"
+                            font.pixelSize: 12
+                            Layout.fillWidth: true
+                        }
+
+                        IslandLabel {
+                            visible: Weather.current !== null
+                            text: Weather.place
+                            color: Theme.dim
+                            font.pixelSize: 10
+                            elide: Text.ElideRight
+                            Layout.maximumWidth: 80
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            view.plugin.close()
+                            if (view.plugin.weather)
+                                view.plugin.weather.toggle()
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    radius: 16
+                    color: Theme.surface
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 14
+                        anchors.rightMargin: 14
+                        spacing: 10
+
                         IconGlyph { text: Theme.ico.palette; color: Theme.muted; font.pixelSize: 16 }
                         IslandLabel { text: "Tema"; font.pixelSize: 12; Layout.fillWidth: true }
                     }

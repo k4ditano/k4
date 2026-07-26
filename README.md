@@ -44,6 +44,12 @@ cambian presets de color, separaciones, borde, redondeo, desenfoque, sombras,
 opacidades, animaciones y fondo de pantalla, viendo el resultado al momento.
 Ver [Tema de Hyprland](#tema-de-hyprland) para cómo se aplica y se guarda.
 
+**El tiempo.** Estado actual, siguientes horas y seis días, con datos de
+[Open-Meteo](https://open-meteo.com) —sin clave ni cuenta—. La ubicación se
+adivina por IP la primera vez, que es aproximada, así que el buscador de
+ciudades manda: lo que elijas se guarda y es lo que se usa a partir de
+entonces. En el centro de control la tarjeta enseña ya la temperatura.
+
 ## Requisitos
 
 | Para | Necesitas |
@@ -56,6 +62,7 @@ Ver [Tema de Hyprland](#tema-de-hyprland) para cómo se aplica y se guarda.
 | Consultas | `codex` autenticado con tu cuenta de ChatGPT |
 | Instalar paquetes | `yay`, `pacman`, `kitty` |
 | Fondo de pantalla | `awww` (o `swww`); si no, `swaybg` sin transiciones |
+| El tiempo | `curl` y conexión a internet |
 
 Todo lo que no sea la base es opcional: la parte correspondiente simplemente no
 aparece o no hace nada.
@@ -106,6 +113,7 @@ hl.bind("SUPER + CONTROL + G", hl.dsp.exec_cmd(k4 .. "askSelection"))
 | `search <texto>` | lanzador de apps con esa búsqueda |
 | `togglePlay` | play/pausa del reproductor activo |
 | `theme` | módulo de tema de Hyprland |
+| `weather` | módulo del tiempo |
 | `setMode <modo>` | fuerza un estado de la island (depuración) |
 
 Además, cada módulo publica su propio target. El de arriba se mantiene por
@@ -117,6 +125,7 @@ compatibilidad con los atajos ya configurados; en módulos nuevos usa el suyo:
 | `k4.launcher` | `toggle` · `search <texto>` · `install <texto>` |
 | `k4.ask` | `toggle` · `selection` · `screen` · `region` · `now <texto>` · `followUp <texto>` |
 | `k4.theme` | `toggle` · `close` · `tab <pestaña>` · `preset <id>` · `wallpaper <ruta>` · `apply` · `save` |
+| `k4.weather` | `toggle` · `close` · `refresh` · `locate` · `place <ciudad>` |
 
 ## Dentro de la island
 

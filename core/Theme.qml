@@ -85,6 +85,7 @@ Singleton {
         wifi3: String.fromCodePoint(0xF0925),
         wifi4: String.fromCodePoint(0xF0928),
         // md-palette · md-border_all · md-blur · md-wallpaper · md-animation
+        place: String.fromCodePoint(0xF034E),
         palette: String.fromCodePoint(0xF03D8),
         window: String.fromCodePoint(0xF00C7),
         effects: String.fromCodePoint(0xF00B5),

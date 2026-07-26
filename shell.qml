@@ -20,6 +20,7 @@ import "plugins/Panel"
 import "plugins/Launcher"
 import "plugins/Ask"
 import "plugins/HyprTheme"
+import "plugins/Weather"
 
 Scope {
     id: root
@@ -32,10 +33,11 @@ Scope {
     ClockPlugin  { id: clockPlugin }
     PlayerPlugin { id: playerPlugin; panel: panelPlugin }
     ToastPlugin  { id: toastPlugin }
-    PanelPlugin  { id: panelPlugin; launcher: launcherPlugin; theme: themePlugin }
+    PanelPlugin  { id: panelPlugin; launcher: launcherPlugin; theme: themePlugin; weather: weatherPlugin }
     LauncherPlugin { id: launcherPlugin; panel: panelPlugin }
     AskPlugin    { id: askPlugin; panel: panelPlugin; launcher: launcherPlugin }
     HyprThemePlugin { id: themePlugin; panel: panelPlugin }
+    WeatherPlugin { id: weatherPlugin; panel: panelPlugin }
 
     readonly property var plugins: [
         idlePlugin,
@@ -46,7 +48,8 @@ Scope {
         panelPlugin,
         launcherPlugin,
         askPlugin,
-        themePlugin
+        themePlugin,
+        weatherPlugin
     ]
 
     // ── quién se queda la island ──────────────────────────────────
@@ -92,6 +95,7 @@ Scope {
         void Media.hasPlayer
         void Clock.date
         void Workspaces.list
+        void Weather.located
     }
 
     // ── IPC ───────────────────────────────────────────────────────
@@ -133,6 +137,7 @@ Scope {
         function askRegion(): void { askPlugin.withRegion() }
         function togglePlay(): void { Media.togglePlaying() }
         function theme(): void { themePlugin.toggle() }
+        function weather(): void { weatherPlugin.toggle() }
         function setMode(mode: string): void { Island.debugMode = mode }
     }
 
