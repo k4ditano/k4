@@ -22,8 +22,8 @@ K4Plugin {
     // lo aparta al abrirse; lo inyecta el host
     property var panel: null
 
-    islandWidth: 720
-    islandHeight: 420
+    islandWidth: 620
+    islandHeight: 300
 
     handlesBackgroundTap: true
     onBackgroundTapped: {}      // el fondo no cierra: se juega aquí dentro
@@ -46,24 +46,24 @@ K4Plugin {
         function toggle(): void { self.toggle() }
         function close(): void { self.close() }
 
-        // Golpear sin ratón: se puede atar a una tecla y jugar sin apuntar.
-        function golpear(): void { Game.golpear() }
+        function nueva(): void { Game.nuevaPartida() }
+        function habilidad(indice: int): void { Game.lanzar(indice) }
 
         // Para afinar el balance sin pasarse horas clicando: adelanta el reloj
         // del juego los segundos que le digas y aplica el progreso pasivo.
         function adelantar(segundos: int): void {
             const r = Game.recuperarOffline(Game.ahora() - segundos)
             console.log("adelantar " + segundos + "s →",
-                        r ? (Game.cifra(r.oro) + " de oro, " + r.muertes + " muertes")
-                          : "sin progreso (dps 0)")
+                        r ? (r.cofres + " cofres") : "nada (hace falta más rato)")
         }
 
         function estado(): void {
-            console.log("zona " + Game.zona + " · oro " + Game.cifra(Game.oro)
-                + " · golpe " + Game.cifra(Game.dañoGolpe)
-                + " · dps " + Game.cifra(Game.dps)
-                + " · niveles a" + Game.niveles.ataque
-                + " y" + Game.niveles.ayudantes + " b" + Game.niveles.botin)
+            const vivos = Game.grupo.filter(function (h) { return h.vida > 0 }).length
+            console.log("oleada " + Game.oleada + " · oro " + Game.cifra(Game.oro)
+                + " · héroes vivos " + vivos + "/" + Game.grupo.length
+                + " · enemigos " + Game.enemigos.filter(function (e) { return e.vida > 0 }).length
+                + " · cofres " + Game.cofres + " · récord " + Game.mejorOleada
+                + " · partida " + (Game.viva ? "en curso" : "terminada"))
         }
     }
 

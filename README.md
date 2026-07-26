@@ -69,12 +69,21 @@ Instanciar el servicio es lo que registra a k4 como anfitrión de bandeja, así
 que **las aplicaciones que ya estaban abiertas antes puede que no aparezcan
 hasta reiniciarlas**.
 
-**Mazmorra.** Un juego idle dentro de la island, con sprites de pixel art. Se
-matan monstruos a clic, con los compañeros pegando solos, y cada diez zonas
-espera un jefe con temporizador. Lo que ocurre con la barra cerrada se
-recupera al abrirla, con tope de ocho horas. La simulación vive en el
-servicio, así que avanza aunque el módulo no esté abierto. Ver
-[Los sprites](#los-sprites) para cómo se generaron.
+**Mazmorra.** Un roguelite por oleadas dentro de la island, en la línea de
+[TBH: Task Bar Hero](https://store.steampowered.com/app/3678970/). Un grupo de
+tres héroes —guardián, hechicero y clériga— pelea **solo** contra oleadas cada
+vez más duras; tú decides en qué gastar el oro y cuándo lanzar las habilidades,
+no los golpes. El guardián acapara los ataques, la clériga cura de fondo y el
+hechicero revienta la oleada entera.
+
+Cada diez oleadas llega un jefe. Cuando cae el grupo se acaba la partida: se
+pierden el oro y las mejoras, y se conservan los **cofres** y las reliquias.
+Los cofres caen cada cinco oleadas y también con la barra cerrada, uno cada
+cuarto de hora, con tope de ocho horas.
+
+Las habilidades se pueden lanzar a mano cuando están listas, pero si no
+intervienes se lanzan solas a los cinco segundos: la barra no debe exigir
+atención. Ver [Los sprites](#los-sprites) para cómo se generaron.
 
 **El tiempo.** Estado actual, siguientes horas y seis días, con datos de
 [Open-Meteo](https://open-meteo.com) —sin clave ni cuenta—. La ubicación se
@@ -161,7 +170,7 @@ compatibilidad con los atajos ya configurados; en módulos nuevos usa el suyo:
 | `k4.theme` | `toggle` · `close` · `tab <pestaña>` · `preset <id>` · `wallpaper <ruta>` · `apply` · `save` |
 | `k4.weather` | `toggle` · `close` · `refresh` · `locate` · `place <ciudad>` |
 | `k4.tray` | `toggle` · `close` |
-| `k4.game` | `toggle` · `close` · `golpear` · `adelantar <segundos>` · `estado` |
+| `k4.game` | `toggle` · `close` · `nueva` · `habilidad <0-2>` · `adelantar <segundos>` · `estado` |
 
 ## Dentro de la island
 
