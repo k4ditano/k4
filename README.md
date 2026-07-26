@@ -39,6 +39,11 @@ ChatGPT. Conversación multi‑turno, y puedes adjuntar una captura de pantalla 
 el texto que tengas seleccionado. Cada vez que se abre arranca una sesión nueva
 para no mezclar contextos con otras sesiones de Codex.
 
+**Tema de Hyprland.** Desde el centro de control (o `k4.theme toggle`) se
+cambian presets de color, separaciones, borde, redondeo, desenfoque, sombras,
+opacidades, animaciones y fondo de pantalla, viendo el resultado al momento.
+Ver [Tema de Hyprland](#tema-de-hyprland) para cómo se aplica y se guarda.
+
 ## Requisitos
 
 | Para | Necesitas |
@@ -50,6 +55,7 @@ para no mezclar contextos con otras sesiones de Codex.
 | Capturas | `grim`, `slurp`, `wl-clipboard` |
 | Consultas | `codex` autenticado con tu cuenta de ChatGPT |
 | Instalar paquetes | `yay`, `pacman`, `kitty` |
+| Fondo de pantalla | `awww` (o `swww`); si no, `swaybg` sin transiciones |
 
 Todo lo que no sea la base es opcional: la parte correspondiente simplemente no
 aparece o no hace nada.
@@ -99,7 +105,18 @@ hl.bind("SUPER + CONTROL + G", hl.dsp.exec_cmd(k4 .. "askSelection"))
 | `install <texto>` | buscador de paquetes con esa búsqueda |
 | `search <texto>` | lanzador de apps con esa búsqueda |
 | `togglePlay` | play/pausa del reproductor activo |
+| `theme` | módulo de tema de Hyprland |
 | `setMode <modo>` | fuerza un estado de la island (depuración) |
+
+Además, cada módulo publica su propio target. El de arriba se mantiene por
+compatibilidad con los atajos ya configurados; en módulos nuevos usa el suyo:
+
+| Target | Llamadas |
+|---|---|
+| `k4.panel` | `toggle` · `notifications` · `wifi` · `bluetooth` · `close` |
+| `k4.launcher` | `toggle` · `search <texto>` · `install <texto>` |
+| `k4.ask` | `toggle` · `selection` · `screen` · `region` · `now <texto>` · `followUp <texto>` |
+| `k4.theme` | `toggle` · `close` · `tab <pestaña>` · `preset <id>` · `wallpaper <ruta>` · `apply` · `save` |
 
 ## Dentro de la island
 
@@ -113,9 +130,75 @@ Teclas dentro de cada vista:
 ## Estructura
 
 ```
-shell.qml   toda la barra: estados, servicios y vistas
-ask.sh      envoltorio de codex exec para las consultas
+shell.qml    host: monta la superficie, dibuja la silueta y decide qué
+             plugin se queda la island
+core/        Theme (tokens), K4Plugin (el contrato) y widgets sin estado
+services/    singletons de dominio: Audio, Media, Wifi, Bt, Notifs, Clock,
+             Workspaces, Island
+widgets/     widgets que sí leen datos: Artwork, Visualizer
+plugins/     un módulo por carpeta
+ask.sh       envoltorio de codex exec para las consultas
 ```
+
+Las capas van en un solo sentido —`core` → `services` → `widgets` →
+`plugins`— y ninguna importa hacia atrás. Es lo que evita el ciclo entre
+`Artwork`, que necesita datos de media, y `Wifi`, que necesita iconos del
+tema.
+
+## Escribir un plugin
+
+Un módulo es una carpeta con un `K4Plugin` que declara cuándo quiere la
+island, qué tamaño necesita y qué pinta dentro. Sus procesos, timers e
+`IpcHandler` van como hijos suyos y viven mientras viva la barra, esté o no
+montada la vista:
+
+```qml
+K4Plugin {
+    id: self
+
+    name: "ejemplo"
+    priority: 60          // quién gana si varios la piden a la vez
+    active: open          // ¿la quiere ahora mismo?
+    islandWidth: 600
+    islandHeight: 300
+
+    property bool open: false
+
+    view: Component { EjemploView { plugin: self } }
+
+    IpcHandler {
+        target: "k4.ejemplo"
+        function toggle(): void { self.open = !self.open }
+    }
+}
+```
+
+Registrarlo son dos líneas en `shell.qml`: el `import` de su carpeta y una
+entrada en la lista `plugins`. Las referencias entre módulos se inyectan ahí
+(`PanelPlugin { launcher: launcherPlugin }`), así ninguno importa a otro.
+
+El `id: self` no es capricho: si lo llamas `plugin`, la línea
+`EjemploView { plugin: plugin }` se autoasigna —la propiedad del hijo tapa al
+`id` del padre— y la vista recibe `undefined`.
+
+Prioridades de los que ya hay: `idle` 0 · `volume` 40 · `clock` 50 ·
+`player` 55 · `panel` 60 · `hyprtheme` 65 · `toast` 70 · `launcher` 80 ·
+`ask` 90.
+
+## Tema de Hyprland
+
+El módulo aplica en caliente con `hyprctl eval`, que evalúa Lua en el
+Hyprland vivo. `hyprctl keyword` no vale con una configuración en Lua:
+responde *keyword can't work with non-legacy parsers*.
+
+Para que sobreviva al reinicio, k4 es dueño de `~/.config/hypr/config/k4-theme.lua`
+y añade un `require` al final de `hyprland.lua`. Al cargarse el último, sus
+valores ganan sin tocar ninguna otra línea de tu configuración. Para
+revertirlo del todo: borra ese archivo y su línea `require`.
+
+Lo aplicado se ve al momento; solo se guarda al pulsar **Guardar**, así que
+puedes trastear sin miedo: si no guardas, el próximo reinicio de Hyprland lo
+deja como estaba.
 
 ## Detalles de implementación
 

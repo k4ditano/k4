@@ -5,5 +5,6 @@ IslandLabel 1.0 IslandLabel.qml
 IconGlyph 1.0 IconGlyph.qml
 FadeIn 1.0 FadeIn.qml
 IslandSwitch 1.0 IslandSwitch.qml
+IslandSlider 1.0 IslandSlider.qml
 ConnectionRow 1.0 ConnectionRow.qml
 MediaButton 1.0 MediaButton.qml

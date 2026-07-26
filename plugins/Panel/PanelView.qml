@@ -495,6 +495,33 @@ FadeIn {
                         anchors.rightMargin: 14
                         spacing: 10
 
+                        IconGlyph { text: Theme.ico.palette; color: Theme.muted; font.pixelSize: 16 }
+                        IslandLabel { text: "Tema"; font.pixelSize: 12; Layout.fillWidth: true }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            view.plugin.close()
+                            if (view.plugin.theme)
+                                view.plugin.theme.toggle()
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    radius: 16
+                    color: Theme.surface
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 14
+                        anchors.rightMargin: 14
+                        spacing: 10
+
                         IconGlyph { text: Theme.ico.cog; color: Theme.muted; font.pixelSize: 16 }
                         IslandLabel { text: "Ajustes"; font.pixelSize: 12; Layout.fillWidth: true }
                     }

@@ -18,8 +18,9 @@ K4Plugin {
     property string tab: "controls"
     property bool open: false
 
-    // el lanzador; lo inyecta el host
+    // el lanzador y el módulo de tema; los inyecta el host
     property var launcher: null
+    property var theme: null
 
     islandWidth: 860
     islandHeight: tab === "controls" ? 274 : 400

@@ -84,10 +84,12 @@ Singleton {
         wifi2: String.fromCodePoint(0xF0922),
         wifi3: String.fromCodePoint(0xF0925),
         wifi4: String.fromCodePoint(0xF0928),
-        palette: String.fromCodePoint(0xF00E0),
-        image: String.fromCodePoint(0xF02E9),
-        window: String.fromCodePoint(0xF05F4),
-        effects: String.fromCodePoint(0xF0264),
-        animation: String.fromCodePoint(0xF0F23)
+        // md-palette · md-border_all · md-blur · md-wallpaper · md-animation
+        palette: String.fromCodePoint(0xF03D8),
+        window: String.fromCodePoint(0xF00C7),
+        effects: String.fromCodePoint(0xF00B5),
+        wallpaper: String.fromCodePoint(0xF0E09),
+        animation: String.fromCodePoint(0xF05D8),
+        image: String.fromCodePoint(0xF02E9)
     })
 }

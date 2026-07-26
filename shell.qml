@@ -19,6 +19,7 @@ import "plugins/Toast"
 import "plugins/Panel"
 import "plugins/Launcher"
 import "plugins/Ask"
+import "plugins/HyprTheme"
 
 Scope {
     id: root
@@ -31,9 +32,10 @@ Scope {
     ClockPlugin  { id: clockPlugin }
     PlayerPlugin { id: playerPlugin; panel: panelPlugin }
     ToastPlugin  { id: toastPlugin }
-    PanelPlugin  { id: panelPlugin; launcher: launcherPlugin }
+    PanelPlugin  { id: panelPlugin; launcher: launcherPlugin; theme: themePlugin }
     LauncherPlugin { id: launcherPlugin; panel: panelPlugin }
     AskPlugin    { id: askPlugin; panel: panelPlugin; launcher: launcherPlugin }
+    HyprThemePlugin { id: themePlugin; panel: panelPlugin }
 
     readonly property var plugins: [
         idlePlugin,
@@ -43,7 +45,8 @@ Scope {
         toastPlugin,
         panelPlugin,
         launcherPlugin,
-        askPlugin
+        askPlugin,
+        themePlugin
     ]
 
     // ── quién se queda la island ──────────────────────────────────
@@ -129,6 +132,7 @@ Scope {
         function askScreen(): void { askPlugin.withScreenshot() }
         function askRegion(): void { askPlugin.withRegion() }
         function togglePlay(): void { Media.togglePlaying() }
+        function theme(): void { themePlugin.toggle() }
         function setMode(mode: string): void { Island.debugMode = mode }
     }
 
