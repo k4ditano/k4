@@ -601,27 +601,50 @@ FadeIn {
                 delegate: Rectangle {
                     id: notificationCard
                     required property var modelData
+                    readonly property var actions: Notifs.buttons(modelData)
+                    readonly property string icon: Notifs.iconFor(modelData)
+
                     width: ListView.view.width
                     height: notificationBody.implicitHeight + 22
+                        + (actions.length > 0 ? 28 : 0)
                     radius: 12
                     color: cardMouse.containsMouse ? "#38383a" : Theme.surfaceHi
 
                     Behavior on color { ColorAnimation { duration: 120 } }
 
-                    // se traga los clics para que un fallo cerca de la ✕ no
-                    // llegue al fondo de la island (que cerraría el panel)
+                    // Además de llevar a la aplicación, se traga los clics para
+                    // que un fallo cerca de la ✕ no llegue al fondo de la
+                    // island (que cerraría el panel).
                     MouseArea {
                         id: cardMouse
                         anchors.fill: parent
                         hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Notifs.activate(notificationCard.modelData)
+                    }
+
+                    Image {
+                        id: cardIcon
+                        anchors.left: parent.left
+                        anchors.leftMargin: 12
+                        anchors.top: parent.top
+                        anchors.topMargin: 12
+                        width: 20
+                        height: 20
+                        source: notificationCard.icon
+                        sourceSize.width: 40
+                        sourceSize.height: 40
+                        fillMode: Image.PreserveAspectFit
+                        visible: status === Image.Ready
                     }
 
                     Column {
                         id: notificationBody
-                        anchors.left: parent.left
+                        anchors.left: cardIcon.visible ? cardIcon.right : parent.left
                         anchors.right: closeButton.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.leftMargin: 14
+                        anchors.top: parent.top
+                        anchors.topMargin: 11
+                        anchors.leftMargin: cardIcon.visible ? 10 : 14
                         anchors.rightMargin: 10
                         spacing: 2
 
@@ -645,6 +668,52 @@ FadeIn {
                             width: parent.width
                             maximumLineCount: 3
                             elide: Text.ElideRight
+                        }
+                    }
+
+                    // los botones que manda la aplicación
+                    Row {
+                        anchors.left: notificationBody.left
+                        anchors.top: notificationBody.bottom
+                        anchors.topMargin: 6
+                        spacing: 6
+                        visible: notificationCard.actions.length > 0
+
+                        Repeater {
+                            model: notificationCard.actions
+
+                            delegate: Rectangle {
+                                id: cardAction
+                                required property var modelData
+                                width: Math.min(cardActionLabel.implicitWidth + 20, 160)
+                                height: 22
+                                radius: 11
+                                color: cardActionMouse.containsMouse ? Theme.blue : Theme.track
+
+                                Behavior on color { ColorAnimation { duration: 120 } }
+
+                                IslandLabel {
+                                    id: cardActionLabel
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 8
+                                    anchors.rightMargin: 8
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    text: cardAction.modelData.text
+                                    font.pixelSize: 10
+                                    font.weight: Font.DemiBold
+                                    elide: Text.ElideRight
+                                }
+
+                                MouseArea {
+                                    id: cardActionMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Notifs.invokeAction(notificationCard.modelData,
+                                                                   cardAction.modelData)
+                                }
+                            }
                         }
                     }
 

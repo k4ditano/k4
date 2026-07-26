@@ -26,7 +26,9 @@ conectar y nivel de batería.
 
 **Notificaciones.** Servidor de notificaciones propio: aparecen como toast en la
 island y se acumulan en una pestaña del panel, con borrado individual y "borrar
-todo".
+todo". Pulsar el cuerpo lleva a la aplicación —su acción por defecto si la
+manda y, si no, enfocando su ventana— y los botones que la aplicación ofrezca
+se pintan tanto en el toast como en la tarjeta.
 
 **Lanzador.** `SUPER+Space` abre un buscador de aplicaciones estilo Spotlight.
 Escribiendo aparece además la opción **Instalar**, que busca paquetes en los
@@ -220,6 +222,11 @@ Prioridades de los que ya hay: `idle` 0 · `volume` 40 · `clock` 50 ·
 El módulo aplica en caliente con `hyprctl eval`, que evalúa Lua en el
 Hyprland vivo. `hyprctl keyword` no vale con una configuración en Lua:
 responde *keyword can't work with non-legacy parsers*.
+
+La misma regla vale para cualquier otra orden: enfocar la ventana de una
+aplicación al pulsar su notificación se envía como
+`hl.dsp.focus({ window = "address:0x…" })`, no como el `focuswindow` de
+siempre, que con este parser ni siquiera compila.
 
 Para que sobreviva al reinicio, k4 es dueño de `~/.config/hypr/config/k4-theme.lua`
 y añade un `require` al final de `hyprland.lua`. Al cargarse el último, sus
