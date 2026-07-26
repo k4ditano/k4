@@ -13,13 +13,14 @@ K4Plugin {
     priority: 55
     active: Island.hovered && Media.isPlaying
 
-    // el botón de salida abre el centro de control; lo inyecta el host
+    // el centro de control y la bandeja; los inyecta el host
     property var panel: null
+    property var tray: null
 
-    islandWidth: 340
+    islandWidth: 340 + (Tray.count > 0 ? Math.min(Tray.count, 4) * 24 + 8 : 0)
     islandHeight: Media.hasTimeline ? 140 : 115
 
     view: Component {
-        PlayerView { panel: self.panel }
+        PlayerView { panel: self.panel; tray: self.tray }
     }
 }

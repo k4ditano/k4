@@ -2,8 +2,13 @@ import QtQuick
 import QtQuick.Layouts
 import "../../core"
 import "../../services"
+import "../../widgets"
 
 FadeIn {
+    id: view
+
+    property var tray: null
+
     RowLayout {
         anchors.fill: parent
         anchors.leftMargin: 22
@@ -37,6 +42,16 @@ FadeIn {
             font.pixelSize: 30
             font.weight: Font.Light
             Layout.alignment: Qt.AlignVCenter
+        }
+
+        // La island ya está desplegada y quieta: aquí sí se puede pinchar.
+        TrayRow {
+            max: 5
+            iconSize: 16
+            interactive: true
+            Layout.leftMargin: 4
+            Layout.alignment: Qt.AlignVCenter
+            onMenuRequested: if (view.tray) view.tray.toggle()
         }
     }
 }

@@ -44,11 +44,15 @@ cambian presets de color, separaciones, borde, redondeo, desenfoque, sombras,
 opacidades, animaciones y fondo de pantalla, viendo el resultado al momento.
 Ver [Tema de Hyprland](#tema-de-hyprland) para cómo se aplica y se guarda.
 
-**Bandeja del sistema.** Los iconos de las aplicaciones en bandeja salen en
-la píldora; al pulsarlos la island se despliega con la lista entera y el menú
-propio de cada aplicación, dibujado dentro en vez de en una ventana emergente
-aparte. Clic izquierdo abre la aplicación, el central hace su acción
-secundaria y la rueda se le pasa tal cual (subir el volumen, por ejemplo).
+**Bandeja del sistema.** Los iconos salen en la píldora, pero ahí son solo
+indicadores: acercar el ratón cambia la island a la vista de reloj o de
+reproductor, así que la píldora se desmonta antes de que puedas pulsar nada.
+La fila se repite en esas dos vistas, ya desplegadas y quietas, y es ahí donde
+se pincha: clic izquierdo abre la aplicación, el derecho despliega el módulo
+con su menú, el central hace la acción secundaria y la rueda se le pasa tal
+cual (subir el volumen, por ejemplo). El menú se dibuja dentro de la island,
+no en una ventana emergente aparte.
+
 Instanciar el servicio es lo que registra a k4 como anfitrión de bandeja, así
 que **las aplicaciones que ya estaban abiertas antes puede que no aparezcan
 hasta reiniciarlas**.

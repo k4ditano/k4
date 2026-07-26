@@ -67,53 +67,15 @@ FadeIn {
             visible: Media.isPlaying
         }
 
-        // ── bandeja: indicadores, y atajo al módulo completo
-        RowLayout {
-            visible: Tray.count > 0
-            spacing: 4
+        // Indicadores nada más: aquí no se puede pinchar, porque al acercar el
+        // ratón la island ya ha cambiado a la vista de reloj o de reproductor.
+        // Es en esas donde la fila es pulsable.
+        TrayRow {
+            max: view.shown
+            iconSize: 14
+            interactive: false
             Layout.leftMargin: Media.isPlaying ? 2 : 0
             Layout.alignment: Qt.AlignVCenter
-
-            Repeater {
-                model: Tray.sorted.slice(0, view.shown)
-
-                delegate: Image {
-                    required property var modelData
-                    source: modelData.icon
-                    sourceSize.width: 28
-                    sourceSize.height: 28
-                    fillMode: Image.PreserveAspectFit
-                    Layout.preferredWidth: 14
-                    Layout.preferredHeight: 14
-                    Layout.alignment: Qt.AlignVCenter
-                    opacity: modelData.status === 2 ? 1 : 0.85
-
-                    // NeedsAttention: late, que para eso lo pide
-                    SequentialAnimation on opacity {
-                        running: modelData.status === 2
-                        loops: Animation.Infinite
-                        NumberAnimation { to: 0.3; duration: 700; easing.type: Easing.InOutSine }
-                        NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
-                    }
-                }
-            }
-
-            IslandLabel {
-                visible: Tray.count > view.shown
-                text: "+" + (Tray.count - view.shown)
-                color: Theme.muted
-                font.pixelSize: 10
-                Layout.alignment: Qt.AlignVCenter
-            }
-
-            // Se traga el clic para que no llegue al fondo (que abriría el
-            // centro de control) y despliega la bandeja entera.
-            MouseArea {
-                anchors.fill: parent
-                anchors.margins: -3
-                cursorShape: Qt.PointingHandCursor
-                onClicked: if (view.tray) view.tray.toggle()
-            }
         }
     }
 }

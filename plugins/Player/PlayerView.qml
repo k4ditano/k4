@@ -8,6 +8,7 @@ FadeIn {
     id: view
 
     property var panel: null
+    property var tray: null
 
     readonly property var player: Media.activePlayer
     readonly property real progress: player && player.length > 0
@@ -71,6 +72,17 @@ FadeIn {
             Visualizer {
                 Layout.alignment: Qt.AlignVCenter
                 Layout.leftMargin: 4
+            }
+
+            // Igual que en el reloj: es aquí, con la island ya desplegada,
+            // donde los iconos de bandeja se pueden pulsar.
+            TrayRow {
+                max: 4
+                iconSize: 16
+                interactive: true
+                Layout.leftMargin: 4
+                Layout.alignment: Qt.AlignVCenter
+                onMenuRequested: if (view.tray) view.tray.toggle()
             }
         }
 
