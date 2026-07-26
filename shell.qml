@@ -21,6 +21,7 @@ import "plugins/Launcher"
 import "plugins/Ask"
 import "plugins/HyprTheme"
 import "plugins/Weather"
+import "plugins/Tray"
 
 Scope {
     id: root
@@ -28,7 +29,7 @@ Scope {
     // ── los módulos ───────────────────────────────────────────────
     // Las referencias cruzadas se inyectan aquí, así ningún plugin importa a
     // otro: sabe que le pasan "un panel", no de qué carpeta sale.
-    IdlePlugin   { id: idlePlugin }
+    IdlePlugin   { id: idlePlugin; tray: trayPlugin }
     VolumePlugin { id: volumePlugin }
     ClockPlugin  { id: clockPlugin }
     PlayerPlugin { id: playerPlugin; panel: panelPlugin }
@@ -38,6 +39,7 @@ Scope {
     AskPlugin    { id: askPlugin; panel: panelPlugin; launcher: launcherPlugin }
     HyprThemePlugin { id: themePlugin; panel: panelPlugin }
     WeatherPlugin { id: weatherPlugin; panel: panelPlugin }
+    TrayPlugin   { id: trayPlugin; panel: panelPlugin }
 
     readonly property var plugins: [
         idlePlugin,
@@ -49,7 +51,8 @@ Scope {
         launcherPlugin,
         askPlugin,
         themePlugin,
-        weatherPlugin
+        weatherPlugin,
+        trayPlugin
     ]
 
     // ── quién se queda la island ──────────────────────────────────
@@ -96,6 +99,7 @@ Scope {
         void Clock.date
         void Workspaces.list
         void Weather.located
+        void Tray.count
     }
 
     // ── IPC ───────────────────────────────────────────────────────
@@ -138,6 +142,7 @@ Scope {
         function togglePlay(): void { Media.togglePlaying() }
         function theme(): void { themePlugin.toggle() }
         function weather(): void { weatherPlugin.toggle() }
+        function tray(): void { trayPlugin.toggle() }
         function setMode(mode: string): void { Island.debugMode = mode }
     }
 

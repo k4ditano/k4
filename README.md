@@ -44,6 +44,15 @@ cambian presets de color, separaciones, borde, redondeo, desenfoque, sombras,
 opacidades, animaciones y fondo de pantalla, viendo el resultado al momento.
 Ver [Tema de Hyprland](#tema-de-hyprland) para cómo se aplica y se guarda.
 
+**Bandeja del sistema.** Los iconos de las aplicaciones en bandeja salen en
+la píldora; al pulsarlos la island se despliega con la lista entera y el menú
+propio de cada aplicación, dibujado dentro en vez de en una ventana emergente
+aparte. Clic izquierdo abre la aplicación, el central hace su acción
+secundaria y la rueda se le pasa tal cual (subir el volumen, por ejemplo).
+Instanciar el servicio es lo que registra a k4 como anfitrión de bandeja, así
+que **las aplicaciones que ya estaban abiertas antes puede que no aparezcan
+hasta reiniciarlas**.
+
 **El tiempo.** Estado actual, siguientes horas y seis días, con datos de
 [Open-Meteo](https://open-meteo.com) —sin clave ni cuenta—. La ubicación se
 adivina por IP la primera vez, que es aproximada, así que el buscador de
@@ -114,6 +123,7 @@ hl.bind("SUPER + CONTROL + G", hl.dsp.exec_cmd(k4 .. "askSelection"))
 | `togglePlay` | play/pausa del reproductor activo |
 | `theme` | módulo de tema de Hyprland |
 | `weather` | módulo del tiempo |
+| `tray` | bandeja del sistema |
 | `setMode <modo>` | fuerza un estado de la island (depuración) |
 
 Además, cada módulo publica su propio target. El de arriba se mantiene por
@@ -126,6 +136,7 @@ compatibilidad con los atajos ya configurados; en módulos nuevos usa el suyo:
 | `k4.ask` | `toggle` · `selection` · `screen` · `region` · `now <texto>` · `followUp <texto>` |
 | `k4.theme` | `toggle` · `close` · `tab <pestaña>` · `preset <id>` · `wallpaper <ruta>` · `apply` · `save` |
 | `k4.weather` | `toggle` · `close` · `refresh` · `locate` · `place <ciudad>` |
+| `k4.tray` | `toggle` · `close` |
 
 ## Dentro de la island
 
@@ -197,8 +208,8 @@ El `id: self` no es capricho: si lo llamas `plugin`, la línea
 `id` del padre— y la vista recibe `undefined`.
 
 Prioridades de los que ya hay: `idle` 0 · `volume` 40 · `clock` 50 ·
-`player` 55 · `panel` 60 · `hyprtheme` 65 · `toast` 70 · `launcher` 80 ·
-`ask` 90.
+`player` 55 · `panel` 60 · `weather` 62 · `tray` 63 · `hyprtheme` 65 ·
+`toast` 70 · `launcher` 80 · `ask` 90.
 
 ## Tema de Hyprland
 

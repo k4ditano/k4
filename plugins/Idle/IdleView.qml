@@ -5,6 +5,11 @@ import "../../services"
 import "../../widgets"
 
 FadeIn {
+    id: view
+
+    property var tray: null
+    property int shown: 0
+
     RowLayout {
         anchors.fill: parent
         anchors.leftMargin: 9
@@ -60,6 +65,55 @@ FadeIn {
             Layout.alignment: Qt.AlignVCenter
             Layout.preferredHeight: 12
             visible: Media.isPlaying
+        }
+
+        // ── bandeja: indicadores, y atajo al módulo completo
+        RowLayout {
+            visible: Tray.count > 0
+            spacing: 4
+            Layout.leftMargin: Media.isPlaying ? 2 : 0
+            Layout.alignment: Qt.AlignVCenter
+
+            Repeater {
+                model: Tray.sorted.slice(0, view.shown)
+
+                delegate: Image {
+                    required property var modelData
+                    source: modelData.icon
+                    sourceSize.width: 28
+                    sourceSize.height: 28
+                    fillMode: Image.PreserveAspectFit
+                    Layout.preferredWidth: 14
+                    Layout.preferredHeight: 14
+                    Layout.alignment: Qt.AlignVCenter
+                    opacity: modelData.status === 2 ? 1 : 0.85
+
+                    // NeedsAttention: late, que para eso lo pide
+                    SequentialAnimation on opacity {
+                        running: modelData.status === 2
+                        loops: Animation.Infinite
+                        NumberAnimation { to: 0.3; duration: 700; easing.type: Easing.InOutSine }
+                        NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
+                    }
+                }
+            }
+
+            IslandLabel {
+                visible: Tray.count > view.shown
+                text: "+" + (Tray.count - view.shown)
+                color: Theme.muted
+                font.pixelSize: 10
+                Layout.alignment: Qt.AlignVCenter
+            }
+
+            // Se traga el clic para que no llegue al fondo (que abriría el
+            // centro de control) y despliega la bandeja entera.
+            MouseArea {
+                anchors.fill: parent
+                anchors.margins: -3
+                cursorShape: Qt.PointingHandCursor
+                onClicked: if (view.tray) view.tray.toggle()
+            }
         }
     }
 }
