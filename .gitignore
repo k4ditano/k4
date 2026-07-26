@@ -1,0 +1,8 @@
+# copias de seguridad y temporales
+*.bak
+*.orig
+*.rej
+*~
+
+# capturas de trabajo que no forman parte del proyecto
+/scratch/
