@@ -22,6 +22,14 @@ Singleton {
 
     readonly property var tracked: server.trackedNotifications
 
+    // Las últimas primero, para la tira que sale al pasar el ratón por la
+    // island: ahí lo que interesa es lo que acaba de llegar.
+    readonly property var recent: {
+        const list = server.trackedNotifications.values.slice()
+        list.reverse()
+        return list
+    }
+
     function clear() {
         // se copia antes: descartar muta la lista mientras se recorre
         const list = server.trackedNotifications.values.slice()
@@ -43,6 +51,16 @@ Singleton {
     function resumeToast() { if (toastOpen) toastTimer.restart() }
 
     function markRead() { count = 0 }
+
+    // Alto de la tira de notificaciones (widgets/NotifStrip.qml). La medida
+    // vive aquí porque los plugins la necesitan para dimensionar la island
+    // antes de que la vista exista, y así hay una sola fórmula.
+    readonly property int stripRow: 38          // fila de 34 + separación de 4
+
+    function stripHeight(max) {
+        const n = Math.min(recent.length, max)
+        return n === 0 ? 0 : n * stripRow + 20
+    }
 
     // ── pulsar una notificación ───────────────────────────────────
     // Por convención del protocolo, la acción de identificador "default" es la
@@ -80,6 +98,10 @@ Singleton {
 
     // Clic en el cuerpo: la acción por defecto si la hay y, si no, enfocar la
     // ventana de la aplicación, que es lo que espera cualquiera al pulsar.
+    //
+    // Si no se puede hacer ninguna de las dos, la notificación se queda donde
+    // está. Descartarla sin llevar a ninguna parte es lo peor de los dos
+    // mundos: parece que la aplicación te ha ignorado.
     function activate(n) {
         if (!n)
             return
@@ -95,8 +117,6 @@ Singleton {
         }
 
         focusApp(n)
-        if (!n.resident)
-            n.dismiss()
     }
 
     function invokeAction(n, action) {
@@ -112,20 +132,41 @@ Singleton {
     // Hyprland.toplevels llega vacío aquí, así que se pregunta por hyprctl y
     // se busca a mano: clase exacta, luego clase que contenga, luego título.
     property string pendingMatch: ""
+    property var pendingNotification: null
+
+    // Para lo que no se puede adivinar. Hay notificaciones que no llevan
+    // identidad utilizable —las que manda una herramienta de terminal: ni
+    // desktopEntry, ni una clase de ventana con su nombre— y la única forma de
+    // resolverlas es decir a mano a qué ventana pertenecen.
+    //
+    // La clave es el appName o el desktopEntry en minúsculas; el valor, lo que
+    // haya que buscar en la clase o el título de la ventana. El nombre exacto
+    // que manda cada aplicación se lee en la tarjeta del panel, encima del
+    // título.
+    readonly property var aliases: ({
+        // herramientas de terminal: llevan al emulador donde corren
+        "claude code": "kitty",
+        "claude": "kitty",
+        "codex": "kitty"
+    })
 
     function focusApp(n) {
-        const key = (n.desktopEntry && n.desktopEntry.length > 0 ? n.desktopEntry : n.appName) || ""
-        if (key.length === 0)
+        const raw = (n.desktopEntry && n.desktopEntry.length > 0 ? n.desktopEntry : n.appName) || ""
+        if (raw.length === 0)
             return
 
-        // "org.gnome.Nautilus" → también vale probar con "nautilus"
-        pendingMatch = key.toLowerCase()
+        const key = raw.toLowerCase()
+        pendingMatch = aliases[key] !== undefined ? String(aliases[key]).toLowerCase() : key
+        pendingNotification = n
         clientQuery.running = true
     }
 
     function matchAndFocus(json) {
         const key = pendingMatch
+        const n = pendingNotification
         pendingMatch = ""
+        pendingNotification = null
+
         if (key.length === 0)
             return
 
@@ -136,6 +177,7 @@ Singleton {
             return
         }
 
+        // "org.gnome.Nautilus" → también vale probar con "nautilus"
         const tail = key.indexOf(".") !== -1 ? key.substring(key.lastIndexOf(".") + 1) : key
 
         let exact = null
@@ -145,6 +187,7 @@ Singleton {
             const cls = String(c.class || "").toLowerCase()
             const initial = String(c.initialClass || "").toLowerCase()
             const title = String(c.title || "").toLowerCase()
+            const initialTitle = String(c.initialTitle || "").toLowerCase()
 
             if (cls === key || initial === key || cls === tail || initial === tail) {
                 exact = c
@@ -152,20 +195,45 @@ Singleton {
             }
             if (partial === null
                 && (cls.indexOf(tail) !== -1 || initial.indexOf(tail) !== -1
-                    || title.indexOf(tail) !== -1))
+                    || initialTitle.indexOf(tail) !== -1 || title.indexOf(tail) !== -1))
                 partial = c
         }
 
         const found = exact || partial
-        if (!found)
+        if (found) {
+            // Sintaxis Lua, como el resto de la configuración de Hyprland: con
+            // el parser nuevo, `dispatch focuswindow address:…` no compila —se
+            // envuelve en hl.dispatch(...) y revienta— y hay que pasar un
+            // dispatcher de verdad. Las claves que admite `focus` son
+            // direction, monitor, window, urgent_or_last y last.
+            Hyprland.dispatch('hl.dsp.focus({ window = "address:' + found.address + '" })')
+            if (n && !n.resident)
+                n.dismiss()
             return
+        }
 
-        // Sintaxis Lua, como el resto de la configuración de Hyprland: con el
-        // parser nuevo, `dispatch focuswindow address:…` no compila —se
-        // envuelve en hl.dispatch(...) y revienta— y hay que pasar un
-        // dispatcher de verdad. Las claves que admite `focus` son direction,
-        // monitor, window, urgent_or_last y last.
-        Hyprland.dispatch('hl.dsp.focus({ window = "address:' + found.address + '" })')
+        // No está abierta: si la notificación dice de qué aplicación viene, se
+        // abre. Y si tampoco eso, se deja la notificación en su sitio.
+        if (n && launchEntry(n))
+            n.dismiss()
+    }
+
+    function launchEntry(n) {
+        const id = (n.desktopEntry || "").toLowerCase()
+        if (id.length === 0)
+            return false
+
+        const apps = DesktopEntries.applications.values
+        for (let i = 0; i < apps.length; ++i) {
+            const app = apps[i]
+            const appId = String(app.id || "").toLowerCase()
+            if (appId === id || appId === id + ".desktop"
+                || appId.replace(/\.desktop$/, "") === id) {
+                app.execute()
+                return true
+            }
+        }
+        return false
     }
 
     Process {

@@ -25,10 +25,20 @@ hace falta—, desconectarte u olvidarlas. En Bluetooth, lo mismo con emparejar,
 conectar y nivel de batería.
 
 **Notificaciones.** Servidor de notificaciones propio: aparecen como toast en la
-island y se acumulan en una pestaña del panel, con borrado individual y "borrar
-todo". Pulsar el cuerpo lleva a la aplicación —su acción por defecto si la
-manda y, si no, enfocando su ventana— y los botones que la aplicación ofrezca
-se pintan tanto en el toast como en la tarjeta.
+island, se acumulan en una pestaña del panel y las recientes salen también al
+pasar el ratón por la island, bajo el reloj o bajo el reproductor, para llegar
+a ellas sin abrir nada.
+
+Pulsar el cuerpo lleva a la aplicación: su acción por defecto si la manda y,
+si no, enfocando su ventana. Si no se puede hacer ninguna de las dos, la
+notificación **se queda donde está** en vez de desaparecer sin llevarte a
+ningún sitio. Los botones que ofrezca la aplicación se pintan en el toast y en
+la tarjeta.
+
+Las herramientas de terminal no traen identidad que casar con una ventana, así
+que se resuelven con un mapa de alias en `services/Notifs.qml`: `claude code` y
+`codex` van a `kitty`. Para añadir la tuya, mira el nombre que sale en la
+tarjeta del panel, encima del título.
 
 **Lanzador.** `SUPER+Space` abre un buscador de aplicaciones estilo Spotlight.
 Escribiendo aparece además la opción **Instalar**, que busca paquetes en los

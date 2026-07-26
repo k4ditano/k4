@@ -200,5 +200,12 @@ FadeIn {
                 Layout.alignment: Qt.AlignVCenter
             }
         }
+
+        // Lo que acaba de llegar, también con música sonando.
+        NotifStrip {
+            max: 3
+            Layout.fillWidth: true
+            Layout.topMargin: 2
+        }
     }
 }

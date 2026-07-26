@@ -1,0 +1,144 @@
+//  Tira de notificaciones recientes.
+//
+//  Aparece bajo el reloj y bajo el reproductor al pasar el ratón por la
+//  island, que es cuando ya la estás mirando: así se llega a lo que acaba de
+//  llegar sin abrir el panel. Pulsar una lleva a su aplicación igual que en el
+//  toast; la ✕ la descarta.
+
+import QtQuick
+import QtQuick.Layouts
+import "../core"
+import "../services"
+
+ColumnLayout {
+    id: strip
+
+    // cuántas caben sin que la island se convierta en una pared
+    property int max: 3
+
+    readonly property int shown: Math.min(Notifs.recent.length, max)
+    readonly property int rowHeight: 34
+
+    // alto que necesita quien la incruste, cabecera incluida; la fórmula está
+    // en el servicio porque los plugins la usan para dimensionar la island
+    readonly property int neededHeight: Notifs.stripHeight(max)
+
+    visible: Notifs.recent.length > 0
+    spacing: 4
+
+    RowLayout {
+        Layout.fillWidth: true
+        Layout.preferredHeight: 14
+        spacing: 6
+
+        IconGlyph {
+            text: Theme.ico.bell
+            color: Theme.muted
+            font.pixelSize: 11
+            Layout.alignment: Qt.AlignVCenter
+        }
+
+        IslandLabel {
+            text: Notifs.recent.length === 1
+                ? "1 notificación"
+                : Notifs.recent.length + " notificaciones"
+            color: Theme.muted
+            font.pixelSize: 10
+            Layout.alignment: Qt.AlignVCenter
+        }
+
+        Item { Layout.fillWidth: true }
+
+        IslandLabel {
+            visible: Notifs.recent.length > strip.shown
+            text: "+" + (Notifs.recent.length - strip.shown) + " más"
+            color: Theme.dim
+            font.pixelSize: 10
+            Layout.alignment: Qt.AlignVCenter
+        }
+    }
+
+    Repeater {
+        model: Notifs.recent.slice(0, strip.shown)
+
+        delegate: Rectangle {
+            id: row
+            required property var modelData
+            readonly property string icon: Notifs.iconFor(modelData)
+
+            Layout.fillWidth: true
+            Layout.preferredHeight: strip.rowHeight
+            radius: 9
+            color: rowMouse.containsMouse ? Theme.surfaceHi : Theme.surface
+
+            Behavior on color { ColorAnimation { duration: 120 } }
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 9
+                anchors.rightMargin: 4
+                spacing: 8
+
+                Image {
+                    source: row.icon
+                    sourceSize.width: 32
+                    sourceSize.height: 32
+                    fillMode: Image.PreserveAspectFit
+                    Layout.preferredWidth: 16
+                    Layout.preferredHeight: 16
+                    Layout.alignment: Qt.AlignVCenter
+                    visible: status === Image.Ready
+                }
+
+                IconGlyph {
+                    visible: row.icon.length === 0
+                    text: Theme.ico.bell
+                    color: Theme.muted
+                    font.pixelSize: 13
+                    Layout.preferredWidth: 16
+                    Layout.alignment: Qt.AlignVCenter
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignVCenter
+                    spacing: 0
+
+                    IslandLabel {
+                        text: row.modelData.summary
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+
+                    IslandLabel {
+                        text: row.modelData.body.length > 0
+                            ? row.modelData.body : row.modelData.appName
+                        color: Theme.muted
+                        font.pixelSize: 9
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+                }
+
+                MediaButton {
+                    glyph: Theme.ico.close
+                    glyphSize: 12
+                    glyphColor: rowMouse.containsMouse ? Theme.ink : Theme.dim
+                    onActivated: row.modelData.dismiss()
+                    Layout.alignment: Qt.AlignVCenter
+                }
+            }
+
+            MouseArea {
+                id: rowMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                // el botón de cerrar va por encima y se queda su propio clic
+                onClicked: Notifs.activate(row.modelData)
+            }
+        }
+    }
+}
