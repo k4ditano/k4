@@ -1,0 +1,9 @@
+singleton Theme 1.0 Theme.qml
+
+K4Plugin 1.0 K4Plugin.qml
+IslandLabel 1.0 IslandLabel.qml
+IconGlyph 1.0 IconGlyph.qml
+FadeIn 1.0 FadeIn.qml
+IslandSwitch 1.0 IslandSwitch.qml
+ConnectionRow 1.0 ConnectionRow.qml
+MediaButton 1.0 MediaButton.qml

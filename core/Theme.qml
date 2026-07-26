@@ -1,0 +1,93 @@
+pragma Singleton
+
+//  Tokens de diseño de la island (macOS Dynamic Island / Atoll).
+//  No depende de nada: es la base del grafo de imports.
+
+import QtQuick
+import Quickshell
+
+Singleton {
+    readonly property string uiFont: "Adwaita Sans"
+    readonly property string iconFont: "MesloLGS Nerd Font"
+    readonly property var locale: Qt.locale("es_ES")
+
+    readonly property color islandBg: "#000000"
+    readonly property color ink: "#ffffff"
+    readonly property color muted: "#8e8e93"
+    readonly property color dim: "#48484a"
+    readonly property color surface: "#1c1c1e"
+    readonly property color surfaceHi: "#2c2c2e"
+    readonly property color track: "#3a3a3c"
+    readonly property color green: "#30d158"
+    readonly property color red: "#ff453a"
+    readonly property color blue: "#0a84ff"
+
+    // Geometría de la island
+    readonly property int wing: 16              // radio de la esquina invertida que funde con el borde
+    readonly property int baseHeight: 34        // alto plegado, y franja reservada a las ventanas
+    readonly property int maxIslandHeight: 520  // techo de la superficie, ver PanelWindow
+
+    // Iconos Material Design de la Nerd Font (plano suplementario → fromCodePoint)
+    readonly property var ico: ({
+        play: String.fromCodePoint(0xF040A),
+        pause: String.fromCodePoint(0xF03E4),
+        next: String.fromCodePoint(0xF04AD),
+        prev: String.fromCodePoint(0xF04AE),
+        shuffle: String.fromCodePoint(0xF049D),
+        repeat: String.fromCodePoint(0xF0456),
+        repeatOne: String.fromCodePoint(0xF0458),
+        output: String.fromCodePoint(0xF0F5F),
+        music: String.fromCodePoint(0xF0387),
+        wifi: String.fromCodePoint(0xF05A9),
+        wifiOff: String.fromCodePoint(0xF05AA),
+        bluetooth: String.fromCodePoint(0xF00AF),
+        bluetoothOff: String.fromCodePoint(0xF00B2),
+        volHigh: String.fromCodePoint(0xF057E),
+        volMed: String.fromCodePoint(0xF0580),
+        volOff: String.fromCodePoint(0xF0581),
+        bell: String.fromCodePoint(0xF009A),
+        bellOutline: String.fromCodePoint(0xF009C),
+        search: String.fromCodePoint(0xF0349),
+        chevronUp: String.fromCodePoint(0xF0143),
+        chevronDown: String.fromCodePoint(0xF0140),
+        cog: String.fromCodePoint(0xF0493),
+        close: String.fromCodePoint(0xF0156),
+        apps: String.fromCodePoint(0xF003B),
+        enter: String.fromCodePoint(0xF0311),
+        ask: String.fromCodePoint(0xF0674),
+        shot: String.fromCodePoint(0xF0E51),
+        selection: String.fromCodePoint(0xF05E7),
+        copy: String.fromCodePoint(0xF018F),
+        alert: String.fromCodePoint(0xF0026),
+        back: String.fromCodePoint(0xF0141),
+        forward: String.fromCodePoint(0xF0142),
+        loading: String.fromCodePoint(0xF0772),
+        install: String.fromCodePoint(0xF03D4),
+        package: String.fromCodePoint(0xF03D7),
+        installed: String.fromCodePoint(0xF05E0),
+        lock: String.fromCodePoint(0xF033E),
+        check: String.fromCodePoint(0xF012C),
+        linkOff: String.fromCodePoint(0xF0338),
+        devices: String.fromCodePoint(0xF0FB0),
+        headphones: String.fromCodePoint(0xF02CB),
+        cellphone: String.fromCodePoint(0xF011C),
+        mouse: String.fromCodePoint(0xF037D),
+        keyboard: String.fromCodePoint(0xF030C),
+        speaker: String.fromCodePoint(0xF04C3),
+        watch: String.fromCodePoint(0xF0589),
+        gamepad: String.fromCodePoint(0xF0EB5),
+        laptop: String.fromCodePoint(0xF0322),
+        printer: String.fromCodePoint(0xF042A),
+        television: String.fromCodePoint(0xF0502),
+        wifi0: String.fromCodePoint(0xF092D),
+        wifi1: String.fromCodePoint(0xF091F),
+        wifi2: String.fromCodePoint(0xF0922),
+        wifi3: String.fromCodePoint(0xF0925),
+        wifi4: String.fromCodePoint(0xF0928),
+        palette: String.fromCodePoint(0xF00E0),
+        image: String.fromCodePoint(0xF02E9),
+        window: String.fromCodePoint(0xF05F4),
+        effects: String.fromCodePoint(0xF0264),
+        animation: String.fromCodePoint(0xF0F23)
+    })
+}
