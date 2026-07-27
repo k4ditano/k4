@@ -69,21 +69,31 @@ Instanciar el servicio es lo que registra a k4 como anfitrión de bandeja, así
 que **las aplicaciones que ya estaban abiertas antes puede que no aparezcan
 hasta reiniciarlas**.
 
-**Mazmorra.** Un roguelite por oleadas dentro de la island, en la línea de
+**Mazmorra.** Un roguelite por oleadas dentro de la island, siguiendo a
 [TBH: Task Bar Hero](https://store.steampowered.com/app/3678970/). Un grupo de
 tres héroes —guardián, hechicero y clériga— pelea **solo** contra oleadas cada
-vez más duras; tú decides en qué gastar el oro y cuándo lanzar las habilidades,
-no los golpes. El guardián acapara los ataques, la clériga cura de fondo y el
-hechicero revienta la oleada entera.
+vez más duras: tú decides el equipo, en qué gastas el oro y cuándo lanzar las
+habilidades, no los golpes. El guardián acapara los ataques, la clériga cura de
+fondo y el hechicero revienta la oleada entera.
 
 Cada diez oleadas llega un jefe. Cuando cae el grupo se acaba la partida: se
-pierden el oro y las mejoras, y se conservan los **cofres** y las reliquias.
-Los cofres caen cada cinco oleadas y también con la barra cerrada, uno cada
-cuarto de hora, con tope de ocho horas.
+pierden el oro y las mejoras temporales, y **se conservan el equipo, los cofres
+y las reliquias** — es lo que hace que la siguiente llegue más lejos.
 
-Las habilidades se pueden lanzar a mano cuando están listas, pero si no
-intervienes se lanzan solas a los cinco segundos: la barra no debe exigir
-atención. Ver [Los sprites](#los-sprites) para cómo se generaron.
+Cuatro pestañas: **Lucha** (la pelea y la tienda de la partida), **Grupo**
+(cuatro huecos de equipo por héroe), **Bolsa** (abrir cofres, equipar con clic
+izquierdo, desguazar con el derecho) y **Altar** (mejoras permanentes por
+reliquias).
+
+Los objetos se generan por afijos —tipo, prefijo declinado y sufijo— con las
+**diez rarezas de TBH** y sus colores, de Común a Cósmico, y tres clases de
+cofre: corriente cada cinco oleadas, de jefe cada diez y de acto cada cincuenta.
+Con la barra cerrada siguen cayendo cofres corrientes, uno cada cuarto de hora
+y con tope de ocho horas.
+
+En la píldora queda un indicador con la oleada y un punto morado cuando hay
+cofres sin abrir; desde el reloj se pulsa para abrir la mazmorra. Ver
+[Los sprites](#los-sprites) para cómo se generaron.
 
 **El tiempo.** Estado actual, siguientes horas y seis días, con datos de
 [Open-Meteo](https://open-meteo.com) —sin clave ni cuenta—. La ubicación se
@@ -170,7 +180,7 @@ compatibilidad con los atajos ya configurados; en módulos nuevos usa el suyo:
 | `k4.theme` | `toggle` · `close` · `tab <pestaña>` · `preset <id>` · `wallpaper <ruta>` · `apply` · `save` |
 | `k4.weather` | `toggle` · `close` · `refresh` · `locate` · `place <ciudad>` |
 | `k4.tray` | `toggle` · `close` |
-| `k4.game` | `toggle` · `close` · `nueva` · `habilidad <0-2>` · `adelantar <segundos>` · `estado` |
+| `k4.game` | `toggle` · `close` · `nueva` · `habilidad <0-2>` · `ver <pestaña>` · `cofre <tipo>` · `adelantar <segundos>` · `estado` |
 
 ## Dentro de la island
 

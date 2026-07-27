@@ -18,12 +18,14 @@ K4Plugin {
     active: open
 
     property bool open: false
+    property string pestaña: "lucha"
 
     // lo aparta al abrirse; lo inyecta el host
     property var panel: null
 
-    islandWidth: 620
-    islandHeight: 300
+    islandWidth: 660
+    // la bolsa y el altar necesitan más alto que la pelea
+    islandHeight: pestaña === "lucha" ? 300 : 360
 
     handlesBackgroundTap: true
     onBackgroundTapped: {}      // el fondo no cierra: se juega aquí dentro
@@ -47,6 +49,8 @@ K4Plugin {
         function close(): void { self.close() }
 
         function nueva(): void { Game.nuevaPartida() }
+        function ver(cual: string): void { self.pestaña = cual; self.open = true }
+        function cofre(tipo: int): void { Game.abrirCofre(tipo) }
         function habilidad(indice: int): void { Game.lanzar(indice) }
 
         // Para afinar el balance sin pasarse horas clicando: adelanta el reloj

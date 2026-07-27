@@ -23,7 +23,10 @@ K4Plugin {
     readonly property int trayWidth: Tray.count === 0
         ? 0 : trayShown * 18 + (Tray.count > trayShown ? 18 : 0) + 6
 
-    islandWidth: (Media.isPlaying ? 210 : 176) + Workspaces.dotsWidth + trayWidth
+    // el indicador del juego suma su hueco cuando hay partida cargada
+    readonly property int juegoWidth: Game.cargado ? (Game.cofres > 0 ? 44 : 36) : 0
+
+    islandWidth: (Media.isPlaying ? 210 : 176) + Workspaces.dotsWidth + trayWidth + juegoWidth
     islandHeight: Theme.baseHeight
 
     view: Component {

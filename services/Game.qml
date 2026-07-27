@@ -67,6 +67,45 @@ Singleton {
         { id: "armadura", nombre: "Blindar",  desc: "+2 de armadura",         base: 40, glifo: 0xF0498 }
     ]
 
+    // ── equipo y bolsa ────────────────────────────────────────────
+    // Persisten entre partidas: es lo que hace que la siguiente llegue más
+    // lejos. Lo que se pierde al morir es el oro y las mejoras de la partida.
+    property var equipo: ({})           // clase → { hueco: objeto }
+    property var bolsa: []              // objetos sin equipar
+    property var cofresPorTipo: [0, 0, 0]
+    property var meta: ({ vida: 0, daño: 0, fortuna: 0 })
+    readonly property int topeBolsa: 60
+
+    readonly property var metaDef: [
+        { id: "vida",    nombre: "Linaje robusto", desc: "+8% vida del grupo",     base: 40, glifo: 0xF1076 },
+        { id: "daño",    nombre: "Filo ancestral", desc: "+8% daño del grupo",     base: 40, glifo: 0xF04E5 },
+        { id: "fortuna", nombre: "Fortuna",        desc: "Mejores rarezas",        base: 60, glifo: 0xF0BC2 }
+    ]
+
+    readonly property real metaMultVida: Math.pow(1.08, meta.vida)
+    readonly property real metaMultDaño: Math.pow(1.08, meta.daño)
+    readonly property real fortuna: meta.fortuna * 0.03
+
+    function costeMeta(id) {
+        for (let i = 0; i < metaDef.length; ++i) {
+            if (metaDef[i].id === id)
+                return Math.ceil(metaDef[i].base * Math.pow(1.6, meta[id]))
+        }
+        return Infinity
+    }
+
+    function comprarMeta(id) {
+        const precio = costeMeta(id)
+        if (reliquias < precio)
+            return false
+        reliquias -= precio
+        const copia = Object.assign({}, meta)
+        copia[id] = copia[id] + 1
+        meta = copia
+        guardar()
+        return true
+    }
+
     // ── estado de la partida ──────────────────────────────────────
     property int oleada: 1
     property real oro: 0
@@ -77,7 +116,7 @@ Singleton {
     property string finalizada: ""      // texto del resumen al morir
 
     // ── permanente ────────────────────────────────────────────────
-    property int cofres: 0
+    readonly property int cofres: cofresPorTipo[0] + cofresPorTipo[1] + cofresPorTipo[2]
     property real reliquias: 0
     property int mejorOleada: 0
     property int partidas: 0
@@ -132,8 +171,154 @@ Singleton {
         return true
     }
 
+    // Estadísticas finales de un héroe: su clase, más lo que lleve puesto,
+    // más las mejoras permanentes, más las de esta partida.
+    function statsDe(heroe) {
+        const c = claseDe(heroe.clase)
+        const eq = equipo[heroe.clase] || ({})
+
+        let daño = c.daño, vida = c.vida, armadura = c.armadura
+        let cura = c.id === "clerigo" ? 5 : 0
+
+        const huecos = ["arma", "escudo", "armadura", "amuleto"]
+        for (let i = 0; i < huecos.length; ++i) {
+            const it = eq[huecos[i]]
+            if (!it)
+                continue
+            daño += it.stats.daño || 0
+            vida += it.stats.vida || 0
+            armadura += it.stats.armadura || 0
+            cura += it.stats.cura || 0
+        }
+
+        return {
+            daño: daño * metaMultDaño * multDaño,
+            vida: Math.round(vida * metaMultVida * multVida),
+            armadura: armadura + armaduraExtra,
+            cura: cura
+        }
+    }
+
     function vidaMaxDe(heroe) {
-        return Math.round(claseDe(heroe.clase).vida * multVida)
+        return statsDe(heroe).vida
+    }
+
+    // ── equipar y desguazar ───────────────────────────────────────
+    function equipar(objeto, claseId) {
+        if (!objeto)
+            return
+
+        const eq = Object.assign({}, equipo)
+        const actual = Object.assign({}, eq[claseId] || ({}))
+        const anterior = actual[objeto.hueco] || null
+
+        actual[objeto.hueco] = objeto
+        eq[claseId] = actual
+        equipo = eq
+
+        // fuera de la bolsa lo nuevo, dentro lo que llevaba puesto
+        const b = bolsa.filter(function (x) { return x.id !== objeto.id })
+        if (anterior)
+            b.push(anterior)
+        bolsa = b
+
+        recalcularVidas()
+        guardar()
+    }
+
+    function quitar(claseId, hueco) {
+        const eq = Object.assign({}, equipo)
+        const actual = Object.assign({}, eq[claseId] || ({}))
+        const objeto = actual[hueco]
+        if (!objeto)
+            return
+
+        delete actual[hueco]
+        eq[claseId] = actual
+        equipo = eq
+        bolsa = bolsa.concat([objeto])
+
+        recalcularVidas()
+        guardar()
+    }
+
+    function desguazar(objeto) {
+        if (!objeto)
+            return
+        reliquias += Items.valorDesguace(objeto)
+        bolsa = bolsa.filter(function (x) { return x.id !== objeto.id })
+        guardar()
+    }
+
+    // Desguaza de golpe todo lo que no supere a lo equipado. Con la bolsa
+    // llena de piezas comunes, ir una a una es insufrible.
+    function desguazarSobrantes() {
+        let ganado = 0
+        const quedan = []
+
+        for (let i = 0; i < bolsa.length; ++i) {
+            const it = bolsa[i]
+            let mejorQueAlguno = false
+
+            for (let c = 0; c < clases.length; ++c) {
+                const puesto = (equipo[clases[c].id] || ({}))[it.hueco]
+                if (!puesto || Items.puntuacion(it) > Items.puntuacion(puesto)) {
+                    mejorQueAlguno = true
+                    break
+                }
+            }
+
+            if (mejorQueAlguno)
+                quedan.push(it)
+            else
+                ganado += Items.valorDesguace(it)
+        }
+
+        bolsa = quedan
+        reliquias += ganado
+        guardar()
+        return ganado
+    }
+
+    // Al cambiar el equipo la vida máxima cambia; se conserva la proporción
+    // para que ponerse una coraza no cure ni mate a nadie.
+    function recalcularVidas() {
+        const g = grupo.slice()
+        for (let i = 0; i < g.length; ++i) {
+            if (g[i].vida <= 0)
+                continue
+            const max = vidaMaxDe(g[i])
+            g[i].vida = Math.min(max, Math.max(1, g[i].vida))
+        }
+        grupo = g
+    }
+
+    // ── cofres ────────────────────────────────────────────────────
+    function abrirCofre(tipo) {
+        if (cofresPorTipo[tipo] <= 0)
+            return null
+
+        const c = cofresPorTipo.slice()
+        c[tipo] -= 1
+        cofresPorTipo = c
+
+        const objeto = Items.generar(tipo, Math.max(oleada, mejorOleada), fortuna)
+
+        if (bolsa.length >= topeBolsa) {
+            // bolsa llena: se desguaza solo, mejor eso que perderlo sin más
+            reliquias += Items.valorDesguace(objeto)
+        } else {
+            bolsa = bolsa.concat([objeto])
+        }
+
+        guardar()
+        return objeto
+    }
+
+    function sumarCofre(tipo) {
+        const c = cofresPorTipo.slice()
+        c[tipo] += 1
+        cofresPorTipo = c
     }
 
     function claseDe(id) {
@@ -166,13 +351,19 @@ Singleton {
             const c = clases[i]
             g.push({
                 clase: c.id,
-                vida: c.vida,
+                vida: 0,
                 recargaRestante: c.recarga,
                 listaDesde: 0,          // instante en que quedó lista
                 provocando: 0           // segundos que le quedan de provocación
             })
         }
         grupo = g
+
+        // la vida sale de statsDe, que necesita el grupo ya asignado
+        const conVida = grupo.slice()
+        for (let i = 0; i < conVida.length; ++i)
+            conVida[i].vida = vidaMaxDe(conVida[i])
+        grupo = conVida
 
         generarOleada()
         viva = true
@@ -203,10 +394,11 @@ Singleton {
         viva = false
         partidas += 1
 
-        const ganadosCofres = Math.floor(oleada / oleadasPorCofre)
-        const ganadasReliquias = Math.floor(Math.pow(oleada, 1.4))
+        const ganadosCofres = Math.max(1, Math.floor(oleada / 12))
+        const ganadasReliquias = Math.floor(Math.pow(oleada, 1.45))
 
-        cofres += ganadosCofres
+        for (let i = 0; i < ganadosCofres; ++i)
+            sumarCofre(oleada >= 30 ? 1 : 0)
         reliquias += ganadasReliquias
         if (oleada > mejorOleada)
             mejorOleada = oleada
@@ -240,7 +432,8 @@ Singleton {
                 continue
 
             const c = claseDe(g[i].clase)
-            const daño = c.daño * multDaño * delta
+            const st = statsDe(g[i])
+            const daño = st.daño * delta
 
             const blanco = primerVivo(e)
             if (blanco >= 0) {
@@ -251,10 +444,10 @@ Singleton {
             }
 
             // la clériga cura de fondo, sin gastar habilidad
-            if (c.id === "clerigo") {
+            if (st.cura > 0) {
                 const herido = masHerido(g)
                 if (herido >= 0) {
-                    const cura = 5 * multVida * delta
+                    const cura = st.cura * delta
                     g[herido].vida = Math.min(vidaMaxDe(g[herido]), g[herido].vida + cura)
                     curado(herido, cura)
                 }
@@ -280,8 +473,7 @@ Singleton {
             if (blanco < 0)
                 break
 
-            const c = claseDe(g[blanco].clase)
-            const armadura = c.armadura + armaduraExtra + (g[blanco].provocando > 0 ? 8 : 0)
+            const armadura = statsDe(g[blanco]).armadura + (g[blanco].provocando > 0 ? 8 : 0)
             const recibido = Math.max(1, e[j].daño * delta - armadura * delta)
             g[blanco].vida -= recibido
             heroeHerido(blanco, recibido)
@@ -296,11 +488,17 @@ Singleton {
             oro += ganado
             oleadaSuperada(oleada)
 
+            // cofres: corriente cada cinco oleadas, de jefe al tumbar uno y
+            // de acto cada cincuenta, igual que los tres de TBH
             oleadasDesdeCofre += 1
             if (oleadasDesdeCofre >= oleadasPorCofre) {
                 oleadasDesdeCofre = 0
-                cofres += 1
+                sumarCofre(0)
             }
+            if (esJefe)
+                sumarCofre(1)
+            if (oleada % 50 === 0)
+                sumarCofre(2)
 
             oleada += 1
             generarOleada()
@@ -402,7 +600,8 @@ Singleton {
             return null
 
         const ganados = Math.floor(transcurrido / segundosPorCofre)
-        cofres += ganados
+        for (let i = 0; i < ganados; ++i)
+            sumarCofre(0)
 
         return {
             segundos: Math.floor(transcurrido),
@@ -421,7 +620,8 @@ Singleton {
             version: 2,
             oleada: oleada, oro: oro, niveles: niveles,
             grupo: grupo, enemigos: enemigos, viva: viva,
-            cofres: cofres, reliquias: reliquias,
+            cofresPorTipo: cofresPorTipo, reliquias: reliquias,
+            equipo: equipo, bolsa: bolsa, meta: meta,
             mejorOleada: mejorOleada, partidas: partidas,
             oleadasDesdeCofre: oleadasDesdeCofre,
             guardadoEn: ahora()
@@ -493,8 +693,11 @@ Singleton {
             grupo = s.grupo || []
             enemigos = s.enemigos || []
             viva = s.viva === true && grupo.length > 0
-            cofres = s.cofres || 0
+            cofresPorTipo = s.cofresPorTipo || [0, 0, 0]
             reliquias = s.reliquias || 0
+            equipo = s.equipo || ({})
+            bolsa = s.bolsa || []
+            meta = s.meta || ({ vida: 0, daño: 0, fortuna: 0 })
             mejorOleada = s.mejorOleada || 0
             partidas = s.partidas || 0
             oleadasDesdeCofre = s.oleadasDesdeCofre || 0

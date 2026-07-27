@@ -70,6 +70,8 @@ FadeIn {
         // Indicadores nada más: aquí no se puede pinchar, porque al acercar el
         // ratón la island ya ha cambiado a la vista de reloj o de reproductor.
         // Es en esas donde la fila es pulsable.
+        JuegoPildora { Layout.alignment: Qt.AlignVCenter }
+
         TrayRow {
             max: view.shown
             iconSize: 14

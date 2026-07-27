@@ -18,12 +18,14 @@ K4Plugin {
 
     // el módulo de bandeja; lo inyecta el host
     property var tray: null
+    property var juego: null
 
     islandWidth: 300 + (Tray.count > 0 ? Math.min(Tray.count, 5) * 24 + 8 : 0)
+        + (Game.cargado ? 52 : 0)
     // crece para dejar sitio a las notificaciones recientes
     islandHeight: 68 + Notifs.stripHeight(3)
 
     view: Component {
-        ClockView { tray: self.tray }
+        ClockView { tray: self.tray; juego: self.juego }
     }
 }

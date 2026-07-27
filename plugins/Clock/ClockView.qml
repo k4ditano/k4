@@ -8,6 +8,7 @@ FadeIn {
     id: view
 
     property var tray: null
+    property var juego: null
 
     ColumnLayout {
         anchors.fill: parent
@@ -49,6 +50,13 @@ FadeIn {
                 font.pixelSize: 30
                 font.weight: Font.Light
                 Layout.alignment: Qt.AlignVCenter
+            }
+
+            JuegoPildora {
+                interactive: true
+                Layout.leftMargin: 4
+                Layout.alignment: Qt.AlignVCenter
+                onAbrir: if (view.juego) view.juego.toggle()
             }
 
             // La island ya está desplegada y quieta: aquí sí se puede pinchar.

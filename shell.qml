@@ -32,7 +32,7 @@ Scope {
     // otro: sabe que le pasan "un panel", no de qué carpeta sale.
     IdlePlugin   { id: idlePlugin; tray: trayPlugin }
     VolumePlugin { id: volumePlugin }
-    ClockPlugin  { id: clockPlugin; tray: trayPlugin }
+    ClockPlugin  { id: clockPlugin; tray: trayPlugin; juego: gamePlugin }
     PlayerPlugin { id: playerPlugin; panel: panelPlugin; tray: trayPlugin }
     ToastPlugin  { id: toastPlugin }
     PanelPlugin  { id: panelPlugin; launcher: launcherPlugin; theme: themePlugin; weather: weatherPlugin }
