@@ -60,6 +60,10 @@ ColumnLayout {
             panel.dibujarEnemiga(indice, forma, nombre)
         }
 
+        function onRasgoActuo(enemigo, heroe, rasgo) {
+            panel.dibujarRasgo(enemigo, heroe, rasgo)
+        }
+
         function onOleadaSuperada(numero) {
             escenario.caminar()
             entrada.restart()
@@ -194,6 +198,49 @@ ColumnLayout {
             celda.golpear(nombre)
     }
 
+    // Cada rasgo que cambia algo tiene su gesto: el escudo que se parte en
+    // astillas, la ponzoña que cae encima, la vida que se va al ladrón, el
+    // golpe que salpica a los de atrás.
+    function centroDe(fila, indice) {
+        const celda = fila.itemAt(indice)
+        if (!celda)
+            return null
+        const a = celda.mapToItem(campo, celda.width / 2, celda.height * 0.5)
+        return { x: a.x, y: a.y, ancho: celda.width, alto: celda.height,
+                 izq: celda.mapToItem(campo, 0, 0).x }
+    }
+
+    function dibujarRasgo(enemigo, heroe, rasgo) {
+        const eno = centroDe(filaEnemigos, enemigo)
+        const her = centroDe(filaHeroes, heroe)
+        if (!eno || !her)
+            return
+
+        if (rasgo === "drenaje") {
+            const obj = compGolpe.createObject(campo, {
+                forma: "robo", tono: "#bf5af2",
+                desdeX: her.x, desdeY: her.y, hastaX: eno.x, hastaY: eno.y
+            })
+            if (obj) obj.arrancar()
+
+        } else if (rasgo === "ruptura" || rasgo === "eco") {
+            const obj = compGolpe.createObject(campo, {
+                forma: "rotura",
+                tono: rasgo === "ruptura" ? "#ffd60a" : "#0a84ff",
+                desdeX: her.x, desdeY: her.y, hastaX: her.x, hastaY: her.y
+            })
+            if (obj) obj.arrancar()
+
+        } else if (rasgo === "ponzona") {
+            const obj = compHabilidad.createObject(campo, {
+                forma: "nube", tono: "#32d74b",
+                zonaX: her.izq, zonaY: her.y - her.alto * 0.35,
+                zonaAncho: her.ancho, zonaAlto: her.alto * 0.7
+            })
+            if (obj) obj.arrancar()
+        }
+    }
+
     // ── campo de batalla ──────────────────────────────────────────
     Rectangle {
         id: campo
@@ -242,6 +289,7 @@ ColumnLayout {
                     habilidades: Game.habilidadesDe(datos)
                     recargas: datos.recargas || ({})
                     heroe: index
+                    envenenado: (datos.veneno || 0) > 0
 
                     // pulsar a los tuyos lleva a su ficha, que es donde se ve
                     // el equipo, las habilidades y lo que falta para el nivel
@@ -278,6 +326,7 @@ ColumnLayout {
                     escala: datos.jefe ? 1.15 : (datos.elite ? 1.08 : 1)
                     nombre: datos.nombre || ""
                     destacado: datos.jefe || datos.elite || false
+                    furioso: (datos.envalentonado || 0) > 0
                     rasgos: (datos.rasgos || []).map(function (r) {
                         return Game.rasgoDe(r)
                     }).filter(function (r) { return r !== null })

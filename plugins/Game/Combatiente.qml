@@ -18,6 +18,8 @@ Item {
     property color colorVida: "#30d158"
     property string nombre: ""
     property bool destacado: false      // élite o jefe: se le da color
+    property bool envenenado: false
+    property bool furioso: false        // envalentonado por un aullido
     property bool mirandoDerecha: true
     property real escala: 1
 
@@ -77,6 +79,28 @@ Item {
                         easing.type: Easing.InOutSine }
                     NumberAnimation { to: 0; duration: 1100 + (combatiente.x % 7) * 60
                         easing.type: Easing.InOutSine }
+                }
+
+                // ── estados que duran
+                //  El veneno y el envalentonamiento cambian el combate durante
+                //  segundos, y sin marca no hay forma de saber que están ahí.
+                Rectangle {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: -2
+                    width: 26
+                    height: 6
+                    radius: 3
+                    visible: combatiente.envenenado || combatiente.furioso
+                    color: combatiente.envenenado ? "#32d74b" : "#ff453a"
+                    opacity: 0.55
+
+                    SequentialAnimation on opacity {
+                        running: combatiente.envenenado || combatiente.furioso
+                        loops: Animation.Infinite
+                        NumberAnimation { to: 0.2; duration: 620 }
+                        NumberAnimation { to: 0.6; duration: 620 }
+                    }
                 }
 
                 MouseArea {

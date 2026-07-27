@@ -8,6 +8,8 @@
 //    · flecha    — una línea rápida y fina (tiro)
 //    · tajo      — dos cortes cruzados en el blanco (cuerpo a cuerpo)
 //    · destello  — un anillo que se abre en el blanco (sagrado)
+//    · rotura    — astillas que saltan (un escudo que se parte)
+//    · robo      — motas que viajan de vuelta (vida que cambia de dueño)
 //
 //  Se crea uno por golpe y se destruye solo al acabar: nada que limpiar.
 
@@ -30,6 +32,10 @@ Item {
             viaje.start()
         else if (forma === "destello")
             anillo.start()
+        else if (forma === "rotura")
+            astillas.start()
+        else if (forma === "robo")
+            hurto.start()
         else
             corte.start()
     }
@@ -181,6 +187,95 @@ Item {
                     target: aro; property: "opacity"
                     to: 0; duration: 300
                 }
+            }
+        }
+
+        ScriptAction { script: efecto.destroy() }
+    }
+
+    // ── astillas: algo se parte en el blanco ──────────────────────
+    Item {
+        id: trozos
+        visible: efecto.forma === "rotura"
+        x: efecto.hastaX
+        y: efecto.hastaY
+        opacity: 0
+
+        Repeater {
+            model: 7
+
+            delegate: Rectangle {
+                required property int index
+                readonly property real angulo: (index / 7) * Math.PI * 2
+
+                width: 3.5
+                height: 3.5
+                radius: 1
+                color: efecto.tono
+                rotation: index * 51
+                x: Math.cos(angulo) * 22 * trozos.scale
+                y: Math.sin(angulo) * 16 * trozos.scale
+            }
+        }
+    }
+
+    SequentialAnimation {
+        id: astillas
+
+        ParallelAnimation {
+            NumberAnimation {
+                target: trozos; property: "scale"
+                from: 0.15; to: 1.3; duration: 320; easing.type: Easing.OutQuad
+            }
+            SequentialAnimation {
+                NumberAnimation { target: trozos; property: "opacity"; to: 1; duration: 70 }
+                NumberAnimation { target: trozos; property: "opacity"; to: 0; duration: 250 }
+            }
+        }
+
+        ScriptAction { script: efecto.destroy() }
+    }
+
+    // ── robo: motas que se van al ladrón ──────────────────────────
+    Item {
+        id: hurtado
+        visible: efecto.forma === "robo"
+        opacity: 0
+
+        Repeater {
+            model: 4
+
+            delegate: Rectangle {
+                required property int index
+                readonly property real t: hurtado.avance
+                    - index * 0.12
+
+                width: 4
+                height: 4
+                radius: 2
+                color: efecto.tono
+                visible: t > 0 && t < 1
+                x: efecto.desdeX + (efecto.hastaX - efecto.desdeX) * Math.max(0, Math.min(1, t))
+                y: efecto.desdeY + (efecto.hastaY - efecto.desdeY) * Math.max(0, Math.min(1, t))
+                    - Math.sin(Math.max(0, Math.min(1, t)) * Math.PI) * 14
+            }
+        }
+
+        property real avance: 0
+    }
+
+    SequentialAnimation {
+        id: hurto
+
+        ParallelAnimation {
+            NumberAnimation {
+                target: hurtado; property: "avance"
+                from: 0; to: 1.4; duration: 520
+            }
+            SequentialAnimation {
+                NumberAnimation { target: hurtado; property: "opacity"; to: 1; duration: 90 }
+                PauseAnimation { duration: 280 }
+                NumberAnimation { target: hurtado; property: "opacity"; to: 0; duration: 150 }
             }
         }
 

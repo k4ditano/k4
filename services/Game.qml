@@ -916,6 +916,10 @@ Singleton {
     // decide cómo se dibuja.
     signal efectoHabilidad(int indiceHeroe, string efecto)
     signal habilidadEnemiga(int indiceEnemigo, string forma, string nombre)
+    // Los rasgos son pasivos y por eso eran invisibles: actuaban cada segundo
+    // sin que se viera nada. Solo se avisa de los que cambian algo de verdad,
+    // no de los que reducen un número.
+    signal rasgoActuo(int indiceEnemigo, int indiceHeroe, string rasgo)
     signal heroeHerido(int indiceHeroe, real daño)
     signal enemigoMuerto(int indiceEnemigo)
     signal curado(int indiceHeroe, real cantidad)
@@ -1182,10 +1186,16 @@ Singleton {
 
             // el escudo se lleva el golpe antes que la vida, salvo contra
             // quien sabe romperlo
-            if (g[blanco].escudo > 0 && marcas.indexOf("ruptura") === -1) {
-                const absorbido = Math.min(g[blanco].escudo, recibido)
-                g[blanco].escudo -= absorbido
-                recibido -= absorbido
+            if (g[blanco].escudo > 0) {
+                if (marcas.indexOf("ruptura") === -1) {
+                    const absorbido = Math.min(g[blanco].escudo, recibido)
+                    g[blanco].escudo -= absorbido
+                    recibido -= absorbido
+                } else {
+                    // el escudo estaba ahí y no ha servido de nada: eso sí hay
+                    // que verlo, o parece que el golpe ha salido de la nada
+                    rasgoActuo(j, blanco, "ruptura")
+                }
             }
 
             g[blanco].vida -= recibido
@@ -1195,12 +1205,18 @@ Singleton {
                 heroeHerido(blanco, recibido)
 
             // ponzoña: deja veneno que sigue royendo después
-            if (marcas.indexOf("ponzona") !== -1)
+            if (marcas.indexOf("ponzona") !== -1) {
+                // solo al prender, no cada segundo que dure
+                if (!(g[blanco].veneno > 0))
+                    rasgoActuo(j, blanco, "ponzona")
                 g[blanco].veneno = Math.max(g[blanco].veneno || 0, e[j].daño * 0.3)
+            }
 
             // drenaje: lo que te quita, se lo queda
-            if (marcas.indexOf("drenaje") !== -1)
+            if (marcas.indexOf("drenaje") !== -1 && recibido > 0) {
                 e[j].vida = Math.min(e[j].vidaMax, e[j].vida + recibido * 0.55)
+                rasgoActuo(j, blanco, "drenaje")
+            }
 
             // eco: el golpe salpica a los de detrás, que era donde uno se
             // escondía dejando al tanque delante
@@ -1210,8 +1226,10 @@ Singleton {
                         continue
                     const salpica = recibido * 0.4
                     g[k].vida -= salpica
-                    if (salpica > 0.5)
+                    if (salpica > 0.5) {
                         heroeHerido(k, salpica)
+                        rasgoActuo(j, k, "eco")
+                    }
                 }
             }
 
