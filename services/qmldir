@@ -16,3 +16,4 @@ singleton Tokens 1.0 Tokens.qml
 singleton Clipboard 1.0 Clipboard.qml
 singleton Sistema 1.0 Sistema.qml
 singleton Archivos 1.0 Archivos.qml
+singleton Atajos 1.0 Atajos.qml
