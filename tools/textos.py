@@ -23,10 +23,9 @@ import sys
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TRADUCCIONES = os.path.join(RAIZ, "traducciones")
-# `core` queda fuera a propósito: es la capa base y no depende de
-# ninguna otra, así que no puede llamar a un servicio. Sus dos textos
-# —«Conectar» y «Desconectar»— se quedan en español hasta que se
-# reciban desde fuera como propiedades.
+# `core` queda fuera de momento: un par de piezas de ahí ya importaban
+# servicios, así que traducirlas es posible, pero el envoltorio automático
+# les tocaba los imports y las rompió una vez. Se hará a mano.
 CARPETAS = ["widgets", "services", "plugins"]
 
 # Propiedades cuyo valor ve el usuario.

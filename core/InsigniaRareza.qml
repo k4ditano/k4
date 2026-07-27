@@ -4,6 +4,7 @@
 //  celeste y el divino se parecen bastante—, así que el nombre va escrito.
 
 import QtQuick
+import "../services"
 
 Rectangle {
     id: insignia

@@ -134,11 +134,11 @@ Singleton {
     readonly property var porExtension: ({
         png: 0xF021F, jpg: 0xF021F, jpeg: 0xF021F, gif: 0xF021F,
         webp: 0xF021F, svg: 0xF021F, bmp: 0xF021F, ico: 0xF021F,
-        mp4: 0xF0224, mkv: 0xF0224, avi: 0xF0224, mov: 0xF0224, webm: 0xF0224,
+        mp4: 0xF022B, mkv: 0xF022B, avi: 0xF022B, mov: 0xF022B, webm: 0xF022B,
         mp3: 0xF0387, flac: 0xF0387, ogg: 0xF0387, wav: 0xF0387, m4a: 0xF0387,
         pdf: 0xF0226,
-        zip: 0xF05C3, gz: 0xF05C3, xz: 0xF05C3, zst: 0xF05C3,
-        tar: 0xF05C3, rar: 0xF05C3, "7z": 0xF05C3,
+        zip: 0xF05C4, gz: 0xF05C4, xz: 0xF05C4, zst: 0xF05C4,
+        tar: 0xF05C4, rar: 0xF05C4, "7z": 0xF05C4,
         qml: 0xF0169, js: 0xF0169, ts: 0xF0169, py: 0xF0169, sh: 0xF0169,
         c: 0xF0169, h: 0xF0169, cpp: 0xF0169, rs: 0xF0169, go: 0xF0169,
         lua: 0xF0169, json: 0xF0169, css: 0xF0169, html: 0xF0169,
@@ -158,10 +158,10 @@ Singleton {
         if (r.esCarpeta) return "#5ac8fa"
         const g = glifo(r)
         if (g === 0xF021F) return "#bf5af2"      // imagen
-        if (g === 0xF0224) return "#ff9f0a"      // vídeo
+        if (g === 0xF022B) return "#ff9f0a"      // vídeo
         if (g === 0xF0387) return "#ff2d92"      // audio
         if (g === 0xF0226) return "#ff453a"      // pdf
-        if (g === 0xF05C3) return "#ffd60a"      // comprimido
+        if (g === 0xF05C4) return "#ffd60a"      // comprimido
         if (g === 0xF0169) return "#30d158"      // código
         return "#8e8e93"
     }

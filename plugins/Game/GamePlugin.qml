@@ -29,12 +29,45 @@ K4Plugin {
 
     function abrirConCeremonia(tipo) {
         const salio = Game.abrirCofre(tipo)
-        if (!salio)
+        if (!salio) {
+            enCadena = -1
             return
+        }
         tipoAbriendo = tipo
         abriendo = salio
         pestaña = "bolsa"
         open = true
+    }
+
+    // ── apertura en cadena ────────────────────────────────────────
+    //  Con cuarenta cofres guardados, abrirlos de uno en uno es un peaje. En
+    //  cadena van solos y con la ceremonia acelerada; se para cuando quieras o
+    //  cuando se acaben los de ese tipo.
+    property int enCadena: -1
+    readonly property bool encadenando: enCadena >= 0
+
+    function abrirEnCadena(tipo) {
+        enCadena = tipo
+        abrirConCeremonia(tipo)
+    }
+
+    function pararCadena() { enCadena = -1 }
+
+    function seguirCadena() {
+        if (enCadena < 0)
+            return
+        if (Game.cofresPorTipo[enCadena] <= 0) {
+            enCadena = -1
+            return
+        }
+        // un respiro entre uno y otro, o se solapan las animaciones
+        relevoCofre.restart()
+    }
+
+    Timer {
+        id: relevoCofre
+        interval: 120
+        onTriggered: if (self.enCadena >= 0) self.abrirConCeremonia(self.enCadena)
     }
 
     // lo aparta al abrirse; lo inyecta el host

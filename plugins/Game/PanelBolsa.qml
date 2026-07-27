@@ -85,11 +85,19 @@ Item {
                         anchors.rightMargin: 9
                         spacing: 7
 
-                        IconGlyph {
-                            text: String.fromCodePoint(cofre.modelData.glifo)
-                            color: cofre.modelData.color
-                            font.pixelSize: 15
+                        // El sprite del cofre, no un icono genérico: es el
+                        // mismo que vas a ver abrirse, así que la tarjeta y la
+                        // ceremonia hablan de lo mismo. El cuadro 0 de cada
+                        // tipo es el cerrado.
+                        Image {
+                            source: "assets/cofres/c"
+                                + String(cofre.index * 4).padStart(2, "0") + ".png"
+                            Layout.preferredWidth: 22
+                            Layout.preferredHeight: 22
                             Layout.alignment: Qt.AlignVCenter
+                            fillMode: Image.PreserveAspectFit
+                            smooth: false
+                            opacity: cofre.cuantos > 0 ? 1 : 0.5
                         }
 
                         ColumnLayout {
@@ -105,7 +113,9 @@ Item {
                             }
 
                             IslandLabel {
-                                text: cofre.cuantos > 0 ? Idioma.t("pulsa para abrir") : Idioma.t("no tienes")
+                                text: cofre.cuantos > 1 ? Idioma.t("pulsa, o ▶▶ para todos")
+                                    : (cofre.cuantos > 0 ? Idioma.t("pulsa para abrir")
+                                       : Idioma.t("no tienes"))
                                 color: Theme.dim
                                 font.pixelSize: 8
                             }
@@ -117,6 +127,47 @@ Item {
                             font.pixelSize: 14
                             font.weight: Font.DemiBold
                             Layout.alignment: Qt.AlignVCenter
+                        }
+
+                        // Abrir todos los de este tipo del tirón. Va con z por
+                        // encima: la tarjeta tiene su propio ratón que si no se
+                        // queda con el clic.
+                        Rectangle {
+                            id: cadena
+                            z: 2
+                            visible: cofre.cuantos > 1
+                            Layout.preferredWidth: 24
+                            Layout.preferredHeight: 20
+                            Layout.alignment: Qt.AlignVCenter
+                            radius: 10
+
+                            readonly property bool activa: panel.plugin
+                                && panel.plugin.enCadena === cofre.index
+
+                            color: activa ? Theme.red
+                                : (cadenaRaton.containsMouse ? Theme.blue : Theme.surfaceHi)
+
+                            Behavior on color { ColorAnimation { duration: 120 } }
+
+                            IconGlyph {
+                                anchors.centerIn: parent
+                                text: String.fromCodePoint(cadena.activa ? 0xF04DB : 0xF0211)
+                                color: Theme.ink
+                                font.pixelSize: 11
+                            }
+
+                            MouseArea {
+                                id: cadenaRaton
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (cadena.activa)
+                                        panel.plugin.pararCadena()
+                                    else
+                                        panel.plugin.abrirEnCadena(cofre.index)
+                                }
+                            }
                         }
                     }
                 }
@@ -310,9 +361,12 @@ Item {
         tipo: panel.plugin ? panel.plugin.tipoAbriendo : 0
         objeto: panel.plugin ? panel.plugin.abriendo : null
 
+        rapido: panel.plugin ? panel.plugin.encadenando : false
+
         onTerminado: {
             panel.ultimo = panel.plugin.abriendo
             panel.plugin.abriendo = null
+            panel.plugin.seguirCadena()
         }
 
         // Arranca al anunciarse un cofre y también al montarse: abrir desde

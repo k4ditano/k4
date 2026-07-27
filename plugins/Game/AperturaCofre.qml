@@ -25,6 +25,11 @@ Item {
     // los grados altos tiemblan más rato antes de abrirse
     readonly property int suspense: objeto ? 420 + Math.min(6, objeto.rareza) * 240 : 420
 
+    // Encadenando cofres no se puede parar seis segundos en cada uno: se
+    // recorta el suspense y se acorta la pausa final, que es lo que más pesa.
+    property bool rapido: false
+    readonly property real ritmo: rapido ? 0.4 : 1
+
     function abrir() {
         cuadro = 0
         fulgor = 0
@@ -35,12 +40,12 @@ Item {
         id: ceremonia
 
         // 1 · reposo breve
-        PauseAnimation { duration: 260 }
+        PauseAnimation { duration: 260 * apertura.ritmo }
 
         // 2 · temblor, tanto más largo cuanto mejor es el botín
         ScriptAction { script: apertura.cuadro = 1 }
         SequentialAnimation {
-            loops: Math.max(2, Math.round(apertura.suspense / 130))
+            loops: Math.max(2, Math.round(apertura.suspense * apertura.ritmo / 130))
             NumberAnimation { target: sacudida; property: "x"; to: 4; duration: 60 }
             NumberAnimation { target: sacudida; property: "x"; to: -4; duration: 60 }
         }
@@ -48,7 +53,7 @@ Item {
 
         // 3 · se resquebraja
         ScriptAction { script: apertura.cuadro = 2 }
-        PauseAnimation { duration: 260 }
+        PauseAnimation { duration: 260 * apertura.ritmo }
 
         // 4 · revienta
         ParallelAnimation {
@@ -80,9 +85,26 @@ Item {
             }
         }
 
-        // tiempo de sobra para leer qué ha salido
-        PauseAnimation { duration: 3200 }
+        // tiempo de sobra para leer qué ha salido, salvo en cadena
+        PauseAnimation { duration: 3200 * apertura.ritmo }
         ScriptAction { script: apertura.terminado() }
+    }
+
+    // ── el velo
+    //  Sin esto la ceremonia salía flotando sobre la rejilla del inventario y
+    //  el cofre competía con veinte iconos de fondo. Tapando, se mira lo que
+    //  ha salido y nada más.
+    Rectangle {
+        anchors.fill: parent
+        color: "#ee0b0b0e"
+        opacity: velo
+        radius: 10
+
+        property real velo: 0
+        NumberAnimation on velo {
+            running: apertura.visible
+            from: 0; to: 1; duration: 180
+        }
     }
 
     // ── resplandor detrás de todo
