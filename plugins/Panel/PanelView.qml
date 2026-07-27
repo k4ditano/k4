@@ -143,23 +143,13 @@ FadeIn {
             spacing: 10
             visible: view.plugin.tab === "controls"
 
-            Rectangle {
+            IslandTile {
+                id: wifiTile
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                radius: 16
-                color: wifiTileMouse.containsMouse ? Theme.surfaceHi : Theme.surface
-
-                Behavior on color { ColorAnimation { duration: 140 } }
-
-                // debajo del contenido: el círculo tiene su propio MouseArea
-                // encima, así que pulsarlo conmuta y el resto abre el detalle
-                MouseArea {
-                    id: wifiTileMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: view.plugin.openTab("wifi")
-                }
+                // el círculo del icono lleva su propio MouseArea encima, así
+                // que pulsarlo conmuta la radio y el resto abre el detalle
+                onPulsada: view.plugin.openTab("wifi")
 
                 ColumnLayout {
                     anchors.left: parent.left
@@ -212,7 +202,7 @@ FadeIn {
 
                         IconGlyph {
                             text: Theme.ico.forward
-                            color: wifiTileMouse.containsMouse ? Theme.ink : Theme.dim
+                            color: wifiTile.hovered ? Theme.ink : Theme.dim
                             font.pixelSize: 14
                             Layout.alignment: Qt.AlignVCenter
                         }
@@ -220,21 +210,11 @@ FadeIn {
                 }
             }
 
-            Rectangle {
+            IslandTile {
+                id: btTile
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                radius: 16
-                color: btTileMouse.containsMouse ? Theme.surfaceHi : Theme.surface
-
-                Behavior on color { ColorAnimation { duration: 140 } }
-
-                MouseArea {
-                    id: btTileMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: view.plugin.openTab("bluetooth")
-                }
+                onPulsada: view.plugin.openTab("bluetooth")
 
                 ColumnLayout {
                     anchors.left: parent.left
@@ -290,7 +270,7 @@ FadeIn {
 
                         IconGlyph {
                             text: Theme.ico.forward
-                            color: btTileMouse.containsMouse ? Theme.ink : Theme.dim
+                            color: btTile.hovered ? Theme.ink : Theme.dim
                             font.pixelSize: 14
                             Layout.alignment: Qt.AlignVCenter
                         }
@@ -298,11 +278,10 @@ FadeIn {
                 }
             }
 
-            Rectangle {
+            IslandTile {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                radius: 16
-                color: Theme.surface
+                pulsable: false
 
                 ColumnLayout {
                     anchors.left: parent.left
@@ -520,11 +499,10 @@ FadeIn {
         }
 
         // ── pestaña de notificaciones
-        Rectangle {
+        IslandTile {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            radius: 16
-            color: Theme.surface
+            pulsable: false
             visible: view.plugin.tab === "notifications"
 
             ListView {
@@ -693,11 +671,10 @@ FadeIn {
         }
 
         // ── detalle Wi‑Fi
-        Rectangle {
+        IslandTile {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            radius: 16
-            color: Theme.surface
+            pulsable: false
             visible: view.plugin.tab === "wifi"
 
             ColumnLayout {
@@ -855,11 +832,10 @@ FadeIn {
         }
 
         // ── detalle Bluetooth
-        Rectangle {
+        IslandTile {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            radius: 16
-            color: Theme.surface
+            pulsable: false
             visible: view.plugin.tab === "bluetooth"
 
             ColumnLayout {

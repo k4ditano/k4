@@ -48,7 +48,10 @@ abusar del RPC) y los instala en una terminal.
 **Consultas a Codex.** `SUPER+G` abre un prompt en la island que habla con
 [Codex CLI](https://developers.openai.com/codex/cli) usando tu cuenta de
 ChatGPT. Conversación multi‑turno, y puedes adjuntar una captura de pantalla o
-el texto que tengas seleccionado. Cada vez que se abre arranca una sesión nueva
+el texto que tengas seleccionado. Las respuestas se pintan con formato
+—negrita, cursiva, código y enlaces pulsables, que abren el navegador— y las
+imágenes, tanto las que adjuntas como las que devuelva, salen como miniatura
+con vista ampliada, guardado en Imágenes y apertura fuera. Cada vez que se abre arranca una sesión nueva
 para no mezclar contextos con otras sesiones de Codex.
 
 **Tema de Hyprland.** Desde el centro de control (o `k4.theme toggle`) se
@@ -103,6 +106,12 @@ Cuatro pestañas: **Lucha** (la pelea y la tienda de la partida), **Grupo**
 (cuatro huecos de equipo por héroe), **Bolsa** (abrir cofres, equipar con clic
 izquierdo, desguazar con el derecho) y **Altar** (mejoras permanentes por
 reliquias).
+
+El escenario cambia cada 80 oleadas —bosque, cueva, infierno y vacío— y con
+él la fauna: los monstruos no son hojas distintas por bioma, sino un reparto
+por afinidad de la que ya hay. El fondo va en parallax de dos capas, el
+paisaje despacio y el suelo deprisa, y entre oleada y oleada el grupo camina
+un par de segundos mientras la siguiente entra por la derecha.
 
 Los objetos se generan por afijos —tipo, prefijo declinado y sufijo— con las
 **diez rarezas de TBH** y sus colores, de Común a Cósmico, y tres clases de

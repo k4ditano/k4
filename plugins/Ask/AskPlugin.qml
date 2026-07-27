@@ -74,15 +74,24 @@ K4Plugin {
         attachSelectionOnOpen = false
     }
 
-    function appendMessage(role, text) {
-        messages = messages.concat([{ role: role, text: text }])
+    function appendMessage(role, text, imagen) {
+        messages = messages.concat([{
+            role: role, text: text, imagen: imagen || ""
+        }])
+    }
+
+    // Rutas de imagen sueltas en la respuesta: si Codex genera algo, lo
+    // anuncia por su ruta, y verla vale más que leerla.
+    function imagenEn(texto) {
+        const m = String(texto).match(/(\/[^\s"'`)]+\.(?:png|jpe?g|webp|gif))/i)
+        return m ? m[1] : ""
     }
 
     function updateLastMessage(role, text) {
         const list = messages.slice()
         for (let i = list.length - 1; i >= 0; --i) {
             if (list[i].role === "assistant" || list[i].role === "error") {
-                list[i] = { role: role, text: text }
+                list[i] = { role: role, text: text, imagen: imagenEn(text) }
                 messages = list
                 return
             }
@@ -117,14 +126,15 @@ K4Plugin {
 
         lastError = ""
         status = "thinking"
-        appendMessage("user", question)
+        appendMessage("user", question, image)
         appendMessage("assistant", "")
         query = ""
 
         // el preámbulo solo en el primer turno: después ya vive en la sesión
         let prompt = threadId.length === 0
             ? "Eres un asistente rápido integrado en la barra del escritorio. "
-                + "Responde en español, breve y directo, en texto plano sin markdown ni listas numeradas. "
+                + "Responde en español, breve y directo. Puedes usar markdown sencillo: "
+                + "negrita, cursiva, código y enlaces. Nada de tablas ni encabezados. "
                 + "No ejecutes comandos ni leas archivos salvo que la pregunta lo pida explícitamente.\n\n"
                 + "Pregunta: " + question
             : question
@@ -178,6 +188,20 @@ K4Plugin {
     function preview(source) {
         const text = source.replace(/\s+/g, " ").trim()
         return text.length > 30 ? text.substring(0, 30) + "…" : text
+    }
+
+    function guardarImagen(ruta) {
+        if (!ruta || ruta.length === 0)
+            return
+        const destino = Quickshell.env("HOME") + "/Imágenes"
+        Quickshell.execDetached(["sh", "-c",
+            "mkdir -p " + JSON.stringify(destino)
+            + " && cp -n " + JSON.stringify(ruta) + " " + JSON.stringify(destino) + "/"])
+    }
+
+    function abrirExterno(ruta) {
+        if (ruta && ruta.length > 0)
+            Quickshell.execDetached(["xdg-open", ruta])
     }
 
     function copyAnswer() {

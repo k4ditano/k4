@@ -135,6 +135,22 @@ Singleton {
     readonly property real multVida: Math.pow(1.12, niveles.vitalidad)
     readonly property int armaduraExtra: niveles.armadura * 2
 
+    // ── biomas ────────────────────────────────────────────────────
+    // Cada 80 oleadas cambia el escenario y con él la fauna. Los monstruos no
+    // son sheets distintas: se reparte la que hay por afinidad, que da variedad
+    // temática sin generar arte nuevo por bioma.
+    readonly property int oleadasPorBioma: 80
+    readonly property var biomas: ["bosque", "cueva", "infierno", "cosmos"]
+    readonly property var faunaPorBioma: [
+        [0, 3, 10, 13, 16, 14, 2],      // bosque: limos, mariposa, jabalí, seta…
+        [6, 9, 8, 19, 11, 18, 1],       // cueva: araña, murciélago, rata, goblin…
+        [12, 15, 5, 2, 19, 6],          // infierno: diablillo, limos ardientes…
+        [7, 4, 17, 5, 18, 9]            // cosmos: fantasma, esqueleto, zombi…
+    ]
+
+    readonly property int bioma: Math.floor((oleada - 1) / oleadasPorBioma) % biomas.length
+    readonly property string fondo: biomas[bioma]
+
     readonly property bool esJefe: oleada % oleadasPorJefe === 0
     readonly property bool grupoVivo: grupo.some(function (h) { return h.vida > 0 })
 
@@ -388,7 +404,8 @@ Singleton {
                 daño: enemigoDañoBase * Math.pow(enemigoDañoCrec, oleada - 1) * (esJefe ? jefeDaño : 1),
                 sprite: esJefe
                     ? "b" + String((Math.floor(oleada / oleadasPorJefe) * 3) % 20).padStart(2, "0")
-                    : "m" + String((oleada * 7 + i * 3) % 20).padStart(2, "0"),
+                    : "m" + String(faunaPorBioma[bioma][(oleada * 3 + i) % faunaPorBioma[bioma].length])
+                        .padStart(2, "0"),
                 jefe: esJefe
             })
         }

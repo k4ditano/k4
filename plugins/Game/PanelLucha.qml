@@ -10,6 +10,22 @@ ColumnLayout {
 
     spacing: 8
 
+    // desplazamiento y opacidad de los enemigos al aparecer
+    property real entradaX: 0
+    property real entradaOpacidad: 1
+
+    ParallelAnimation {
+        id: entrada
+        NumberAnimation {
+            target: panel; property: "entradaX"
+            from: 90; to: 0; duration: 900; easing.type: Easing.OutCubic
+        }
+        NumberAnimation {
+            target: panel; property: "entradaOpacidad"
+            from: 0; to: 1; duration: 700
+        }
+    }
+
     // ── reacciones a la simulación ────────────────────────────────
     Connections {
         target: Game
@@ -33,6 +49,11 @@ ColumnLayout {
             const celda = filaHeroes.itemAt(indice)
             if (celda) celda.destellar()
         }
+
+        function onOleadaSuperada(numero) {
+            escenario.caminar()
+            entrada.restart()
+        }
     }
 
     // ── campo de batalla ──────────────────────────────────────────
@@ -40,16 +61,12 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.preferredHeight: 122
         radius: 12
-        color: Theme.surface
+        color: Theme.islandBg
         clip: true
 
-        Rectangle {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            height: 24
-            color: Theme.surfaceHi
-            opacity: 0.45
+        Fondo {
+            id: escenario
+            anchors.fill: parent
         }
 
         RowLayout {
@@ -94,6 +111,7 @@ ColumnLayout {
                 Layout.alignment: Qt.AlignVCenter
             }
 
+            // la oleada entra deslizándose mientras el grupo camina
             Repeater {
                 id: filaEnemigos
                 model: Game.enemigos.length
@@ -112,6 +130,9 @@ ColumnLayout {
                     colorVida: datos.jefe ? Theme.red : "#ff9f0a"
                     mirandoDerecha: false
                     escala: datos.jefe ? 1.15 : 1
+
+                    x: panel.entradaX
+                    opacity: panel.entradaOpacidad
                 }
             }
         }

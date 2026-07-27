@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 import "../../core"
 
 FadeIn {
@@ -8,6 +9,7 @@ FadeIn {
     required property var plugin
 
     property int focusAttempts: 0
+    property string ampliada: ""     // imagen que se está viendo a tamaño grande
 
     Component.onCompleted: {
         focusAttempts = 0
@@ -29,6 +31,80 @@ FadeIn {
                 view.focusAttempts += 1
                 restart()
             }
+        }
+    }
+
+    // ── imagen a tamaño grande, por encima de la conversación
+    Rectangle {
+        id: visor
+        anchors.fill: parent
+        z: 10
+        visible: view.ampliada.length > 0
+        color: "#f2000000"
+        radius: 12
+
+        Image {
+            anchors.fill: parent
+            anchors.margins: 16
+            anchors.bottomMargin: 40
+            source: view.ampliada.length > 0 ? "file://" + view.ampliada : ""
+            fillMode: Image.PreserveAspectFit
+            asynchronous: true
+        }
+
+        RowLayout {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 10
+            spacing: 8
+
+            Repeater {
+                model: [
+                    { t: "Guardar en Imágenes", a: "guardar" },
+                    { t: "Abrir fuera",         a: "abrir" },
+                    { t: "Cerrar",              a: "cerrar" }
+                ]
+
+                delegate: Rectangle {
+                    id: boton
+                    required property var modelData
+                    Layout.preferredWidth: etiqueta.implicitWidth + 22
+                    Layout.preferredHeight: 24
+                    radius: 12
+                    color: botonMouse.containsMouse ? Theme.blue : Theme.surfaceHi
+
+                    Behavior on color { ColorAnimation { duration: 120 } }
+
+                    IslandLabel {
+                        id: etiqueta
+                        anchors.centerIn: parent
+                        text: boton.modelData.t
+                        font.pixelSize: 10
+                        font.weight: Font.DemiBold
+                    }
+
+                    MouseArea {
+                        id: botonMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (boton.modelData.a === "guardar")
+                                view.plugin.guardarImagen(view.ampliada)
+                            else if (boton.modelData.a === "abrir")
+                                view.plugin.abrirExterno(view.ampliada)
+                            else
+                                view.ampliada = ""
+                        }
+                    }
+                }
+            }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            z: -1
+            onClicked: view.ampliada = ""
         }
     }
 
@@ -229,16 +305,23 @@ FadeIn {
                 width: ListView.view.width
                 height: bubble.height
 
+                readonly property string imagen: modelData.imagen || ""
+
                 Rectangle {
                     id: bubble
                     x: messageRow.mine ? messageRow.width - width : 0
                     width: messageRow.mine
-                        ? Math.min(messageText.implicitWidth + 28, messageRow.width * 0.78)
+                        ? Math.min(Math.max(messageText.implicitWidth + 28, miniatura.visible ? 190 : 0),
+                                   messageRow.width * 0.78)
                         : messageRow.width
-                    height: messageText.implicitHeight + (messageRow.mine ? 18 : 4)
+                    height: messageText.implicitHeight + (miniatura.visible ? miniatura.height + 8 : 0)
+                        + (messageRow.mine ? 18 : 4)
                     radius: 14
                     color: messageRow.mine ? Theme.surfaceHi : "transparent"
 
+                    // Formato de verdad: negrita, cursiva, código y enlaces
+                    // pulsables. Antes se pedía a Codex que respondiera en
+                    // texto plano justamente porque esto no existía.
                     TextEdit {
                         id: messageText
                         x: messageRow.mine ? 14 : 0
@@ -247,13 +330,119 @@ FadeIn {
                         readOnly: true
                         selectByMouse: true
                         wrapMode: Text.WordWrap
-                        textFormat: Text.PlainText
+                        textFormat: TextEdit.MarkdownText
                         color: messageRow.modelData.role === "error" ? Theme.red : Theme.ink
                         selectionColor: Theme.blue
                         font.family: Theme.uiFont
                         font.pixelSize: 14
                         opacity: messageRow.modelData.text.length > 0 ? 1 : 0.45
                         text: messageRow.modelData.text.length > 0 ? messageRow.modelData.text : "…"
+
+                        onLinkActivated: function (enlace) {
+                            Quickshell.execDetached(["xdg-open", enlace])
+                        }
+
+                        // el cursor avisa de que el enlace se puede pulsar
+                        MouseArea {
+                            anchors.fill: parent
+                            acceptedButtons: Qt.NoButton
+                            cursorShape: messageText.hoveredLink.length > 0
+                                ? Qt.PointingHandCursor : Qt.IBeamCursor
+                        }
+                    }
+
+                    // ── imagen adjunta o devuelta
+                    Rectangle {
+                        id: miniatura
+                        visible: messageRow.imagen.length > 0
+                        anchors.right: messageRow.mine ? parent.right : undefined
+                        anchors.left: messageRow.mine ? undefined : parent.left
+                        anchors.rightMargin: messageRow.mine ? 14 : 0
+                        anchors.top: messageText.bottom
+                        anchors.topMargin: 8
+                        width: 160
+                        height: 96
+                        radius: 10
+                        color: Theme.islandBg
+                        clip: true
+                        border.width: miniMouse.containsMouse ? 1 : 0
+                        border.color: Theme.blue
+
+                        Image {
+                            anchors.fill: parent
+                            source: messageRow.imagen.length > 0 ? "file://" + messageRow.imagen : ""
+                            fillMode: Image.PreserveAspectCrop
+                            asynchronous: true
+                            sourceSize.width: 320
+                        }
+
+                        // acciones, solo al pasar por encima
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            height: 22
+                            color: "#cc000000"
+                            visible: miniMouse.containsMouse
+
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: 12
+
+                                Repeater {
+                                    model: [
+                                        { g: Theme.ico.search, t: "ampliar" },
+                                        { g: 0xF0193,          t: "guardar" },
+                                        { g: Theme.ico.forward, t: "abrir" }
+                                    ]
+
+                                    delegate: RowLayout {
+                                        id: accion
+                                        required property var modelData
+                                        required property int index
+                                        spacing: 3
+
+                                        IconGlyph {
+                                            text: typeof accion.modelData.g === "number"
+                                                ? String.fromCodePoint(accion.modelData.g)
+                                                : accion.modelData.g
+                                            color: accionMouse.containsMouse ? Theme.blue : Theme.ink
+                                            font.pixelSize: 10
+                                        }
+
+                                        IslandLabel {
+                                            text: accion.modelData.t
+                                            color: accionMouse.containsMouse ? Theme.blue : Theme.ink
+                                            font.pixelSize: 9
+                                        }
+
+                                        MouseArea {
+                                            id: accionMouse
+                                            anchors.fill: parent
+                                            anchors.margins: -3
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                if (accion.index === 0)
+                                                    view.ampliada = messageRow.imagen
+                                                else if (accion.index === 1)
+                                                    view.plugin.guardarImagen(messageRow.imagen)
+                                                else
+                                                    view.plugin.abrirExterno(messageRow.imagen)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            id: miniMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: view.ampliada = messageRow.imagen
+                        }
                     }
                 }
             }
