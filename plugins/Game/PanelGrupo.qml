@@ -12,7 +12,7 @@ RowLayout {
     spacing: 8
 
     Repeater {
-        model: Game.clases
+        model: Game.plantilla.map(function (c) { return Game.claseDe(c) })
 
         delegate: Rectangle {
             id: tarjeta

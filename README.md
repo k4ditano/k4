@@ -96,8 +96,18 @@ Todas se lanzan solas al recargarse, o las lanzas tú antes.
 El oro ya no compra estadísticas —subirlas a mano no era una decisión, era un
 peaje— sino **cofres**, que es elegir qué botín te llevas.
 
-Cuatro pestañas: **Lucha** (la pelea y la tienda de la partida), **Grupo**
-(cuatro huecos de equipo por héroe), **Bolsa** (abrir cofres, equipar con clic
+**Ocho héroes**, tres en el campo. Empiezas con guardián, hechicero y clériga;
+los otros cinco se desbloquean con retos —llegar a cierta oleada, tumbar
+jefes, abrir cofres, subir de nivel—. La plantilla se cambia cuando quieras,
+aunque hacerlo reinicia la partida en curso.
+
+**28 logros** en familias escalonadas —cazador I a V, explorador I a V…— con
+metas que van de cien monstruos a cien mil. Cada uno da reliquias, y los
+altos, cofres.
+
+Seis pestañas: **Lucha** (la pelea y la tienda de la partida), **Grupo**
+(cuatro huecos de equipo por héroe), **Plantilla** (quién sale al campo y qué
+falta para desbloquear al resto), **Logros**, **Bolsa** (abrir cofres, equipar con clic
 izquierdo, desguazar con el derecho) y **Altar** (mejoras permanentes por
 reliquias).
 

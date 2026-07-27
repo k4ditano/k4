@@ -48,50 +48,161 @@ Singleton {
         {
             id: "tanque", nombre: "Guardián", sprite: "h00",
             vida: 300, daño: 4, armadura: 6, papel: "Aguanta los golpes",
-            ataque: "Mandoble", glifo: 0xF0498,
-            // Cada nivel sube lo suyo: el guardián gana sobre todo aguante.
+            ataque: "Mandoble", glifo: 0xF0498, reto: null,
             porNivel: { vida: 0.11, daño: 0.06, armadura: 0.6 },
             habilidades: [
-                { nivel: 1,  id: "provocar",  nombre: "Provocar",
-                  desc: "Atrae los golpes y reduce el daño 6 s", recarga: 18, glifo: 0xF0498 },
-                { nivel: 5,  id: "muro",      nombre: "Muro de escudos",
-                  desc: "Escudo para todo el grupo", recarga: 26, glifo: 0xF0A38 },
+                { nivel: 1, id: "provocar", nombre: "Provocar",
+                  desc: "Atrae los golpes y reduce el daño", recarga: 18, glifo: 0xF0498,
+                  efecto: "provocar", potencia: 6 },
+                { nivel: 5, id: "muro", nombre: "Muro de escudos",
+                  desc: "Escudo para todo el grupo", recarga: 26, glifo: 0xF0A38,
+                  efecto: "escudoGrupo", potencia: 0.22 },
                 { nivel: 12, id: "represalia", nombre: "Represalia",
-                  desc: "Devuelve parte del daño recibido", recarga: 22, glifo: 0xF04E5 },
-                { nivel: 20, id: "bastion",   nombre: "Bastión",
-                  desc: "Inmune unos segundos", recarga: 40, glifo: 0xF0498 }
+                  desc: "Devuelve parte del daño recibido", recarga: 22, glifo: 0xF04E5,
+                  efecto: "reflejo", potencia: 8 },
+                { nivel: 20, id: "bastion", nombre: "Bastión",
+                  desc: "Inmune unos segundos", recarga: 40, glifo: 0xF0498,
+                  efecto: "invulnerable", potencia: 5 }
             ]
         },
         {
             id: "mago", nombre: "Hechicero", sprite: "h02",
             vida: 130, daño: 12, armadura: 0, papel: "Daño en área",
-            ataque: "Dardo arcano", glifo: 0xF0E20,
+            ataque: "Dardo arcano", glifo: 0xF0E20, reto: null,
             porNivel: { vida: 0.06, daño: 0.13, armadura: 0.1 },
             habilidades: [
-                { nivel: 1,  id: "llamarada", nombre: "Llamarada",
-                  desc: "Golpea a toda la oleada", recarga: 14, glifo: 0xF0E20 },
-                { nivel: 6,  id: "cadena",    nombre: "Cadena arcana",
-                  desc: "Rebota entre enemigos, más fuerte cada salto", recarga: 18, glifo: 0xF0593 },
-                { nivel: 14, id: "meteoro",   nombre: "Meteoro",
-                  desc: "Un golpe enorme al más sano", recarga: 30, glifo: 0xF0F1B },
-                { nivel: 22, id: "quietud",   nombre: "Quietud",
-                  desc: "La oleada deja de atacar 5 s", recarga: 45, glifo: 0xF04AB }
+                { nivel: 1, id: "llamarada", nombre: "Llamarada",
+                  desc: "Golpea a toda la oleada", recarga: 14, glifo: 0xF0E20,
+                  efecto: "area", potencia: 6 },
+                { nivel: 6, id: "cadena", nombre: "Cadena arcana",
+                  desc: "Rebota creciendo en cada salto", recarga: 18, glifo: 0xF0593,
+                  efecto: "cadena", potencia: 3 },
+                { nivel: 14, id: "meteoro", nombre: "Meteoro",
+                  desc: "Un golpe enorme al más sano", recarga: 30, glifo: 0xF0F1B,
+                  efecto: "golpeUnico", potencia: 16 },
+                { nivel: 22, id: "quietud", nombre: "Quietud",
+                  desc: "La oleada deja de atacar", recarga: 45, glifo: 0xF04AB,
+                  efecto: "aturdir", potencia: 5 }
             ]
         },
         {
             id: "clerigo", nombre: "Clériga", sprite: "h04",
             vida: 190, daño: 5, armadura: 3, papel: "Cura al grupo",
-            ataque: "Fulgor", glifo: 0xF05E1,
+            ataque: "Fulgor", glifo: 0xF05E1, reto: null,
             porNivel: { vida: 0.09, daño: 0.07, armadura: 0.35 },
             habilidades: [
-                { nivel: 1,  id: "bendicion", nombre: "Bendición",
-                  desc: "Cura a todo el grupo de golpe", recarga: 22, glifo: 0xF05E1 },
-                { nivel: 7,  id: "egida",     nombre: "Égida",
-                  desc: "Escudo al más malherido", recarga: 20, glifo: 0xF0A38 },
-                { nivel: 15, id: "renovar",   nombre: "Renovación",
-                  desc: "Cura poco a poco durante 10 s", recarga: 28, glifo: 0xF058C },
-                { nivel: 24, id: "volver",    nombre: "Volver a la vida",
-                  desc: "Levanta a un caído con media vida", recarga: 90, glifo: 0xF05E1 }
+                { nivel: 1, id: "bendicion", nombre: "Bendición",
+                  desc: "Cura a todo el grupo", recarga: 22, glifo: 0xF05E1,
+                  efecto: "curaGrupo", potencia: 0.35 },
+                { nivel: 7, id: "egida", nombre: "Égida",
+                  desc: "Escudo al más malherido", recarga: 20, glifo: 0xF0A38,
+                  efecto: "escudoUno", potencia: 0.45 },
+                { nivel: 15, id: "renovar", nombre: "Renovación",
+                  desc: "Cura poco a poco", recarga: 28, glifo: 0xF058C,
+                  efecto: "regenerar", potencia: 10 },
+                { nivel: 24, id: "volver", nombre: "Volver a la vida",
+                  desc: "Levanta a un caído", recarga: 90, glifo: 0xF05E1,
+                  efecto: "revivir", potencia: 0.5 }
+            ]
+        },
+        {
+            id: "arquera", nombre: "Arquera", sprite: "h01",
+            vida: 150, daño: 15, armadura: 1, papel: "Golpes certeros",
+            ataque: "Saeta", glifo: 0xF0289, reto: { tipo: "oleada", meta: 25 },
+            porNivel: { vida: 0.07, daño: 0.14, armadura: 0.15 },
+            habilidades: [
+                { nivel: 1, id: "lluvia", nombre: "Lluvia de flechas",
+                  desc: "Cae sobre toda la oleada", recarga: 16, glifo: 0xF0289,
+                  efecto: "area", potencia: 4 },
+                { nivel: 6, id: "perforar", nombre: "Perforante",
+                  desc: "Un disparo que atraviesa", recarga: 20, glifo: 0xF04E5,
+                  efecto: "golpeUnico", potencia: 10 },
+                { nivel: 14, id: "veneno", nombre: "Punta envenenada",
+                  desc: "Desangra a la oleada", recarga: 26, glifo: 0xF0BC2,
+                  efecto: "veneno", potencia: 12 },
+                { nivel: 22, id: "aljaba", nombre: "Aljaba infinita",
+                  desc: "Ráfaga encadenada", recarga: 34, glifo: 0xF0289,
+                  efecto: "cadena", potencia: 5 }
+            ]
+        },
+        {
+            id: "picaro", nombre: "Pícaro", sprite: "h03",
+            vida: 140, daño: 17, armadura: 0, papel: "Remata heridos",
+            ataque: "Puñalada", glifo: 0xF04E5, reto: { tipo: "muertes", meta: 1500 },
+            porNivel: { vida: 0.06, daño: 0.15, armadura: 0.1 },
+            habilidades: [
+                { nivel: 1, id: "emboscada", nombre: "Emboscada",
+                  desc: "Golpe brutal al más débil", recarga: 15, glifo: 0xF04E5,
+                  efecto: "remate", potencia: 12 },
+                { nivel: 6, id: "sangrar", nombre: "Hemorragia",
+                  desc: "Deja a la oleada sangrando", recarga: 22, glifo: 0xF0BC2,
+                  efecto: "veneno", potencia: 16 },
+                { nivel: 14, id: "sombras", nombre: "Danza de sombras",
+                  desc: "Se vuelve intocable y pega", recarga: 30, glifo: 0xF0E20,
+                  efecto: "invulnerable", potencia: 4 },
+                { nivel: 22, id: "degollar", nombre: "Degollar",
+                  desc: "Remate demoledor", recarga: 40, glifo: 0xF04E5,
+                  efecto: "remate", potencia: 30 }
+            ]
+        },
+        {
+            id: "barbaro", nombre: "Bárbaro", sprite: "h05",
+            vida: 260, daño: 11, armadura: 3, papel: "Cuanto más herido, más pega",
+            ataque: "Hachazo", glifo: 0xF0F1B, reto: { tipo: "jefes", meta: 30 },
+            porNivel: { vida: 0.10, daño: 0.11, armadura: 0.4 },
+            habilidades: [
+                { nivel: 1, id: "furia", nombre: "Furia",
+                  desc: "Se enfurece y golpea el área", recarga: 18, glifo: 0xF0F1B,
+                  efecto: "area", potencia: 5 },
+                { nivel: 6, id: "berserk", nombre: "Berserk",
+                  desc: "Devuelve el daño que recibe", recarga: 24, glifo: 0xF04E5,
+                  efecto: "reflejo", potencia: 10 },
+                { nivel: 14, id: "terremoto", nombre: "Terremoto",
+                  desc: "Sacude a toda la oleada", recarga: 30, glifo: 0xF0F1B,
+                  efecto: "area", potencia: 11 },
+                { nivel: 22, id: "ultimo", nombre: "Último aliento",
+                  desc: "Aguanta a un golpe de morir", recarga: 60, glifo: 0xF0498,
+                  efecto: "invulnerable", potencia: 6 }
+            ]
+        },
+        {
+            id: "druida", nombre: "Druida", sprite: "h06",
+            vida: 200, daño: 9, armadura: 2, papel: "Regenera sin parar",
+            ataque: "Zarza", glifo: 0xF058C, reto: { tipo: "cofres", meta: 60 },
+            porNivel: { vida: 0.10, daño: 0.08, armadura: 0.3 },
+            habilidades: [
+                { nivel: 1, id: "brotar", nombre: "Brotes",
+                  desc: "Regeneración para el grupo", recarga: 20, glifo: 0xF058C,
+                  efecto: "regenerar", potencia: 12 },
+                { nivel: 6, id: "espinas", nombre: "Espinas",
+                  desc: "El grupo devuelve daño", recarga: 26, glifo: 0xF04E5,
+                  efecto: "reflejo", potencia: 10 },
+                { nivel: 14, id: "savia", nombre: "Savia",
+                  desc: "Cura fuerte a todos", recarga: 30, glifo: 0xF05E1,
+                  efecto: "curaGrupo", potencia: 0.5 },
+                { nivel: 22, id: "bosque", nombre: "Ira del bosque",
+                  desc: "Arrasa la oleada", recarga: 38, glifo: 0xF0F1B,
+                  efecto: "area", potencia: 9 }
+            ]
+        },
+        {
+            id: "paladin", nombre: "Paladín", sprite: "h08",
+            vida: 280, daño: 10, armadura: 7, papel: "Muro con castigo",
+            ataque: "Maza sagrada", glifo: 0xF0A38, reto: { tipo: "nivel", meta: 60 },
+            porNivel: { vida: 0.11, daño: 0.09, armadura: 0.65 },
+            habilidades: [
+                { nivel: 1, id: "escudoFe", nombre: "Escudo de fe",
+                  desc: "Escudo a todo el grupo", recarga: 22, glifo: 0xF0A38,
+                  efecto: "escudoGrupo", potencia: 0.28 },
+                { nivel: 6, id: "castigo", nombre: "Castigo",
+                  desc: "Golpe sagrado al más sano", recarga: 24, glifo: 0xF05E1,
+                  efecto: "golpeUnico", potencia: 9 },
+                { nivel: 14, id: "consagrar", nombre: "Consagrar",
+                  desc: "Cura y protege a la vez", recarga: 32, glifo: 0xF05E1,
+                  efecto: "curaGrupo", potencia: 0.3 },
+                { nivel: 22, id: "juicio", nombre: "Juicio",
+                  desc: "Detiene y castiga a la oleada", recarga: 48, glifo: 0xF04AB,
+                  efecto: "aturdir", potencia: 4 }
             ]
         }
     ]
@@ -131,6 +242,124 @@ Singleton {
     // que el equipo. Si se reiniciaran, farmear no serviría de nada y cada
     // partida acabaría exactamente donde la anterior.
     property var heroes: ({})           // clase → { nivel, exp }
+
+    // ── plantilla ─────────────────────────────────────────────────
+    // Tres en el campo de entre los desbloqueados. Cambiarla reinicia la
+    // partida en curso: no se puede meter a alguien a mitad de una pelea.
+    property var plantilla: ["tanque", "mago", "clerigo"]
+    property var desbloqueados: ["tanque", "mago", "clerigo"]
+    readonly property int huecosPlantilla: 3
+
+    function estaDesbloqueado(clase) { return desbloqueados.indexOf(clase) !== -1 }
+    function enPlantilla(clase) { return plantilla.indexOf(clase) !== -1 }
+
+    function alternarEnPlantilla(clase) {
+        if (!estaDesbloqueado(clase))
+            return
+
+        const lista = plantilla.slice()
+        const i = lista.indexOf(clase)
+
+        if (i !== -1) {
+            if (lista.length <= 1)
+                return              // no se puede salir al campo sin nadie
+            lista.splice(i, 1)
+        } else {
+            if (lista.length >= huecosPlantilla)
+                return
+            lista.push(clase)
+        }
+
+        plantilla = lista
+        nuevaPartida()
+        guardar()
+    }
+
+    function desbloquear(clase) {
+        if (estaDesbloqueado(clase))
+            return false
+        desbloqueados = desbloqueados.concat([clase])
+        guardar()
+        return true
+    }
+
+    // ── cuentas de toda la vida del jugador ───────────────────────
+    // Las llevan los logros y los retos de desbloqueo.
+    property var cuentas: ({
+        muertes: 0, jefes: 0, cofres: 0, oleadas: 0,
+        partidas: 0, desguaces: 0, habilidades: 0, oroTotal: 0
+    })
+
+    function contar(clave, cuanto) {
+        const c = Object.assign({}, cuentas)
+        c[clave] = (c[clave] || 0) + (cuanto === undefined ? 1 : cuanto)
+        cuentas = c
+    }
+
+    readonly property int nivelMaximo: {
+        let alto = 1
+        for (const clase in heroes) {
+            if (heroes[clase].nivel > alto)
+                alto = heroes[clase].nivel
+        }
+        return alto
+    }
+
+    // progreso de un reto de desbloqueo, para pintarlo
+    function progresoReto(reto) {
+        if (!reto)
+            return 1
+        if (reto.tipo === "oleada")   return Math.min(1, mejorOleada / reto.meta)
+        if (reto.tipo === "muertes")  return Math.min(1, cuentas.muertes / reto.meta)
+        if (reto.tipo === "jefes")    return Math.min(1, cuentas.jefes / reto.meta)
+        if (reto.tipo === "cofres")   return Math.min(1, cuentas.cofres / reto.meta)
+        if (reto.tipo === "nivel")    return Math.min(1, nivelMaximo / reto.meta)
+        return 0
+    }
+
+    function textoReto(reto) {
+        if (!reto)
+            return ""
+        const cuanto = reto.tipo === "oleada" ? mejorOleada
+            : reto.tipo === "nivel" ? nivelMaximo : (cuentas[reto.tipo] || 0)
+        const como = { oleada: "llega a la oleada", muertes: "derrota a",
+                       jefes: "derrota a", cofres: "abre", nivel: "alcanza el nivel" }
+        const que = { muertes: " monstruos", jefes: " jefes", cofres: " cofres" }
+        return (como[reto.tipo] || "") + " " + reto.meta + (que[reto.tipo] || "")
+            + "  (" + Math.min(cuanto, reto.meta) + "/" + reto.meta + ")"
+    }
+
+    // Revisa si algún reto ya está cumplido y desbloquea a quien toque.
+    property var logrosHechos: []
+
+    // Se revisa tras cada oleada: barato y así la recompensa llega en caliente.
+    function revisarLogros() {
+        for (let i = 0; i < Logros.definicion.length; ++i) {
+            const l = Logros.definicion[i]
+            if (logrosHechos.indexOf(l.id) !== -1)
+                continue
+            if (Logros.progresoDe(l, game) < 1)
+                continue
+
+            logrosHechos = logrosHechos.concat([l.id])
+            reliquias += l.reliquias
+            if (l.cofre >= 0)
+                sumarCofre(l.cofre)
+            logroConseguido(l.id)
+        }
+    }
+
+    function revisarDesbloqueos() {
+        for (let i = 0; i < clases.length; ++i) {
+            const c = clases[i]
+            if (!c.reto || estaDesbloqueado(c.id))
+                continue
+            if (progresoReto(c.reto) >= 1) {
+                desbloquear(c.id)
+                heroeDesbloqueado(c.id)
+            }
+        }
+    }
 
     function datosHeroe(clase) {
         return heroes[clase] || ({ nivel: 1, exp: 0 })
@@ -416,6 +645,7 @@ Singleton {
     function desguazar(objeto) {
         if (!objeto)
             return
+        contar("desguaces")
         reliquias += Items.valorDesguace(objeto)
         bolsa = bolsa.filter(function (x) { return x.id !== objeto.id })
         guardar()
@@ -473,6 +703,7 @@ Singleton {
         c[tipo] -= 1
         cofresPorTipo = c
 
+        contar("cofres")
         const objeto = Items.generar(tipo, Math.max(oleada, mejorOleada), fortuna)
 
         if (bolsa.length >= topeBolsa) {
@@ -510,6 +741,8 @@ Singleton {
     signal partidaTerminada(int oleadaAlcanzada, int cofresGanados, real reliquiasGanadas)
     signal subioNivel(int indiceHeroe, int nivel)
     signal escudoPuesto(int indiceHeroe)
+    signal heroeDesbloqueado(string clase)
+    signal logroConseguido(string id)
 
     // ── ciclo de partida ──────────────────────────────────────────
     function nuevaPartida() {
@@ -522,8 +755,8 @@ Singleton {
         finalizada = ""
 
         const g = []
-        for (let i = 0; i < clases.length; ++i) {
-            const c = clases[i]
+        for (let i = 0; i < plantilla.length; ++i) {
+            const c = claseDe(plantilla[i])
             const recargas = ({})
             for (let h = 0; h < c.habilidades.length; ++h)
                 recargas[c.habilidades[h].id] = c.habilidades[h].recarga
@@ -572,7 +805,8 @@ Singleton {
                     : "m" + String(faunaPorBioma[bioma][(oleada * 3 + i) % faunaPorBioma[bioma].length])
                         .padStart(2, "0"),
                 jefe: esJefe,
-                quieto: 0
+                quieto: 0,
+                veneno: 0
             })
         }
         enemigos = lista
@@ -645,6 +879,7 @@ Singleton {
                 if (e[blanco].vida <= 0) {
                     enemigoMuerto(blanco)
                     aplicarExp(g, Math.ceil(8 * Math.pow(1.11, oleada - 1)))
+                    contar(e[blanco].jefe ? "jefes" : "muertes")
                 }
             }
 
@@ -668,6 +903,17 @@ Singleton {
                     g[i].recargas[id] -= delta
                 } else {
                     lanzarInterno(g, e, i, id)
+                }
+            }
+        }
+
+        // el veneno va royendo aunque nadie golpee
+        for (let j = 0; j < e.length; ++j) {
+            if (e[j].vida > 0 && e[j].veneno > 0) {
+                e[j].vida -= e[j].veneno * delta
+                if (e[j].vida <= 0) {
+                    enemigoMuerto(j)
+                    aplicarExp(g, Math.ceil(8 * Math.pow(1.11, oleada - 1)))
                 }
             }
         }
@@ -736,8 +982,11 @@ Singleton {
             if (oleada % 50 === 0)
                 sumarCofre(2)
 
+            contar("oleadas")
             oleada += 1
             generarOleada()
+            revisarDesbloqueos()
+            revisarLogros()
             guardar()
         } else if (!grupo.some(function (h) { return h.vida > 0 })) {
             terminarPartida()
@@ -794,104 +1043,115 @@ Singleton {
         enemigos = e
     }
 
-    function recargaDe(clase, id) {
+    function habilidadDe(clase, id) {
         const c = claseDe(clase)
         for (let i = 0; i < c.habilidades.length; ++i) {
             if (c.habilidades[i].id === id)
-                return c.habilidades[i].recarga
+                return c.habilidades[i]
         }
-        return 20
+        return null
     }
 
+    // Resuelve por EFECTO y no por identificador: así ocho clases con cuatro
+    // habilidades cada una no son treinta y dos casos escritos a mano, sino
+    // trece efectos con distinta potencia.
     function lanzarInterno(g, e, i, id) {
+        const hab = habilidadDe(g[i].clase, id)
+        if (!hab)
+            return
+
         const st = statsDe(g[i])
+        const p = hab.potencia
 
-        if (id === "provocar") {
-            g[i].provocando = 6
+        if (hab.efecto === "provocar") {
+            g[i].provocando = p
 
-        } else if (id === "muro") {
-            // escudo para todo el grupo, proporcional a lo que aguanta quien lo pone
+        } else if (hab.efecto === "invulnerable") {
+            g[i].invulnerable = p
+
+        } else if (hab.efecto === "reflejo") {
+            g[i].reflejando = p
+
+        } else if (hab.efecto === "escudoGrupo") {
             for (let j = 0; j < g.length; ++j) {
-                if (g[j].vida <= 0)
-                    continue
-                g[j].escudo = (g[j].escudo || 0) + vidaMaxDe(g[i]) * 0.22
+                if (g[j].vida <= 0) continue
+                g[j].escudo = (g[j].escudo || 0) + vidaMaxDe(g[i]) * p
                 escudoPuesto(j)
             }
 
-        } else if (id === "represalia") {
-            g[i].reflejando = 8
+        } else if (hab.efecto === "escudoUno") {
+            const herido = masHerido(g)
+            const quien = herido >= 0 ? herido : i
+            g[quien].escudo = (g[quien].escudo || 0) + vidaMaxDe(g[quien]) * p
+            escudoPuesto(quien)
 
-        } else if (id === "bastion") {
-            g[i].invulnerable = 5
+        } else if (hab.efecto === "curaGrupo") {
+            for (let j = 0; j < g.length; ++j) {
+                if (g[j].vida <= 0) continue
+                const cura = vidaMaxDe(g[j]) * p
+                g[j].vida = Math.min(vidaMaxDe(g[j]), g[j].vida + cura)
+                curado(j, cura)
+            }
 
-        } else if (id === "llamarada") {
+        } else if (hab.efecto === "regenerar") {
+            for (let j = 0; j < g.length; ++j) {
+                if (g[j].vida > 0) g[j].regenerando = p
+            }
+
+        } else if (hab.efecto === "revivir") {
+            for (let j = 0; j < g.length; ++j) {
+                if (g[j].vida <= 0) {
+                    g[j].vida = vidaMaxDe(g[j]) * p
+                    curado(j, g[j].vida)
+                    break
+                }
+            }
+
+        } else if (hab.efecto === "area") {
             for (let j = 0; j < e.length; ++j) {
-                if (e[j].vida <= 0)
-                    continue
-                e[j].vida -= st.daño * 6
-                impacto(j, st.daño * 6)
+                if (e[j].vida <= 0) continue
+                e[j].vida -= st.daño * p
+                impacto(j, st.daño * p)
                 if (e[j].vida <= 0) enemigoMuerto(j)
             }
 
-        } else if (id === "cadena") {
-            // rebota y crece: premia que haya oleada llena
-            let golpe = st.daño * 3
+        } else if (hab.efecto === "cadena") {
+            let golpe = st.daño * p
             for (let j = 0; j < e.length; ++j) {
-                if (e[j].vida <= 0)
-                    continue
+                if (e[j].vida <= 0) continue
                 e[j].vida -= golpe
                 impacto(j, golpe)
                 if (e[j].vida <= 0) enemigoMuerto(j)
                 golpe *= 1.6
             }
 
-        } else if (id === "meteoro") {
-            let masSano = -1, mejor = -1
+        } else if (hab.efecto === "golpeUnico" || hab.efecto === "remate") {
+            // golpeUnico busca al más sano; remate, al más tocado
+            let elegido = -1, mejor = hab.efecto === "remate" ? Infinity : -1
             for (let j = 0; j < e.length; ++j) {
-                if (e[j].vida > mejor) { mejor = e[j].vida; masSano = j }
-            }
-            if (masSano >= 0) {
-                e[masSano].vida -= st.daño * 16
-                impacto(masSano, st.daño * 16)
-                if (e[masSano].vida <= 0) enemigoMuerto(masSano)
-            }
-
-        } else if (id === "quietud") {
-            for (let j = 0; j < e.length; ++j)
-                e[j].quieto = 5
-
-        } else if (id === "bendicion") {
-            for (let j = 0; j < g.length; ++j) {
-                if (g[j].vida <= 0)
-                    continue
-                const cura = vidaMaxDe(g[j]) * 0.35
-                g[j].vida = Math.min(vidaMaxDe(g[j]), g[j].vida + cura)
-                curado(j, cura)
-            }
-
-        } else if (id === "egida") {
-            const herido = masHerido(g)
-            const quien = herido >= 0 ? herido : i
-            g[quien].escudo = (g[quien].escudo || 0) + vidaMaxDe(g[quien]) * 0.45
-            escudoPuesto(quien)
-
-        } else if (id === "renovar") {
-            for (let j = 0; j < g.length; ++j) {
-                if (g[j].vida > 0)
-                    g[j].regenerando = 10
-            }
-
-        } else if (id === "volver") {
-            for (let j = 0; j < g.length; ++j) {
-                if (g[j].vida <= 0) {
-                    g[j].vida = vidaMaxDe(g[j]) * 0.5
-                    curado(j, g[j].vida)
-                    break
+                if (e[j].vida <= 0) continue
+                if (hab.efecto === "remate" ? e[j].vida < mejor : e[j].vida > mejor) {
+                    mejor = e[j].vida
+                    elegido = j
                 }
             }
+            if (elegido >= 0) {
+                e[elegido].vida -= st.daño * p
+                impacto(elegido, st.daño * p)
+                if (e[elegido].vida <= 0) enemigoMuerto(elegido)
+            }
+
+        } else if (hab.efecto === "veneno") {
+            for (let j = 0; j < e.length; ++j) {
+                if (e[j].vida > 0) e[j].veneno = st.daño * p / 10
+            }
+
+        } else if (hab.efecto === "aturdir") {
+            for (let j = 0; j < e.length; ++j)
+                e[j].quieto = p
         }
 
-        g[i].recargas[id] = recargaDe(g[i].clase, id)
+        g[i].recargas[id] = hab.recarga
         habilidadLanzada(i)
     }
 
@@ -959,6 +1219,8 @@ Singleton {
             cofresPorTipo: cofresPorTipo, reliquias: reliquias,
             equipo: equipo, bolsa: bolsa, meta: meta,
             heroes: heroes, inicioElegido: inicioElegido,
+            plantilla: plantilla, desbloqueados: desbloqueados, cuentas: cuentas,
+            logrosHechos: logrosHechos,
             mejorOleada: mejorOleada, partidas: partidas,
             oleadasDesdeCofre: oleadasDesdeCofre,
             guardadoEn: ahora()
@@ -1036,6 +1298,10 @@ Singleton {
             meta = s.meta || ({ vida: 0, daño: 0, fortuna: 0 })
             heroes = s.heroes || ({})
             inicioElegido = s.inicioElegido || 1
+            plantilla = s.plantilla || ["tanque", "mago", "clerigo"]
+            desbloqueados = s.desbloqueados || ["tanque", "mago", "clerigo"]
+            cuentas = s.cuentas || cuentas
+            logrosHechos = s.logrosHechos || []
             mejorOleada = s.mejorOleada || 0
             partidas = s.partidas || 0
             oleadasDesdeCofre = s.oleadasDesdeCofre || 0

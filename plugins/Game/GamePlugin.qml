@@ -39,9 +39,9 @@ K4Plugin {
     // lo aparta al abrirse; lo inyecta el host
     property var panel: null
 
-    islandWidth: 660
+    islandWidth: 700
     // la bolsa y el altar necesitan más alto que la pelea
-    islandHeight: pestaña === "lucha" ? 300 : 360
+    islandHeight: pestaña === "lucha" ? 300 : 380
 
     handlesBackgroundTap: true
     onBackgroundTapped: {}      // el fondo no cierra: se juega aquí dentro

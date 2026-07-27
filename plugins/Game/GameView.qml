@@ -44,8 +44,10 @@ FadeIn {
                 model: [
                     { id: "lucha", etiqueta: "Lucha", glifo: 0xF04E5 },
                     { id: "grupo", etiqueta: "Grupo", glifo: 0xF0849 },
+                    { id: "equipo", etiqueta: "Plantilla", glifo: 0xF0004 },
                     { id: "bolsa", etiqueta: "Bolsa", glifo: 0xF04D6 },
-                    { id: "altar", etiqueta: "Altar", glifo: 0xF0BC2 }
+                    { id: "altar", etiqueta: "Altar", glifo: 0xF0BC2 },
+                    { id: "logros", etiqueta: "Logros", glifo: 0xF012C }
                 ]
 
                 delegate: Rectangle {
@@ -159,6 +161,8 @@ FadeIn {
             Layout.fillWidth: true
             Layout.fillHeight: true
             sourceComponent: view.plugin.pestaña === "grupo" ? panelGrupo
+                : view.plugin.pestaña === "equipo" ? panelPlantilla
+                : view.plugin.pestaña === "logros" ? panelLogros
                 : view.plugin.pestaña === "bolsa" ? panelBolsa
                 : view.plugin.pestaña === "altar" ? panelAltar
                 : panelLucha
@@ -169,4 +173,6 @@ FadeIn {
     Component { id: panelGrupo; PanelGrupo {} }
     Component { id: panelBolsa; PanelBolsa { plugin: view.plugin } }
     Component { id: panelAltar; PanelAltar {} }
+    Component { id: panelPlantilla; PanelPlantilla {} }
+    Component { id: panelLogros; PanelLogros {} }
 }
