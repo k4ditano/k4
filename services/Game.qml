@@ -75,7 +75,7 @@ Singleton {
 
     // Deterministas a propósito: la misma oleada trae siempre los mismos
     // rasgos, así se puede medir el balance y no depende de la suerte.
-    function rasgosPara(ol, indice) {
+    function rasgosPara(ol, indice, afinidad, extra) {
         const posibles = []
         for (let i = 0; i < rasgos.length; ++i) {
             if (ol >= rasgos[i].desde)
@@ -84,9 +84,14 @@ Singleton {
         if (!posibles.length)
             return []
 
-        const cuantos = Math.min(posibles.length, 1 + Math.floor(ol / 60))
         const salida = []
-        for (let i = 0; i < cuantos; ++i) {
+        // el suyo por naturaleza va primero, si ya está desbloqueado
+        if (afinidad && posibles.indexOf(afinidad) !== -1)
+            salida.push(afinidad)
+
+        const cuantos = Math.min(posibles.length,
+            1 + Math.floor(ol / 60) + (extra ? 1 : 0))
+        for (let i = 0; salida.length < cuantos && i < posibles.length * 2; ++i) {
             const cual = posibles[(ol + indice * 2 + i * 3) % posibles.length]
             if (salida.indexOf(cual) === -1)
                 salida.push(cual)
@@ -106,6 +111,53 @@ Singleton {
     function mermar(enemigo, cantidad) {
         return (enemigo.rasgos && enemigo.rasgos.indexOf("coraza") !== -1)
             ? cantidad * 0.62 : cantidad
+    }
+
+
+    // ── especies ──────────────────────────────────────────────────
+    //
+    //  Los monstruos eran sprites anónimos con la misma vida y el mismo daño:
+    //  cambiaba el dibujo y nada más. Cada uno tiene ahora nombre, un rasgo
+    //  que le pega por naturaleza y su propia mezcla de aguante y pegada, así
+    //  que una oleada de limos no se juega como una de murciélagos.
+    //
+    //  `vida` y `daño` son multiplicadores sobre lo que toca en esa oleada, y
+    //  se compensan entre sí: lo que aguanta pega poco y al revés.
+    readonly property var especies: [
+        { nombre: "Limo",              afinidad: "coraza",  vida: 1.35, daño: 0.75 },
+        { nombre: "Limo helado",       afinidad: "coraza",  vida: 1.30, daño: 0.80 },
+        { nombre: "Cangrejo rojo",     afinidad: "coraza",  vida: 1.25, daño: 0.90 },
+        { nombre: "Mariposa espectral", afinidad: "ruptura", vida: 0.70, daño: 1.25 },
+        { nombre: "Osamenta",          afinidad: "furia",   vida: 0.85, daño: 1.20 },
+        { nombre: "Limo tóxico",       afinidad: "ponzona", vida: 1.30, daño: 0.85 },
+        { nombre: "Araña",             afinidad: "ponzona", vida: 0.85, daño: 1.15 },
+        { nombre: "Espectro",          afinidad: "ruptura", vida: 0.75, daño: 1.30 },
+        { nombre: "Rata",              afinidad: "furia",   vida: 0.70, daño: 1.10 },
+        { nombre: "Murciélago",        afinidad: "drenaje", vida: 0.65, daño: 1.30 },
+        { nombre: "Jabalí",            afinidad: "furia",   vida: 1.20, daño: 1.15 },
+        { nombre: "Goblin",            afinidad: "furia",   vida: 0.95, daño: 1.10 },
+        { nombre: "Diablillo",         afinidad: "eco",     vida: 0.90, daño: 1.25 },
+        { nombre: "Seta andante",      afinidad: "ponzona", vida: 1.25, daño: 0.85 },
+        { nombre: "Cochinilla",        afinidad: "coraza",  vida: 1.40, daño: 0.70 },
+        { nombre: "Limo dorado",       afinidad: "drenaje", vida: 1.15, daño: 0.95 },
+        { nombre: "Oruga espinosa",    afinidad: "ponzona", vida: 1.10, daño: 1.00 },
+        { nombre: "Zombi",             afinidad: "drenaje", vida: 1.20, daño: 0.95 },
+        { nombre: "Cubo gelatinoso",   afinidad: "coraza",  vida: 1.45, daño: 0.75 },
+        { nombre: "Escorpión",         afinidad: "ponzona", vida: 0.90, daño: 1.20 }
+    ]
+
+    // A los jefes se les nombra por bioma y altura, que es lo único que se
+    // sabe con certeza del sprite que toca.
+    readonly property var titulosJefe: [
+        "Guardián", "Tirano", "Devorador", "Heraldo", "Coloso",
+        "Verdugo", "Abominación", "Soberano"
+    ]
+    readonly property var deBioma: ["del bosque", "de la cueva", "del infierno", "del vacío"]
+
+    // Uno de cada siete sale élite: más duro, con un rasgo de más y con oro
+    // extra. Son los que rompen el piloto automático de una oleada.
+    function esElite(ol, indice) {
+        return ol >= 18 && (ol + indice * 3) % 7 === 0
     }
 
     // ── clases ────────────────────────────────────────────────────
@@ -815,6 +867,10 @@ Singleton {
     // El impacto dice cuánto y a quién; este dice quién lo dio, que es lo que
     // hace falta para dibujar el ataque de cada clase a su manera.
     signal golpea(int indiceHeroe, int indiceEnemigo)
+    // Con `habilidadLanzada` la vista sabía que alguien había lanzado algo,
+    // pero no qué: todas se veían igual. Este lleva el efecto, que es lo que
+    // decide cómo se dibuja.
+    signal efectoHabilidad(int indiceHeroe, string efecto)
     signal heroeHerido(int indiceHeroe, real daño)
     signal enemigoMuerto(int indiceEnemigo)
     signal curado(int indiceHeroe, real cantidad)
@@ -878,20 +934,33 @@ Singleton {
         const lista = []
 
         for (let i = 0; i < cuantos; ++i) {
-            const vida = enemigoVidaBase * Math.pow(enemigoVidaCrec, oleada - 1) * (esJefe ? jefeVida : 1)
+            const cual = faunaPorBioma[bioma][(oleada * 3 + i) % faunaPorBioma[bioma].length]
+            const esp = especies[cual] || ({ nombre: "Bicho", afinidad: null, vida: 1, daño: 1 })
+            const elite = !esJefe && esElite(oleada, i)
+
+            // Los jefes no heredan la mezcla de la especie: son otra cosa.
+            const multVida = (esJefe ? jefeVida : esp.vida) * (elite ? 2.2 : 1)
+            const multDaño = (esJefe ? jefeDaño : esp.daño) * (elite ? 1.4 : 1)
+
+            const vida = enemigoVidaBase * Math.pow(enemigoVidaCrec, oleada - 1) * multVida
             lista.push({
                 vida: vida,
                 vidaMax: vida,
-                daño: enemigoDañoBase * Math.pow(enemigoDañoCrec, oleada - 1) * (esJefe ? jefeDaño : 1),
+                daño: enemigoDañoBase * Math.pow(enemigoDañoCrec, oleada - 1) * multDaño,
                 sprite: esJefe
                     ? "b" + String((Math.floor(oleada / oleadasPorJefe) * 3) % 20).padStart(2, "0")
-                    : "m" + String(faunaPorBioma[bioma][(oleada * 3 + i) % faunaPorBioma[bioma].length])
-                        .padStart(2, "0"),
+                    : "m" + String(cual).padStart(2, "0"),
+                nombre: esJefe
+                    ? titulosJefe[Math.floor(oleada / oleadasPorJefe) % titulosJefe.length]
+                        + " " + deBioma[bioma]
+                    : (elite ? "★ " : "") + esp.nombre,
                 jefe: esJefe,
+                elite: elite,
                 quieto: 0,
                 veneno: 0,
                 // los jefes llevan uno más: son el examen de las diez oleadas
-                rasgos: rasgosPara(oleada + (esJefe ? 30 : 0), i)
+                rasgos: rasgosPara(oleada + (esJefe ? 30 : 0), i,
+                    esJefe ? null : esp.afinidad, elite || esJefe)
             })
         }
         enemigos = lista
@@ -1095,7 +1164,11 @@ Singleton {
         enemigos = e
 
         if (!enemigos.some(function (x) { return x.vida > 0 })) {
-            const ganado = oroBase * Math.pow(oroCrec, oleada - 1) * enemigos.length
+            let bono = 0
+            for (let i = 0; i < enemigos.length; ++i)
+                bono += enemigos[i].elite ? 0.8 : 0
+            const ganado = oroBase * Math.pow(oroCrec, oleada - 1)
+                * (enemigos.length + bono)
             oro += ganado
             oleadaSuperada(oleada)
 
@@ -1282,6 +1355,7 @@ Singleton {
         g[i].recargas[id] = hab.recarga * (1 - statsDe(g[i]).recorte)
         contar("habilidades")
         habilidadLanzada(i)
+        efectoHabilidad(i, hab.efecto)
     }
 
     Timer {

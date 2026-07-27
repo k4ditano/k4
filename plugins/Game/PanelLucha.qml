@@ -54,6 +54,8 @@ ColumnLayout {
 
         function onGolpea(heroe, enemigo) { panel.dibujarGolpe(heroe, enemigo) }
 
+        function onEfectoHabilidad(heroe, efecto) { panel.dibujarHabilidad(heroe, efecto) }
+
         function onOleadaSuperada(numero) {
             escenario.caminar()
             entrada.restart()
@@ -82,6 +84,73 @@ ColumnLayout {
         const obj = compGolpe.createObject(campo, {
             forma: v.forma, tono: v.color,
             desdeX: a.x, desdeY: a.y, hastaX: b.x, hastaY: b.y
+        })
+        if (obj)
+            obj.arrancar()
+    }
+
+    Component { id: compHabilidad; EfectoHabilidad {} }
+
+    // Cada efecto del servicio se dibuja de una manera, y el color lo pone la
+    // clase que lo lanza: la misma cura se ve verde en la clériga y dorada en
+    // el paladín. Los que no cambian el campo —provocar, invulnerable— salen
+    // como aura sobre quien la lanza.
+    readonly property var formaPorEfecto: ({
+        area:        { forma: "onda",   sobre: "enemigos" },
+        cadena:      { forma: "cadena", sobre: "enemigos" },
+        golpeUnico:  { forma: "onda",   sobre: "enemigos" },
+        remate:      { forma: "onda",   sobre: "enemigos" },
+        veneno:      { forma: "nube",   sobre: "enemigos" },
+        aturdir:     { forma: "cadena", sobre: "enemigos" },
+        curaGrupo:   { forma: "motas",  sobre: "grupo" },
+        regenerar:   { forma: "motas",  sobre: "grupo" },
+        revivir:     { forma: "motas",  sobre: "grupo" },
+        escudoGrupo: { forma: "aura",   sobre: "grupo" },
+        escudoUno:   { forma: "aura",   sobre: "quien" },
+        provocar:    { forma: "aura",   sobre: "quien" },
+        invulnerable:{ forma: "aura",   sobre: "quien" },
+        reflejo:     { forma: "aura",   sobre: "quien" }
+    })
+
+    function zonaDe(fila, cuantos) {
+        const primero = fila.itemAt(0)
+        const ultimo = fila.itemAt(Math.max(0, cuantos - 1))
+        if (!primero || !ultimo)
+            return null
+
+        const a = primero.mapToItem(campo, 0, 0)
+        const b = ultimo.mapToItem(campo, ultimo.width, ultimo.height)
+        return { x: a.x, y: a.y, ancho: Math.max(20, b.x - a.x), alto: Math.max(20, b.y - a.y) }
+    }
+
+    function dibujarHabilidad(heroe, efecto) {
+        const def = panel.formaPorEfecto[efecto]
+        if (!def)
+            return
+
+        let zona = null
+        if (def.sobre === "enemigos")
+            zona = zonaDe(filaEnemigos, Game.enemigos.length)
+        else if (def.sobre === "grupo")
+            zona = zonaDe(filaHeroes, Game.grupo.length)
+        else {
+            const uno = filaHeroes.itemAt(heroe)
+            if (uno) {
+                const a = uno.mapToItem(campo, 0, 0)
+                zona = { x: a.x, y: a.y, ancho: uno.width, alto: uno.height }
+            }
+        }
+        if (!zona)
+            return
+
+        const datos = Game.grupo[heroe]
+        const v = datos ? Game.claseDe(datos.clase).visual : null
+
+        const obj = compHabilidad.createObject(campo, {
+            forma: def.forma,
+            tono: v ? v.color : "#ffffff",
+            zonaX: zona.x, zonaY: zona.y,
+            zonaAncho: zona.ancho, zonaAlto: zona.alto
         })
         if (obj)
             obj.arrancar()
@@ -168,7 +237,9 @@ ColumnLayout {
                     vidaMax: datos.vidaMax
                     colorVida: datos.jefe ? Theme.red : "#ff9f0a"
                     mirandoDerecha: false
-                    escala: datos.jefe ? 1.15 : 1
+                    escala: datos.jefe ? 1.15 : (datos.elite ? 1.08 : 1)
+                    nombre: datos.nombre || ""
+                    destacado: datos.jefe || datos.elite || false
                     rasgos: (datos.rasgos || []).map(function (r) {
                         return Game.rasgoDe(r)
                     }).filter(function (r) { return r !== null })

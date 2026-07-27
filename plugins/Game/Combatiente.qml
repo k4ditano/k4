@@ -17,6 +17,7 @@ Item {
     property real vidaMax: 1
     property color colorVida: "#30d158"
     property string nombre: ""
+    property bool destacado: false      // élite o jefe: se le da color
     property bool mirandoDerecha: true
     property real escala: 1
 
@@ -163,6 +164,18 @@ Item {
                     })
                 }
             }
+        }
+
+        // ── quién es
+        //  Estaba declarado y no se pintaba: los monstruos salían anónimos y
+        //  daba igual pelear contra un limo que contra un murciélago.
+        IslandLabel {
+            anchors.horizontalCenter: parent.horizontalCenter
+            visible: combatiente.nombre.length > 0 && !combatiente.caido
+            text: combatiente.nombre
+            color: combatiente.destacado ? "#ffd60a" : Theme.muted
+            font.pixelSize: 8
+            font.weight: combatiente.destacado ? Font.DemiBold : Font.Normal
         }
 
         // ── lo que trae este bicho
