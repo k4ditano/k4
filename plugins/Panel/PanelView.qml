@@ -451,6 +451,7 @@ FadeIn {
                     { id: "apps",  nombre: "Buscar apps", glifo: Theme.ico.search,  color: Theme.muted },
                     { id: "juego", nombre: "Mazmorra",    glifo: 0xF04E5,           color: "#ff9f0a" },
                     { id: "tema",  nombre: "Tema",        glifo: Theme.ico.palette, color: "#c78fff" },
+                    { id: "sistema", nombre: "Sistema",   glifo: 0xF035B,           color: "#0a84ff" },
                     { id: "ajustes", nombre: "Ajustes",   glifo: Theme.ico.cog,     color: Theme.muted }
                 ]
 
@@ -491,6 +492,8 @@ FadeIn {
                             view.plugin.juego.toggle()
                         else if (cual === "tema" && view.plugin.theme)
                             view.plugin.theme.toggle()
+                        else if (cual === "sistema" && view.plugin.sistema)
+                            view.plugin.sistema.toggle()
                         else if (cual === "ajustes" && view.plugin.ajustes)
                             view.plugin.ajustes.toggle()
                     }

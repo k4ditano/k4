@@ -25,6 +25,7 @@ import "plugins/Tray"
 import "plugins/Game"
 import "plugins/Settings"
 import "plugins/Clipboard"
+import "plugins/System"
 
 Scope {
     id: root
@@ -37,7 +38,7 @@ Scope {
     ClockPlugin  { id: clockPlugin; tray: trayPlugin; juego: gamePlugin }
     PlayerPlugin { id: playerPlugin; panel: panelPlugin; tray: trayPlugin; juego: gamePlugin }
     ToastPlugin  { id: toastPlugin }
-    PanelPlugin  { id: panelPlugin; launcher: launcherPlugin; theme: themePlugin; weather: weatherPlugin; ajustes: settingsPlugin; juego: gamePlugin }
+    PanelPlugin  { id: panelPlugin; launcher: launcherPlugin; theme: themePlugin; weather: weatherPlugin; ajustes: settingsPlugin; juego: gamePlugin; sistema: systemPlugin }
     LauncherPlugin { id: launcherPlugin; panel: panelPlugin }
     AskPlugin    { id: askPlugin; panel: panelPlugin; launcher: launcherPlugin }
     HyprThemePlugin { id: themePlugin; panel: panelPlugin }
@@ -46,6 +47,7 @@ Scope {
     GamePlugin   { id: gamePlugin; panel: panelPlugin }
     SettingsPlugin { id: settingsPlugin; panel: panelPlugin }
     ClipboardPlugin { id: clipboardPlugin; panel: panelPlugin }
+    SystemPlugin { id: systemPlugin; panel: panelPlugin }
 
     readonly property var plugins: [
         idlePlugin,
@@ -61,7 +63,8 @@ Scope {
         trayPlugin,
         gamePlugin,
         settingsPlugin,
-        clipboardPlugin
+        clipboardPlugin,
+        systemPlugin
     ]
 
     // ── quién se queda la island ──────────────────────────────────
@@ -123,6 +126,7 @@ Scope {
         target: "k4"
         function toggleLauncher(): void { launcherPlugin.toggle() }
         function clipboard(): void { clipboardPlugin.toggle() }
+        function system(): void { systemPlugin.toggle() }
         function install(query: string): void { launcherPlugin.openPackageSearch(query) }
         function search(query: string): void {
             if (!launcherPlugin.open)

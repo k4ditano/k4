@@ -25,6 +25,7 @@ K4Plugin {
     property var weather: null
     property var ajustes: null
     property var juego: null
+    property var sistema: null
 
     islandWidth: 860
     // la reproducción compacta y los accesos en rejilla piden menos alto
