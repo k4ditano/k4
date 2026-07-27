@@ -13,6 +13,7 @@ ColumnLayout {
 
     spacing: 6
 
+    property var plugin: null
     property var ultimo: null           // lo último que salió de un cofre
 
     // A quién le viene mejor una pieza: la clase que más gana con ella. Así
@@ -115,12 +116,36 @@ ColumnLayout {
                     hoverEnabled: true
                     enabled: cofre.cuantos > 0
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        const salio = Game.abrirCofre(cofre.index)
-                        if (salio)
-                            panel.ultimo = salio
-                    }
+                    onClicked: panel.plugin.abrirConCeremonia(cofre.index)
                 }
+            }
+        }
+    }
+
+    // ── ceremonia de apertura, por encima de todo lo demás
+    AperturaCofre {
+        id: ceremonia
+        parent: panel
+        anchors.fill: parent
+        z: 20
+        visible: panel.plugin.abriendo !== null
+        tipo: panel.plugin.tipoAbriendo
+        objeto: panel.plugin.abriendo
+        onTerminado: {
+            panel.ultimo = panel.plugin.abriendo
+            panel.plugin.abriendo = null
+        }
+
+        // Arranca al anunciarse un cofre y también al montarse: abrir desde
+        // fuera cambia de pestaña, así que la señal salta antes de que exista
+        // este panel y la ceremonia se quedaba congelada en el primer cuadro.
+        Component.onCompleted: if (panel.plugin && panel.plugin.abriendo) abrir()
+
+        Connections {
+            target: panel.plugin
+            function onAbriendoChanged() {
+                if (panel.plugin.abriendo)
+                    ceremonia.abrir()
             }
         }
     }

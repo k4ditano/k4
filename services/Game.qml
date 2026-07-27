@@ -127,6 +127,34 @@ Singleton {
     // ── equipo y bolsa ────────────────────────────────────────────
     // Persisten entre partidas: es lo que hace que la siguiente llegue más
     // lejos. Lo que se pierde al morir es el oro y las mejoras de la partida.
+    // Nivel y experiencia por clase, PERMANENTES: sobreviven a la muerte igual
+    // que el equipo. Si se reiniciaran, farmear no serviría de nada y cada
+    // partida acabaría exactamente donde la anterior.
+    property var heroes: ({})           // clase → { nivel, exp }
+
+    function datosHeroe(clase) {
+        return heroes[clase] || ({ nivel: 1, exp: 0 })
+    }
+
+    // ── puntos de partida ─────────────────────────────────────────
+    // Cada bioma superado abre un punto donde empezar. Con el grupo ya subido
+    // no tiene sentido rehacer ochenta oleadas que ya no ofrecen nada.
+    property int inicioElegido: 1
+
+    readonly property var iniciosDisponibles: {
+        const lista = [1]
+        for (let i = 1; i * oleadasPorBioma <= mejorOleada; ++i)
+            lista.push(i * oleadasPorBioma + 1)
+        return lista
+    }
+
+    function elegirInicio(oleadaInicio) {
+        if (iniciosDisponibles.indexOf(oleadaInicio) === -1)
+            return
+        inicioElegido = oleadaInicio
+        guardar()
+    }
+
     property var equipo: ({})           // clase → { hueco: objeto }
     property var bolsa: []              // objetos sin equipar
     property var cofresPorTipo: [0, 0, 0]
@@ -212,7 +240,18 @@ Singleton {
             }
         }
 
+        if (subio)
+            anotarHeroes(g)
+
         return subio
+    }
+
+    // Vuelca nivel y experiencia del grupo en curso a lo permanente.
+    function anotarHeroes(g) {
+        const h = Object.assign({}, heroes)
+        for (let i = 0; i < g.length; ++i)
+            h[g[i].clase] = { nivel: g[i].nivel, exp: g[i].exp }
+        heroes = h
     }
 
     function darExperiencia(cantidad) {
@@ -443,7 +482,8 @@ Singleton {
     // ── ciclo de partida ──────────────────────────────────────────
     function nuevaPartida() {
         relevoEn = 0
-        oleada = 1
+        oleada = Math.max(1, Math.min(inicioElegido,
+            iniciosDisponibles[iniciosDisponibles.length - 1]))
         oro = 0
         comprados = [0, 0, 0]
         oleadasDesdeCofre = 0
@@ -456,11 +496,13 @@ Singleton {
             for (let h = 0; h < c.habilidades.length; ++h)
                 recargas[c.habilidades[h].id] = c.habilidades[h].recarga
 
+            const guardado = datosHeroe(c.id)
+
             g.push({
                 clase: c.id,
                 vida: 0,
-                nivel: 1,
-                exp: 0,
+                nivel: guardado.nivel || 1,
+                exp: guardado.exp || 0,
                 escudo: 0,              // absorbe antes que la vida
                 recargas: recargas,
                 provocando: 0,
@@ -614,8 +656,13 @@ Singleton {
             if (g[blanco].invulnerable > 0)
                 continue
 
-            const armadura = statsDe(g[blanco]).armadura + (g[blanco].provocando > 0 ? 8 : 0)
-            let recibido = Math.max(1, e[j].daño * delta - armadura * delta)
+            // La armadura reduce un porcentaje, no resta una cantidad fija.
+            // Restando, seis de armadura contra enemigos de tres dejaba las
+            // primeras veinte oleadas en cero daño: sin tensión y con la
+            // pantalla llena de "-0".
+            const armadura = statsDe(g[blanco]).armadura + (g[blanco].provocando > 0 ? 12 : 0)
+            const reduccion = 100 / (100 + armadura * 4)
+            let recibido = e[j].daño * delta * reduccion
 
             // el escudo se lleva el golpe antes que la vida
             if (g[blanco].escudo > 0) {
@@ -879,6 +926,7 @@ Singleton {
             finalizada: finalizada, relevoEn: relevoEn,
             cofresPorTipo: cofresPorTipo, reliquias: reliquias,
             equipo: equipo, bolsa: bolsa, meta: meta,
+            heroes: heroes, inicioElegido: inicioElegido,
             mejorOleada: mejorOleada, partidas: partidas,
             oleadasDesdeCofre: oleadasDesdeCofre,
             guardadoEn: ahora()
@@ -954,6 +1002,8 @@ Singleton {
             equipo = s.equipo || ({})
             bolsa = s.bolsa || []
             meta = s.meta || ({ vida: 0, daño: 0, fortuna: 0 })
+            heroes = s.heroes || ({})
+            inicioElegido = s.inicioElegido || 1
             mejorOleada = s.mejorOleada || 0
             partidas = s.partidas || 0
             oleadasDesdeCofre = s.oleadasDesdeCofre || 0

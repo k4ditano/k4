@@ -177,6 +177,54 @@ ColumnLayout {
                     Layout.alignment: Qt.AlignHCenter
                 }
 
+                // ── dónde empezar la siguiente
+                RowLayout {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.topMargin: 2
+                    spacing: 5
+                    visible: Game.iniciosDisponibles.length > 1
+
+                    IslandLabel {
+                        text: "empezar en:"
+                        color: Theme.dim
+                        font.pixelSize: 9
+                    }
+
+                    Repeater {
+                        model: Game.iniciosDisponibles
+
+                        delegate: Rectangle {
+                            id: punto
+                            required property var modelData
+                            readonly property bool elegido: Game.inicioElegido === modelData
+
+                            Layout.preferredWidth: etiquetaPunto.implicitWidth + 14
+                            Layout.preferredHeight: 18
+                            radius: 9
+                            color: elegido ? Theme.blue
+                                : (puntoMouse.containsMouse ? Theme.surfaceHi : Theme.surface)
+
+                            Behavior on color { ColorAnimation { duration: 120 } }
+
+                            IslandLabel {
+                                id: etiquetaPunto
+                                anchors.centerIn: parent
+                                text: punto.modelData
+                                font.pixelSize: 9
+                                font.weight: punto.elegido ? Font.DemiBold : Font.Normal
+                            }
+
+                            MouseArea {
+                                id: puntoMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: Game.elegirInicio(punto.modelData)
+                            }
+                        }
+                    }
+                }
+
                 IslandLabel {
                     visible: Game.relevoRestante > 0
                     text: "siguiente partida en " + Game.relevoRestante + " s"

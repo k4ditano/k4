@@ -19,7 +19,11 @@ RowLayout {
             required property var modelData
 
             readonly property var puesto: Game.equipo[modelData.id] || ({})
-            readonly property var stats: Game.statsDe({ clase: modelData.id })
+            readonly property var permanente: Game.datosHeroe(modelData.id)
+            readonly property var stats: Game.statsDe({
+                clase: modelData.id, nivel: permanente.nivel
+            })
+            readonly property var siguiente: Game.proximaHabilidad(modelData.id, permanente.nivel)
 
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -55,13 +59,41 @@ RowLayout {
                             font.weight: Font.DemiBold
                         }
 
-                        IslandLabel {
-                            text: tarjeta.modelData.papel
-                            color: Theme.muted
-                            font.pixelSize: 9
-                            elide: Text.ElideRight
+                        RowLayout {
                             Layout.fillWidth: true
+                            spacing: 5
+
+                            IslandLabel {
+                                text: "nv " + tarjeta.permanente.nivel
+                                color: "#c78fff"
+                                font.pixelSize: 10
+                                font.weight: Font.DemiBold
+                            }
+
+                            IslandLabel {
+                                text: tarjeta.modelData.papel
+                                color: Theme.muted
+                                font.pixelSize: 9
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
                         }
+                    }
+                }
+
+                // ── experiencia hacia el siguiente nivel
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 3
+                    radius: 1.5
+                    color: Theme.islandBg
+
+                    Rectangle {
+                        width: parent.width * Math.min(1, tarjeta.permanente.exp
+                            / Math.max(1, Game.expParaNivel(tarjeta.permanente.nivel)))
+                        height: parent.height
+                        radius: parent.radius
+                        color: "#c78fff"
                     }
                 }
 
@@ -103,6 +135,48 @@ RowLayout {
                             }
                         }
                     }
+                }
+
+                // ── habilidades: las que sabe y la que viene
+                Repeater {
+                    model: tarjeta.modelData.habilidades
+
+                    delegate: RowLayout {
+                        id: hab
+                        required property var modelData
+                        readonly property bool sabida: tarjeta.permanente.nivel >= modelData.nivel
+
+                        Layout.fillWidth: true
+                        spacing: 6
+                        opacity: hab.sabida ? 1 : 0.4
+
+                        IconGlyph {
+                            text: String.fromCodePoint(hab.modelData.glifo)
+                            color: hab.sabida ? "#ffd60a" : Theme.dim
+                            font.pixelSize: 11
+                            Layout.preferredWidth: 14
+                        }
+
+                        IslandLabel {
+                            text: hab.modelData.nombre
+                            font.pixelSize: 10
+                            font.weight: hab.sabida ? Font.DemiBold : Font.Normal
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+
+                        IslandLabel {
+                            text: hab.sabida ? "" : "nv " + hab.modelData.nivel
+                            color: Theme.dim
+                            font.pixelSize: 9
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 1
+                    color: Theme.surfaceHi
                 }
 
                 // ── los cuatro huecos

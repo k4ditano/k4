@@ -20,6 +20,22 @@ K4Plugin {
     property bool open: false
     property string pestaña: "lucha"
 
+    // Cofre en plena ceremonia de apertura. Vive aquí y no en el panel para
+    // que se pueda disparar desde fuera —y para que no se pierda al cambiar
+    // de pestaña a media animación.
+    property var abriendo: null
+    property int tipoAbriendo: 0
+
+    function abrirConCeremonia(tipo) {
+        const salio = Game.abrirCofre(tipo)
+        if (!salio)
+            return
+        tipoAbriendo = tipo
+        abriendo = salio
+        pestaña = "bolsa"
+        open = true
+    }
+
     // lo aparta al abrirse; lo inyecta el host
     property var panel: null
 
@@ -51,7 +67,7 @@ K4Plugin {
         function nueva(): void { Game.nuevaPartida() }
         function pausa(): void { Game.pausada = !Game.pausada }
         function ver(cual: string): void { self.pestaña = cual; self.open = true }
-        function cofre(tipo: int): void { Game.abrirCofre(tipo) }
+        function cofre(tipo: int): void { self.abrirConCeremonia(tipo) }
         function habilidad(indice: int, id: string): void { Game.lanzar(indice, id) }
 
         // Para afinar el balance sin pasarse horas clicando: adelanta el reloj

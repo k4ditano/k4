@@ -167,6 +167,6 @@ FadeIn {
 
     Component { id: panelLucha; PanelLucha {} }
     Component { id: panelGrupo; PanelGrupo {} }
-    Component { id: panelBolsa; PanelBolsa {} }
+    Component { id: panelBolsa; PanelBolsa { plugin: view.plugin } }
     Component { id: panelAltar; PanelAltar {} }
 }
