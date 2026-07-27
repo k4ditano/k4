@@ -207,12 +207,50 @@ FadeIn {
         }
 
         // ── quién se lo come ──────────────────────────────────────
-        IslandLabel {
-            text: "Lo que más consume"
-            color: Theme.muted
-            font.pixelSize: 10
-            font.weight: Font.DemiBold
+        //  Los márgenes y anchos son los mismos que los de las filas: si no
+        //  cuadran al píxel, un rótulo de columna desalineado confunde más que
+        //  no ponerlo.
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin: 9
+            Layout.rightMargin: 6
             Layout.topMargin: 2
+            spacing: 8
+
+            IslandLabel {
+                text: "Lo que más consume"
+                color: Theme.muted
+                font.pixelSize: 10
+                font.weight: Font.DemiBold
+                Layout.fillWidth: true
+            }
+
+            IslandLabel {
+                text: "PID"
+                color: Theme.dim
+                font.pixelSize: 9
+                Layout.preferredWidth: 54
+                horizontalAlignment: Text.AlignRight
+            }
+
+            IslandLabel {
+                text: "CPU"
+                color: Theme.dim
+                font.pixelSize: 9
+                Layout.preferredWidth: 44
+                horizontalAlignment: Text.AlignRight
+            }
+
+            IslandLabel {
+                text: "Memoria"
+                color: Theme.dim
+                font.pixelSize: 9
+                Layout.preferredWidth: 58
+                horizontalAlignment: Text.AlignRight
+            }
+
+            // el hueco del botón de matar, que en las filas siempre ocupa
+            Item { Layout.preferredWidth: 28 }
         }
 
         ListView {
@@ -251,6 +289,8 @@ FadeIn {
                         text: fila.modelData.pid
                         color: Theme.dim
                         font.pixelSize: 9
+                        Layout.preferredWidth: 54
+                        horizontalAlignment: Text.AlignRight
                     }
 
                     IslandLabel {
