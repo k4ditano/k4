@@ -24,7 +24,7 @@ K4Plugin {
     islandWidth: 560
     // Sube al entrar la zona peligrosa: con 320 el bloque de reinicio quedaba
     // fuera, que en un botón destructivo es peor que no tenerlo.
-    islandHeight: 400
+    islandHeight: 410
 
     handlesBackgroundTap: true
     onBackgroundTapped: {}

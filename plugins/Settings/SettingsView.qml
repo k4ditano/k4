@@ -26,7 +26,9 @@ FadeIn {
         anchors.leftMargin: 18
         anchors.rightMargin: 18
         anchors.topMargin: 12
-        anchors.bottomMargin: 14
+        // Más margen abajo que arriba: la fila de herramientas es lo último
+        // y con 14 quedaba pegada al borde.
+        anchors.bottomMargin: 22
         spacing: 10
 
         // ── cabecera
@@ -153,8 +155,10 @@ FadeIn {
             }
         }
 
-        Item { Layout.fillHeight: true }
-
+        // Sin espaciador flexible: se quedaba todo el hueco sobrante en un
+        // solo sitio —justo encima de la zona peligrosa— y ahí cantaba. Sin
+        // él, los bloques van a distancia pareja y lo que sobra queda abajo,
+        // que es donde no molesta.
         // ── zona peligrosa
         //
         //  Va en dos tiempos a propósito: el primer toque arma y el segundo
