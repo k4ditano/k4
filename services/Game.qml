@@ -373,6 +373,276 @@ Singleton {
                   desc: "Detiene y castiga a la oleada", recarga: 48, glifo: 0xF04AB,
                   efecto: "aturdir", potencia: 4 }
             ]
+        },
+
+        // ── los doce que faltaban ─────────────────────────────────
+        //  Había veinte sprites de héroe en assets y solo ocho clases: doce
+        //  personajes dibujados y sin usar. Cada uno estrena papel propio, que
+        //  es lo único que justifica una clase nueva; repetir «pega fuerte» con
+        //  otro dibujo no aporta nada.
+        {
+            id: "monje", nombre: "Monje", sprite: "h07",
+            vida: 175, daño: 13, armadura: 3, papel: "Encadena golpes",
+            ataque: "Palma de hierro", glifo: 0xF0498,
+            visual: { forma: "tajo", color: "#ff9f0a" },
+            reto: { tipo: "nivel", meta: 25 },
+            porNivel: { vida: 0.075, daño: 0.135, armadura: 0.25 },
+            habilidades: [
+                { nivel: 1, id: "rafaga", nombre: "Ráfaga",
+                  desc: "Golpes que saltan de uno a otro", recarga: 14, glifo: 0xF0498,
+                  efecto: "cadena", potencia: 2.2 },
+                { nivel: 7, id: "palmaAturde", nombre: "Palma quebrantahuesos",
+                  desc: "Deja quieta a la oleada", recarga: 30, glifo: 0xF04AB,
+                  efecto: "aturdir", potencia: 3 },
+                { nivel: 15, id: "meditar", nombre: "Meditación",
+                  desc: "Se recompone poco a poco", recarga: 26, glifo: 0xF05E1,
+                  efecto: "regenerar", potencia: 8 },
+                { nivel: 24, id: "centella", nombre: "Puño centella",
+                  desc: "Todo el peso en un golpe", recarga: 20, glifo: 0xF0498,
+                  efecto: "golpeUnico", potencia: 11 }
+            ]
+        },
+        {
+            id: "nigromante", nombre: "Nigromante", sprite: "h09",
+            vida: 145, daño: 12, armadura: 0, papel: "Roba vida y pudre",
+            ataque: "Toque marchito", glifo: 0xF0E20,
+            visual: { forma: "proyectil", color: "#8e4ec6" },
+            reto: { tipo: "muertes", meta: 3000 },
+            porNivel: { vida: 0.065, daño: 0.13, armadura: 0.1 },
+            habilidades: [
+                { nivel: 1, id: "sorbo", nombre: "Sorbo de vida",
+                  desc: "Golpea y se cura con ello", recarga: 16, glifo: 0xF0E20,
+                  efecto: "robarVida", potencia: 5 },
+                { nivel: 8, id: "peste", nombre: "Peste",
+                  desc: "Pudre a toda la oleada", recarga: 24, glifo: 0xF058C,
+                  efecto: "veneno", potencia: 7 },
+                { nivel: 16, id: "alzar", nombre: "Alzar a los caídos",
+                  desc: "Devuelve a un compañero", recarga: 70, glifo: 0xF05E1,
+                  efecto: "revivir", potencia: 0.35 },
+                { nivel: 26, id: "cosecha", nombre: "Cosecha",
+                  desc: "Siega a los que peor están", recarga: 26, glifo: 0xF04E5,
+                  efecto: "remate", potencia: 9 }
+            ]
+        },
+        {
+            id: "herrero", nombre: "Herrero rúnico", sprite: "h10",
+            vida: 265, daño: 9, armadura: 8, papel: "Blinda al grupo",
+            ataque: "Martillo rúnico", glifo: 0xF0F1B,
+            visual: { forma: "tajo", color: "#ffd60a" },
+            reto: { tipo: "cofres", meta: 120 },
+            porNivel: { vida: 0.105, daño: 0.08, armadura: 0.7 },
+            habilidades: [
+                { nivel: 1, id: "yunque", nombre: "Yunque",
+                  desc: "Blinda a todo el grupo", recarga: 20, glifo: 0xF0F1B,
+                  efecto: "escudoGrupo", potencia: 0.24 },
+                { nivel: 6, id: "temple", nombre: "Temple",
+                  desc: "Un escudo grueso a quien más falta le hace", recarga: 17, glifo: 0xF0F1B,
+                  efecto: "escudoUno", potencia: 0.5 },
+                { nivel: 14, id: "chispas", nombre: "Lluvia de chispas",
+                  desc: "Castiga a toda la oleada", recarga: 22, glifo: 0xF0241,
+                  efecto: "area", potencia: 3.4 },
+                { nivel: 23, id: "runa", nombre: "Runa de espinas",
+                  desc: "Devuelve lo que le peguen", recarga: 34, glifo: 0xF0BC2,
+                  efecto: "reflejo", potencia: 8 }
+            ]
+        },
+        {
+            id: "espadachin", nombre: "Espadachín", sprite: "h11",
+            vida: 195, daño: 16, armadura: 3, papel: "Duelo y desangre",
+            ataque: "Estocada", glifo: 0xF0498,
+            visual: { forma: "tajo", color: "#5ac8fa" },
+            reto: { tipo: "oleada", meta: 40 },
+            porNivel: { vida: 0.08, daño: 0.14, armadura: 0.3 },
+            habilidades: [
+                { nivel: 1, id: "sajar", nombre: "Sajar",
+                  desc: "Deja al de delante desangrándose", recarga: 13, glifo: 0xF0498,
+                  efecto: "sangrar", potencia: 6 },
+                { nivel: 9, id: "finta", nombre: "Finta",
+                  desc: "Esquiva todo un momento", recarga: 40, glifo: 0xF0289,
+                  efecto: "invulnerable", potencia: 3 },
+                { nivel: 17, id: "estocadaReal", nombre: "Estocada real",
+                  desc: "Un golpe limpio y enorme", recarga: 19, glifo: 0xF0498,
+                  efecto: "golpeUnico", potencia: 13 },
+                { nivel: 27, id: "danza", nombre: "Danza de aceros",
+                  desc: "Barre a toda la oleada", recarga: 27, glifo: 0xF0F1B,
+                  efecto: "area", potencia: 4.2 }
+            ]
+        },
+        {
+            id: "montaraz", nombre: "Montaraz", sprite: "h12",
+            vida: 160, daño: 15, armadura: 2, papel: "Tiro sostenido",
+            ataque: "Saeta larga", glifo: 0xF0289,
+            visual: { forma: "flecha", color: "#a8d84a" },
+            reto: { tipo: "muertes", meta: 5000 },
+            porNivel: { vida: 0.07, daño: 0.145, armadura: 0.2 },
+            habilidades: [
+                { nivel: 1, id: "andanada", nombre: "Andanada",
+                  desc: "Una lluvia sobre toda la oleada", recarga: 16, glifo: 0xF0289,
+                  efecto: "area", potencia: 3.2 },
+                { nivel: 8, id: "trampa", nombre: "Trampa de lazo",
+                  desc: "Los deja quietos", recarga: 32, glifo: 0xF04AB,
+                  efecto: "aturdir", potencia: 3 },
+                { nivel: 16, id: "puntaHerbada", nombre: "Punta herbada",
+                  desc: "Veneno en cada punta", recarga: 22, glifo: 0xF058C,
+                  efecto: "veneno", potencia: 6 },
+                { nivel: 25, id: "tiroCerte", nombre: "Tiro certero",
+                  desc: "Al más malherido, y sin fallo", recarga: 18, glifo: 0xF0289,
+                  efecto: "remate", potencia: 10 }
+            ]
+        },
+        {
+            id: "domadora", nombre: "Domadora", sprite: "h13",
+            vida: 205, daño: 12, armadura: 4, papel: "Controla la oleada",
+            ataque: "Latigazo", glifo: 0xF04E5,
+            visual: { forma: "flecha", color: "#ff2d92" },
+            reto: { tipo: "jefes", meta: 50 },
+            porNivel: { vida: 0.085, daño: 0.115, armadura: 0.4 },
+            habilidades: [
+                { nivel: 1, id: "restallar", nombre: "Restallar",
+                  desc: "Los deja quietos de golpe", recarga: 24, glifo: 0xF04AB,
+                  efecto: "aturdir", potencia: 4 },
+                { nivel: 7, id: "reclamo", nombre: "Reclamo",
+                  desc: "Se lleva toda la atención", recarga: 26, glifo: 0xF0849,
+                  efecto: "provocar", potencia: 7 },
+                { nivel: 15, id: "azote", nombre: "Azote en cadena",
+                  desc: "El látigo salta de uno a otro", recarga: 17, glifo: 0xF0241,
+                  efecto: "cadena", potencia: 2.6 },
+                { nivel: 24, id: "correa", nombre: "Correa corta",
+                  desc: "Escudo mientras aguanta el tirón", recarga: 30, glifo: 0xF0BC2,
+                  efecto: "escudoUno", potencia: 0.42 }
+            ]
+        },
+        {
+            id: "cazadora", nombre: "Cazadora", sprite: "h14",
+            vida: 165, daño: 16, armadura: 1, papel: "Remata heridos",
+            ataque: "Venablo", glifo: 0xF0289,
+            visual: { forma: "flecha", color: "#64d2ff" },
+            reto: { tipo: "oleada", meta: 60 },
+            porNivel: { vida: 0.07, daño: 0.15, armadura: 0.15 },
+            habilidades: [
+                { nivel: 1, id: "rastro", nombre: "Rastro de sangre",
+                  desc: "Desangra al de delante", recarga: 14, glifo: 0xF0289,
+                  efecto: "sangrar", potencia: 5 },
+                { nivel: 9, id: "cepo", nombre: "Cepo",
+                  desc: "Detiene a la oleada entera", recarga: 34, glifo: 0xF04AB,
+                  efecto: "aturdir", potencia: 3 },
+                { nivel: 18, id: "estocadaFinal", nombre: "Golpe de gracia",
+                  desc: "Se ceba en el más malherido", recarga: 16, glifo: 0xF04E5,
+                  efecto: "remate", potencia: 12 },
+                { nivel: 28, id: "jauria", nombre: "Jauría",
+                  desc: "Todo cae sobre la oleada", recarga: 26, glifo: 0xF0F1B,
+                  efecto: "area", potencia: 4.4 }
+            ]
+        },
+        {
+            id: "corsario", nombre: "Corsario", sprite: "h15",
+            vida: 185, daño: 15, armadura: 2, papel: "Saquea y aguanta",
+            ataque: "Sable", glifo: 0xF0498,
+            visual: { forma: "tajo", color: "#ff9f0a" },
+            reto: { tipo: "cofres", meta: 250 },
+            porNivel: { vida: 0.08, daño: 0.135, armadura: 0.25 },
+            habilidades: [
+                { nivel: 1, id: "abordaje", nombre: "Abordaje",
+                  desc: "Se lanza y se lleva parte", recarga: 15, glifo: 0xF0498,
+                  efecto: "robarVida", potencia: 4.5 },
+                { nivel: 8, id: "botin", nombre: "Reparto del botín",
+                  desc: "Cura a toda la tripulación", recarga: 28, glifo: 0xF05E1,
+                  efecto: "curaGrupo", potencia: 0.26 },
+                { nivel: 17, id: "metralla", nombre: "Metralla",
+                  desc: "Barre la cubierta entera", recarga: 21, glifo: 0xF0241,
+                  efecto: "area", potencia: 3.6 },
+                { nivel: 26, id: "bravata", nombre: "Bravata",
+                  desc: "Todos van a por él, y aguanta", recarga: 30, glifo: 0xF0849,
+                  efecto: "provocar", potencia: 8 }
+            ]
+        },
+        {
+            id: "brujoSangre", nombre: "Brujo de sangre", sprite: "h16",
+            vida: 150, daño: 18, armadura: 0, papel: "Pega fuerte y se sirve",
+            ataque: "Zarpa carmesí", glifo: 0xF0E20,
+            visual: { forma: "proyectil", color: "#ff375f" },
+            reto: { tipo: "nivel", meta: 90 },
+            porNivel: { vida: 0.06, daño: 0.16, armadura: 0.1 },
+            habilidades: [
+                { nivel: 1, id: "sangria", nombre: "Sangría",
+                  desc: "Le arranca la vida y se la queda", recarga: 14, glifo: 0xF0E20,
+                  efecto: "robarVida", potencia: 6.5 },
+                { nivel: 10, id: "hemorragia", nombre: "Hemorragia",
+                  desc: "El de delante se desangra a chorros", recarga: 18, glifo: 0xF058C,
+                  efecto: "sangrar", potencia: 9 },
+                { nivel: 19, id: "ofrenda", nombre: "Ofrenda",
+                  desc: "Cura al grupo con lo robado", recarga: 32, glifo: 0xF05E1,
+                  efecto: "curaGrupo", potencia: 0.3 },
+                { nivel: 30, id: "carniceria", nombre: "Carnicería",
+                  desc: "Estalla sobre toda la oleada", recarga: 25, glifo: 0xF0241,
+                  efecto: "area", potencia: 5 }
+            ]
+        },
+        {
+            id: "licantropo", nombre: "Licántropo", sprite: "h17",
+            vida: 230, daño: 17, armadura: 3, papel: "Se crece herido",
+            ataque: "Dentellada", glifo: 0xF04E5,
+            visual: { forma: "tajo", color: "#c7c7cc" },
+            reto: { tipo: "muertes", meta: 12000 },
+            porNivel: { vida: 0.095, daño: 0.145, armadura: 0.3 },
+            habilidades: [
+                { nivel: 1, id: "desgarro", nombre: "Desgarro",
+                  desc: "Deja una herida que no cierra", recarga: 12, glifo: 0xF04E5,
+                  efecto: "sangrar", potencia: 7 },
+                { nivel: 9, id: "sedSangre", nombre: "Sed de sangre",
+                  desc: "Muerde y se alimenta", recarga: 16, glifo: 0xF04E5,
+                  efecto: "robarVida", potencia: 5.5 },
+                { nivel: 18, id: "pelaje", nombre: "Pelaje hirsuto",
+                  desc: "Se recompone solo", recarga: 24, glifo: 0xF05E1,
+                  efecto: "regenerar", potencia: 10 },
+                { nivel: 29, id: "luna", nombre: "Llamada de la luna",
+                  desc: "Arrasa con todo lo que tenga delante", recarga: 28, glifo: 0xF0F1B,
+                  efecto: "area", potencia: 4.8 }
+            ]
+        },
+        {
+            id: "caballeroNegro", nombre: "Caballero negro", sprite: "h18",
+            vida: 300, daño: 11, armadura: 9, papel: "Castiga al que le pega",
+            ataque: "Mandoble negro", glifo: 0xF0498,
+            visual: { forma: "tajo", color: "#8e8e93" },
+            reto: { tipo: "jefes", meta: 120 },
+            porNivel: { vida: 0.115, daño: 0.085, armadura: 0.75 },
+            habilidades: [
+                { nivel: 1, id: "afrenta", nombre: "Afrenta",
+                  desc: "Los obliga a ir a por él", recarga: 20, glifo: 0xF0849,
+                  efecto: "provocar", potencia: 8 },
+                { nivel: 7, id: "espinas", nombre: "Armadura de espinas",
+                  desc: "Les devuelve cada golpe", recarga: 30, glifo: 0xF0BC2,
+                  efecto: "reflejo", potencia: 9 },
+                { nivel: 16, id: "juramento", nombre: "Juramento oscuro",
+                  desc: "Nada le toca un instante", recarga: 46, glifo: 0xF0004,
+                  efecto: "invulnerable", potencia: 4 },
+                { nivel: 25, id: "sentencia", nombre: "Sentencia",
+                  desc: "Un tajo que parte en dos", recarga: 22, glifo: 0xF0498,
+                  efecto: "golpeUnico", potencia: 12 }
+            ]
+        },
+        {
+            id: "lancero", nombre: "Lancero carmesí", sprite: "h19",
+            vida: 215, daño: 14, armadura: 5, papel: "Alcanza a toda la fila",
+            ataque: "Lanzada", glifo: 0xF0F1B,
+            visual: { forma: "flecha", color: "#ff453a" },
+            reto: { tipo: "oleada", meta: 100 },
+            porNivel: { vida: 0.09, daño: 0.125, armadura: 0.45 },
+            habilidades: [
+                { nivel: 1, id: "barrido", nombre: "Barrido",
+                  desc: "Alcanza a toda la fila de un golpe", recarga: 15, glifo: 0xF0F1B,
+                  efecto: "area", potencia: 3.4 },
+                { nivel: 8, id: "empalar", nombre: "Empalar",
+                  desc: "Lo atraviesa y lo deja sangrando", recarga: 17, glifo: 0xF0498,
+                  efecto: "sangrar", potencia: 7 },
+                { nivel: 17, id: "muralla", nombre: "Muralla de astas",
+                  desc: "Cubre al grupo tras las lanzas", recarga: 26, glifo: 0xF0BC2,
+                  efecto: "escudoGrupo", potencia: 0.22 },
+                { nivel: 27, id: "carga", nombre: "Carga carmesí",
+                  desc: "Se lleva por delante al primero", recarga: 20, glifo: 0xF0F1B,
+                  efecto: "golpeUnico", potencia: 12 }
+            ]
         }
     ]
 
@@ -1491,6 +1761,29 @@ Singleton {
             for (let j = 0; j < e.length; ++j) {
                 if (e[j].vida > 0) e[j].veneno = st.daño * p / 10
             }
+
+        } else if (hab.efecto === "robarVida") {
+            // pega y se queda con la mitad: da a las clases oscuras una forma
+            // de aguantar que no es ni escudo ni cura del clérigo
+            const quien = primerVivo(e)
+            if (quien >= 0) {
+                const golpe = mermar(e[quien], st.daño * p)
+                e[quien].vida -= golpe
+                impacto(quien, golpe)
+                const roba = golpe * 0.5
+                g[i].vida = Math.min(vidaMaxDe(g[i]), g[i].vida + roba)
+                curado(i, roba)
+                if (e[quien].vida <= 0) {
+                    enemigoMuerto(quien)
+                    aplicarExp(g, Math.ceil(8 * Math.pow(1.11, oleada - 1)))
+                }
+            }
+
+        } else if (hab.efecto === "sangrar") {
+            // como el veneno, pero concentrado en uno y mucho más fuerte
+            const quien = primerVivo(e)
+            if (quien >= 0)
+                e[quien].veneno = Math.max(e[quien].veneno || 0, st.daño * p / 4)
 
         } else if (hab.efecto === "aturdir") {
             for (let j = 0; j < e.length; ++j)

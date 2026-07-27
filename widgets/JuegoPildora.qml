@@ -26,7 +26,7 @@ RowLayout {
     }
 
     IslandLabel {
-        text: Game.oleada
+        text: (Game.pausada ? "⏸ " : "") + Game.oleada
         color: Theme.muted
         font.pixelSize: 11
         font.weight: Font.Medium

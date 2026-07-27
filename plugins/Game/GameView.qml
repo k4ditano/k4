@@ -156,8 +156,11 @@ FadeIn {
                     }
 
                     IslandLabel {
-                        text: Tokens.resto()
-                        color: Tokens.hay ? Theme.ink : Theme.muted
+                        // En pausa el depósito no baja: hay que decirlo, o
+                        // parece que la chispa no se gasta.
+                        text: Game.pausada ? "en pausa" : Tokens.resto()
+                        color: Game.pausada ? "#ffd60a"
+                            : (Tokens.hay ? Theme.ink : Theme.muted)
                         font.pixelSize: 10
                         font.weight: Font.DemiBold
                     }

@@ -83,6 +83,9 @@ Singleton {
             return 0
 
         deposito = Math.max(0, deposito - posibles * chispaPorSegundo)
+        // sin esto lo gastado no se guardaba: solo se escribía el fichero al
+        // entrar tokens nuevos, y al reiniciar volvía el depósito de antes
+        sucio = true
         return posibles
     }
 

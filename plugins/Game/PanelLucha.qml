@@ -109,6 +109,8 @@ ColumnLayout {
         golpeUnico:  { forma: "onda",   sobre: "enemigos" },
         remate:      { forma: "onda",   sobre: "enemigos" },
         veneno:      { forma: "nube",   sobre: "enemigos" },
+        sangrar:     { forma: "nube",   sobre: "enemigos" },
+        robarVida:   { forma: "cadena", sobre: "enemigos" },
         aturdir:     { forma: "cadena", sobre: "enemigos" },
         curaGrupo:   { forma: "motas",  sobre: "grupo" },
         regenerar:   { forma: "motas",  sobre: "grupo" },
