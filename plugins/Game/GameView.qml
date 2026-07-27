@@ -115,6 +115,82 @@ FadeIn {
 
             Item { Layout.fillWidth: true }
 
+            // ── depósito de chispa
+            //  Solo en modo vibecoding. El relleno es el depósito y el rayo se
+            //  enciende mientras estás gastando: de un vistazo sabes si el
+            //  grupo pelea con lo que ganas ahora o con lo ahorrado.
+            Rectangle {
+                id: deposito
+                visible: Settings.juegoPorTokens
+                Layout.preferredWidth: chispaFila.implicitWidth + 18
+                Layout.preferredHeight: 18
+                Layout.alignment: Qt.AlignVCenter
+                radius: 9
+                color: Theme.surface
+                clip: true
+
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: parent.width * Tokens.llenado
+                    color: Tokens.activo ? "#3affd60a" : "#1fffd60a"
+
+                    Behavior on width { NumberAnimation { duration: 400 } }
+                    Behavior on color { ColorAnimation { duration: 300 } }
+                }
+
+                RowLayout {
+                    id: chispaFila
+                    anchors.centerIn: parent
+                    spacing: 4
+
+                    IconGlyph {
+                        text: String.fromCodePoint(0xF0241)
+                        color: Tokens.activo ? "#ffd60a" : Theme.dim
+                        font.pixelSize: 11
+                    }
+
+                    IslandLabel {
+                        text: Tokens.resto()
+                        color: Tokens.hay ? Theme.ink : Theme.muted
+                        font.pixelSize: 10
+                        font.weight: Font.DemiBold
+                    }
+                }
+
+                // el ingreso se ve caer: sin esto no hay forma de saber que
+                // lo que acabas de escribir ha entrado
+                IslandLabel {
+                    id: aviso
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.bottom
+                    text: "+" + Tokens.cifra(Tokens.ultimaCantidad) + " " + Tokens.ultimaFuente
+                    color: "#ffd60a"
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
+                    opacity: 0
+
+                    SequentialAnimation {
+                        id: destello
+                        NumberAnimation {
+                            target: aviso; property: "opacity"
+                            to: 1; duration: 140
+                        }
+                        PauseAnimation { duration: 900 }
+                        NumberAnimation {
+                            target: aviso; property: "opacity"
+                            to: 0; duration: 420
+                        }
+                    }
+
+                    Connections {
+                        target: Tokens
+                        function onIngreso() { destello.restart() }
+                    }
+                }
+            }
+
             Repeater {
                 model: [
                     { g: 0xF0114, v: Game.cifra(Game.oro), c: "#ffd60a" },

@@ -20,6 +20,8 @@ Singleton {
     property bool juegoContinuar: true
     // widgets/JuegoPildora.qml: oleada y aviso de cofres en la píldora
     property bool juegoEnPildora: true
+    // services/Game.qml: el combate solo avanza con tokens de IA gastados
+    property bool juegoPorTokens: false
 
     // ── barra ─────────────────────────────────────────────────────
     // widgets/TrayRow.qml: iconos de bandeja en la píldora
@@ -34,7 +36,9 @@ Singleton {
                 { id: "juegoContinuar", nombre: "Continuar sola al morir",
                   desc: "Encadena la siguiente partida tras el resumen", glifo: 0xF04E5 },
                 { id: "juegoEnPildora", nombre: "Mostrar en la píldora",
-                  desc: "Oleada actual y aviso de cofres sin abrir", glifo: 0xF0BC2 }
+                  desc: "Oleada actual y aviso de cofres sin abrir", glifo: 0xF0BC2 },
+                { id: "juegoPorTokens", nombre: "Pelear con tokens",
+                  desc: "Avanza solo mientras gastas en Claude o Codex", glifo: 0xF0241 }
             ]
         },
         {
@@ -63,6 +67,7 @@ Singleton {
         vista.setText(JSON.stringify({
             juegoContinuar: juegoContinuar,
             juegoEnPildora: juegoEnPildora,
+            juegoPorTokens: juegoPorTokens,
             bandejaEnPildora: bandejaEnPildora,
             notificacionesAlPasar: notificacionesAlPasar
         }, null, 1))
@@ -86,6 +91,7 @@ Singleton {
                 const s = JSON.parse(bruto)
                 if (s.juegoContinuar !== undefined) juegoContinuar = s.juegoContinuar
                 if (s.juegoEnPildora !== undefined) juegoEnPildora = s.juegoEnPildora
+                if (s.juegoPorTokens !== undefined) juegoPorTokens = s.juegoPorTokens
                 if (s.bandejaEnPildora !== undefined) bandejaEnPildora = s.bandejaEnPildora
                 if (s.notificacionesAlPasar !== undefined)
                     notificacionesAlPasar = s.notificacionesAlPasar

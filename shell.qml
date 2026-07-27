@@ -108,6 +108,7 @@ Scope {
         void Tray.count
         void Game.cargado
         void Settings.cargado
+        void Tokens.cargado
     }
 
     // ── IPC ───────────────────────────────────────────────────────

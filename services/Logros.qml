@@ -71,7 +71,28 @@ Singleton {
         { id: "chatarrero2", nombre: "Chatarrero II", desc: "Desguaza 300 piezas",
           tipo: "desguaces", meta: 300, reliquias: 200, cofre: -1 },
         { id: "chatarrero3", nombre: "Chatarrero III", desc: "Desguaza 1200 piezas",
-          tipo: "desguaces", meta: 1200, reliquias: 900, cofre: -1 }
+          tipo: "desguaces", meta: 1200, reliquias: 900, cofre: -1 },
+
+        // Los del modo vibecoding: no se consiguen jugando, sino trabajando.
+        // Cuentan tokens crudos de todo tu historial, no la chispa del juego.
+        { id: "vibecoder1", nombre: "Vibecoder I", desc: "Gasta 10M de tokens en IA",
+          tipo: "tokens", meta: 10e6, reliquias: 120, cofre: -1 },
+        { id: "vibecoder2", nombre: "Vibecoder II", desc: "Gasta 100M de tokens en IA",
+          tipo: "tokens", meta: 100e6, reliquias: 500, cofre: 0 },
+        { id: "vibecoder3", nombre: "Vibecoder III", desc: "Gasta 500M de tokens en IA",
+          tipo: "tokens", meta: 500e6, reliquias: 1800, cofre: 1 },
+        { id: "vibecoder4", nombre: "Vibecoder IV", desc: "Gasta 2B de tokens en IA",
+          tipo: "tokens", meta: 2e9, reliquias: 6000, cofre: 1 },
+        { id: "vibecoder5", nombre: "Vibecoder V", desc: "Gasta 10B de tokens en IA",
+          tipo: "tokens", meta: 10e9, reliquias: 20000, cofre: 2 },
+        { id: "constante1", nombre: "Constante I", desc: "3 dias seguidos gastando tokens",
+          tipo: "racha", meta: 3, reliquias: 80, cofre: -1 },
+        { id: "constante2", nombre: "Constante II", desc: "7 dias seguidos gastando tokens",
+          tipo: "racha", meta: 7, reliquias: 300, cofre: 0 },
+        { id: "constante3", nombre: "Constante III", desc: "30 dias seguidos gastando tokens",
+          tipo: "racha", meta: 30, reliquias: 2000, cofre: 1 },
+        { id: "constante4", nombre: "Constante IV", desc: "100 dias seguidos gastando tokens",
+          tipo: "racha", meta: 100, reliquias: 9000, cofre: 2 }
     ]
 
     function progresoDe(l, juego) {
@@ -83,12 +104,18 @@ Singleton {
         if (tipo === "oleada")    return juego.mejorOleada
         if (tipo === "nivel")     return juego.nivelMaximo
         if (tipo === "partidas")  return juego.partidas
+        // Estos dos no los lleva la partida: salen de lo que gastas en IA.
+        if (tipo === "tokens")    return Tokens.totalTokens
+        if (tipo === "racha")     return Tokens.racha
         return juego.cuentas[tipo] || 0
     }
 
     function textoProgreso(l, juego) {
         const cuanto = Math.min(valorDe(l.tipo, juego), l.meta)
-        return cuanto + " / " + l.meta
+        // 487M / 500M se lee de un vistazo; 487201712 / 500000000 no.
+        return l.meta >= 1e5
+            ? Tokens.cifra(cuanto) + " / " + Tokens.cifra(l.meta)
+            : cuanto + " / " + l.meta
     }
 
     // Cuántos quedan por delante: da la medida de lo que falta de un vistazo.

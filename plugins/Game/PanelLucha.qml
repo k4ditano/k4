@@ -261,6 +261,51 @@ ColumnLayout {
                 }
             }
         }
+
+        // ── depósito vacío
+        //  En modo vibecoding esto no es un error, es la mecánica: el grupo
+        //  espera a que vuelvas a picar. Conviene que se entienda a la
+        //  primera, así que se dice qué falta y no solo que está parado.
+        Rectangle {
+            anchors.fill: parent
+            color: "#d9000000"
+            visible: Settings.juegoPorTokens && !Tokens.hay
+                && Game.viva && !Game.pausada
+
+            ColumnLayout {
+                anchors.centerIn: parent
+                spacing: 3
+
+                IconGlyph {
+                    text: String.fromCodePoint(0xF0241)
+                    color: Theme.dim
+                    font.pixelSize: 22
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
+                IslandLabel {
+                    text: "El grupo espera"
+                    font.pixelSize: 13
+                    font.weight: Font.DemiBold
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
+                IslandLabel {
+                    text: "gasta tokens en Claude o Codex y seguirán peleando"
+                    color: Theme.muted
+                    font.pixelSize: 10
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
+                IslandLabel {
+                    visible: Tokens.totalChispa > 0
+                    text: Tokens.cifra(Tokens.totalChispa) + " de chispa quemada en total"
+                    color: Theme.dim
+                    font.pixelSize: 9
+                    Layout.alignment: Qt.AlignHCenter
+                }
+            }
+        }
     }
 
     // ── tienda de cofres ──────────────────────────────────────────

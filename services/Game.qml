@@ -1158,12 +1158,20 @@ Singleton {
     Timer {
         interval: game.tickMs
         repeat: true
+        // En modo vibecoding hace falta chispa en el depósito: sin gasto de
+        // tokens el grupo se queda quieto, que es toda la gracia.
         running: game.cargado && game.viva && !game.pausada
+            && (!Settings.juegoPorTokens || Tokens.hay)
         onTriggered: {
             const t = game.ahora()
-            const delta = Math.max(0, Math.min(5, t - game.ultimoTick))
+            let delta = Math.max(0, Math.min(5, t - game.ultimoTick))
             game.ultimoTick = t
-            game.tic(delta)
+
+            if (Settings.juegoPorTokens)
+                delta = Tokens.gastar(delta)
+
+            if (delta > 0)
+                game.tic(delta)
         }
     }
 
@@ -1172,6 +1180,17 @@ Singleton {
         repeat: true
         running: game.cargado
         onTriggered: game.guardar()
+    }
+
+    // Los logros de vibecoding se ganan trabajando, no peleando: si solo se
+    // revisaran en el tic del combate, con el deposito vacio se quedarian sin
+    // cobrar justo cuando te los acabas de ganar.
+    Connections {
+        target: Tokens
+        function onIngreso() {
+            if (game.cargado)
+                game.revisarLogros()
+        }
     }
 
     // Reloj del relevo: el del combate se detiene al morir el grupo, así que

@@ -44,6 +44,112 @@ ColumnLayout {
         }
     }
 
+    // ── tu marca de vibecoding ────────────────────────────────────
+    //  El histórico se lleva siempre, se juegue o no con tokens: es la cifra
+    //  que uno enseña. Sale de todo lo que Claude y Codex han dejado escrito
+    //  en disco, no solo de lo gastado desde que existe este modo.
+    Rectangle {
+        id: marca
+        Layout.fillWidth: true
+        Layout.fillHeight: false
+        Layout.preferredHeight: 50
+        radius: 10
+        color: Theme.surface
+        visible: Tokens.totalTokens > 0
+
+        readonly property var dias: Tokens.ultimosDias(14)
+        readonly property real techo: {
+            let m = 1
+            for (let i = 0; i < marca.dias.length; ++i)
+                m = Math.max(m, marca.dias[i].tokens)
+            return m
+        }
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 11
+            anchors.rightMargin: 11
+            spacing: 10
+
+            ColumnLayout {
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 1
+
+                RowLayout {
+                    spacing: 5
+
+                    IconGlyph {
+                        text: String.fromCodePoint(0xF0241)
+                        color: "#ffd60a"
+                        font.pixelSize: 14
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    IslandLabel {
+                        text: Tokens.cifra(Tokens.totalTokens)
+                        font.pixelSize: 17
+                        font.weight: Font.DemiBold
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    IslandLabel {
+                        text: "tokens en IA"
+                        color: Theme.muted
+                        font.pixelSize: 10
+                        Layout.alignment: Qt.AlignBottom
+                        Layout.bottomMargin: 2
+                    }
+                }
+
+                IslandLabel {
+                    text: {
+                        const p = ["hoy " + Tokens.cifra(Tokens.tokensHoy)]
+                        if (Tokens.racha > 0)
+                            p.push("racha de " + Tokens.racha
+                                + (Tokens.racha === 1 ? " día" : " días"))
+                        for (const n in Tokens.porFuente)
+                            p.push(n + " " + Tokens.cifra(Tokens.porFuente[n].tokens))
+                        return p.join(" · ")
+                    }
+                    color: Theme.dim
+                    font.pixelSize: 9
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+
+            // catorce días: la constancia se ve mejor dibujada que contada
+            RowLayout {
+                Layout.alignment: Qt.AlignVCenter
+                Layout.preferredHeight: 30
+                spacing: 3
+
+                Repeater {
+                    model: 14
+
+                    delegate: Item {
+                        id: barra
+                        required property int index
+                        readonly property var dato: marca.dias[index]
+
+                        Layout.preferredWidth: 6
+                        Layout.preferredHeight: 30
+
+                        Rectangle {
+                            anchors.bottom: parent.bottom
+                            width: parent.width
+                            height: Math.max(2, parent.height
+                                * (barra.dato ? barra.dato.tokens : 0) / marca.techo)
+                            radius: 3
+                            color: barra.dato && barra.dato.dia === Tokens.hoy
+                                ? "#ffd60a" : Theme.surfaceHi
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     ListView {
         Layout.fillWidth: true
         Layout.fillHeight: true
