@@ -15,14 +15,9 @@ Item {
     property real avance: 0            // píxeles recorridos en total
     property bool caminando: false
 
-    // Deriva lenta en reposo, para que la escena nunca esté del todo quieta.
-    NumberAnimation on avance {
-        running: !escenario.caminando
-        loops: Animation.Infinite
-        from: escenario.avance
-        to: escenario.avance + 10000
-        duration: 500000               // ~50 s por cada 1000 px
-    }
+    // Nada de deriva en reposo: mientras se pelea el escenario está quieto y
+    // solo se mueve al pasar de oleada. Un fondo que nunca para distrae de lo
+    // que sí importa, que es el combate.
 
     function caminar() {
         caminando = true

@@ -96,11 +96,14 @@ ColumnLayout {
                     colorVida: Theme.green
                     mirandoDerecha: true
 
-                    recarga: Game.claseDe(datos.clase).recarga
-                    recargaRestante: datos.recargaRestante
-                    glifoHabilidad: Game.claseDe(datos.clase).glifo
-                    pulsable: Game.habilidadLista(index)
-                    onLanzar: Game.lanzar(index)
+                    nivel: datos.nivel || 1
+                    exp: datos.exp || 0
+                    expNecesaria: Game.expParaNivel(datos.nivel || 1)
+                    escudo: datos.escudo || 0
+                    habilidades: Game.habilidadesDe(datos)
+                    recargas: datos.recargas || ({})
+                    heroe: index
+                    onLanzar: function (id) { Game.lanzar(index, id) }
                 }
             }
 
@@ -131,7 +134,11 @@ ColumnLayout {
                     mirandoDerecha: false
                     escala: datos.jefe ? 1.15 : 1
 
-                    x: panel.entradaX
+                    // Translate y no `x`: animar la x de un hijo de RowLayout
+                    // pelea con el propio layout, y al acabar la animación los
+                    // enemigos se quedaban clavados en el borde izquierdo,
+                    // encima de los héroes.
+                    transform: Translate { x: panel.entradaX }
                     opacity: panel.entradaOpacidad
                 }
             }
@@ -208,76 +215,68 @@ ColumnLayout {
         }
     }
 
-    // ── tienda de la partida ──────────────────────────────────────
-    Repeater {
-        model: Game.mejorasDef
+    // ── tienda de cofres ──────────────────────────────────────────
+    // El oro ya no sube estadísticas: eso lo hace la experiencia. Aquí se
+    // decide qué botín te llevas, que sí es una decisión.
+    RowLayout {
+        Layout.fillWidth: true
+        Layout.fillHeight: false
+        Layout.preferredHeight: 38
+        spacing: 8
 
-        delegate: Rectangle {
-            id: fila
-            required property var modelData
-            readonly property bool asequible: Game.viva && Game.puedePagar(modelData.id)
+        Repeater {
+            model: Game.tiendaDef
 
-            Layout.fillWidth: true
-            Layout.preferredHeight: 28
-            radius: 8
-            color: compraMouse.containsMouse && asequible ? Theme.surfaceHi : Theme.surface
-            border.width: asequible ? 1 : 0
-            border.color: Theme.green
+            delegate: IslandTile {
+                id: oferta
+                required property var modelData
+                readonly property int precio: Game.costeCofre(modelData.tipo)
+                readonly property bool asequible: Game.oro >= precio
 
-            Behavior on color { ColorAnimation { duration: 120 } }
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                radius: 10
+                activa: asequible
+                colorActiva: Theme.surface
+                onPulsada: Game.comprarCofre(oferta.modelData.tipo)
 
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 10
-                anchors.rightMargin: 10
-                spacing: 8
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 10
+                    anchors.rightMargin: 10
+                    spacing: 7
 
-                IconGlyph {
-                    text: String.fromCodePoint(fila.modelData.glifo)
-                    color: fila.asequible ? Theme.ink : Theme.dim
-                    font.pixelSize: 13
-                    Layout.preferredWidth: 16
-                    Layout.alignment: Qt.AlignVCenter
+                    IconGlyph {
+                        text: String.fromCodePoint(oferta.modelData.glifo)
+                        color: oferta.asequible ? Theme.ink : Theme.dim
+                        font.pixelSize: 14
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    IslandLabel {
+                        text: oferta.modelData.nombre
+                        color: oferta.asequible ? Theme.ink : Theme.dim
+                        font.pixelSize: 10
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    IconGlyph {
+                        text: String.fromCodePoint(0xF0114)
+                        color: oferta.asequible ? "#ffd60a" : Theme.dim
+                        font.pixelSize: 10
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    IslandLabel {
+                        text: Game.cifra(oferta.precio)
+                        color: oferta.asequible ? "#ffd60a" : Theme.dim
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                        Layout.alignment: Qt.AlignVCenter
+                    }
                 }
-
-                IslandLabel {
-                    text: fila.modelData.nombre
-                    font.pixelSize: 11
-                    font.weight: Font.DemiBold
-                    Layout.alignment: Qt.AlignVCenter
-                }
-
-                IslandLabel {
-                    text: "nv " + Game.niveles[fila.modelData.id]
-                    color: Theme.dim
-                    font.pixelSize: 9
-                    Layout.alignment: Qt.AlignVCenter
-                }
-
-                IslandLabel {
-                    text: fila.modelData.desc
-                    color: Theme.muted
-                    font.pixelSize: 9
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignVCenter
-                }
-
-                IslandLabel {
-                    text: Game.cifra(Game.coste(fila.modelData.id))
-                    color: fila.asequible ? "#ffd60a" : Theme.dim
-                    font.pixelSize: 11
-                    font.weight: Font.DemiBold
-                    Layout.alignment: Qt.AlignVCenter
-                }
-            }
-
-            MouseArea {
-                id: compraMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: fila.asequible ? Qt.PointingHandCursor : Qt.ArrowCursor
-                onClicked: Game.comprar(fila.modelData.id)
             }
         }
     }

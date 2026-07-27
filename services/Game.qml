@@ -48,28 +48,81 @@ Singleton {
         {
             id: "tanque", nombre: "Guardián", sprite: "h00",
             vida: 300, daño: 4, armadura: 6, papel: "Aguanta los golpes",
-            habilidad: "Provocar", habilidadDesc: "Atrae todo y reduce el daño",
-            recarga: 18, glifo: 0xF0498
+            ataque: "Mandoble", glifo: 0xF0498,
+            // Cada nivel sube lo suyo: el guardián gana sobre todo aguante.
+            porNivel: { vida: 0.11, daño: 0.06, armadura: 0.6 },
+            habilidades: [
+                { nivel: 1,  id: "provocar",  nombre: "Provocar",
+                  desc: "Atrae los golpes y reduce el daño 6 s", recarga: 18, glifo: 0xF0498 },
+                { nivel: 5,  id: "muro",      nombre: "Muro de escudos",
+                  desc: "Escudo para todo el grupo", recarga: 26, glifo: 0xF0A38 },
+                { nivel: 12, id: "represalia", nombre: "Represalia",
+                  desc: "Devuelve parte del daño recibido", recarga: 22, glifo: 0xF04E5 },
+                { nivel: 20, id: "bastion",   nombre: "Bastión",
+                  desc: "Inmune unos segundos", recarga: 40, glifo: 0xF0498 }
+            ]
         },
         {
             id: "mago", nombre: "Hechicero", sprite: "h02",
             vida: 130, daño: 12, armadura: 0, papel: "Daño en área",
-            habilidad: "Llamarada", habilidadDesc: "Golpea a toda la oleada",
-            recarga: 14, glifo: 0xF0E20
+            ataque: "Dardo arcano", glifo: 0xF0E20,
+            porNivel: { vida: 0.06, daño: 0.13, armadura: 0.1 },
+            habilidades: [
+                { nivel: 1,  id: "llamarada", nombre: "Llamarada",
+                  desc: "Golpea a toda la oleada", recarga: 14, glifo: 0xF0E20 },
+                { nivel: 6,  id: "cadena",    nombre: "Cadena arcana",
+                  desc: "Rebota entre enemigos, más fuerte cada salto", recarga: 18, glifo: 0xF0593 },
+                { nivel: 14, id: "meteoro",   nombre: "Meteoro",
+                  desc: "Un golpe enorme al más sano", recarga: 30, glifo: 0xF0F1B },
+                { nivel: 22, id: "quietud",   nombre: "Quietud",
+                  desc: "La oleada deja de atacar 5 s", recarga: 45, glifo: 0xF04AB }
+            ]
         },
         {
             id: "clerigo", nombre: "Clériga", sprite: "h04",
             vida: 190, daño: 5, armadura: 3, papel: "Cura al grupo",
-            habilidad: "Bendición", habilidadDesc: "Cura a todos de golpe",
-            recarga: 22, glifo: 0xF05E1
+            ataque: "Fulgor", glifo: 0xF05E1,
+            porNivel: { vida: 0.09, daño: 0.07, armadura: 0.35 },
+            habilidades: [
+                { nivel: 1,  id: "bendicion", nombre: "Bendición",
+                  desc: "Cura a todo el grupo de golpe", recarga: 22, glifo: 0xF05E1 },
+                { nivel: 7,  id: "egida",     nombre: "Égida",
+                  desc: "Escudo al más malherido", recarga: 20, glifo: 0xF0A38 },
+                { nivel: 15, id: "renovar",   nombre: "Renovación",
+                  desc: "Cura poco a poco durante 10 s", recarga: 28, glifo: 0xF058C },
+                { nivel: 24, id: "volver",    nombre: "Volver a la vida",
+                  desc: "Levanta a un caído con media vida", recarga: 90, glifo: 0xF05E1 }
+            ]
         }
     ]
 
-    readonly property var mejorasDef: [
-        { id: "ataque",   nombre: "Afilar",   desc: "+15% de daño al grupo",  base: 22, glifo: 0xF04E5 },
-        { id: "vitalidad", nombre: "Vigor",   desc: "+12% de vida máxima",    base: 30, glifo: 0xF1076 },
-        { id: "armadura", nombre: "Blindar",  desc: "+2 de armadura",         base: 40, glifo: 0xF0498 }
+    // El oro dejó de comprar estadísticas —subirlas a mano no era una decisión,
+    // era un peaje— y ahora compra cofres: qué te llevas, no cuánto pegas.
+    readonly property var tiendaDef: [
+        { tipo: 0, nombre: "Cofre corriente", base: 120,  glifo: 0xF04D6 },
+        { tipo: 1, nombre: "Cofre de jefe",   base: 900,  glifo: 0xF04D7 },
+        { tipo: 2, nombre: "Cofre de acto",   base: 6500, glifo: 0xF0A75 }
     ]
+
+    property var comprados: [0, 0, 0]
+
+    function costeCofre(tipo) {
+        return Math.ceil(tiendaDef[tipo].base * Math.pow(1.55, comprados[tipo]))
+    }
+
+    function comprarCofre(tipo) {
+        const precio = costeCofre(tipo)
+        if (oro < precio)
+            return false
+
+        oro -= precio
+        const c = comprados.slice()
+        c[tipo] += 1
+        comprados = c
+        sumarCofre(tipo)
+        guardar()
+        return true
+    }
 
     // ── equipo y bolsa ────────────────────────────────────────────
     // Persisten entre partidas: es lo que hace que la siguiente llegue más
@@ -110,10 +163,68 @@ Singleton {
         return true
     }
 
+    // ── experiencia ───────────────────────────────────────────────
+    // Sustituye a las mejoras compradas con oro: los héroes suben solos
+    // matando, y al subir aprenden. El oro pasa a comprar cofres, que es
+    // decidir qué te llevas y no cuánta vida tienes.
+    readonly property real expBase: 46
+    readonly property real expCrec: 1.19
+
+    function expParaNivel(nivel) {
+        return Math.ceil(expBase * Math.pow(expCrec, nivel - 1))
+    }
+
+    function habilidadesDe(heroe) {
+        const c = claseDe(heroe.clase)
+        const nivel = heroe.nivel || 1
+        return c.habilidades.filter(function (h) { return nivel >= h.nivel })
+    }
+
+    function proximaHabilidad(clase, nivel) {
+        const c = claseDe(clase)
+        for (let i = 0; i < c.habilidades.length; ++i) {
+            if (c.habilidades[i].nivel > nivel)
+                return c.habilidades[i]
+        }
+        return null
+    }
+
+    // Reparte sobre el array que se le pasa, no sobre `grupo`.
+    //
+    // Llamar aquí a `grupo = …` en mitad de un tic no servía de nada: el tic
+    // trabaja con su propia copia y al terminar la reasigna entera, tirando
+    // por la borda la experiencia recién dada. Nadie subía de nivel.
+    function aplicarExp(g, cantidad) {
+        let subio = false
+
+        for (let i = 0; i < g.length; ++i) {
+            if (g[i].vida <= 0)
+                continue                // los caídos no aprenden
+
+            g[i].exp = (g[i].exp || 0) + cantidad
+            while (g[i].exp >= expParaNivel(g[i].nivel || 1)) {
+                g[i].exp -= expParaNivel(g[i].nivel || 1)
+                g[i].nivel = (g[i].nivel || 1) + 1
+                subio = true
+                // subir de nivel cura lo proporcional a lo que crece la vida
+                g[i].vida = Math.min(vidaMaxDe(g[i]), g[i].vida * 1.11)
+                subioNivel(i, g[i].nivel)
+            }
+        }
+
+        return subio
+    }
+
+    function darExperiencia(cantidad) {
+        const g = clonar(grupo)
+        if (aplicarExp(g, cantidad))
+            guardar()
+        grupo = g
+    }
+
     // ── estado de la partida ──────────────────────────────────────
     property int oleada: 1
     property real oro: 0
-    property var niveles: ({ ataque: 0, vitalidad: 0, armadura: 0 })
     property var grupo: []              // héroes vivos o caídos de esta partida
     property var enemigos: []
     property bool viva: false           // ¿hay partida en curso?
@@ -131,9 +242,9 @@ Singleton {
     property var resumenOffline: null
 
     // ── derivados ─────────────────────────────────────────────────
-    readonly property real multDaño: Math.pow(1.15, niveles.ataque)
-    readonly property real multVida: Math.pow(1.12, niveles.vitalidad)
-    readonly property int armaduraExtra: niveles.armadura * 2
+    // Pausa: el combate corre siempre, pero a veces uno quiere mirar el
+    // inventario con calma o dejar de perder héroes.
+    property bool pausada: false
 
     // ── biomas ────────────────────────────────────────────────────
     // Cada 80 oleadas cambia el escenario y con él la fauna. Los monstruos no
@@ -154,51 +265,20 @@ Singleton {
     readonly property bool esJefe: oleada % oleadasPorJefe === 0
     readonly property bool grupoVivo: grupo.some(function (h) { return h.vida > 0 })
 
-    function coste(id) {
-        for (let i = 0; i < mejorasDef.length; ++i) {
-            if (mejorasDef[i].id === id)
-                return Math.ceil(mejorasDef[i].base * Math.pow(costeCrec, niveles[id]))
-        }
-        return Infinity
-    }
-
-    function puedePagar(id) { return oro >= coste(id) }
-
-    function comprar(id) {
-        const precio = coste(id)
-        if (oro < precio || !viva)
-            return false
-
-        oro -= precio
-        const copia = Object.assign({}, niveles)
-        copia[id] = copia[id] + 1
-        niveles = copia
-
-        // vitalidad sube también la vida actual, si no comprarla en plena
-        // pelea no salvaría a nadie
-        if (id === "vitalidad") {
-            const g = clonar(grupo)
-            for (let i = 0; i < g.length; ++i) {
-                if (g[i].vida <= 0)
-                    continue
-                const nuevoMax = vidaMaxDe(g[i])
-                g[i].vida = Math.min(nuevoMax, g[i].vida * 1.12)
-            }
-            grupo = g
-        }
-
-        guardar()
-        return true
-    }
-
     // Estadísticas finales de un héroe: su clase, más lo que lleve puesto,
     // más las mejoras permanentes, más las de esta partida.
     function statsDe(heroe) {
         const c = claseDe(heroe.clase)
         const eq = equipo[heroe.clase] || ({})
 
-        let daño = c.daño, vida = c.vida, armadura = c.armadura
-        let cura = c.id === "clerigo" ? 5 : 0
+        // lo que da el nivel: compuesto, distinto para cada clase
+        const nivel = (heroe.nivel || 1) - 1
+        const p = c.porNivel
+
+        let daño = c.daño * Math.pow(1 + p.daño, nivel)
+        let vida = c.vida * Math.pow(1 + p.vida, nivel)
+        let armadura = c.armadura + p.armadura * nivel
+        let cura = (c.id === "clerigo" ? 5 : 0) * Math.pow(1 + p.vida, nivel)
 
         const huecos = ["arma", "escudo", "armadura", "amuleto"]
         for (let i = 0; i < huecos.length; ++i) {
@@ -212,9 +292,9 @@ Singleton {
         }
 
         return {
-            daño: daño * metaMultDaño * multDaño,
-            vida: Math.round(vida * metaMultVida * multVida),
-            armadura: armadura + armaduraExtra,
+            daño: daño * metaMultDaño,
+            vida: Math.round(vida * metaMultVida),
+            armadura: armadura,
             cura: cura
         }
     }
@@ -357,25 +437,36 @@ Singleton {
     signal habilidadLanzada(int indiceHeroe)
     signal oleadaSuperada(int numero)
     signal partidaTerminada(int oleadaAlcanzada, int cofresGanados, real reliquiasGanadas)
+    signal subioNivel(int indiceHeroe, int nivel)
+    signal escudoPuesto(int indiceHeroe)
 
     // ── ciclo de partida ──────────────────────────────────────────
     function nuevaPartida() {
         relevoEn = 0
         oleada = 1
         oro = 0
-        niveles = ({ ataque: 0, vitalidad: 0, armadura: 0 })
+        comprados = [0, 0, 0]
         oleadasDesdeCofre = 0
         finalizada = ""
 
         const g = []
         for (let i = 0; i < clases.length; ++i) {
             const c = clases[i]
+            const recargas = ({})
+            for (let h = 0; h < c.habilidades.length; ++h)
+                recargas[c.habilidades[h].id] = c.habilidades[h].recarga
+
             g.push({
                 clase: c.id,
                 vida: 0,
-                recargaRestante: c.recarga,
-                listaDesde: 0,          // instante en que quedó lista
-                provocando: 0           // segundos que le quedan de provocación
+                nivel: 1,
+                exp: 0,
+                escudo: 0,              // absorbe antes que la vida
+                recargas: recargas,
+                provocando: 0,
+                reflejando: 0,
+                invulnerable: 0,
+                regenerando: 0
             })
         }
         grupo = g
@@ -406,7 +497,8 @@ Singleton {
                     ? "b" + String((Math.floor(oleada / oleadasPorJefe) * 3) % 20).padStart(2, "0")
                     : "m" + String(faunaPorBioma[bioma][(oleada * 3 + i) % faunaPorBioma[bioma].length])
                         .padStart(2, "0"),
-                jefe: esJefe
+                jefe: esJefe,
+                quieto: 0
             })
         }
         enemigos = lista
@@ -444,19 +536,24 @@ Singleton {
     // ── combate ───────────────────────────────────────────────────
     // Un tic por segundo: suficiente para que se vea vivo y ridículo en coste.
     function tic(delta) {
-        if (!viva || !cargado)
+        if (!viva || !cargado || pausada)
             return
 
         const g = clonar(grupo)
         const e = clonar(enemigos)
 
-        // ¿alguien provocó? el tanque acapara mientras dure
         let objetivoForzado = -1
         for (let i = 0; i < g.length; ++i) {
-            if (g[i].provocando > 0) {
-                g[i].provocando -= delta
-                objetivoForzado = i
+            // los estados temporales corren aunque el héroe no actúe
+            for (const estado of ["provocando", "reflejando", "invulnerable", "regenerando"]) {
+                if (g[i][estado] > 0) {
+                    g[i][estado] -= delta
+                    if (estado === "provocando")
+                        objetivoForzado = i
+                }
             }
+            if (g[i].regenerando > 0 && g[i].vida > 0)
+                g[i].vida = Math.min(vidaMaxDe(g[i]), g[i].vida + statsDe(g[i]).cura * 1.2 * delta)
         }
 
         // ── golpean los héroes
@@ -466,17 +563,17 @@ Singleton {
 
             const c = claseDe(g[i].clase)
             const st = statsDe(g[i])
-            const daño = st.daño * delta
-
             const blanco = primerVivo(e)
+
             if (blanco >= 0) {
-                e[blanco].vida -= daño
-                impacto(blanco, daño)
-                if (e[blanco].vida <= 0)
+                e[blanco].vida -= st.daño * delta
+                impacto(blanco, st.daño * delta)
+                if (e[blanco].vida <= 0) {
                     enemigoMuerto(blanco)
+                    aplicarExp(g, Math.ceil(8 * Math.pow(1.11, oleada - 1)))
+                }
             }
 
-            // la clériga cura de fondo, sin gastar habilidad
             if (st.cura > 0) {
                 const herido = masHerido(g)
                 if (herido >= 0) {
@@ -486,43 +583,70 @@ Singleton {
                 }
             }
 
-            // recarga de habilidades
-            if (g[i].recargaRestante > 0) {
-                g[i].recargaRestante -= delta
-                if (g[i].recargaRestante <= 0)
-                    g[i].listaDesde = ahora()
-            } else if (ahora() - g[i].listaDesde >= autoHabilidad) {
-                lanzarInterno(g, e, i)
+            // cada habilidad desbloqueada lleva su propia recarga
+            const suyas = habilidadesDe(g[i])
+            for (let h = 0; h < suyas.length; ++h) {
+                const id = suyas[h].id
+                if (g[i].recargas[id] === undefined)
+                    g[i].recargas[id] = suyas[h].recarga
+
+                if (g[i].recargas[id] > 0) {
+                    g[i].recargas[id] -= delta
+                } else {
+                    lanzarInterno(g, e, i, id)
+                }
             }
         }
 
         // ── pegan los enemigos
         for (let j = 0; j < e.length; ++j) {
-            if (e[j].vida <= 0)
+            if (e[j].vida <= 0 || e[j].quieto > 0) {
+                if (e[j].quieto > 0)
+                    e[j].quieto -= delta
                 continue
+            }
 
             let blanco = objetivoForzado >= 0 && g[objetivoForzado].vida > 0
                 ? objetivoForzado : primerVivo(g)
             if (blanco < 0)
                 break
 
+            if (g[blanco].invulnerable > 0)
+                continue
+
             const armadura = statsDe(g[blanco]).armadura + (g[blanco].provocando > 0 ? 8 : 0)
-            const recibido = Math.max(1, e[j].daño * delta - armadura * delta)
+            let recibido = Math.max(1, e[j].daño * delta - armadura * delta)
+
+            // el escudo se lleva el golpe antes que la vida
+            if (g[blanco].escudo > 0) {
+                const absorbido = Math.min(g[blanco].escudo, recibido)
+                g[blanco].escudo -= absorbido
+                recibido -= absorbido
+            }
+
             g[blanco].vida -= recibido
             heroeHerido(blanco, recibido)
+
+            // represalia: parte del golpe vuelve a quien lo dio
+            if (g[blanco].reflejando > 0) {
+                const vuelta = recibido * 1.5
+                e[j].vida -= vuelta
+                impacto(j, vuelta)
+                if (e[j].vida <= 0) {
+                    enemigoMuerto(j)
+                    aplicarExp(g, Math.ceil(8 * Math.pow(1.11, oleada - 1)))
+                }
+            }
         }
 
         grupo = g
         enemigos = e
 
-        // ── resolución
         if (!enemigos.some(function (x) { return x.vida > 0 })) {
             const ganado = oroBase * Math.pow(oroCrec, oleada - 1) * enemigos.length
             oro += ganado
             oleadaSuperada(oleada)
 
-            // cofres: corriente cada cinco oleadas, de jefe al tumbar uno y
-            // de acto cada cincuenta, igual que los tres de TBH
             oleadasDesdeCofre += 1
             if (oleadasDesdeCofre >= oleadasPorCofre) {
                 oleadasDesdeCofre = 0
@@ -574,37 +698,90 @@ Singleton {
     }
 
     // ── habilidades ───────────────────────────────────────────────
-    function habilidadLista(i) {
-        return viva && grupo[i] && grupo[i].vida > 0 && grupo[i].recargaRestante <= 0
+    function habilidadLista(i, id) {
+        if (!viva || !grupo[i] || grupo[i].vida <= 0)
+            return false
+        return (grupo[i].recargas[id] || 0) <= 0
     }
 
-    function lanzar(i) {
-        if (!habilidadLista(i))
+    function lanzar(i, id) {
+        if (!habilidadLista(i, id))
             return
 
         const g = clonar(grupo)
         const e = clonar(enemigos)
-        lanzarInterno(g, e, i)
+        lanzarInterno(g, e, i, id)
         grupo = g
         enemigos = e
     }
 
-    function lanzarInterno(g, e, i) {
-        const c = claseDe(g[i].clase)
+    function recargaDe(clase, id) {
+        const c = claseDe(clase)
+        for (let i = 0; i < c.habilidades.length; ++i) {
+            if (c.habilidades[i].id === id)
+                return c.habilidades[i].recarga
+        }
+        return 20
+    }
 
-        if (c.id === "tanque") {
+    function lanzarInterno(g, e, i, id) {
+        const st = statsDe(g[i])
+
+        if (id === "provocar") {
             g[i].provocando = 6
-        } else if (c.id === "mago") {
-            const daño = c.daño * multDaño * 6
+
+        } else if (id === "muro") {
+            // escudo para todo el grupo, proporcional a lo que aguanta quien lo pone
+            for (let j = 0; j < g.length; ++j) {
+                if (g[j].vida <= 0)
+                    continue
+                g[j].escudo = (g[j].escudo || 0) + vidaMaxDe(g[i]) * 0.22
+                escudoPuesto(j)
+            }
+
+        } else if (id === "represalia") {
+            g[i].reflejando = 8
+
+        } else if (id === "bastion") {
+            g[i].invulnerable = 5
+
+        } else if (id === "llamarada") {
             for (let j = 0; j < e.length; ++j) {
                 if (e[j].vida <= 0)
                     continue
-                e[j].vida -= daño
-                impacto(j, daño)
-                if (e[j].vida <= 0)
-                    enemigoMuerto(j)
+                e[j].vida -= st.daño * 6
+                impacto(j, st.daño * 6)
+                if (e[j].vida <= 0) enemigoMuerto(j)
             }
-        } else if (c.id === "clerigo") {
+
+        } else if (id === "cadena") {
+            // rebota y crece: premia que haya oleada llena
+            let golpe = st.daño * 3
+            for (let j = 0; j < e.length; ++j) {
+                if (e[j].vida <= 0)
+                    continue
+                e[j].vida -= golpe
+                impacto(j, golpe)
+                if (e[j].vida <= 0) enemigoMuerto(j)
+                golpe *= 1.6
+            }
+
+        } else if (id === "meteoro") {
+            let masSano = -1, mejor = -1
+            for (let j = 0; j < e.length; ++j) {
+                if (e[j].vida > mejor) { mejor = e[j].vida; masSano = j }
+            }
+            if (masSano >= 0) {
+                e[masSano].vida -= st.daño * 16
+                impacto(masSano, st.daño * 16)
+                if (e[masSano].vida <= 0) enemigoMuerto(masSano)
+            }
+
+        } else if (id === "quietud") {
+            for (let j = 0; j < e.length; ++j)
+                e[j].quieto = 5
+
+        } else if (id === "bendicion") {
             for (let j = 0; j < g.length; ++j) {
                 if (g[j].vida <= 0)
                     continue
@@ -612,16 +789,37 @@ Singleton {
                 g[j].vida = Math.min(vidaMaxDe(g[j]), g[j].vida + cura)
                 curado(j, cura)
             }
+
+        } else if (id === "egida") {
+            const herido = masHerido(g)
+            const quien = herido >= 0 ? herido : i
+            g[quien].escudo = (g[quien].escudo || 0) + vidaMaxDe(g[quien]) * 0.45
+            escudoPuesto(quien)
+
+        } else if (id === "renovar") {
+            for (let j = 0; j < g.length; ++j) {
+                if (g[j].vida > 0)
+                    g[j].regenerando = 10
+            }
+
+        } else if (id === "volver") {
+            for (let j = 0; j < g.length; ++j) {
+                if (g[j].vida <= 0) {
+                    g[j].vida = vidaMaxDe(g[j]) * 0.5
+                    curado(j, g[j].vida)
+                    break
+                }
+            }
         }
 
-        g[i].recargaRestante = c.recarga
+        g[i].recargas[id] = recargaDe(g[i].clase, id)
         habilidadLanzada(i)
     }
 
     Timer {
         interval: game.tickMs
         repeat: true
-        running: game.cargado && game.viva
+        running: game.cargado && game.viva && !game.pausada
         onTriggered: {
             const t = game.ahora()
             const delta = Math.max(0, Math.min(5, t - game.ultimoTick))
@@ -676,8 +874,8 @@ Singleton {
     function instantanea() {
         return JSON.stringify({
             version: 2,
-            oleada: oleada, oro: oro, niveles: niveles,
-            grupo: grupo, enemigos: enemigos, viva: viva,
+            oleada: oleada, oro: oro,
+            grupo: grupo, enemigos: enemigos, viva: viva, comprados: comprados,
             finalizada: finalizada, relevoEn: relevoEn,
             cofresPorTipo: cofresPorTipo, reliquias: reliquias,
             equipo: equipo, bolsa: bolsa, meta: meta,
@@ -748,7 +946,6 @@ Singleton {
         if (s && s.version === 2) {
             oleada = s.oleada || 1
             oro = s.oro || 0
-            niveles = s.niveles || ({ ataque: 0, vitalidad: 0, armadura: 0 })
             grupo = s.grupo || []
             enemigos = s.enemigos || []
             viva = s.viva === true && grupo.length > 0
@@ -760,6 +957,7 @@ Singleton {
             mejorOleada = s.mejorOleada || 0
             partidas = s.partidas || 0
             oleadasDesdeCofre = s.oleadasDesdeCofre || 0
+            comprados = s.comprados || [0, 0, 0]
             finalizada = s.finalizada || ""
             relevoEn = s.relevoEn || 0
         }

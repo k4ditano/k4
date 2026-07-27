@@ -20,16 +20,19 @@ Item {
     property bool mirandoDerecha: true
     property real escala: 1
 
-    // solo los héroes tienen habilidad
-    property real recarga: 0
-    property real recargaRestante: 0
-    property int glifoHabilidad: 0
-    property bool pulsable: false
-    signal lanzar()
+    // solo los héroes: nivel, experiencia, escudo y habilidades
+    property int nivel: 0
+    property real exp: 0
+    property real expNecesaria: 1
+    property real escudo: 0
+    property var habilidades: []
+    property var recargas: ({})
+    property int heroe: -1
+    signal lanzar(string id)
 
     readonly property bool caido: vida <= 0
     readonly property real fraccion: vidaMax > 0 ? Math.max(0, Math.min(1, vida / vidaMax)) : 0
-    readonly property bool tieneHabilidad: recarga > 0
+    readonly property bool tieneHabilidad: habilidades.length > 0
 
     function golpear(texto) {
         sacudida.restart()
@@ -48,7 +51,7 @@ Item {
         // ── sprite
         Item {
             width: combatiente.width
-            height: combatiente.height - (combatiente.tieneHabilidad ? 26 : 14)
+            height: combatiente.height - (combatiente.tieneHabilidad ? 34 : 14)
 
             Item {
                 id: soporte
@@ -162,69 +165,98 @@ Item {
 
                 Behavior on width { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
             }
+
+            // el escudo se pinta encima, en cian: absorbe antes que la vida
+            Rectangle {
+                width: parent.width * Math.min(1, combatiente.escudo
+                    / Math.max(1, combatiente.vidaMax))
+                height: parent.height
+                radius: parent.radius
+                color: "#6ccce4"
+                opacity: 0.9
+                visible: combatiente.escudo > 0
+
+                Behavior on width { NumberAnimation { duration: 200 } }
+            }
         }
 
-        // ── habilidad, solo en los héroes
+        // ── experiencia, una línea fina bajo la vida
         Rectangle {
             visible: combatiente.tieneHabilidad
             width: combatiente.width - 6
-            height: 16
+            height: 2
             anchors.horizontalCenter: parent.horizontalCenter
-            radius: 8
-            color: combatiente.pulsable
-                ? (habilidadMouse.containsMouse ? Theme.blue : Theme.surfaceHi)
-                : Theme.islandBg
-            border.width: combatiente.pulsable ? 1 : 0
-            border.color: "#ffd60a"
+            color: Theme.islandBg
 
-            Behavior on color { ColorAnimation { duration: 140 } }
-
-            // lo que queda de recarga, como relleno
             Rectangle {
-                anchors.left: parent.left
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: parent.width * (combatiente.recarga > 0
-                    ? 1 - Math.max(0, combatiente.recargaRestante) / combatiente.recarga : 0)
-                radius: parent.radius
-                color: Theme.surfaceHi
-                opacity: combatiente.pulsable ? 0 : 0.9
+                width: parent.width * Math.min(1, combatiente.exp
+                    / Math.max(1, combatiente.expNecesaria))
+                height: parent.height
+                color: "#c78fff"
             }
+        }
 
-            RowLayout {
-                anchors.centerIn: parent
-                spacing: 3
+        // ── habilidades: una pastilla por cada una desbloqueada
+        RowLayout {
+            visible: combatiente.tieneHabilidad
+            width: combatiente.width - 4
+            height: 15
+            spacing: 2
 
-                IconGlyph {
-                    text: combatiente.glifoHabilidad > 0
-                        ? String.fromCodePoint(combatiente.glifoHabilidad) : ""
-                    color: combatiente.pulsable ? "#ffd60a" : Theme.dim
-                    font.pixelSize: 10
+            Repeater {
+                model: combatiente.habilidades
+
+                delegate: Rectangle {
+                    id: pastilla
+                    required property var modelData
+                    readonly property real restante: combatiente.recargas[modelData.id] || 0
+                    readonly property bool lista: restante <= 0 && !combatiente.caido
+
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    radius: 4
+                    color: lista ? (pastillaMouse.containsMouse ? Theme.blue : Theme.surfaceHi)
+                        : Theme.islandBg
+                    border.width: lista ? 1 : 0
+                    border.color: "#ffd60a"
+
+                    Behavior on color { ColorAnimation { duration: 140 } }
+
+                    // lo recargado, como relleno
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: parent.width * (1 - Math.max(0, pastilla.restante)
+                            / Math.max(1, pastilla.modelData.recarga))
+                        radius: parent.radius
+                        color: Theme.surfaceHi
+                        opacity: pastilla.lista ? 0 : 0.9
+                    }
+
+                    IconGlyph {
+                        anchors.centerIn: parent
+                        text: String.fromCodePoint(pastilla.modelData.glifo)
+                        color: pastilla.lista ? "#ffd60a" : Theme.dim
+                        font.pixelSize: 9
+                    }
+
+                    SequentialAnimation on scale {
+                        running: pastilla.lista
+                        loops: Animation.Infinite
+                        NumberAnimation { to: 1.08; duration: 620; easing.type: Easing.InOutSine }
+                        NumberAnimation { to: 1; duration: 620; easing.type: Easing.InOutSine }
+                    }
+
+                    MouseArea {
+                        id: pastillaMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        enabled: pastilla.lista
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: combatiente.lanzar(pastilla.modelData.id)
+                    }
                 }
-
-                IslandLabel {
-                    text: combatiente.pulsable ? "¡ya!" : Math.ceil(combatiente.recargaRestante) + "s"
-                    color: combatiente.pulsable ? Theme.ink : Theme.dim
-                    font.pixelSize: 9
-                    font.weight: combatiente.pulsable ? Font.DemiBold : Font.Normal
-                }
-            }
-
-            // late cuando está lista, para que se vea sin mirarla fijo
-            SequentialAnimation on scale {
-                running: combatiente.pulsable
-                loops: Animation.Infinite
-                NumberAnimation { to: 1.05; duration: 600; easing.type: Easing.InOutSine }
-                NumberAnimation { to: 1; duration: 600; easing.type: Easing.InOutSine }
-            }
-
-            MouseArea {
-                id: habilidadMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                enabled: combatiente.pulsable
-                cursorShape: Qt.PointingHandCursor
-                onClicked: combatiente.lanzar()
             }
         }
     }

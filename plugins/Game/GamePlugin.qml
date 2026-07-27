@@ -49,9 +49,10 @@ K4Plugin {
         function close(): void { self.close() }
 
         function nueva(): void { Game.nuevaPartida() }
+        function pausa(): void { Game.pausada = !Game.pausada }
         function ver(cual: string): void { self.pestaña = cual; self.open = true }
         function cofre(tipo: int): void { Game.abrirCofre(tipo) }
-        function habilidad(indice: int): void { Game.lanzar(indice) }
+        function habilidad(indice: int, id: string): void { Game.lanzar(indice, id) }
 
         // Para afinar el balance sin pasarse horas clicando: adelanta el reloj
         // del juego los segundos que le digas y aplica el progreso pasivo.

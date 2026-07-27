@@ -30,7 +30,7 @@ FadeIn {
             }
 
             IslandLabel {
-                text: "Oleada " + Game.oleada
+                text: (Game.pausada ? "En pausa · " : "") + "Oleada " + Game.oleada
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
                 color: Game.esJefe ? Theme.red : Theme.ink
@@ -133,6 +133,16 @@ FadeIn {
                         font.weight: Font.DemiBold
                     }
                 }
+            }
+
+            // parar la pelea: para mirar la bolsa con calma, o para dejar de
+            // perder héroes mientras se decide algo
+            MediaButton {
+                glyph: String.fromCodePoint(Game.pausada ? 0xF040A : 0xF03E4)
+                glyphSize: 15
+                glyphColor: Game.pausada ? "#ffd60a" : Theme.muted
+                onActivated: Game.pausada = !Game.pausada
+                Layout.alignment: Qt.AlignVCenter
             }
 
             MediaButton {

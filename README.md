@@ -80,27 +80,21 @@ habilidades, no los golpes. El guardián acapara los ataques, la clériga cura d
 fondo y el hechicero revienta la oleada entera.
 
 Cada diez oleadas llega un jefe. Cuando cae el grupo se acaba la partida: se
-pierden el oro y las mejoras temporales, y **se conservan el equipo, los cofres
-y las reliquias** — es lo que hace que la siguiente llegue más lejos. Tras el
-resumen arranca sola la siguiente —el combate corre aunque no mires, y una
-partida esperándote muerta serían horas tiradas—, aunque eso se puede apagar
-en Ajustes.
+pierden el oro y el progreso de esa partida, y **se conservan el equipo, los
+cofres y las reliquias**. Tras el resumen arranca sola la siguiente, salvo que
+lo apagues en Ajustes. Hay botón de pausa para dejar de pelear mientras miras
+la bolsa.
 
-El balance está medido, no puesto a ojo: hay un simulador que carga el
-servicio real y corre miles de oleadas en segundos. Con los números actuales,
-una partida sin equipo muere sobre la **oleada 53 en 14 minutos**, y con el
-equipo de treinta cofres de jefe llega a la **254 en 46 minutos**. Las oleadas
-suben de unos 6 segundos al principio a casi 30 en la cincuentena.
+Los héroes **suben de nivel matando**, no comprando: cada nivel mejora lo suyo
+—el guardián gana aguante, el hechicero pega más— y en ciertos niveles
+aprenden habilidades nuevas. El guardián empieza provocando y acaba poniendo
+muros de escudos, devolviendo daño y volviéndose intocable; el hechicero pasa
+de la llamarada a cadenas que crecen con cada salto, meteoros y detener a la
+oleada entera; la clériga suma escudos, regeneración y levantar a un caído.
+Todas se lanzan solas al recargarse, o las lanzas tú antes.
 
-Dos relaciones sostienen eso, y las dos se rompieron al medirlas:
-
-- **El coste de las mejoras crece por encima del oro.** Cuando crecían igual,
-  el daño por compras subía al mismo ritmo que la vida enemiga: quien se ponía
-  por delante una vez no volvía a quedarse atrás, y la simulación llegaba a la
-  oleada 3500.
-- **Las piezas escalan despacio con la oleada en que caen.** Con 0,32 por
-  oleada, un juego de la 70 barría cien oleadas seguidas de la partida
-  siguiente.
+El oro ya no compra estadísticas —subirlas a mano no era una decisión, era un
+peaje— sino **cofres**, que es elegir qué botín te llevas.
 
 Cuatro pestañas: **Lucha** (la pelea y la tienda de la partida), **Grupo**
 (cuatro huecos de equipo por héroe), **Bolsa** (abrir cofres, equipar con clic
