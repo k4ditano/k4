@@ -65,13 +65,13 @@ Item {
             NumberAnimation {
                 target: bala; property: "x"
                 from: efecto.desdeX; to: efecto.hastaX
-                duration: efecto.forma === "flecha" ? 150 : 250
+                duration: efecto.forma === "flecha" ? 260 : 430
                 easing.type: efecto.forma === "flecha" ? Easing.Linear : Easing.InQuad
             }
             NumberAnimation {
                 target: bala; property: "y"
                 from: efecto.desdeY; to: efecto.hastaY
-                duration: efecto.forma === "flecha" ? 150 : 250
+                duration: efecto.forma === "flecha" ? 260 : 430
             }
             NumberAnimation {
                 target: bala; property: "opacity"
@@ -83,11 +83,11 @@ Item {
         ParallelAnimation {
             NumberAnimation {
                 target: bala; property: "scale"
-                from: 1; to: 2.6; duration: 130
+                from: 1; to: 2.8; duration: 190
             }
             NumberAnimation {
                 target: bala; property: "opacity"
-                to: 0; duration: 130
+                to: 0; duration: 190
             }
         }
 
@@ -130,14 +130,14 @@ Item {
             }
             NumberAnimation {
                 target: tajo; property: "scale"
-                from: 0.55; to: 1.25; duration: 160
+                from: 0.55; to: 1.3; duration: 230
                 easing.type: Easing.OutQuad
             }
         }
 
         NumberAnimation {
             target: tajo; property: "opacity"
-            to: 0; duration: 130
+            to: 0; duration: 200
         }
 
         ScriptAction { script: efecto.destroy() }
@@ -164,12 +164,12 @@ Item {
         ParallelAnimation {
             NumberAnimation {
                 target: aro; property: "width"
-                from: 8; to: 42; duration: 300
+                from: 8; to: 46; duration: 400
                 easing.type: Easing.OutQuad
             }
             NumberAnimation {
                 target: aro; property: "height"
-                from: 8; to: 42; duration: 300
+                from: 8; to: 46; duration: 400
                 easing.type: Easing.OutQuad
             }
             SequentialAnimation {
@@ -179,7 +179,7 @@ Item {
                 }
                 NumberAnimation {
                     target: aro; property: "opacity"
-                    to: 0; duration: 220
+                    to: 0; duration: 300
                 }
             }
         }

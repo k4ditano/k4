@@ -56,6 +56,10 @@ ColumnLayout {
 
         function onEfectoHabilidad(heroe, efecto) { panel.dibujarHabilidad(heroe, efecto) }
 
+        function onHabilidadEnemiga(indice, forma, nombre) {
+            panel.dibujarEnemiga(indice, forma, nombre)
+        }
+
         function onOleadaSuperada(numero) {
             escenario.caminar()
             entrada.restart()
@@ -154,6 +158,40 @@ ColumnLayout {
         })
         if (obj)
             obj.arrancar()
+    }
+
+    // Las suyas caen sobre el grupo, salvo las que se hace a sí mismo
+    // —envalentonarse, curarse—, que van sobre el propio bicho. El nombre sale
+    // flotando encima: si te acaban de quitar media barra conviene saber qué
+    // ha sido.
+    function dibujarEnemiga(indice, forma, nombre) {
+        const propia = forma === "aura" || forma === "motas"
+        let zona = null
+
+        if (propia) {
+            const uno = filaEnemigos.itemAt(indice)
+            if (uno) {
+                const a = uno.mapToItem(campo, 0, 0)
+                zona = { x: a.x, y: a.y, ancho: uno.width, alto: uno.height }
+            }
+        } else {
+            zona = zonaDe(filaHeroes, Game.grupo.length)
+        }
+        if (!zona)
+            return
+
+        const obj = compHabilidad.createObject(campo, {
+            forma: forma,
+            tono: forma === "aura" ? "#ff9f0a" : (forma === "motas" ? "#32d74b" : "#ff453a"),
+            zonaX: zona.x, zonaY: zona.y,
+            zonaAncho: zona.ancho, zonaAlto: zona.alto
+        })
+        if (obj)
+            obj.arrancar()
+
+        const celda = filaEnemigos.itemAt(indice)
+        if (celda)
+            celda.golpear(nombre)
     }
 
     // ── campo de batalla ──────────────────────────────────────────

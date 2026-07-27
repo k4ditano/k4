@@ -114,6 +114,50 @@ Singleton {
     }
 
 
+
+    // ── habilidades de los enemigos ───────────────────────────────
+    //
+    //  Los rasgos son pasivos: actúan solos y todo el rato. Esto es lo otro,
+    //  lo que se ve venir: golpes gordos con su propia recarga, igual que los
+    //  de los héroes. Sin ellos una oleada es un goteo constante de daño y no
+    //  hay nada que aguantar ni de lo que recuperarse.
+    //
+    //  `potencia` se mide en golpes normales suyos, así escala sola con la
+    //  oleada y no hay que retocarla nunca.
+    readonly property var habilidadesEnemigo: [
+        { id: "embestida", nombre: "Embestida", desde: 20, recarga: 9,
+          efecto: "granGolpe", potencia: 3.2, forma: "onda" },
+        { id: "escupitajo", nombre: "Escupitajo", desde: 34, recarga: 12,
+          efecto: "salpicar", potencia: 1.1, forma: "nube" },
+        { id: "aullido", nombre: "Aullido", desde: 48, recarga: 15,
+          efecto: "enfurecer", potencia: 0.3, forma: "aura" },
+        { id: "zarpazo", nombre: "Zarpazo atroz", desde: 62, recarga: 11,
+          efecto: "drenar", potencia: 2.4, forma: "cadena" },
+        { id: "muda", nombre: "Muda", desde: 76, recarga: 18,
+          efecto: "sanar", potencia: 0.18, forma: "motas" }
+    ]
+
+    // Una por bicho, la más alta que tenga desbloqueada la oleada. Los jefes
+    // van una escalón por delante, como con los rasgos.
+    function habilidadEnemigaDe(ol, indice) {
+        const posibles = []
+        for (let i = 0; i < habilidadesEnemigo.length; ++i) {
+            if (ol >= habilidadesEnemigo[i].desde)
+                posibles.push(habilidadesEnemigo[i])
+        }
+        if (!posibles.length)
+            return null
+        return posibles[(ol + indice) % posibles.length]
+    }
+
+    function habEnemigaDe(id) {
+        for (let i = 0; i < habilidadesEnemigo.length; ++i) {
+            if (habilidadesEnemigo[i].id === id)
+                return habilidadesEnemigo[i]
+        }
+        return null
+    }
+
     // ── especies ──────────────────────────────────────────────────
     //
     //  Los monstruos eran sprites anónimos con la misma vida y el mismo daño:
@@ -871,6 +915,7 @@ Singleton {
     // pero no qué: todas se veían igual. Este lleva el efecto, que es lo que
     // decide cómo se dibuja.
     signal efectoHabilidad(int indiceHeroe, string efecto)
+    signal habilidadEnemiga(int indiceEnemigo, string forma, string nombre)
     signal heroeHerido(int indiceHeroe, real daño)
     signal enemigoMuerto(int indiceEnemigo)
     signal curado(int indiceHeroe, real cantidad)
@@ -958,6 +1003,16 @@ Singleton {
                 elite: elite,
                 quieto: 0,
                 veneno: 0,
+                envalentonado: 0,       // lo que le ha subido un aullido
+                hab: (function () {
+                    const h = habilidadEnemigaDe(oleada + (esJefe ? 20 : 0), i)
+                    return h ? h.id : ""
+                })(),
+                // arranca a media carga: la primera no cae nada más empezar
+                recargaHab: (function () {
+                    const h = habilidadEnemigaDe(oleada + (esJefe ? 20 : 0), i)
+                    return h ? h.recarga * 0.55 : 0
+                })(),
                 // los jefes llevan uno más: son el examen de las diez oleadas
                 rasgos: rasgosPara(oleada + (esJefe ? 30 : 0), i,
                     esJefe ? null : esp.afinidad, elite || esJefe)
@@ -1104,7 +1159,19 @@ Singleton {
             // pantalla llena de "-0".
             const marcas = e[j].rasgos || []
 
-            let pega = e[j].daño * delta
+            // ── su habilidad, si le toca
+            if (e[j].hab) {
+                e[j].recargaHab = (e[j].recargaHab || 0) - delta
+                if (e[j].recargaHab <= 0) {
+                    const h = habEnemigaDe(e[j].hab)
+                    if (h) {
+                        e[j].recargaHab = h.recarga
+                        lanzarEnemiga(g, e, j, h)
+                    }
+                }
+            }
+
+            let pega = e[j].daño * delta * (1 + (e[j].envalentonado || 0))
             // furia: el bicho herido se crece, así que rematar corre prisa
             if (marcas.indexOf("furia") !== -1)
                 pega *= 1 + (1 - e[j].vida / e[j].vidaMax) * 0.9
@@ -1191,6 +1258,66 @@ Singleton {
         } else if (!grupo.some(function (h) { return h.vida > 0 })) {
             terminarPartida()
         }
+    }
+
+    // Las habilidades de los enemigos, resueltas por efecto igual que las de
+    // los héroes. Todas miden su potencia en golpes normales suyos, así que
+    // escalan solas con la oleada.
+    function lanzarEnemiga(g, e, j, h) {
+        const base = e[j].daño * (1 + (e[j].envalentonado || 0))
+        const blanco = primerVivo(g)
+
+        if (h.efecto === "granGolpe") {
+            if (blanco < 0) return
+            const golpe = pegarAHeroe(g, blanco, base * h.potencia)
+            if (golpe > 0) heroeHerido(blanco, golpe)
+
+        } else if (h.efecto === "salpicar") {
+            for (let k = 0; k < g.length; ++k) {
+                if (g[k].vida <= 0) continue
+                const golpe = pegarAHeroe(g, k, base * h.potencia)
+                if (golpe > 0) heroeHerido(k, golpe)
+            }
+
+        } else if (h.efecto === "enfurecer") {
+            // se envalentona toda la oleada, con tope para que no se dispare
+            for (let k = 0; k < e.length; ++k) {
+                if (e[k].vida > 0) {
+                    e[k].envalentonado =
+                        Math.min(1.2, (e[k].envalentonado || 0) + h.potencia)
+                }
+            }
+
+        } else if (h.efecto === "drenar") {
+            if (blanco < 0) return
+            const golpe = pegarAHeroe(g, blanco, base * h.potencia)
+            if (golpe > 0) heroeHerido(blanco, golpe)
+            e[j].vida = Math.min(e[j].vidaMax, e[j].vida + golpe)
+
+        } else if (h.efecto === "sanar") {
+            e[j].vida = Math.min(e[j].vidaMax, e[j].vida + e[j].vidaMax * h.potencia)
+        }
+
+        habilidadEnemiga(j, h.forma, h.nombre)
+    }
+
+    // Aplica un golpe a un héroe contando armadura y escudo, y devuelve lo que
+    // de verdad le ha entrado en la vida.
+    function pegarAHeroe(g, k, cantidad) {
+        if (g[k].invulnerable > 0)
+            return 0
+
+        const armadura = statsDe(g[k]).armadura + (g[k].provocando > 0 ? 12 : 0)
+        let recibido = cantidad * (100 / (100 + armadura * 4))
+
+        if (g[k].escudo > 0) {
+            const absorbido = Math.min(g[k].escudo, recibido)
+            g[k].escudo -= absorbido
+            recibido -= absorbido
+        }
+
+        g[k].vida -= recibido
+        return recibido
     }
 
     // Copia con objetos nuevos, no solo el array.
