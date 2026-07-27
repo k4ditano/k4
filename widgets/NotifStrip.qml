@@ -57,6 +57,46 @@ ColumnLayout {
             font.pixelSize: 10
             Layout.alignment: Qt.AlignVCenter
         }
+
+        // Vaciar de golpe. Aquí es donde más falta hacía: la tira sale al
+        // pasar el ratón por la island, y sin esto había que abrir el panel
+        // entero solo para quitarse de encima cuatro avisos leídos.
+        Rectangle {
+            Layout.preferredWidth: vaciarFila.implicitWidth + 12
+            Layout.preferredHeight: 15
+            Layout.alignment: Qt.AlignVCenter
+            radius: 7
+            color: vaciarRaton.containsMouse ? Theme.red : Theme.surfaceHi
+
+            Behavior on color { ColorAnimation { duration: 120 } }
+
+            RowLayout {
+                id: vaciarFila
+                anchors.centerIn: parent
+                spacing: 3
+
+                IconGlyph {
+                    text: Theme.ico.clearAll
+                    color: vaciarRaton.containsMouse ? Theme.ink : Theme.muted
+                    font.pixelSize: 10
+                }
+
+                IslandLabel {
+                    text: "Borrar todas"
+                    color: vaciarRaton.containsMouse ? Theme.ink : Theme.muted
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
+                }
+            }
+
+            MouseArea {
+                id: vaciarRaton
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: Notifs.clear()
+            }
+        }
     }
 
     Repeater {

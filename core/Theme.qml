@@ -52,6 +52,7 @@ Singleton {
         chevronDown: String.fromCodePoint(0xF0140),
         cog: String.fromCodePoint(0xF0493),
         close: String.fromCodePoint(0xF0156),
+        clearAll: String.fromCodePoint(0xF035D),
         apps: String.fromCodePoint(0xF003B),
         enter: String.fromCodePoint(0xF0311),
         ask: String.fromCodePoint(0xF0674),

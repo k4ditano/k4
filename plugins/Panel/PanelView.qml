@@ -51,20 +51,34 @@ FadeIn {
 
             Rectangle {
                 visible: view.plugin.tab === "notifications" && Notifs.tracked.values.length > 0
-                Layout.preferredWidth: clearAllLabel.implicitWidth + 22
+                Layout.preferredWidth: clearAllFila.implicitWidth + 20
                 Layout.preferredHeight: 24
                 Layout.alignment: Qt.AlignVCenter
                 radius: 12
-                color: clearAllMouse.containsMouse ? Theme.track : Theme.surfaceHi
+                // Rojo al pasar por encima y con su icono: en gris sobre gris
+                // y sin símbolo parecía una etiqueta más, no algo que se pulsa.
+                color: clearAllMouse.containsMouse ? Theme.red : Theme.surfaceHi
 
                 Behavior on color { ColorAnimation { duration: 120 } }
 
-                IslandLabel {
-                    id: clearAllLabel
+                RowLayout {
+                    id: clearAllFila
                     anchors.centerIn: parent
-                    text: "Borrar todo"
-                    color: clearAllMouse.containsMouse ? Theme.ink : Theme.muted
-                    font.pixelSize: 11
+                    spacing: 5
+
+                    IconGlyph {
+                        text: Theme.ico.clearAll
+                        color: clearAllMouse.containsMouse ? Theme.ink : Theme.muted
+                        font.pixelSize: 13
+                    }
+
+                    IslandLabel {
+                        id: clearAllLabel
+                        text: "Borrar todo"
+                        color: clearAllMouse.containsMouse ? Theme.ink : Theme.muted
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                    }
                 }
 
                 MouseArea {
