@@ -25,7 +25,8 @@ K4Plugin {
     islandHeight: 420
 
     // solo hace falta el teclado mientras se escribe una ciudad
-    grabKeyboard: open
+    grabKeyboard: searchOpen
+    tecladoOpcional: open
 
     handlesBackgroundTap: true
     onBackgroundTapped: {}   // se traga el clic: cerrar es cosa del botón

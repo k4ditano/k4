@@ -18,7 +18,7 @@ K4Plugin {
     priority: 62
     active: open || closing
     viewLoaded: open
-    grabKeyboard: open
+    tecladoOpcional: open
 
     property var panel: null
 

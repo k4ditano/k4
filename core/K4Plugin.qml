@@ -48,8 +48,17 @@ QtObject {
     // manteniendo el tamaño mientras el contenido ya se ha ido.
     property bool viewLoaded: true
 
-    // Pide foco de teclado exclusivo a la layer surface (lanzador, prompts…).
+    // Pide foco de teclado EXCLUSIVO: mientras esté activo, ninguna ventana
+    // recibe una tecla. Solo para lo que se escribe de verdad —el lanzador, la
+    // pregunta a la IA, la clave del wifi—, porque bloquea el resto del
+    // escritorio.
     property bool grabKeyboard: false
+
+    // Foco BAJO DEMANDA: la capa recibe teclas si interactúas con ella y se las
+    // devuelve al escritorio si no. Es lo que quiere un módulo que solo
+    // necesita enterarse de un ESC sin secuestrarte el teclado mientras lo
+    // tienes abierto de fondo.
+    property bool tecladoOpcional: false
 
     // Clic en el fondo de la island. Si el plugin no lo marca, el host aplica
     // lo de siempre: abrir el centro de control.

@@ -17,7 +17,7 @@ K4Plugin {
     title: "Bandeja"
     priority: 63
     active: open
-    grabKeyboard: open
+    tecladoOpcional: open
 
     property bool open: false
     property var selected: null

@@ -180,8 +180,20 @@ Scope {
             aboveWindows: true
             focusable: true
 
-            WlrLayershell.keyboardFocus: root.activePlugin && root.activePlugin.grabKeyboard
-                ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            //  Exclusivo solo para lo que se escribe; el resto, bajo demanda.
+            //  Poner Exclusive en todos los módulos abribles dejaba el teclado
+            //  secuestrado mientras tuvieras cualquiera abierto: no se podía
+            //  escribir en ninguna ventana.
+            WlrLayershell.keyboardFocus: {
+                const p = root.activePlugin
+                if (!p)
+                    return WlrKeyboardFocus.None
+                if (p.grabKeyboard)
+                    return WlrKeyboardFocus.Exclusive
+                if (p.tecladoOpcional)
+                    return WlrKeyboardFocus.OnDemand
+                return WlrKeyboardFocus.None
+            }
 
             // se reserva solo la franja plegada: las ventanas nunca se meten
             // bajo la píldora, y todo lo que crece por encima flota
