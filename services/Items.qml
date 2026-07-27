@@ -57,7 +57,10 @@ Singleton {
             tipos: ["Amuleto", "Anillo", "Brazal", "Pendiente", "Frasco"],
             generos: ["m", "m", "m", "m", "m"],
             iconos: [15, 16, 17, 18, 19],
-            reparte: { vida: 9, daño: 1.6, cura: 1.2 }
+            reparte: { vida: 9, daño: 1.6, cura: 1.2 },
+            // Solo los accesorios recortan recargas: es lo que les da un
+            // papel propio frente a armadura y escudo, que son vida a secas.
+            recorta: true
         }
     ]
 
@@ -109,7 +112,14 @@ Singleton {
     // que es lo que hace que seguir jugando merezca la pena.
     function tirarRareza(tipoCofre, oleada, fortuna) {
         const cofre = cofres[Math.max(0, Math.min(cofres.length - 1, tipoCofre))]
-        const empuje = cofre.empuje + Math.min(0.45, oleada / 220) + fortuna
+        // Logarítmico y sin techo. Con `Math.min(0.45, oleada / 220)` el
+        // empuje se estancaba en la oleada 99: medido, la rareza media de un
+        // cofre corriente era 0,54 en la 99 y 0,55 en la 600, o sea que llegar
+        // más lejos no daba mejor botín y solo compensaba farmear. Así sigue
+        // subiendo siempre y cada vez más despacio: en la 1600 un cofre de
+        // jefe saca grado 4 o mejor el 38% de las veces, contra el 10% del
+        // principio.
+        const empuje = cofre.empuje + Math.log(1 + oleada / 30) * 0.22 + fortuna
 
         let grado = cofre.suelo
         while (grado < rarezas.length - 1 && Math.random() < 0.20 + empuje * 0.34)
@@ -159,6 +169,14 @@ Singleton {
                 const bases = { daño: 2.2, vida: 12, armadura: 0.9, cura: 0.8 }
                 stats[extra] = Math.max(1, Math.round(bases[extra] * escala * 0.6))
             }
+        }
+
+        // El recorte de recarga va en porcentaje, así que no puede escalar con
+        // la oleada como el resto: subiría a miles. Depende solo del grado, y
+        // el tope de acumulación lo pone el juego.
+        if (hueco.recorta) {
+            stats.recorte = Math.round((2.5 + rareza * 1.35
+                + Math.random() * 2.5) * 10) / 10
         }
 
         return {
@@ -228,6 +246,7 @@ Singleton {
         if (s.vida) partes.push("+" + s.vida + " vida")
         if (s.armadura) partes.push("+" + s.armadura + " arm")
         if (s.cura) partes.push("+" + s.cura + " cura")
+        if (s.recorte) partes.push("-" + s.recorte + "% recarga")
         return partes.join(" · ")
     }
 }

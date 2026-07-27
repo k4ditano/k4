@@ -46,6 +46,8 @@ Singleton {
     // 38.000 contra bichos que pegaban 120, y no entraba un golpe en toda la
     // partida. Con tope es un colchón, no una armadura de dios.
     readonly property real topeEscudo: 0.6
+    // Cuánto se puede llegar a recortar de las recargas con accesorios.
+    readonly property real topeRecorte: 0.55
 
     // ── rasgos de los enemigos ────────────────────────────────────
     //
@@ -111,7 +113,8 @@ Singleton {
         {
             id: "tanque", nombre: "Guardián", sprite: "h00",
             vida: 300, daño: 4, armadura: 6, papel: "Aguanta los golpes",
-            ataque: "Mandoble", glifo: 0xF0498, reto: null,
+            ataque: "Mandoble", glifo: 0xF0498,
+            visual: { forma: "tajo", color: "#e5e5ea" }, reto: null,
             porNivel: { vida: 0.11, daño: 0.06, armadura: 0.6 },
             habilidades: [
                 { nivel: 1, id: "provocar", nombre: "Provocar",
@@ -131,7 +134,8 @@ Singleton {
         {
             id: "mago", nombre: "Hechicero", sprite: "h02",
             vida: 130, daño: 12, armadura: 0, papel: "Daño en área",
-            ataque: "Dardo arcano", glifo: 0xF0E20, reto: null,
+            ataque: "Dardo arcano", glifo: 0xF0E20,
+            visual: { forma: "proyectil", color: "#bf5af2" }, reto: null,
             porNivel: { vida: 0.06, daño: 0.13, armadura: 0.1 },
             habilidades: [
                 { nivel: 1, id: "llamarada", nombre: "Llamarada",
@@ -151,7 +155,8 @@ Singleton {
         {
             id: "clerigo", nombre: "Clériga", sprite: "h04",
             vida: 190, daño: 5, armadura: 3, papel: "Cura al grupo",
-            ataque: "Fulgor", glifo: 0xF05E1, reto: null,
+            ataque: "Fulgor", glifo: 0xF05E1,
+            visual: { forma: "destello", color: "#ffd60a" }, reto: null,
             porNivel: { vida: 0.09, daño: 0.07, armadura: 0.35 },
             habilidades: [
                 { nivel: 1, id: "bendicion", nombre: "Bendición",
@@ -171,7 +176,8 @@ Singleton {
         {
             id: "arquera", nombre: "Arquera", sprite: "h01",
             vida: 150, daño: 15, armadura: 1, papel: "Golpes certeros",
-            ataque: "Saeta", glifo: 0xF0289, reto: { tipo: "oleada", meta: 25 },
+            ataque: "Saeta", glifo: 0xF0289,
+            visual: { forma: "flecha", color: "#30d158" }, reto: { tipo: "oleada", meta: 25 },
             porNivel: { vida: 0.07, daño: 0.14, armadura: 0.15 },
             habilidades: [
                 { nivel: 1, id: "lluvia", nombre: "Lluvia de flechas",
@@ -191,7 +197,8 @@ Singleton {
         {
             id: "picaro", nombre: "Pícaro", sprite: "h03",
             vida: 140, daño: 17, armadura: 0, papel: "Remata heridos",
-            ataque: "Puñalada", glifo: 0xF04E5, reto: { tipo: "muertes", meta: 1500 },
+            ataque: "Puñalada", glifo: 0xF04E5,
+            visual: { forma: "tajo", color: "#ff453a" }, reto: { tipo: "muertes", meta: 1500 },
             porNivel: { vida: 0.06, daño: 0.15, armadura: 0.1 },
             habilidades: [
                 { nivel: 1, id: "emboscada", nombre: "Emboscada",
@@ -211,7 +218,8 @@ Singleton {
         {
             id: "barbaro", nombre: "Bárbaro", sprite: "h05",
             vida: 260, daño: 11, armadura: 3, papel: "Cuanto más herido, más pega",
-            ataque: "Hachazo", glifo: 0xF0F1B, reto: { tipo: "jefes", meta: 30 },
+            ataque: "Hachazo", glifo: 0xF0F1B,
+            visual: { forma: "tajo", color: "#ff9f0a" }, reto: { tipo: "jefes", meta: 30 },
             porNivel: { vida: 0.10, daño: 0.11, armadura: 0.4 },
             habilidades: [
                 { nivel: 1, id: "furia", nombre: "Furia",
@@ -231,7 +239,8 @@ Singleton {
         {
             id: "druida", nombre: "Druida", sprite: "h06",
             vida: 200, daño: 9, armadura: 2, papel: "Regenera sin parar",
-            ataque: "Zarza", glifo: 0xF058C, reto: { tipo: "cofres", meta: 60 },
+            ataque: "Zarza", glifo: 0xF058C,
+            visual: { forma: "proyectil", color: "#32d74b" }, reto: { tipo: "cofres", meta: 60 },
             porNivel: { vida: 0.10, daño: 0.08, armadura: 0.3 },
             habilidades: [
                 { nivel: 1, id: "brotar", nombre: "Brotes",
@@ -251,7 +260,8 @@ Singleton {
         {
             id: "paladin", nombre: "Paladín", sprite: "h08",
             vida: 280, daño: 10, armadura: 7, papel: "Muro con castigo",
-            ataque: "Maza sagrada", glifo: 0xF0A38, reto: { tipo: "nivel", meta: 60 },
+            ataque: "Maza sagrada", glifo: 0xF0A38,
+            visual: { forma: "destello", color: "#0a84ff" }, reto: { tipo: "nivel", meta: 60 },
             porNivel: { vida: 0.11, daño: 0.09, armadura: 0.65 },
             habilidades: [
                 { nivel: 1, id: "escudoFe", nombre: "Escudo de fe",
@@ -613,6 +623,7 @@ Singleton {
         let vida = c.vida * Math.pow(1 + p.vida, nivel)
         let armadura = c.armadura + p.armadura * nivel
         let cura = (c.id === "clerigo" ? 5 : 0) * Math.pow(1 + p.vida, nivel)
+        let recorte = 0
 
         const huecos = ["arma", "escudo", "armadura", "amuleto"]
         for (let i = 0; i < huecos.length; ++i) {
@@ -623,13 +634,18 @@ Singleton {
             vida += it.stats.vida || 0
             armadura += it.stats.armadura || 0
             cura += it.stats.cura || 0
+            recorte += it.stats.recorte || 0
         }
 
         return {
             daño: daño * metaMultDaño,
             vida: Math.round(vida * metaMultVida),
             armadura: armadura,
-            cura: cura
+            cura: cura,
+            // Con tope: sin él, cuatro accesorios buenos dejarían las
+            // habilidades sin recarga y el combate sería un fuego artificial
+            // continuo.
+            recorte: Math.min(topeRecorte, recorte / 100)
         }
     }
 
@@ -796,6 +812,9 @@ Singleton {
 
     // ── señales para la vista ─────────────────────────────────────
     signal impacto(int indiceEnemigo, real daño)
+    // El impacto dice cuánto y a quién; este dice quién lo dio, que es lo que
+    // hace falta para dibujar el ataque de cada clase a su manera.
+    signal golpea(int indiceHeroe, int indiceEnemigo)
     signal heroeHerido(int indiceHeroe, real daño)
     signal enemigoMuerto(int indiceEnemigo)
     signal curado(int indiceHeroe, real cantidad)
@@ -821,8 +840,9 @@ Singleton {
         for (let i = 0; i < plantilla.length; ++i) {
             const c = claseDe(plantilla[i])
             const recargas = ({})
+            const recorta = 1 - statsDe({ clase: c.id, nivel: datosHeroe(c.id).nivel }).recorte
             for (let h = 0; h < c.habilidades.length; ++h)
-                recargas[c.habilidades[h].id] = c.habilidades[h].recarga
+                recargas[c.habilidades[h].id] = c.habilidades[h].recarga * recorta
 
             const guardado = datosHeroe(c.id)
 
@@ -950,6 +970,7 @@ Singleton {
                 const pega = mermar(e[blanco], st.daño * delta)
                 e[blanco].vida -= pega
                 impacto(blanco, pega)
+                golpea(i, blanco)
                 if (e[blanco].vida <= 0) {
                     enemigoMuerto(blanco)
                     aplicarExp(g, Math.ceil(8 * Math.pow(1.11, oleada - 1)))
@@ -1258,7 +1279,7 @@ Singleton {
                 e[j].quieto = p
         }
 
-        g[i].recargas[id] = hab.recarga
+        g[i].recargas[id] = hab.recarga * (1 - statsDe(g[i]).recorte)
         contar("habilidades")
         habilidadLanzada(i)
     }

@@ -52,14 +52,44 @@ ColumnLayout {
             if (celda) celda.destellar()
         }
 
+        function onGolpea(heroe, enemigo) { panel.dibujarGolpe(heroe, enemigo) }
+
         function onOleadaSuperada(numero) {
             escenario.caminar()
             entrada.restart()
         }
     }
 
+    // Un efecto por golpe, creado y destruido al vuelo. Con tres héroes
+    // pegando una vez por segundo son tres objetos por segundo: no compensa
+    // mantener una reserva.
+    Component { id: compGolpe; EfectoGolpe {} }
+
+    function dibujarGolpe(heroe, enemigo) {
+        const origen = filaHeroes.itemAt(heroe)
+        const destino = filaEnemigos.itemAt(enemigo)
+        if (!origen || !destino)
+            return
+
+        const datos = Game.grupo[heroe]
+        const v = datos ? Game.claseDe(datos.clase).visual : null
+        if (!v)
+            return
+
+        const a = origen.mapToItem(campo, origen.width * 0.62, origen.height * 0.5)
+        const b = destino.mapToItem(campo, destino.width * 0.4, destino.height * 0.5)
+
+        const obj = compGolpe.createObject(campo, {
+            forma: v.forma, tono: v.color,
+            desdeX: a.x, desdeY: a.y, hastaX: b.x, hastaY: b.y
+        })
+        if (obj)
+            obj.arrancar()
+    }
+
     // ── campo de batalla ──────────────────────────────────────────
     Rectangle {
+        id: campo
         Layout.fillWidth: true
         Layout.preferredHeight: 122
         radius: 12
