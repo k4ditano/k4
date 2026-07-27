@@ -39,7 +39,9 @@ K4Plugin {
     // lo aparta al abrirse; lo inyecta el host
     property var panel: null
 
-    islandWidth: 700
+    // Ancho pensado para la cabecera, que es lo que manda: seis pestañas, el
+    // título, dos contadores y dos botones. Con 700 se salía por la derecha.
+    islandWidth: 820
     // la bolsa y el altar necesitan más alto que la pelea
     islandHeight: pestaña === "lucha" ? 300 : 380
 

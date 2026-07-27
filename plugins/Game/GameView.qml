@@ -34,6 +34,10 @@ FadeIn {
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
                 color: Game.esJefe ? Theme.red : Theme.ink
+                elide: Text.ElideRight
+                // cede el primero si la cabecera se queda corta, en vez de
+                // empujar las pestañas fuera de la island
+                Layout.maximumWidth: 150
                 Layout.alignment: Qt.AlignVCenter
             }
 
@@ -55,7 +59,7 @@ FadeIn {
                     required property var modelData
                     readonly property bool actual: view.plugin.pestaña === modelData.id
 
-                    Layout.preferredWidth: contenido.implicitWidth + 14
+                    Layout.preferredWidth: contenido.implicitWidth + 11
                     Layout.preferredHeight: 20
                     radius: 10
                     color: actual ? Theme.surfaceHi
@@ -66,7 +70,7 @@ FadeIn {
                     RowLayout {
                         id: contenido
                         anchors.centerIn: parent
-                        spacing: 4
+                        spacing: 3
 
                         IconGlyph {
                             text: String.fromCodePoint(pestaña.modelData.glifo)
