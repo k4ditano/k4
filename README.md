@@ -111,7 +111,8 @@ Con la barra cerrada siguen cayendo cofres corrientes, uno cada cuarto de hora
 y con tope de ocho horas.
 
 En la píldora queda un indicador con la oleada y un punto morado cuando hay
-cofres sin abrir; desde el reloj se pulsa para abrir la mazmorra. Ver
+cofres sin abrir; al pasar el ratón —tanto en el reloj como en el reproductor—
+se puede pulsar para abrir la mazmorra. Ver
 [Los sprites](#los-sprites) para cómo se generaron.
 
 **Ajustes.** Interruptores de la barra dentro de la island: si la mazmorra

@@ -373,215 +373,147 @@ FadeIn {
             }
         }
 
-        // ── reproducción + accesos directos
-        RowLayout {
+        // ── reproducción, compacta ────────────────────────────────
+        // Ocupaba media pestaña con una carátula de 52 px. En el centro de
+        // control de macOS "Reproduciendo" es una fila discreta, no el
+        // protagonista: aquí baja a 62 px de alto y gana el ancho entero.
+        IslandTile {
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            spacing: 10
+            Layout.fillHeight: false
+            Layout.preferredHeight: 62
             visible: view.plugin.tab === "controls"
+            pulsable: false
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                radius: 16
-                color: Theme.surface
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 12
+                anchors.rightMargin: 8
+                spacing: 12
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: 14
-                    spacing: 12
+                Artwork {
+                    Layout.preferredWidth: 40
+                    Layout.preferredHeight: 40
+                    Layout.alignment: Qt.AlignVCenter
+                    placeholder: Theme.surfaceHi
+                }
 
-                    Artwork {
-                        Layout.preferredWidth: 52
-                        Layout.preferredHeight: 52
-                        Layout.alignment: Qt.AlignVCenter
-                        placeholder: Theme.surfaceHi
-                    }
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignVCenter
+                    spacing: 1
 
-                    ColumnLayout {
+                    IslandLabel {
                         Layout.fillWidth: true
-                        Layout.fillHeight: false
-                        Layout.alignment: Qt.AlignVCenter
-                        spacing: 2
-
-                        IslandLabel {
-                            Layout.fillWidth: true
-                            text: Media.hasPlayer && Media.activePlayer.trackTitle.length > 0
-                                ? Media.activePlayer.trackTitle : "Nada en reproducción"
-                            font.pixelSize: 13
-                            font.weight: Font.DemiBold
-                            elide: Text.ElideRight
-                        }
-
-                        IslandLabel {
-                            Layout.fillWidth: true
-                            text: Media.hasPlayer ? Media.activePlayer.trackArtist : ""
-                            color: Theme.muted
-                            font.pixelSize: 11
-                            elide: Text.ElideRight
-                        }
+                        text: Media.hasPlayer && Media.activePlayer.trackTitle.length > 0
+                            ? Media.activePlayer.trackTitle : "Nada en reproducción"
+                        font.pixelSize: 12
+                        font.weight: Font.DemiBold
+                        elide: Text.ElideRight
                     }
 
-                    MediaButton {
-                        glyph: Theme.ico.prev
-                        glyphSize: 18
-                        glyphColor: Theme.muted
-                        enabledAction: Media.hasPlayer && Media.activePlayer.canGoPrevious
-                        onActivated: Media.activePlayer.previous()
-                        Layout.alignment: Qt.AlignVCenter
+                    IslandLabel {
+                        Layout.fillWidth: true
+                        text: Media.hasPlayer ? Media.activePlayer.trackArtist : ""
+                        color: Theme.muted
+                        font.pixelSize: 10
+                        elide: Text.ElideRight
                     }
+                }
 
-                    MediaButton {
-                        glyph: Media.isPlaying ? Theme.ico.pause : Theme.ico.play
-                        glyphSize: 22
-                        enabledAction: Media.hasPlayer && Media.activePlayer.canTogglePlaying
-                        onActivated: Media.activePlayer.togglePlaying()
-                        Layout.alignment: Qt.AlignVCenter
-                    }
+                Visualizer {
+                    visible: Media.isPlaying
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredHeight: 12
+                    Layout.rightMargin: 2
+                }
 
-                    MediaButton {
-                        glyph: Theme.ico.next
-                        glyphSize: 18
-                        glyphColor: Theme.muted
-                        enabledAction: Media.hasPlayer && Media.activePlayer.canGoNext
-                        onActivated: Media.activePlayer.next()
-                        Layout.alignment: Qt.AlignVCenter
-                    }
+                MediaButton {
+                    glyph: Theme.ico.prev
+                    glyphSize: 16
+                    glyphColor: Theme.muted
+                    enabledAction: Media.hasPlayer && Media.activePlayer.canGoPrevious
+                    onActivated: Media.activePlayer.previous()
+                    Layout.alignment: Qt.AlignVCenter
+                }
+
+                MediaButton {
+                    glyph: Media.isPlaying ? Theme.ico.pause : Theme.ico.play
+                    glyphSize: 21
+                    enabledAction: Media.hasPlayer && Media.activePlayer.canTogglePlaying
+                    onActivated: Media.activePlayer.togglePlaying()
+                    Layout.alignment: Qt.AlignVCenter
+                }
+
+                MediaButton {
+                    glyph: Theme.ico.next
+                    glyphSize: 16
+                    glyphColor: Theme.muted
+                    enabledAction: Media.hasPlayer && Media.activePlayer.canGoNext
+                    onActivated: Media.activePlayer.next()
+                    Layout.alignment: Qt.AlignVCenter
                 }
             }
+        }
 
-            ColumnLayout {
-                Layout.preferredWidth: 210
-                Layout.fillWidth: false
-                Layout.fillHeight: true
-                spacing: 10
+        // ── accesos directos, en rejilla ──────────────────────────
+        // Cuatro filas apiladas ocupaban una columna entera; en dos por dos
+        // caben en una franja y se leen de un vistazo.
+        RowLayout {
+            Layout.fillWidth: true
+            // altura propia: con fillHeight se aplastaban y los rótulos se
+            // salían de la tarjeta
+            Layout.fillHeight: false
+            Layout.preferredHeight: 40
+            visible: view.plugin.tab === "controls"
+            spacing: 10
 
-                Rectangle {
+            Repeater {
+                model: [
+                    { id: "apps",  nombre: "Buscar apps", glifo: Theme.ico.search,  color: Theme.muted },
+                    { id: "juego", nombre: "Mazmorra",    glifo: 0xF04E5,           color: "#ff9f0a" },
+                    { id: "tema",  nombre: "Tema",        glifo: Theme.ico.palette, color: "#c78fff" },
+                    { id: "ajustes", nombre: "Ajustes",   glifo: Theme.ico.cog,     color: Theme.muted }
+                ]
+
+                delegate: IslandTile {
+                    id: acceso
+                    required property var modelData
+
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    radius: 16
-                    color: Theme.surface
+
+                    radius: 12
 
                     RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 14
-                        anchors.rightMargin: 14
-                        spacing: 10
+                        anchors.centerIn: parent
+                        spacing: 7
 
-                        IconGlyph { text: Theme.ico.search; color: Theme.muted; font.pixelSize: 16 }
-                        IslandLabel { text: "Buscar apps"; font.pixelSize: 12; Layout.fillWidth: true }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            view.plugin.close()
-                            if (view.plugin.launcher)
-                                view.plugin.launcher.toggle()
-                        }
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    radius: 16
-                    color: Theme.surface
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 14
-                        anchors.rightMargin: 14
-                        spacing: 10
-
-                        Text {
-                            text: Weather.current
-                                ? Weather.icon(Weather.current.code, Weather.current.isDay)
-                                : String.fromCodePoint(0xE374)
-                            color: Theme.muted
-                            font.family: Theme.iconFont
-                            font.pixelSize: 16
+                        IconGlyph {
+                            text: typeof acceso.modelData.glifo === "number"
+                                ? String.fromCodePoint(acceso.modelData.glifo)
+                                : acceso.modelData.glifo
+                            color: acceso.modelData.color
+                            font.pixelSize: 15
                         }
 
                         IslandLabel {
-                            text: Weather.current ? Weather.current.temp + "°" : "El tiempo"
-                            font.pixelSize: 12
-                            Layout.fillWidth: true
-                        }
-
-                        IslandLabel {
-                            visible: Weather.current !== null
-                            text: Weather.place
-                            color: Theme.dim
-                            font.pixelSize: 10
-                            elide: Text.ElideRight
-                            Layout.maximumWidth: 80
+                            text: acceso.modelData.nombre
+                            font.pixelSize: 11
+                            font.weight: Font.Medium
                         }
                     }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            view.plugin.close()
-                            if (view.plugin.weather)
-                                view.plugin.weather.toggle()
-                        }
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    radius: 16
-                    color: Theme.surface
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 14
-                        anchors.rightMargin: 14
-                        spacing: 10
-
-                        IconGlyph { text: Theme.ico.palette; color: Theme.muted; font.pixelSize: 16 }
-                        IslandLabel { text: "Tema"; font.pixelSize: 12; Layout.fillWidth: true }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            view.plugin.close()
-                            if (view.plugin.theme)
-                                view.plugin.theme.toggle()
-                        }
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    radius: 16
-                    color: Theme.surface
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 14
-                        anchors.rightMargin: 14
-                        spacing: 10
-
-                        IconGlyph { text: Theme.ico.cog; color: Theme.muted; font.pixelSize: 16 }
-                        IslandLabel { text: "Ajustes"; font.pixelSize: 12; Layout.fillWidth: true }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            view.plugin.close()
-                            if (view.plugin.ajustes)
-                                view.plugin.ajustes.toggle()
-                        }
+                    onPulsada: {
+                        view.plugin.close()
+                        const cual = acceso.modelData.id
+                        if (cual === "apps" && view.plugin.launcher)
+                            view.plugin.launcher.toggle()
+                        else if (cual === "juego" && view.plugin.juego)
+                            view.plugin.juego.toggle()
+                        else if (cual === "tema" && view.plugin.theme)
+                            view.plugin.theme.toggle()
+                        else if (cual === "ajustes" && view.plugin.ajustes)
+                            view.plugin.ajustes.toggle()
                     }
                 }
             }

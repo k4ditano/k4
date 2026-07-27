@@ -9,6 +9,7 @@ FadeIn {
 
     property var panel: null
     property var tray: null
+    property var juego: null
 
     readonly property var player: Media.activePlayer
     readonly property real progress: player && player.length > 0
@@ -72,6 +73,13 @@ FadeIn {
             Visualizer {
                 Layout.alignment: Qt.AlignVCenter
                 Layout.leftMargin: 4
+            }
+
+            JuegoPildora {
+                interactive: true
+                Layout.leftMargin: 2
+                Layout.alignment: Qt.AlignVCenter
+                onAbrir: if (view.juego) view.juego.toggle()
             }
 
             // Igual que en el reloj: es aquí, con la island ya desplegada,

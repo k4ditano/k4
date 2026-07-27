@@ -34,9 +34,9 @@ Scope {
     IdlePlugin   { id: idlePlugin; tray: trayPlugin }
     VolumePlugin { id: volumePlugin }
     ClockPlugin  { id: clockPlugin; tray: trayPlugin; juego: gamePlugin }
-    PlayerPlugin { id: playerPlugin; panel: panelPlugin; tray: trayPlugin }
+    PlayerPlugin { id: playerPlugin; panel: panelPlugin; tray: trayPlugin; juego: gamePlugin }
     ToastPlugin  { id: toastPlugin }
-    PanelPlugin  { id: panelPlugin; launcher: launcherPlugin; theme: themePlugin; weather: weatherPlugin; ajustes: settingsPlugin }
+    PanelPlugin  { id: panelPlugin; launcher: launcherPlugin; theme: themePlugin; weather: weatherPlugin; ajustes: settingsPlugin; juego: gamePlugin }
     LauncherPlugin { id: launcherPlugin; panel: panelPlugin }
     AskPlugin    { id: askPlugin; panel: panelPlugin; launcher: launcherPlugin }
     HyprThemePlugin { id: themePlugin; panel: panelPlugin }

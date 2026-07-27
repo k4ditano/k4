@@ -24,9 +24,11 @@ K4Plugin {
     property var theme: null
     property var weather: null
     property var ajustes: null
+    property var juego: null
 
     islandWidth: 860
-    islandHeight: tab === "controls" ? 274 : 400
+    // la reproducción compacta y los accesos en rejilla piden menos alto
+    islandHeight: tab === "controls" ? 268 : 400
 
     // solo mientras se escribe la contraseña de una red
     grabKeyboard: Wifi.pskTarget !== null
