@@ -1834,7 +1834,7 @@ Singleton {
         repeat: true
         // En modo vibecoding hace falta chispa en el depósito: sin gasto de
         // tokens el grupo se queda quieto, que es toda la gracia.
-        running: game.cargado && game.viva && !game.pausada
+        running: Settings.juegoActivo && game.cargado && game.viva && !game.pausada
             && (!Settings.juegoPorTokens || Tokens.hay)
         onTriggered: {
             const t = game.ahora()
@@ -1852,7 +1852,7 @@ Singleton {
     Timer {
         interval: 30000
         repeat: true
-        running: game.cargado
+        running: Settings.juegoActivo && game.cargado
         onTriggered: game.guardar()
     }
 
@@ -1872,7 +1872,8 @@ Singleton {
     Timer {
         interval: 1000
         repeat: true
-        running: game.cargado && !game.viva && game.relevoEn > 0 && Settings.juegoContinuar
+        running: Settings.juegoActivo && game.cargado && !game.viva
+            && game.relevoEn > 0 && Settings.juegoContinuar
         onTriggered: {
             if (game.ahora() >= game.relevoEn)
                 game.nuevaPartida()

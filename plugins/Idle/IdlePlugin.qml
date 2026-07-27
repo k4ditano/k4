@@ -24,7 +24,8 @@ K4Plugin {
         ? 0 : trayShown * 18 + (Tray.count > trayShown ? 18 : 0) + 6
 
     // el indicador del juego suma su hueco cuando hay partida cargada
-    readonly property int juegoWidth: Game.cargado && Settings.juegoEnPildora
+    readonly property int juegoWidth: Settings.juegoActivo
+        && Game.cargado && Settings.juegoEnPildora
         ? (Game.cofres > 0 ? 44 : 36) : 0
 
     // Los dos flancos reservan lo mismo —el del más ancho— para que la hora

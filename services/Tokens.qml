@@ -214,7 +214,9 @@ Singleton {
     Process {
         id: vigia
         command: ["python3", Quickshell.shellPath("tools/vigia-tokens.py")]
-        running: true
+        // Su único consumidor es la mazmorra: apagada, no hay por qué estar
+        // leyendo ficheros de sesión cada tres segundos.
+        running: Settings.juegoActivo
 
         stdout: SplitParser {
             onRead: function (linea) {
@@ -237,7 +239,7 @@ Singleton {
     Timer {
         id: reintento
         interval: 15000
-        onTriggered: vigia.running = true
+        onTriggered: if (Settings.juegoActivo) vigia.running = true
     }
 
     // «Activo» caduca: sin ingresos durante un minuto, dejas de estar picando.

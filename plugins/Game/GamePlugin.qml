@@ -62,10 +62,24 @@ K4Plugin {
     closeOnHoverExit: false
 
     function toggle() {
+        // apagada no se abre: el interruptor de Ajustes manda
+        if (!Settings.juegoActivo && !open)
+            return
+
         open = !open
         if (open) {
             if (panel) panel.close()
             Notifs.dismissToast()
+        }
+    }
+
+    // y si la apagas con el tablero delante, se cierra en vez de quedarse
+    // colgado ocupando la island
+    Connections {
+        target: Settings
+        function onJuegoActivoChanged() {
+            if (!Settings.juegoActivo && self.open)
+                self.close()
         }
     }
 

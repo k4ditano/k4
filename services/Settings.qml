@@ -16,6 +16,10 @@ Singleton {
     readonly property string ruta: Quickshell.env("HOME") + "/.local/state/k4/ajustes.json"
 
     // ── juego ─────────────────────────────────────────────────────
+    // El interruptor maestro. Apagado no es «ocultar»: se paran los relojes
+    // del combate, el guardado y el vigía de tokens, que solo trabaja para
+    // esto. Quien no quiera el juego no debe pagar nada por tenerlo instalado.
+    property bool juegoActivo: true
     // services/Game.qml: al caer el grupo, ¿arranca sola la siguiente?
     property bool juegoContinuar: true
     // widgets/JuegoPildora.qml: oleada y aviso de cofres en la píldora
@@ -33,11 +37,13 @@ Singleton {
         {
             grupo: "Mazmorra",
             opciones: [
-                { id: "juegoContinuar", nombre: "Continuar sola al morir",
+                { id: "juegoActivo", nombre: "Mazmorra activa",
+                  desc: "Apagada no corre, no guarda y no ocupa sitio", glifo: 0xF04E5 },
+                { requiere: "juegoActivo", id: "juegoContinuar", nombre: "Continuar sola al morir",
                   desc: "Encadena la siguiente partida tras el resumen", glifo: 0xF04E5 },
-                { id: "juegoEnPildora", nombre: "Mostrar en la píldora",
+                { requiere: "juegoActivo", id: "juegoEnPildora", nombre: "Mostrar en la píldora",
                   desc: "Oleada actual y aviso de cofres sin abrir", glifo: 0xF0BC2 },
-                { id: "juegoPorTokens", nombre: "Pelear con tokens",
+                { requiere: "juegoActivo", id: "juegoPorTokens", nombre: "Pelear con tokens",
                   desc: "Avanza solo mientras gastas en Claude o Codex", glifo: 0xF0241 }
             ]
         },
@@ -65,6 +71,7 @@ Singleton {
             return
 
         vista.setText(JSON.stringify({
+            juegoActivo: juegoActivo,
             juegoContinuar: juegoContinuar,
             juegoEnPildora: juegoEnPildora,
             juegoPorTokens: juegoPorTokens,
@@ -89,6 +96,7 @@ Singleton {
         if (bruto.length > 0) {
             try {
                 const s = JSON.parse(bruto)
+                if (s.juegoActivo !== undefined) juegoActivo = s.juegoActivo
                 if (s.juegoContinuar !== undefined) juegoContinuar = s.juegoContinuar
                 if (s.juegoEnPildora !== undefined) juegoEnPildora = s.juegoEnPildora
                 if (s.juegoPorTokens !== undefined) juegoPorTokens = s.juegoPorTokens

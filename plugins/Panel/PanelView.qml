@@ -473,6 +473,8 @@ FadeIn {
                     id: acceso
                     required property var modelData
 
+                    visible: acceso.modelData.id !== "juego" || Settings.juegoActivo
+
                     Layout.fillWidth: true
                     Layout.fillHeight: true
 

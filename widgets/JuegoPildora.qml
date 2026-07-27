@@ -15,7 +15,8 @@ RowLayout {
     property bool interactive: false
     signal abrir()
 
-    visible: Game.cargado && (interactive || Settings.juegoEnPildora)
+    visible: Settings.juegoActivo && Game.cargado
+        && (interactive || Settings.juegoEnPildora)
     spacing: 4
 
     IconGlyph {

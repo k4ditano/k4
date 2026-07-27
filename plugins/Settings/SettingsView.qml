@@ -91,6 +91,15 @@ FadeIn {
                         required property var modelData
                         readonly property bool activa: Settings.valor(modelData.id)
 
+                        // Algunas opciones no pintan nada si su interruptor
+                        // maestro está apagado: se atenúan y dejan de
+                        // responder, en vez de mentir sobre lo que hacen.
+                        readonly property bool disponible: !modelData.requiere
+                            || Settings.valor(modelData.requiere)
+
+                        opacity: disponible ? 1 : 0.4
+                        Behavior on opacity { NumberAnimation { duration: 140 } }
+
                         Layout.fillWidth: true
                         Layout.preferredHeight: 40
                         radius: 10
@@ -134,7 +143,7 @@ FadeIn {
 
                             IslandSwitch {
                                 checked: opcion.activa
-                                onToggled: Settings.alternar(opcion.modelData.id)
+                                onToggled: if (opcion.disponible) Settings.alternar(opcion.modelData.id)
                                 Layout.alignment: Qt.AlignVCenter
                             }
                         }
@@ -148,7 +157,7 @@ FadeIn {
                             anchors.rightMargin: 54     // deja pasar el interruptor
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: Settings.alternar(opcion.modelData.id)
+                            onClicked: if (opcion.disponible) Settings.alternar(opcion.modelData.id)
                         }
                     }
                 }
