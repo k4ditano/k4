@@ -36,6 +36,16 @@ K4Plugin {
     property var installedPackages: ({})
     property bool aurSearching: false
 
+    // Al abrir el lanzador se actualiza el índice de aplicaciones del usuario.
+    // DesktopEntries ya vigila cambios, pero este paso cubre instalaciones que
+    // crean el .desktop mientras k4 estaba cerrado o durante un escaneo.
+    readonly property string applicationsDir: {
+        const dataHome = Quickshell.env("XDG_DATA_HOME")
+        const base = dataHome && dataHome.length > 0
+            ? dataHome : Quickshell.env("HOME") + "/.local/share"
+        return base + "/applications"
+    }
+
     islandWidth: 720
     islandHeight: 440
 
@@ -248,6 +258,11 @@ K4Plugin {
         index = 0
     }
 
+    function refreshApplications() {
+        desktopDatabaseProcess.running = true
+        rebuild()
+    }
+
     function toggle() {
         if (open) {
             close()
@@ -260,7 +275,7 @@ K4Plugin {
         if (panel) panel.close()
         Notifs.dismissToast()
         open = true
-        rebuild()
+        refreshApplications()
     }
 
     function close() {
@@ -341,6 +356,12 @@ K4Plugin {
                 self.installedPackages = set
             }
         }
+    }
+
+    Process {
+        id: desktopDatabaseProcess
+        command: ["update-desktop-database", self.applicationsDir]
+        onExited: self.rebuild()
     }
 
     Process {
