@@ -9,6 +9,8 @@ import "../../services"
 RowLayout {
     id: panel
 
+    property var plugin: null
+
     spacing: 8
 
     Repeater {
@@ -25,10 +27,18 @@ RowLayout {
             })
             readonly property var siguiente: Game.proximaHabilidad(modelData.id, permanente.nivel)
 
+            readonly property bool elegido: panel.plugin
+                && panel.plugin.heroeElegido === modelData.id
+
             Layout.fillWidth: true
             Layout.fillHeight: true
             radius: 12
             color: Theme.surface
+            // el que vienes de pulsar en el campo, marcado
+            border.width: elegido ? 1 : 0
+            border.color: Theme.blue
+
+            Behavior on border.width { NumberAnimation { duration: 150 } }
 
             ColumnLayout {
                 anchors.fill: parent

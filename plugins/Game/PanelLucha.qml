@@ -8,6 +8,8 @@ import "../../services"
 ColumnLayout {
     id: panel
 
+    property var plugin: null
+
     spacing: 8
 
     // desplazamiento y opacidad de los enemigos al aparecer
@@ -103,6 +105,10 @@ ColumnLayout {
                     habilidades: Game.habilidadesDe(datos)
                     recargas: datos.recargas || ({})
                     heroe: index
+
+                    // pulsar a los tuyos lleva a su ficha, que es donde se ve
+                    // el equipo, las habilidades y lo que falta para el nivel
+                    onPulsado: if (panel.plugin) panel.plugin.verHeroe(datos.clase)
                     onLanzar: function (id) { Game.lanzar(index, id) }
                 }
             }
@@ -133,6 +139,9 @@ ColumnLayout {
                     colorVida: datos.jefe ? Theme.red : "#ff9f0a"
                     mirandoDerecha: false
                     escala: datos.jefe ? 1.15 : 1
+                    rasgos: (datos.rasgos || []).map(function (r) {
+                        return Game.rasgoDe(r)
+                    }).filter(function (r) { return r !== null })
 
                     // Translate y no `x`: animar la x de un hijo de RowLayout
                     // pelea con el propio layout, y al acabar la animación los

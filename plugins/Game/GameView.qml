@@ -127,13 +127,17 @@ FadeIn {
                 Layout.alignment: Qt.AlignVCenter
                 radius: 9
                 color: Theme.surface
-                clip: true
 
                 Rectangle {
                     anchors.left: parent.left
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
-                    width: parent.width * Tokens.llenado
+                    // El relleno lleva el mismo radio que la píldora: `clip`
+                    // recorta en rectángulo, no en redondeado, y ademas se
+                    // comia el aviso de abajo.
+                    width: Math.max(parent.height, parent.width * Tokens.llenado)
+                    radius: parent.radius
+                    visible: Tokens.deposito > 0
                     color: Tokens.activo ? "#3affd60a" : "#1fffd60a"
 
                     Behavior on width { NumberAnimation { duration: 400 } }
@@ -163,8 +167,11 @@ FadeIn {
                 // lo que acabas de escribir ha entrado
                 IslandLabel {
                     id: aviso
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.top: parent.bottom
+                    // a la izquierda, no debajo: debajo se salia de la banda
+                    // de la cabecera y quedaba tapado
+                    anchors.right: parent.left
+                    anchors.rightMargin: 6
+                    anchors.verticalCenter: parent.verticalCenter
                     text: "+" + Tokens.cifra(Tokens.ultimaCantidad) + " " + Tokens.ultimaFuente
                     color: "#ffd60a"
                     font.pixelSize: 9
@@ -249,8 +256,8 @@ FadeIn {
         }
     }
 
-    Component { id: panelLucha; PanelLucha {} }
-    Component { id: panelGrupo; PanelGrupo {} }
+    Component { id: panelLucha; PanelLucha { plugin: view.plugin } }
+    Component { id: panelGrupo; PanelGrupo { plugin: view.plugin } }
     Component { id: panelBolsa; PanelBolsa { plugin: view.plugin } }
     Component { id: panelAltar; PanelAltar {} }
     Component { id: panelPlantilla; PanelPlantilla {} }

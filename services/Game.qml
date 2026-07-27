@@ -22,7 +22,7 @@ Singleton {
     // ── curvas ────────────────────────────────────────────────────
     readonly property int tickMs: 1000
     readonly property real enemigoVidaBase: 48
-    readonly property real enemigoVidaCrec: 1.145
+    readonly property real enemigoVidaCrec: 1.075
     readonly property real enemigoDañoBase: 3.2
     readonly property real enemigoDañoCrec: 1.095
     readonly property real oroBase: 11
@@ -42,6 +42,69 @@ Singleton {
     // Segundos que espera una habilidad lista antes de lanzarse sola. Da margen
     // para usarla tú si estás mirando, sin castigarte si no.
     readonly property int autoHabilidad: 5
+    // El escudo se apilaba sin freno: en la oleada 40 la clériga acumulaba
+    // 38.000 contra bichos que pegaban 120, y no entraba un golpe en toda la
+    // partida. Con tope es un colchón, no una armadura de dios.
+    readonly property real topeEscudo: 0.6
+
+    // ── rasgos de los enemigos ────────────────────────────────────
+    //
+    //  Pasada cierta oleada los monstruos dejan de ser sacos de vida y traen
+    //  algo propio. Se resuelven por efecto, igual que las habilidades de los
+    //  héroes, para que añadir uno nuevo sea una línea en esta tabla.
+    //
+    //  El orden importa: los primeros son molestos y los últimos cambian cómo
+    //  hay que jugar. `ruptura` en particular existe porque el escudo era la
+    //  respuesta a todo.
+    readonly property var rasgos: [
+        { id: "coraza",  nombre: "Coraza",  desde: 12, color: "#8e8e93",
+          desc: "aguanta mejor los golpes" },
+        { id: "furia",   nombre: "Furia",   desde: 25, color: "#ff453a",
+          desc: "pega más fuerte cuanta menos vida le queda" },
+        { id: "ponzona", nombre: "Ponzoña", desde: 40, color: "#32d74b",
+          desc: "envenena a quien golpea" },
+        { id: "drenaje", nombre: "Drenaje", desde: 55, color: "#bf5af2",
+          desc: "se cura con el daño que hace" },
+        { id: "ruptura", nombre: "Ruptura", desde: 70, color: "#ffd60a",
+          desc: "sus golpes ignoran los escudos" },
+        { id: "eco",     nombre: "Eco",     desde: 92, color: "#0a84ff",
+          desc: "salpica al resto del grupo" }
+    ]
+
+    // Deterministas a propósito: la misma oleada trae siempre los mismos
+    // rasgos, así se puede medir el balance y no depende de la suerte.
+    function rasgosPara(ol, indice) {
+        const posibles = []
+        for (let i = 0; i < rasgos.length; ++i) {
+            if (ol >= rasgos[i].desde)
+                posibles.push(rasgos[i].id)
+        }
+        if (!posibles.length)
+            return []
+
+        const cuantos = Math.min(posibles.length, 1 + Math.floor(ol / 60))
+        const salida = []
+        for (let i = 0; i < cuantos; ++i) {
+            const cual = posibles[(ol + indice * 2 + i * 3) % posibles.length]
+            if (salida.indexOf(cual) === -1)
+                salida.push(cual)
+        }
+        return salida
+    }
+
+    function rasgoDe(id) {
+        for (let i = 0; i < rasgos.length; ++i) {
+            if (rasgos[i].id === id)
+                return rasgos[i]
+        }
+        return null
+    }
+
+    // Lo que de verdad recibe un enemigo, contando su coraza.
+    function mermar(enemigo, cantidad) {
+        return (enemigo.rasgos && enemigo.rasgos.indexOf("coraza") !== -1)
+            ? cantidad * 0.62 : cantidad
+    }
 
     // ── clases ────────────────────────────────────────────────────
     readonly property var clases: [
@@ -806,7 +869,9 @@ Singleton {
                         .padStart(2, "0"),
                 jefe: esJefe,
                 quieto: 0,
-                veneno: 0
+                veneno: 0,
+                // los jefes llevan uno más: son el examen de las diez oleadas
+                rasgos: rasgosPara(oleada + (esJefe ? 30 : 0), i)
             })
         }
         enemigos = lista
@@ -862,6 +927,14 @@ Singleton {
             }
             if (g[i].regenerando > 0 && g[i].vida > 0)
                 g[i].vida = Math.min(vidaMaxDe(g[i]), g[i].vida + statsDe(g[i]).cura * 1.2 * delta)
+
+            // la ponzoña de los monstruos va royendo al héroe
+            if (g[i].veneno > 0 && g[i].vida > 0) {
+                const roe = g[i].veneno * delta
+                g[i].vida -= roe
+                g[i].veneno = Math.max(0, g[i].veneno - g[i].veneno * 0.12 * delta)
+                heroeHerido(i, roe)
+            }
         }
 
         // ── golpean los héroes
@@ -874,8 +947,9 @@ Singleton {
             const blanco = primerVivo(e)
 
             if (blanco >= 0) {
-                e[blanco].vida -= st.daño * delta
-                impacto(blanco, st.daño * delta)
+                const pega = mermar(e[blanco], st.daño * delta)
+                e[blanco].vida -= pega
+                impacto(blanco, pega)
                 if (e[blanco].vida <= 0) {
                     enemigoMuerto(blanco)
                     aplicarExp(g, Math.ceil(8 * Math.pow(1.11, oleada - 1)))
@@ -938,19 +1012,51 @@ Singleton {
             // Restando, seis de armadura contra enemigos de tres dejaba las
             // primeras veinte oleadas en cero daño: sin tensión y con la
             // pantalla llena de "-0".
+            const marcas = e[j].rasgos || []
+
+            let pega = e[j].daño * delta
+            // furia: el bicho herido se crece, así que rematar corre prisa
+            if (marcas.indexOf("furia") !== -1)
+                pega *= 1 + (1 - e[j].vida / e[j].vidaMax) * 0.9
+
             const armadura = statsDe(g[blanco]).armadura + (g[blanco].provocando > 0 ? 12 : 0)
             const reduccion = 100 / (100 + armadura * 4)
-            let recibido = e[j].daño * delta * reduccion
+            let recibido = pega * reduccion
 
-            // el escudo se lleva el golpe antes que la vida
-            if (g[blanco].escudo > 0) {
+            // el escudo se lleva el golpe antes que la vida, salvo contra
+            // quien sabe romperlo
+            if (g[blanco].escudo > 0 && marcas.indexOf("ruptura") === -1) {
                 const absorbido = Math.min(g[blanco].escudo, recibido)
                 g[blanco].escudo -= absorbido
                 recibido -= absorbido
             }
 
             g[blanco].vida -= recibido
-            heroeHerido(blanco, recibido)
+            // Sin este filtro la pantalla se llenaba de "-0": el escudo se
+            // comía el golpe entero y aun así se anunciaba el impacto.
+            if (recibido > 0.5)
+                heroeHerido(blanco, recibido)
+
+            // ponzoña: deja veneno que sigue royendo después
+            if (marcas.indexOf("ponzona") !== -1)
+                g[blanco].veneno = Math.max(g[blanco].veneno || 0, e[j].daño * 0.3)
+
+            // drenaje: lo que te quita, se lo queda
+            if (marcas.indexOf("drenaje") !== -1)
+                e[j].vida = Math.min(e[j].vidaMax, e[j].vida + recibido * 0.55)
+
+            // eco: el golpe salpica a los de detrás, que era donde uno se
+            // escondía dejando al tanque delante
+            if (marcas.indexOf("eco") !== -1) {
+                for (let k = 0; k < g.length; ++k) {
+                    if (k === blanco || g[k].vida <= 0)
+                        continue
+                    const salpica = recibido * 0.4
+                    g[k].vida -= salpica
+                    if (salpica > 0.5)
+                        heroeHerido(k, salpica)
+                }
+            }
 
             // represalia: parte del golpe vuelve a quien lo dio
             if (g[blanco].reflejando > 0) {
@@ -1075,7 +1181,8 @@ Singleton {
         } else if (hab.efecto === "escudoGrupo") {
             for (let j = 0; j < g.length; ++j) {
                 if (g[j].vida <= 0) continue
-                g[j].escudo = (g[j].escudo || 0) + vidaMaxDe(g[i]) * p
+                g[j].escudo = Math.min(vidaMaxDe(g[j]) * topeEscudo,
+                    (g[j].escudo || 0) + vidaMaxDe(g[i]) * p)
                 escudoPuesto(j)
             }
 
@@ -1152,6 +1259,7 @@ Singleton {
         }
 
         g[i].recargas[id] = hab.recarga
+        contar("habilidades")
         habilidadLanzada(i)
     }
 

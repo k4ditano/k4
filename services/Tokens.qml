@@ -30,7 +30,12 @@ Singleton {
     id: tokens
 
     // ── conversión ────────────────────────────────────────────────
-    readonly property int chispaPorSegundo: 1500
+    // Midiendo bloques de trabajo reales salen 75.000 chispas por minuto de
+    // reloj, no por minuto activo: entre rafaga y rafaga se lee, se piensa y
+    // se espera a que corra una herramienta. A 1.500/s el deposito se quedaba
+    // seco el 16% del tiempo y aparecia el cartel de espera trabajando; a
+    // 1.000 sobra margen y el combate no se corta.
+    readonly property int chispaPorSegundo: 1000
     // Un depósito con fondo: media hora guardada cubre de sobra los ratos de
     // lectura entre turnos, y evita que una noche de tareas largas deje la
     // mazmorra corriendo sola hasta mañana.

@@ -131,9 +131,15 @@ Singleton {
 
         // Escala con la oleada en que cayó: un objeto de la oleada 40 debe
         // valer más que el mismo de la 3, aunque compartan rareza.
-        // Sube con la oleada, pero despacio: con 0,32 por oleada un juego de
-        // piezas de la 70 barría cien oleadas seguidas de la partida siguiente.
-        const escala = (1 + oleada * 0.18) * rarezaDe(rareza).mult
+        //
+        // Y crece en exponencial, no en línea recta. Los héroes suben ~11% de
+        // vida por nivel, así que con una escala lineal el botín se quedaba
+        // atrás enseguida: en la oleada 64, con el grupo a nivel 39 y 12.000
+        // de vida, la mejor coraza daba 705. Un 6%. Se notaba tan poco que
+        // parecía no haber objetos, que es justo lo que se sentía jugando.
+        // Al 6% por oleada una pieza vale siempre en torno al 12% de lo que
+        // tiene un héroe de su nivel, y el juego de cuatro se nota de verdad.
+        const escala = 1.25 * Math.pow(1.06, oleada - 1) * rarezaDe(rareza).mult
         const stats = ({})
 
         // cuántas estadísticas trae: de una a cuatro según el grado
@@ -157,7 +163,11 @@ Singleton {
 
         return {
             id: Math.floor(Math.random() * 1e9),
-            nivel: Math.max(1, Math.round(oleada / 3) + 1),
+            // El nivel exigido sigue al que de verdad llevas a esa altura:
+            // con oleada/3 caían piezas de nivel 22 cuando el grupo iba por el
+            // 39, y sobraban todas. A 0,6 por oleada la pieza que cae es justo
+            // la que puedes ponerte, que es donde está la gracia.
+            nivel: Math.max(1, Math.round(oleada * 0.6)),
             hueco: hueco.id,
             tipo: hueco.tipos[cual],
             icono: hueco.iconos[cual],

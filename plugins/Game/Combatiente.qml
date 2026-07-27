@@ -28,7 +28,9 @@ Item {
     property var habilidades: []
     property var recargas: ({})
     property int heroe: -1
+    property var rasgos: []        // ya resueltos: { nombre, color }
     signal lanzar(string id)
+    signal pulsado()
 
     readonly property bool caido: vida <= 0
     readonly property real fraccion: vidaMax > 0 ? Math.max(0, Math.min(1, vida / vidaMax)) : 0
@@ -74,6 +76,14 @@ Item {
                         easing.type: Easing.InOutSine }
                     NumberAnimation { to: 0; duration: 1100 + (combatiente.x % 7) * 60
                         easing.type: Easing.InOutSine }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    z: 5
+                    enabled: combatiente.heroe >= 0
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: combatiente.pulsado()
                 }
 
                 Image {
@@ -151,6 +161,28 @@ Item {
                             + (Math.random() * 8 - 4),
                         y: numeros.height * 0.34 - turno * 11
                     })
+                }
+            }
+        }
+
+        // ── lo que trae este bicho
+        //  Sin esto los rasgos son magia invisible: te matan y no sabes por
+        //  qué. Con el nombre delante, la oleada 70 se lee de un vistazo.
+        Row {
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: 4
+            visible: combatiente.rasgos.length > 0 && !combatiente.caido
+
+            Repeater {
+                model: combatiente.rasgos
+
+                delegate: IslandLabel {
+                    required property var modelData
+
+                    text: modelData.nombre
+                    color: modelData.color
+                    font.pixelSize: 7
+                    font.weight: Font.DemiBold
                 }
             }
         }
