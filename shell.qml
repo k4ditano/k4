@@ -26,6 +26,7 @@ import "plugins/Game"
 import "plugins/Settings"
 import "plugins/Clipboard"
 import "plugins/System"
+import "plugins/Files"
 
 Scope {
     id: root
@@ -48,6 +49,7 @@ Scope {
     SettingsPlugin { id: settingsPlugin; panel: panelPlugin }
     ClipboardPlugin { id: clipboardPlugin; panel: panelPlugin }
     SystemPlugin { id: systemPlugin; panel: panelPlugin }
+    FilesPlugin { id: filesPlugin; panel: panelPlugin }
 
     readonly property var plugins: [
         idlePlugin,
@@ -64,7 +66,8 @@ Scope {
         gamePlugin,
         settingsPlugin,
         clipboardPlugin,
-        systemPlugin
+        systemPlugin,
+        filesPlugin
     ]
 
     // ── quién se queda la island ──────────────────────────────────
@@ -127,6 +130,7 @@ Scope {
         function toggleLauncher(): void { launcherPlugin.toggle() }
         function clipboard(): void { clipboardPlugin.toggle() }
         function system(): void { systemPlugin.toggle() }
+        function files(): void { filesPlugin.toggle() }
         function install(query: string): void { launcherPlugin.openPackageSearch(query) }
         function search(query: string): void {
             if (!launcherPlugin.open)
