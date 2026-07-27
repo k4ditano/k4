@@ -24,6 +24,7 @@ import "plugins/Weather"
 import "plugins/Tray"
 import "plugins/Game"
 import "plugins/Settings"
+import "plugins/Clipboard"
 
 Scope {
     id: root
@@ -44,6 +45,7 @@ Scope {
     TrayPlugin   { id: trayPlugin; panel: panelPlugin }
     GamePlugin   { id: gamePlugin; panel: panelPlugin }
     SettingsPlugin { id: settingsPlugin; panel: panelPlugin }
+    ClipboardPlugin { id: clipboardPlugin; panel: panelPlugin }
 
     readonly property var plugins: [
         idlePlugin,
@@ -58,7 +60,8 @@ Scope {
         weatherPlugin,
         trayPlugin,
         gamePlugin,
-        settingsPlugin
+        settingsPlugin,
+        clipboardPlugin
     ]
 
     // ── quién se queda la island ──────────────────────────────────
@@ -109,6 +112,7 @@ Scope {
         void Game.cargado
         void Settings.cargado
         void Tokens.cargado
+        void Clipboard.cargado
     }
 
     // ── IPC ───────────────────────────────────────────────────────
@@ -118,6 +122,7 @@ Scope {
     IpcHandler {
         target: "k4"
         function toggleLauncher(): void { launcherPlugin.toggle() }
+        function clipboard(): void { clipboardPlugin.toggle() }
         function install(query: string): void { launcherPlugin.openPackageSearch(query) }
         function search(query: string): void {
             if (!launcherPlugin.open)
