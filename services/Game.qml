@@ -21,13 +21,17 @@ Singleton {
 
     // ── curvas ────────────────────────────────────────────────────
     readonly property int tickMs: 1000
-    readonly property real enemigoVidaBase: 26
-    readonly property real enemigoVidaCrec: 1.17
-    readonly property real enemigoDañoBase: 4
-    readonly property real enemigoDañoCrec: 1.115
-    readonly property real oroBase: 6
-    readonly property real oroCrec: 1.14
-    readonly property real costeCrec: 1.19
+    readonly property real enemigoVidaBase: 48
+    readonly property real enemigoVidaCrec: 1.115
+    readonly property real enemigoDañoBase: 3.2
+    readonly property real enemigoDañoCrec: 1.07
+    readonly property real oroBase: 11
+    readonly property real oroCrec: 1.15
+    // Por encima del crecimiento del oro a propósito: si comprar diera daño al
+    // mismo ritmo al que crece la vida enemiga, quien se pusiera por delante una
+    // vez no volvería a quedarse atrás nunca —medido: llegaba a la oleada 3500—.
+    // Así cada oleada se pierde algo de terreno y el muro siempre acaba llegando.
+    readonly property real costeCrec: 1.24
     readonly property real jefeVida: 5
     readonly property real jefeDaño: 1.8
     readonly property int oleadasPorJefe: 10
@@ -43,19 +47,19 @@ Singleton {
     readonly property var clases: [
         {
             id: "tanque", nombre: "Guardián", sprite: "h00",
-            vida: 260, daño: 9, armadura: 6, papel: "Aguanta los golpes",
+            vida: 300, daño: 4, armadura: 6, papel: "Aguanta los golpes",
             habilidad: "Provocar", habilidadDesc: "Atrae todo y reduce el daño",
             recarga: 18, glifo: 0xF0498
         },
         {
             id: "mago", nombre: "Hechicero", sprite: "h02",
-            vida: 110, daño: 26, armadura: 0, papel: "Daño en área",
+            vida: 130, daño: 12, armadura: 0, papel: "Daño en área",
             habilidad: "Llamarada", habilidadDesc: "Golpea a toda la oleada",
             recarga: 14, glifo: 0xF0E20
         },
         {
             id: "clerigo", nombre: "Clériga", sprite: "h04",
-            vida: 160, daño: 11, armadura: 3, papel: "Cura al grupo",
+            vida: 190, daño: 5, armadura: 3, papel: "Cura al grupo",
             habilidad: "Bendición", habilidadDesc: "Cura a todos de golpe",
             recarga: 22, glifo: 0xF05E1
         }
@@ -340,6 +344,7 @@ Singleton {
 
     // ── ciclo de partida ──────────────────────────────────────────
     function nuevaPartida() {
+        relevoEn = 0
         oleada = 1
         oro = 0
         niveles = ({ ataque: 0, vitalidad: 0, armadura: 0 })
@@ -390,6 +395,11 @@ Singleton {
         enemigos = lista
     }
 
+    // Segundos que se queda el resumen antes de arrancar sola la siguiente.
+    readonly property int segundosRelevo: 20
+    property real relevoEn: 0
+    readonly property int relevoRestante: relevoEn > 0 ? Math.max(0, Math.ceil(relevoEn - ahora())) : 0
+
     function terminarPartida() {
         viva = false
         partidas += 1
@@ -404,6 +414,11 @@ Singleton {
             mejorOleada = oleada
 
         finalizada = "Has caído en la oleada " + oleada
+        // El combate corre siempre, mires o no: si la partida se quedara
+        // muerta esperándote, cada vez que abrieras la barra encontrarías
+        // horas tiradas. Se encadena sola, y el resumen se queda un rato por
+        // si estabas delante.
+        relevoEn = ahora() + segundosRelevo
         partidaTerminada(oleada, ganadosCofres, ganadasReliquias)
         guardar()
     }
@@ -604,6 +619,18 @@ Singleton {
         onTriggered: game.guardar()
     }
 
+    // Reloj del relevo: el del combate se detiene al morir el grupo, así que
+    // hace falta uno aparte que no dependa de `viva`.
+    Timer {
+        interval: 1000
+        repeat: true
+        running: game.cargado && !game.viva && game.relevoEn > 0
+        onTriggered: {
+            if (game.ahora() >= game.relevoEn)
+                game.nuevaPartida()
+        }
+    }
+
     // ── con la barra cerrada ──────────────────────────────────────
     // La partida no avanza sin mirar —moriría sin que la vieras— pero sí caen
     // cofres con el tiempo: es lo que da sentido a volver.
@@ -633,7 +660,7 @@ Singleton {
             version: 2,
             oleada: oleada, oro: oro, niveles: niveles,
             grupo: grupo, enemigos: enemigos, viva: viva,
-            finalizada: finalizada,
+            finalizada: finalizada, relevoEn: relevoEn,
             cofresPorTipo: cofresPorTipo, reliquias: reliquias,
             equipo: equipo, bolsa: bolsa, meta: meta,
             mejorOleada: mejorOleada, partidas: partidas,
@@ -716,6 +743,7 @@ Singleton {
             partidas = s.partidas || 0
             oleadasDesdeCofre = s.oleadasDesdeCofre || 0
             finalizada = s.finalizada || ""
+            relevoEn = s.relevoEn || 0
         }
 
         // Una partida terminada tiene que decirlo. Sin esto el tablero se
@@ -723,6 +751,11 @@ Singleton {
         // cartel de fin solo sale si hay texto que enseñar.
         if (!viva && grupo.length > 0 && finalizada.length === 0)
             finalizada = "Has caído en la oleada " + oleada
+
+        // Si murió mientras no mirabas —o viene de un guardado anterior al
+        // relevo—, se encadena en cuanto te dé tiempo a leer el resumen.
+        if (!viva && grupo.length > 0 && (relevoEn === 0 || ahora() >= relevoEn))
+            relevoEn = ahora() + 8
 
         ultimoTick = ahora()
         cargado = true

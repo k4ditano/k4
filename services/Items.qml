@@ -131,7 +131,9 @@ Singleton {
 
         // Escala con la oleada en que cayó: un objeto de la oleada 40 debe
         // valer más que el mismo de la 3, aunque compartan rareza.
-        const escala = (1 + oleada * 0.32) * rarezaDe(rareza).mult
+        // Sube con la oleada, pero despacio: con 0,32 por oleada un juego de
+        // piezas de la 70 barría cien oleadas seguidas de la partida siguiente.
+        const escala = (1 + oleada * 0.18) * rarezaDe(rareza).mult
         const stats = ({})
 
         // cuántas estadísticas trae: de una a cuatro según el grado

@@ -78,7 +78,25 @@ fondo y el hechicero revienta la oleada entera.
 
 Cada diez oleadas llega un jefe. Cuando cae el grupo se acaba la partida: se
 pierden el oro y las mejoras temporales, y **se conservan el equipo, los cofres
-y las reliquias** — es lo que hace que la siguiente llegue más lejos.
+y las reliquias** — es lo que hace que la siguiente llegue más lejos. Tras el
+resumen arranca sola la siguiente: el combate corre aunque no mires, y una
+partida esperándote muerta serían horas tiradas.
+
+El balance está medido, no puesto a ojo: hay un simulador que carga el
+servicio real y corre miles de oleadas en segundos. Con los números actuales,
+una partida sin equipo muere sobre la **oleada 53 en 14 minutos**, y con el
+equipo de treinta cofres de jefe llega a la **254 en 46 minutos**. Las oleadas
+suben de unos 6 segundos al principio a casi 30 en la cincuentena.
+
+Dos relaciones sostienen eso, y las dos se rompieron al medirlas:
+
+- **El coste de las mejoras crece por encima del oro.** Cuando crecían igual,
+  el daño por compras subía al mismo ritmo que la vida enemiga: quien se ponía
+  por delante una vez no volvía a quedarse atrás, y la simulación llegaba a la
+  oleada 3500.
+- **Las piezas escalan despacio con la oleada en que caen.** Con 0,32 por
+  oleada, un juego de la 70 barría cien oleadas seguidas de la partida
+  siguiente.
 
 Cuatro pestañas: **Lucha** (la pelea y la tienda de la partida), **Grupo**
 (cuatro huecos de equipo por héroe), **Bolsa** (abrir cofres, equipar con clic

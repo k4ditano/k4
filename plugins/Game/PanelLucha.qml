@@ -149,6 +149,14 @@ ColumnLayout {
                     Layout.alignment: Qt.AlignHCenter
                 }
 
+                IslandLabel {
+                    visible: Game.relevoRestante > 0
+                    text: "siguiente partida en " + Game.relevoRestante + " s"
+                    color: "#ffd60a"
+                    font.pixelSize: 10
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
                 Rectangle {
                     Layout.preferredWidth: reiniciar.implicitWidth + 28
                     Layout.preferredHeight: 24
@@ -162,7 +170,7 @@ ColumnLayout {
                     IslandLabel {
                         id: reiniciar
                         anchors.centerIn: parent
-                        text: "Nueva partida"
+                        text: Game.relevoRestante > 0 ? "Empezar ya" : "Nueva partida"
                         font.pixelSize: 11
                         font.weight: Font.DemiBold
                     }
