@@ -14,7 +14,7 @@ K4Plugin {
     id: self
 
     name: "files"
-    title: "Archivos"
+    title: Idioma.t("Archivos")
     // Junto al lanzador y el portapapeles: son los tres que se piden a
     // propósito y ninguno debe quedar tapado por lo que se abre solo.
     priority: 81

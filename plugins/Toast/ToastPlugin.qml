@@ -8,7 +8,7 @@ import "../../services"
 
 K4Plugin {
     name: "toast"
-    title: "Notificación"
+    title: Idioma.t("Notificación")
     priority: 70
     active: Notifs.toastOpen
 

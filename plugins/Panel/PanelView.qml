@@ -40,10 +40,10 @@ FadeIn {
             }
 
             IslandLabel {
-                text: view.plugin.tab === "notifications" ? "Notificaciones"
-                    : view.plugin.tab === "wifi" ? "Wi‑Fi"
-                    : view.plugin.tab === "bluetooth" ? "Bluetooth"
-                    : "Centro de control"
+                text: view.plugin.tab === "notifications" ? Idioma.t("Notificaciones")
+                    : view.plugin.tab === "wifi" ? Idioma.t("Wi‑Fi")
+                    : view.plugin.tab === "bluetooth" ? Idioma.t("Bluetooth")
+                    : Idioma.t("Centro de control")
                 font.pixelSize: 15
                 font.weight: Font.DemiBold
                 Layout.alignment: Qt.AlignVCenter
@@ -74,7 +74,7 @@ FadeIn {
 
                     IslandLabel {
                         id: clearAllLabel
-                        text: "Borrar todo"
+                        text: Idioma.t("Borrar todo")
                         color: clearAllMouse.containsMouse ? Theme.ink : Theme.muted
                         font.pixelSize: 11
                         font.weight: Font.DemiBold
@@ -204,9 +204,9 @@ FadeIn {
                             Layout.fillWidth: true
                             Layout.fillHeight: false
 
-                            IslandLabel { text: "Wi‑Fi"; font.pixelSize: 12; font.weight: Font.DemiBold }
+                            IslandLabel { text: Idioma.t("Wi‑Fi"); font.pixelSize: 12; font.weight: Font.DemiBold }
                             IslandLabel {
-                                text: Networking.wifiEnabled ? Wifi.name : "Desactivado"
+                                text: Networking.wifiEnabled ? Wifi.name : Idioma.t("Desactivado")
                                 color: Theme.muted
                                 font.pixelSize: 10
                                 elide: Text.ElideRight
@@ -270,11 +270,11 @@ FadeIn {
                             Layout.fillWidth: true
                             Layout.fillHeight: false
 
-                            IslandLabel { text: "Bluetooth"; font.pixelSize: 12; font.weight: Font.DemiBold }
+                            IslandLabel { text: Idioma.t("Bluetooth"); font.pixelSize: 12; font.weight: Font.DemiBold }
                             IslandLabel {
                                 text: Bt.adapter
-                                    ? (Bt.adapter.enabled ? "Activado" : "Desactivado")
-                                    : "Sin adaptador"
+                                    ? (Bt.adapter.enabled ? Idioma.t("Activado") : Idioma.t("Desactivado"))
+                                    : Idioma.t("Sin adaptador")
                                 color: Theme.muted
                                 font.pixelSize: 10
                                 elide: Text.ElideRight
@@ -310,10 +310,10 @@ FadeIn {
                         Layout.fillHeight: false
                         spacing: 8
 
-                        IslandLabel { text: "Sonido"; font.pixelSize: 12; font.weight: Font.DemiBold }
+                        IslandLabel { text: Idioma.t("Sonido"); font.pixelSize: 12; font.weight: Font.DemiBold }
                         Item { Layout.fillWidth: true }
                         IslandLabel {
-                            text: Audio.muted ? "Silenciado" : Audio.volume + "%"
+                            text: Audio.muted ? Idioma.t("Silenciado") : Audio.volume + "%"
                             color: Theme.muted
                             font.pixelSize: 11
                         }
@@ -398,7 +398,7 @@ FadeIn {
                     IslandLabel {
                         Layout.fillWidth: true
                         text: Media.hasPlayer && Media.activePlayer.trackTitle.length > 0
-                            ? Media.activePlayer.trackTitle : "Nada en reproducción"
+                            ? Media.activePlayer.trackTitle : Idioma.t("Nada en reproducción")
                         font.pixelSize: 12
                         font.weight: Font.DemiBold
                         elide: Text.ElideRight
@@ -462,11 +462,11 @@ FadeIn {
 
             Repeater {
                 model: [
-                    { id: "apps",  nombre: "Buscar apps", glifo: Theme.ico.search,  color: Theme.muted },
-                    { id: "juego", nombre: "Mazmorra",    glifo: 0xF04E5,           color: "#ff9f0a" },
-                    { id: "tema",  nombre: "Tema",        glifo: Theme.ico.palette, color: "#c78fff" },
-                    { id: "sistema", nombre: "Sistema",   glifo: 0xF035B,           color: "#0a84ff" },
-                    { id: "ajustes", nombre: "Ajustes",   glifo: Theme.ico.cog,     color: Theme.muted }
+                    { id: "apps",  nombre: Idioma.t("Buscar apps"), glifo: Theme.ico.search,  color: Theme.muted },
+                    { id: "juego", nombre: Idioma.t("Mazmorra"),    glifo: 0xF04E5,           color: Idioma.t("#ff9f0a") },
+                    { id: "tema",  nombre: Idioma.t("Tema"),        glifo: Theme.ico.palette, color: Idioma.t("#c78fff") },
+                    { id: "sistema", nombre: Idioma.t("Sistema"),   glifo: 0xF035B,           color: Idioma.t("#0a84ff") },
+                    { id: "ajustes", nombre: Idioma.t("Ajustes"),   glifo: Theme.ico.cog,     color: Theme.muted }
                 ]
 
                 delegate: IslandTile {
@@ -682,7 +682,7 @@ FadeIn {
                 IslandLabel {
                     anchors.centerIn: parent
                     visible: Notifs.tracked.values.length === 0
-                    text: "Sin notificaciones"
+                    text: Idioma.t("Sin notificaciones")
                     color: Theme.muted
                     font.pixelSize: 12
                 }
@@ -709,8 +709,8 @@ FadeIn {
 
                     IslandLabel {
                         text: Networking.wifiEnabled
-                            ? (Wifi.device && Wifi.device.scannerEnabled ? "Buscando redes…" : "Redes")
-                            : "Wi‑Fi desactivado"
+                            ? (Wifi.device && Wifi.device.scannerEnabled ? Idioma.t("Buscando redes…") : Idioma.t("Redes"))
+                            : Idioma.t("Wi‑Fi desactivado")
                         color: Theme.muted
                         font.pixelSize: 11
                         Layout.alignment: Qt.AlignVCenter
@@ -737,7 +737,7 @@ FadeIn {
                         required property var modelData
                         width: ListView.view.width
                         glyph: Wifi.strengthIcon(modelData)
-                        title: modelData.name.length > 0 ? modelData.name : "(red oculta)"
+                        title: modelData.name.length > 0 ? modelData.name : Idioma.t("(red oculta)")
                         subtitle: Wifi.status(modelData)
                         active: modelData.connected
                         busy: modelData.stateChanging
@@ -750,7 +750,7 @@ FadeIn {
                     IslandLabel {
                         anchors.centerIn: parent
                         visible: Wifi.networks.length === 0
-                        text: Networking.wifiEnabled ? "Buscando redes…" : "Activa el Wi‑Fi para ver redes"
+                        text: Networking.wifiEnabled ? Idioma.t("Buscando redes…") : Idioma.t("Activa el Wi‑Fi para ver redes")
                         color: Theme.muted
                         font.pixelSize: 12
                     }
@@ -790,7 +790,7 @@ FadeIn {
                             IslandLabel {
                                 anchors.verticalCenter: parent.verticalCenter
                                 visible: Wifi.pskInput.length === 0
-                                text: Wifi.pskTarget ? "Contraseña de " + Wifi.pskTarget.name : ""
+                                text: Wifi.pskTarget ? Idioma.t("Contraseña de ") + Wifi.pskTarget.name : ""
                                 color: Theme.dim
                                 font.pixelSize: 12
                             }
@@ -869,10 +869,10 @@ FadeIn {
                     spacing: 10
 
                     IslandLabel {
-                        text: !Bt.adapter ? "Sin adaptador"
-                            : !Bt.adapter.enabled ? "Bluetooth desactivado"
-                            : Bt.adapter.discovering ? "Buscando dispositivos…"
-                            : "Dispositivos"
+                        text: !Bt.adapter ? Idioma.t("Sin adaptador")
+                            : !Bt.adapter.enabled ? Idioma.t("Bluetooth desactivado")
+                            : Bt.adapter.discovering ? Idioma.t("Buscando dispositivos…")
+                            : Idioma.t("Dispositivos")
                         color: Theme.muted
                         font.pixelSize: 11
                         Layout.alignment: Qt.AlignVCenter
@@ -912,7 +912,7 @@ FadeIn {
                         anchors.centerIn: parent
                         visible: Bt.devices.length === 0
                         text: Bt.adapter && Bt.adapter.enabled
-                            ? "Buscando dispositivos…" : "Activa el Bluetooth para buscar"
+                            ? Idioma.t("Buscando dispositivos…") : Idioma.t("Activa el Bluetooth para buscar")
                         color: Theme.muted
                         font.pixelSize: 12
                     }

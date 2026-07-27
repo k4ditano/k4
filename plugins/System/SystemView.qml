@@ -36,14 +36,14 @@ FadeIn {
             }
 
             IslandLabel {
-                text: "Sistema"
+                text: Idioma.t("Sistema")
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
                 Layout.alignment: Qt.AlignVCenter
             }
 
             IslandLabel {
-                text: Sistema.cpuHilos > 0 ? Sistema.cpuHilos + " hilos" : ""
+                text: Sistema.cpuHilos > 0 ? Sistema.cpuHilos + Idioma.t(" hilos") : ""
                 color: Theme.dim
                 font.pixelSize: 10
                 Layout.alignment: Qt.AlignVCenter
@@ -54,8 +54,8 @@ FadeIn {
             // el disco no cambia en dos minutos: no merece gráfica, solo cifra
             IslandLabel {
                 visible: Sistema.discoTotal > 0
-                text: "disco " + Math.round(Sistema.discoUsado) + " / "
-                    + Math.round(Sistema.discoTotal) + " GB"
+                text: Idioma.t("disco ") + Math.round(Sistema.discoUsado) + " / "
+                    + Math.round(Sistema.discoTotal) + Idioma.t(" GB")
                 color: Theme.dim
                 font.pixelSize: 10
                 Layout.alignment: Qt.AlignVCenter
@@ -63,7 +63,7 @@ FadeIn {
 
             IslandLabel {
                 visible: Sistema.tempNvme > 0
-                text: "nvme " + Sistema.grados(Sistema.tempNvme)
+                text: Idioma.t("nvme ") + Sistema.grados(Sistema.tempNvme)
                 color: Theme.dim
                 font.pixelSize: 10
                 Layout.alignment: Qt.AlignVCenter
@@ -88,10 +88,10 @@ FadeIn {
 
             Repeater {
                 model: [
-                    { id: "cpu", nombre: "CPU", tono: "#0a84ff" },
-                    { id: "ram", nombre: "Memoria", tono: "#bf5af2" },
-                    { id: "gpu", nombre: "GPU", tono: "#30d158" },
-                    { id: "red", nombre: "Red", tono: "#ff9f0a" }
+                    { id: "cpu", nombre: Idioma.t("CPU"), tono: Idioma.t("#0a84ff") },
+                    { id: "ram", nombre: Idioma.t("Memoria"), tono: Idioma.t("#bf5af2") },
+                    { id: "gpu", nombre: Idioma.t("GPU"), tono: Idioma.t("#30d158") },
+                    { id: "red", nombre: Idioma.t("Red"), tono: Idioma.t("#ff9f0a") }
                 ]
 
                 delegate: Rectangle {
@@ -169,14 +169,14 @@ FadeIn {
                                 text: {
                                     if (tarjeta.modelData.id === "ram")
                                         return Sistema.ramUsada.toFixed(1) + " / "
-                                            + Sistema.ramTotal.toFixed(1) + " GB"
+                                            + Sistema.ramTotal.toFixed(1) + Idioma.t(" GB")
                                     if (tarjeta.esGpu)
                                         return Math.round(Sistema.gpuMemUsada) + " / "
-                                            + Math.round(Sistema.gpuMemTotal) + " MB"
+                                            + Math.round(Sistema.gpuMemTotal) + Idioma.t(" MB")
                                     if (tarjeta.esRed)
                                         return "↑ " + Sistema.tasa(Sistema.redTx)
                                     if (Sistema.swapTotal > 0 && Sistema.swapUsada > 0.05)
-                                        return "swap " + Sistema.swapUsada.toFixed(1) + " GB"
+                                        return Idioma.t("swap ") + Sistema.swapUsada.toFixed(1) + Idioma.t(" GB")
                                     return ""
                                 }
                                 color: Theme.dim
@@ -218,7 +218,7 @@ FadeIn {
             spacing: 8
 
             IslandLabel {
-                text: "Lo que más consume"
+                text: Idioma.t("Lo que más consume")
                 color: Theme.muted
                 font.pixelSize: 10
                 font.weight: Font.DemiBold
@@ -226,7 +226,7 @@ FadeIn {
             }
 
             IslandLabel {
-                text: "PID"
+                text: Idioma.t("PID")
                 color: Theme.dim
                 font.pixelSize: 9
                 Layout.preferredWidth: 54
@@ -234,7 +234,7 @@ FadeIn {
             }
 
             IslandLabel {
-                text: "CPU"
+                text: Idioma.t("CPU")
                 color: Theme.dim
                 font.pixelSize: 9
                 Layout.preferredWidth: 44
@@ -242,7 +242,7 @@ FadeIn {
             }
 
             IslandLabel {
-                text: "Memoria"
+                text: Idioma.t("Memoria")
                 color: Theme.dim
                 font.pixelSize: 9
                 Layout.preferredWidth: 58
@@ -304,8 +304,8 @@ FadeIn {
 
                     IslandLabel {
                         text: fila.modelData.ram >= 1024
-                            ? (fila.modelData.ram / 1024).toFixed(1) + " GB"
-                            : fila.modelData.ram + " MB"
+                            ? (fila.modelData.ram / 1024).toFixed(1) + Idioma.t(" GB")
+                            : fila.modelData.ram + Idioma.t(" MB")
                         color: Theme.muted
                         font.pixelSize: 10
                         Layout.preferredWidth: 58
@@ -335,7 +335,7 @@ FadeIn {
         IslandLabel {
             Layout.fillWidth: true
             visible: !Sistema.cargado
-            text: "Midiendo…"
+            text: Idioma.t("Midiendo…")
             color: Theme.dim
             font.pixelSize: 11
             horizontalAlignment: Text.AlignHCenter

@@ -26,7 +26,7 @@ Rectangle {
         id: etiqueta
         anchors.centerIn: parent
         text: (insignia.compacta ? insignia.grado.nombre.substring(0, 3) : insignia.grado.nombre)
-            + (insignia.nivel > 0 ? " " + insignia.nivel : "")
+            + (insignia.nivel > 0 ? " Idioma.t(" + insignia.nivel : ")")
         color: insignia.grado.color
         font.family: Theme.uiFont
         font.pixelSize: insignia.compacta ? 8 : 9

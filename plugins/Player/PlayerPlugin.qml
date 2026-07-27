@@ -9,7 +9,7 @@ K4Plugin {
     id: self
 
     name: "player"
-    title: "Reproductor"
+    title: Idioma.t("Reproductor")
     priority: 55
     active: Island.hovered && Media.isPlaying
 

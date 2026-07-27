@@ -362,15 +362,15 @@ ColumnLayout {
                 }
 
                 IslandLabel {
-                    text: "récord: oleada " + Game.mejorOleada + " · "
-                        + Game.partidas + (Game.partidas === 1 ? " partida" : " partidas")
+                    text: Idioma.t("récord: oleada ") + Game.mejorOleada + " · "
+                        + Game.partidas + (Game.partidas === 1 ? Idioma.t(" partida") : Idioma.t(" partidas"))
                     color: Theme.muted
                     font.pixelSize: 10
                     Layout.alignment: Qt.AlignHCenter
                 }
 
                 IslandLabel {
-                    text: "el equipo se conserva; el oro y las mejoras, no"
+                    text: Idioma.t("el equipo se conserva; el oro y las mejoras, no")
                     color: Theme.dim
                     font.pixelSize: 9
                     Layout.alignment: Qt.AlignHCenter
@@ -384,7 +384,7 @@ ColumnLayout {
                     visible: Game.iniciosDisponibles.length > 1
 
                     IslandLabel {
-                        text: "empezar en:"
+                        text: Idioma.t("empezar en:")
                         color: Theme.dim
                         font.pixelSize: 9
                     }
@@ -426,7 +426,7 @@ ColumnLayout {
 
                 IslandLabel {
                     visible: Game.relevoRestante > 0
-                    text: "siguiente partida en " + Game.relevoRestante + " s"
+                    text: Idioma.t("siguiente partida en ") + Game.relevoRestante + " s"
                     color: "#ffd60a"
                     font.pixelSize: 10
                     Layout.alignment: Qt.AlignHCenter
@@ -445,7 +445,7 @@ ColumnLayout {
                     IslandLabel {
                         id: reiniciar
                         anchors.centerIn: parent
-                        text: Game.relevoRestante > 0 ? "Empezar ya" : "Nueva partida"
+                        text: Game.relevoRestante > 0 ? Idioma.t("Empezar ya") : Idioma.t("Nueva partida")
                         font.pixelSize: 11
                         font.weight: Font.DemiBold
                     }
@@ -483,14 +483,14 @@ ColumnLayout {
                 }
 
                 IslandLabel {
-                    text: "El grupo espera"
+                    text: Idioma.t("El grupo espera")
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
                     Layout.alignment: Qt.AlignHCenter
                 }
 
                 IslandLabel {
-                    text: "gasta tokens en Claude o Codex y seguirán peleando"
+                    text: Idioma.t("gasta tokens en Claude o Codex y seguirán peleando")
                     color: Theme.muted
                     font.pixelSize: 10
                     Layout.alignment: Qt.AlignHCenter
@@ -498,7 +498,7 @@ ColumnLayout {
 
                 IslandLabel {
                     visible: Tokens.totalChispa > 0
-                    text: Tokens.cifra(Tokens.totalChispa) + " de chispa quemada en total"
+                    text: Tokens.cifra(Tokens.totalChispa) + Idioma.t(" de chispa quemada en total")
                     color: Theme.dim
                     font.pixelSize: 9
                     Layout.alignment: Qt.AlignHCenter

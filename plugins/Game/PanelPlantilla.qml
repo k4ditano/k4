@@ -20,14 +20,14 @@ ColumnLayout {
         spacing: 8
 
         IslandLabel {
-            text: "Equipo " + Game.plantilla.length + "/" + Game.huecosPlantilla
+            text: Idioma.t("Equipo ") + Game.plantilla.length + "/" + Game.huecosPlantilla
             color: Theme.muted
             font.pixelSize: 10
             font.weight: Font.DemiBold
         }
 
         IslandLabel {
-            text: "pulsa para meter o sacar · cambiar reinicia la partida"
+            text: Idioma.t("pulsa para meter o sacar · cambiar reinicia la partida")
             color: Theme.dim
             font.pixelSize: 9
             elide: Text.ElideRight
@@ -35,7 +35,7 @@ ColumnLayout {
         }
 
         IslandLabel {
-            text: Game.desbloqueados.length + "/" + Game.clases.length + " héroes"
+            text: Game.desbloqueados.length + "/Idioma.t(" + Game.clases.length + ") héroes"
             color: "#c78fff"
             font.pixelSize: 10
             font.weight: Font.DemiBold
@@ -98,7 +98,7 @@ ColumnLayout {
 
                     IslandLabel {
                         visible: hueco.tengo
-                        text: "nivel " + hueco.datos.nivel
+                        text: Idioma.t("nivel ") + hueco.datos.nivel
                         color: "#c78fff"
                         font.pixelSize: 9
                         horizontalAlignment: Text.AlignHCenter

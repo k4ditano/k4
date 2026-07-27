@@ -19,7 +19,7 @@ K4Plugin {
     id: self
 
     name: "hyprtheme"
-    title: "Tema de Hyprland"
+    title: Idioma.t("Tema de Hyprland")
     priority: 65
     active: open
     tecladoOpcional: open

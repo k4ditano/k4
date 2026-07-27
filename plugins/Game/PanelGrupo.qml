@@ -74,7 +74,7 @@ RowLayout {
                             spacing: 5
 
                             IslandLabel {
-                                text: "nv " + tarjeta.permanente.nivel
+                                text: Idioma.t("nv ") + tarjeta.permanente.nivel
                                 color: "#c78fff"
                                 font.pixelSize: 10
                                 font.weight: Font.DemiBold

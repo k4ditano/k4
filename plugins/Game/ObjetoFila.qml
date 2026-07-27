@@ -88,7 +88,7 @@ Rectangle {
 
         IslandLabel {
             visible: fila.objeto !== null && raton.containsMouse
-            text: "ol " + (fila.objeto ? fila.objeto.oleada : 0)
+            text: Idioma.t("ol ") + (fila.objeto ? fila.objeto.oleada : 0)
             color: Theme.dim
             font.pixelSize: 9
             Layout.alignment: Qt.AlignVCenter

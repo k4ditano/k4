@@ -10,7 +10,7 @@ K4Plugin {
     id: self
 
     name: "keys"
-    title: "Atajos"
+    title: Idioma.t("Atajos")
     priority: 65
     active: open || closing
     viewLoaded: open

@@ -46,7 +46,7 @@ FadeIn {
             }
 
             IslandLabel {
-                text: "Ajustes"
+                text: Idioma.t("Ajustes")
                 font.pixelSize: 15
                 font.weight: Font.DemiBold
                 Layout.alignment: Qt.AlignVCenter
@@ -203,8 +203,8 @@ FadeIn {
 
                     IslandLabel {
                         text: view.armado
-                            ? "¿Seguro? Esto no se puede deshacer"
-                            : "Empezar la mazmorra de cero"
+                            ? Idioma.t("¿Seguro? Esto no se puede deshacer")
+                            : Idioma.t("Empezar la mazmorra de cero")
                         font.pixelSize: 12
                         font.weight: Font.DemiBold
                         color: view.armado ? Theme.red : Theme.ink
@@ -212,10 +212,10 @@ FadeIn {
 
                     IslandLabel {
                         text: view.armado
-                            ? "pierdes " + Game.mejorOleada + " de récord, nivel "
+                            ? Idioma.t("pierdes ") + Game.mejorOleada + Idioma.t(" de récord, nivel ")
                               + Game.nivelMaximo + ", " + Game.logrosHechos.length
-                              + " logros y " + Game.bolsa.length + " piezas"
-                            : "borra niveles, héroes, logros, equipo y reliquias"
+                              + Idioma.t(" logros y ") + Game.bolsa.length + Idioma.t(" piezas")
+                            : Idioma.t("borra niveles, héroes, logros, equipo y reliquias")
                         color: view.armado ? "#ff9f9f" : Theme.dim
                         font.pixelSize: 9
                     }
@@ -235,7 +235,7 @@ FadeIn {
                     IslandLabel {
                         id: etiquetaBorrar
                         anchors.centerIn: parent
-                        text: view.armado ? "Sí, borrar todo" : "Reiniciar"
+                        text: view.armado ? Idioma.t("Sí, borrar todo") : Idioma.t("Reiniciar")
                         font.pixelSize: 11
                         font.weight: Font.DemiBold
                     }
@@ -270,7 +270,7 @@ FadeIn {
                     IslandLabel {
                         id: cancelar
                         anchors.centerIn: parent
-                        text: "Cancelar"
+                        text: Idioma.t("Cancelar")
                         color: Theme.muted
                         font.pixelSize: 11
                     }
@@ -297,7 +297,7 @@ FadeIn {
             spacing: 8
 
             IslandLabel {
-                text: "Herramientas del sistema"
+                text: Idioma.t("Herramientas del sistema")
                 color: Theme.dim
                 font.pixelSize: 9
                 Layout.alignment: Qt.AlignVCenter
@@ -307,8 +307,8 @@ FadeIn {
 
             Repeater {
                 model: [
-                    { nombre: "Redes", glifo: 0xF05A9, orden: ["nm-connection-editor"] },
-                    { nombre: "Sonido", glifo: 0xF057E, orden: ["pavucontrol"] }
+                    { nombre: Idioma.t("Redes"), glifo: 0xF05A9, orden: ["nm-connection-editor"] },
+                    { nombre: Idioma.t("Sonido"), glifo: 0xF057E, orden: ["pavucontrol"] }
                 ]
 
                 delegate: Rectangle {

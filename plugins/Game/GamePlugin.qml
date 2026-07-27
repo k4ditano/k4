@@ -13,7 +13,7 @@ K4Plugin {
     id: self
 
     name: "game"
-    title: "Mazmorra"
+    title: Idioma.t("Mazmorra")
     priority: 64
     active: open
     tecladoOpcional: open

@@ -21,7 +21,7 @@ FadeIn {
         if (index === 0)
             return "Hoy"
         // mediodía, para que el huso no lo mueva de día
-        return new Date(iso + "T12:00:00").toLocaleDateString(Theme.locale, "ddd")
+        return new Date(iso + "T12:00:00").toLocaleDateString(Idioma.locale, "ddd")
     }
 
     ColumnLayout {
@@ -47,7 +47,7 @@ FadeIn {
             }
 
             IslandLabel {
-                text: Weather.place.length > 0 ? Weather.place : "Sin ubicación"
+                text: Weather.place.length > 0 ? Weather.place : Idioma.t("Sin ubicación")
                 font.pixelSize: 15
                 font.weight: Font.DemiBold
                 Layout.alignment: Qt.AlignVCenter
@@ -66,7 +66,7 @@ FadeIn {
 
             IslandLabel {
                 visible: Weather.updated.length > 0 && !Weather.loading
-                text: "actualizado " + Weather.updated
+                text: Idioma.t("actualizado ") + Weather.updated
                 color: Theme.dim
                 font.pixelSize: 10
                 Layout.alignment: Qt.AlignVCenter
@@ -74,7 +74,7 @@ FadeIn {
 
             IslandLabel {
                 visible: Weather.loading
-                text: "cargando…"
+                text: Idioma.t("cargando…")
                 color: Theme.dim
                 font.pixelSize: 10
                 Layout.alignment: Qt.AlignVCenter
@@ -144,7 +144,7 @@ FadeIn {
                         IslandLabel {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: view.plugin.query.length === 0
-                            text: "Escribe una ciudad…"
+                            text: Idioma.t("Escribe una ciudad…")
                             color: Theme.dim
                             font.pixelSize: 17
                         }
@@ -190,7 +190,7 @@ FadeIn {
                     }
 
                     IslandLabel {
-                        text: Weather.searching ? "buscando…" : "esc"
+                        text: Weather.searching ? Idioma.t("buscando…") : "esc"
                         color: Theme.dim
                         font.pixelSize: 11
                         Layout.alignment: Qt.AlignVCenter
@@ -272,8 +272,8 @@ FadeIn {
                         anchors.centerIn: parent
                         visible: Weather.matches.length === 0
                         text: view.plugin.query.length < 2
-                            ? "Escribe al menos dos letras"
-                            : Weather.searching ? "Buscando…" : "Ninguna ciudad coincide"
+                            ? Idioma.t("Escribe al menos dos letras")
+                            : Weather.searching ? Idioma.t("Buscando…") : Idioma.t("Ninguna ciudad coincide")
                         color: Theme.muted
                         font.pixelSize: 12
                     }
@@ -341,7 +341,7 @@ FadeIn {
 
                     IslandLabel {
                         visible: Weather.current !== null
-                        text: "sensación de " + (Weather.current ? Weather.current.feels : 0) + "°"
+                        text: Idioma.t("sensación de ") + (Weather.current ? Weather.current.feels : 0) + "°"
                         color: Theme.muted
                         font.pixelSize: 11
                         Layout.alignment: Qt.AlignHCenter
@@ -461,7 +461,7 @@ FadeIn {
 
                         IslandLabel {
                             visible: Weather.hourly.length === 0
-                            text: "Sin previsión horaria"
+                            text: Idioma.t("Sin previsión horaria")
                             color: Theme.muted
                             font.pixelSize: 12
                             Layout.fillWidth: true
@@ -569,7 +569,7 @@ FadeIn {
 
                         IslandLabel {
                             visible: Weather.daily.length === 0
-                            text: Weather.error.length > 0 ? Weather.error : "Sin previsión"
+                            text: Weather.error.length > 0 ? Weather.error : Idioma.t("Sin previsión")
                             color: Weather.error.length > 0 ? Theme.red : Theme.muted
                             font.pixelSize: 12
                             Layout.fillWidth: true

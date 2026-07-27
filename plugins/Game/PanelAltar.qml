@@ -27,14 +27,14 @@ ColumnLayout {
         }
 
         IslandLabel {
-            text: Game.cifra(Game.reliquias) + " reliquias"
+            text: Game.cifra(Game.reliquias) + Idioma.t(" reliquias")
             font.pixelSize: 13
             font.weight: Font.DemiBold
             Layout.alignment: Qt.AlignVCenter
         }
 
         IslandLabel {
-            text: "de morir y de desguazar"
+            text: Idioma.t("de morir y de desguazar")
             color: Theme.dim
             font.pixelSize: 9
             Layout.fillWidth: true
@@ -88,7 +88,7 @@ ColumnLayout {
                         }
 
                         IslandLabel {
-                            text: "nv " + Game.meta[mejora.modelData.id]
+                            text: Idioma.t("nv ") + Game.meta[mejora.modelData.id]
                             color: Theme.dim
                             font.pixelSize: 9
                         }

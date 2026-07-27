@@ -30,7 +30,7 @@ FadeIn {
             }
 
             IslandLabel {
-                text: (Game.pausada ? "En pausa · " : "") + "Oleada " + Game.oleada
+                text: (Game.pausada ? Idioma.t("En pausa · ") : "") + "Oleada " + Game.oleada
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
                 color: Game.esJefe ? Theme.red : Theme.ink
@@ -158,7 +158,7 @@ FadeIn {
                     IslandLabel {
                         // En pausa el depósito no baja: hay que decirlo, o
                         // parece que la chispa no se gasta.
-                        text: Game.pausada ? "en pausa" : Tokens.resto()
+                        text: Game.pausada ? Idioma.t("en pausa") : Tokens.resto()
                         color: Game.pausada ? "#ffd60a"
                             : (Tokens.hay ? Theme.ink : Theme.muted)
                         font.pixelSize: 10
@@ -175,7 +175,7 @@ FadeIn {
                     anchors.right: parent.left
                     anchors.rightMargin: 6
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "+" + Tokens.cifra(Tokens.ultimaCantidad) + " " + Tokens.ultimaFuente
+                    text: "+Idioma.t(" + Tokens.cifra(Tokens.ultimaCantidad) + ") " + Tokens.ultimaFuente
                     color: "#ffd60a"
                     font.pixelSize: 9
                     font.weight: Font.DemiBold

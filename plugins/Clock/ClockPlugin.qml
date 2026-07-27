@@ -12,7 +12,7 @@ K4Plugin {
     id: self
 
     name: "clock"
-    title: "Reloj"
+    title: Idioma.t("Reloj")
     priority: 50
     active: Island.hovered
 

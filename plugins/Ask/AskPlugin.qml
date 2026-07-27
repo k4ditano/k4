@@ -14,7 +14,7 @@ K4Plugin {
     id: self
 
     name: "ask"
-    title: "Preguntar"
+    title: Idioma.t("Preguntar")
     priority: 90
     active: open
     grabKeyboard: true

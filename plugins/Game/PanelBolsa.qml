@@ -105,7 +105,7 @@ Item {
                             }
 
                             IslandLabel {
-                                text: cofre.cuantos > 0 ? "pulsa para abrir" : "no tienes"
+                                text: cofre.cuantos > 0 ? Idioma.t("pulsa para abrir") : Idioma.t("no tienes")
                                 color: Theme.dim
                                 font.pixelSize: 8
                             }
@@ -131,14 +131,14 @@ Item {
             spacing: 8
 
             IslandLabel {
-                text: Game.bolsa.length + " / " + Game.topeBolsa + " piezas"
+                text: Game.bolsa.length + " / " + Game.topeBolsa + Idioma.t(" piezas")
                 color: Theme.muted
                 font.pixelSize: 10
                 Layout.alignment: Qt.AlignVCenter
             }
 
             IslandLabel {
-                text: "izquierdo equipa · derecho desguaza · arrastra para ordenar"
+                text: Idioma.t("izquierdo equipa · derecho desguaza · arrastra para ordenar")
                 color: Theme.dim
                 font.pixelSize: 9
                 elide: Text.ElideRight
@@ -158,7 +158,7 @@ Item {
                 IslandLabel {
                     id: limpiar
                     anchors.centerIn: parent
-                    text: "Desguazar sobrantes"
+                    text: Idioma.t("Desguazar sobrantes")
                     font.pixelSize: 9
                     font.weight: Font.DemiBold
                 }
@@ -222,7 +222,7 @@ Item {
             IslandLabel {
                 anchors.centerIn: parent
                 visible: Game.bolsa.length === 0
-                text: Game.cofres > 0 ? "Abre un cofre ahí arriba" : "La bolsa está vacía"
+                text: Game.cofres > 0 ? Idioma.t("Abre un cofre ahí arriba") : Idioma.t("La bolsa está vacía")
                 color: Theme.muted
                 font.pixelSize: 11
             }
@@ -285,7 +285,7 @@ Item {
 
             IslandLabel {
                 visible: panel.mirando !== null && !Game.algunoPuede(panel.mirando)
-                text: "necesita nivel " + Items.nivelRequerido(panel.mirando)
+                text: Idioma.t("necesita nivel ") + Items.nivelRequerido(panel.mirando)
                 color: Theme.red
                 font.pixelSize: 9
                 font.weight: Font.DemiBold
@@ -293,7 +293,7 @@ Item {
 
             IslandLabel {
                 text: panel.mirando
-                    ? "desguace: " + Game.cifra(Items.valorDesguace(panel.mirando)) + " reliquias"
+                    ? Idioma.t("desguace: ") + Game.cifra(Items.valorDesguace(panel.mirando)) + Idioma.t(" reliquias")
                     : ""
                 color: Theme.dim
                 font.pixelSize: 9

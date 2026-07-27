@@ -7,7 +7,7 @@ import "../../services"
 
 K4Plugin {
     name: "volume"
-    title: "Volumen"
+    title: Idioma.t("Volumen")
     priority: 40
     active: Audio.overlayOpen
 

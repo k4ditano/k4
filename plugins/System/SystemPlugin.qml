@@ -14,7 +14,7 @@ K4Plugin {
     id: self
 
     name: "system"
-    title: "Sistema"
+    title: Idioma.t("Sistema")
     priority: 62
     active: open || closing
     viewLoaded: open

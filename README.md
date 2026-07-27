@@ -374,3 +374,48 @@ Para generar más:
 ```sh
 python3 tools/spritesheet.py hoja.png plugins/Game/assets/monstruos --lado 48 --prefijo m
 ```
+
+## Idiomas
+
+La barra está escrita en español y se traduce a lo que pida el sistema. Si tu
+`LANG` es `en_US.UTF-8`, arranca en inglés sin tocar nada.
+
+**La clave de cada texto es el propio texto en español.** No hay identificadores
+inventados, y eso da tres cosas: lo que no esté traducido sale en español en vez
+de salir roto, se puede traducir un trozo sin romper el resto, y quien traduce
+lee frases con sentido en lugar de etiquetas como `ui.btn.42`.
+
+### Añadir un idioma
+
+1. Copia `traducciones/plantilla.json` a `traducciones/<código>.json` —`fr`,
+   `de`, `pt_BR`…
+2. Rellena los valores. Lo que dejes vacío sale en español, así que se puede
+   mandar a medias sin problema.
+3. Añade tu idioma a `disponibles` en `services/Idioma.qml`, dos líneas.
+4. Manda el fichero por GitHub.
+
+```json
+{
+ "_meta": { "idioma": "Français", "codigo": "fr", "traducido por": "tu nombre" },
+ "Oleada ": "Vague ",
+ "Ajustes": "Paramètres",
+ "El grupo espera": ""
+}
+```
+
+### La herramienta
+
+```sh
+python3 tools/textos.py plantilla   # rehace la plantilla con lo que hay ahora
+python3 tools/textos.py estado      # cuánto lleva cada idioma
+python3 tools/textos.py envolver    # prepara las cadenas nuevas del código
+```
+
+`envolver` recorre el QML y envuelve en `Idioma.t(...)` los textos que aún estén
+sueltos. Reconoce los que viven dentro de ternarios y concatenaciones, que son
+la mitad: mirando solo `text: "literal"` se escapaban 359 de 552.
+
+No traduce todo lo que encuentra: `id`, `command`, `source` y compañía llevan
+cadenas que son identificadores. `etiqueta` también queda fuera aunque se vea,
+porque el portapapeles la compara contra `"enlace"`, `"color"`… para elegir el
+icono.

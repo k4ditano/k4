@@ -15,6 +15,10 @@ Singleton {
 
     readonly property string ruta: Quickshell.env("HOME") + "/.local/state/k4/ajustes.json"
 
+    // ── idioma ────────────────────────────────────────────────────
+    // "auto" sigue al del sistema. services/Idioma.qml lo lee.
+    property string idioma: "auto"
+
     // ── juego ─────────────────────────────────────────────────────
     // El interruptor maestro. Apagado no es «ocultar»: se paran los relojes
     // del combate, el guardado y el vigía de tokens, que solo trabaja para
@@ -35,25 +39,25 @@ Singleton {
 
     readonly property var definicion: [
         {
-            grupo: "Mazmorra",
+            grupo: Idioma.t("Mazmorra"),
             opciones: [
-                { id: "juegoActivo", nombre: "Mazmorra activa",
-                  desc: "Apagada no corre, no guarda y no ocupa sitio", glifo: 0xF04E5 },
-                { requiere: "juegoActivo", id: "juegoContinuar", nombre: "Continuar sola al morir",
-                  desc: "Encadena la siguiente partida tras el resumen", glifo: 0xF04E5 },
-                { requiere: "juegoActivo", id: "juegoEnPildora", nombre: "Mostrar en la píldora",
-                  desc: "Oleada actual y aviso de cofres sin abrir", glifo: 0xF0BC2 },
-                { requiere: "juegoActivo", id: "juegoPorTokens", nombre: "Pelear con tokens",
-                  desc: "Avanza solo mientras gastas en Claude o Codex", glifo: 0xF0241 }
+                { id: Idioma.t("juegoActivo"), nombre: Idioma.t("Mazmorra activa"),
+                  desc: Idioma.t("Apagada no corre, no guarda y no ocupa sitio"), glifo: 0xF04E5 },
+                { requiere: Idioma.t("juegoActivo"), id: Idioma.t("juegoContinuar"), nombre: Idioma.t("Continuar sola al morir"),
+                  desc: Idioma.t("Encadena la siguiente partida tras el resumen"), glifo: 0xF04E5 },
+                { requiere: Idioma.t("juegoActivo"), id: Idioma.t("juegoEnPildora"), nombre: Idioma.t("Mostrar en la píldora"),
+                  desc: Idioma.t("Oleada actual y aviso de cofres sin abrir"), glifo: 0xF0BC2 },
+                { requiere: Idioma.t("juegoActivo"), id: Idioma.t("juegoPorTokens"), nombre: Idioma.t("Pelear con tokens"),
+                  desc: Idioma.t("Avanza solo mientras gastas en Claude o Codex"), glifo: 0xF0241 }
             ]
         },
         {
-            grupo: "Island",
+            grupo: Idioma.t("Island"),
             opciones: [
-                { id: "bandejaEnPildora", nombre: "Bandeja en la píldora",
-                  desc: "Iconos de las aplicaciones en segundo plano", glifo: 0xF0FB0 },
-                { id: "notificacionesAlPasar", nombre: "Notificaciones al pasar el ratón",
-                  desc: "Las recientes, bajo el reloj y el reproductor", glifo: 0xF009A }
+                { id: Idioma.t("bandejaEnPildora"), nombre: Idioma.t("Bandeja en la píldora"),
+                  desc: Idioma.t("Iconos de las aplicaciones en segundo plano"), glifo: 0xF0FB0 },
+                { id: Idioma.t("notificacionesAlPasar"), nombre: Idioma.t("Notificaciones al pasar el ratón"),
+                  desc: Idioma.t("Las recientes, bajo el reloj y el reproductor"), glifo: 0xF009A }
             ]
         }
     ]
@@ -71,6 +75,7 @@ Singleton {
             return
 
         vista.setText(JSON.stringify({
+            idioma: idioma,
             juegoActivo: juegoActivo,
             juegoContinuar: juegoContinuar,
             juegoEnPildora: juegoEnPildora,
@@ -96,6 +101,7 @@ Singleton {
         if (bruto.length > 0) {
             try {
                 const s = JSON.parse(bruto)
+                if (s.idioma !== undefined) idioma = s.idioma
                 if (s.juegoActivo !== undefined) juegoActivo = s.juegoActivo
                 if (s.juegoContinuar !== undefined) juegoContinuar = s.juegoContinuar
                 if (s.juegoEnPildora !== undefined) juegoEnPildora = s.juegoEnPildora

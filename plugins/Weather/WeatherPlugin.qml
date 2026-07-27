@@ -10,7 +10,7 @@ K4Plugin {
     id: self
 
     name: "weather"
-    title: "El tiempo"
+    title: Idioma.t("El tiempo")
     priority: 62
     active: open
 

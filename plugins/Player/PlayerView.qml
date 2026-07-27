@@ -51,7 +51,7 @@ FadeIn {
                     Layout.fillWidth: true
                     text: view.player && view.player.trackTitle.length > 0
                         ? view.player.trackTitle
-                        : "Sin reproducción"
+                        : Idioma.t("Sin reproducción")
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight

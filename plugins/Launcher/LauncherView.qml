@@ -1,4 +1,5 @@
 import QtQuick
+import "../../services"
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Widgets
@@ -65,7 +66,7 @@ FadeIn {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: view.plugin.query.length === 0
                     text: view.plugin.mode === "packages"
-                        ? "Buscar paquetes para instalar" : "Buscar aplicaciones"
+                        ? Idioma.t("Buscar paquetes para instalar") : Idioma.t("Buscar aplicaciones")
                     color: Theme.dim
                     font.pixelSize: 19
                 }
@@ -117,7 +118,7 @@ FadeIn {
 
             IslandLabel {
                 text: view.plugin.mode !== "packages" ? "esc"
-                    : view.plugin.aurSearching ? "buscando en AUR…" : "esc vuelve a apps"
+                    : view.plugin.aurSearching ? Idioma.t("buscando en AUR…") : Idioma.t("esc vuelve a apps")
                 color: Theme.dim
                 font.pixelSize: 11
                 Layout.alignment: Qt.AlignVCenter
@@ -229,7 +230,7 @@ FadeIn {
             IslandLabel {
                 anchors.centerIn: parent
                 visible: view.plugin.matches.length === 0
-                text: "Sin resultados"
+                text: Idioma.t("Sin resultados")
                 color: Theme.muted
                 font.pixelSize: 13
             }
@@ -320,7 +321,7 @@ FadeIn {
                         IslandLabel {
                             Layout.fillWidth: true
                             text: packageRow.modelData.installed
-                                ? "Instalado · " + packageRow.modelData.description
+                                ? Idioma.t("Instalado · ") + packageRow.modelData.description
                                 : packageRow.modelData.description
                             color: packageRow.modelData.installed ? Theme.green : Theme.muted
                             font.pixelSize: 10
@@ -330,7 +331,7 @@ FadeIn {
 
                     IslandLabel {
                         visible: packageRow.index === view.plugin.index
-                        text: packageRow.modelData.installed ? "reinstalar ↵" : "instalar ↵"
+                        text: packageRow.modelData.installed ? Idioma.t("reinstalar ↵") : Idioma.t("instalar ↵")
                         color: Theme.muted
                         font.pixelSize: 10
                         Layout.alignment: Qt.AlignVCenter
@@ -353,8 +354,8 @@ FadeIn {
                 anchors.centerIn: parent
                 visible: view.plugin.packageMatches.length === 0
                 text: view.plugin.packageQuery().length < 2
-                    ? "Escribe al menos dos letras"
-                    : view.plugin.aurSearching ? "Buscando…" : "Ningún paquete coincide"
+                    ? Idioma.t("Escribe al menos dos letras")
+                    : view.plugin.aurSearching ? Idioma.t("Buscando…") : Idioma.t("Ningún paquete coincide")
                 color: Theme.muted
                 font.pixelSize: 13
             }

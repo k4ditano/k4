@@ -119,6 +119,7 @@ Scope {
         void Weather.located
         void Tray.count
         void Game.cargado
+        void Idioma.cargado
         void Settings.cargado
         void Tokens.cargado
         void Clipboard.cargado

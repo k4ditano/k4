@@ -31,14 +31,14 @@ FadeIn {
                 spacing: 0
 
                 IslandLabel {
-                    text: Clock.date.toLocaleDateString(Theme.locale, "dddd")
+                    text: Clock.date.toLocaleDateString(Idioma.locale, "dddd")
                     color: Theme.muted
                     font.pixelSize: 11
                     font.capitalization: Font.Capitalize
                 }
 
                 IslandLabel {
-                    text: Clock.date.toLocaleDateString(Theme.locale, "d MMMM")
+                    text: Clock.date.toLocaleDateString(Idioma.locale, "d MMMM")
                     font.pixelSize: 15
                     font.weight: Font.DemiBold
                 }

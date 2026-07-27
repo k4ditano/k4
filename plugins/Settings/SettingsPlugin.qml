@@ -14,7 +14,7 @@ K4Plugin {
     id: self
 
     name: "settings"
-    title: "Ajustes"
+    title: Idioma.t("Ajustes")
     priority: 66
     active: open
     tecladoOpcional: open

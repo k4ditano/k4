@@ -14,7 +14,7 @@ K4Plugin {
     id: self
 
     name: "clipboard"
-    title: "Portapapeles"
+    title: Idioma.t("Portapapeles")
     // Por encima del lanzador: si los dos están abiertos, mandas tú con el
     // que acabas de pedir, y este se pide siempre a propósito.
     priority: 82

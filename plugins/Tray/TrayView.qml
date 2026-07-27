@@ -40,14 +40,14 @@ FadeIn {
             }
 
             IslandLabel {
-                text: "Bandeja del sistema"
+                text: Idioma.t("Bandeja del sistema")
                 font.pixelSize: 15
                 font.weight: Font.DemiBold
                 Layout.alignment: Qt.AlignVCenter
             }
 
             IslandLabel {
-                text: Tray.count === 0 ? "" : Tray.count + (Tray.count === 1 ? " aplicación" : " aplicaciones")
+                text: Tray.count === 0 ? "Idioma.t(" : Tray.count + (Tray.count === 1 ? ") aplicación" : " aplicaciones")
                 color: Theme.muted
                 font.pixelSize: 11
                 Layout.alignment: Qt.AlignVCenter
@@ -179,7 +179,7 @@ FadeIn {
                         anchors.margins: 12
                         width: parent.width - 24
                         visible: Tray.count === 0
-                        text: "Ninguna aplicación en la bandeja"
+                        text: Idioma.t("Ninguna aplicación en la bandeja")
                         color: Theme.muted
                         font.pixelSize: 12
                         horizontalAlignment: Text.AlignHCenter
@@ -251,7 +251,7 @@ FadeIn {
                             IslandLabel {
                                 id: openLabel
                                 anchors.centerIn: parent
-                                text: "Abrir"
+                                text: Idioma.t("Abrir")
                                 font.pixelSize: 11
                                 font.weight: Font.DemiBold
                             }
@@ -373,8 +373,8 @@ FadeIn {
                             width: parent.width - 24
                             visible: opener.children.values.length === 0
                             text: view.selected && !view.selected.hasMenu
-                                ? "Esta aplicación no ofrece menú"
-                                : "Cargando menú…"
+                                ? Idioma.t("Esta aplicación no ofrece menú")
+                                : Idioma.t("Cargando menú…")
                             color: Theme.muted
                             font.pixelSize: 12
                             horizontalAlignment: Text.AlignHCenter
@@ -387,7 +387,7 @@ FadeIn {
                     anchors.centerIn: parent
                     width: parent.width - 32
                     visible: view.selected === null
-                    text: "Las aplicaciones que arrancaron antes que la barra puede que no aparezcan hasta reiniciarlas"
+                    text: Idioma.t("Las aplicaciones que arrancaron antes que la barra puede que no aparezcan hasta reiniciarlas")
                     color: Theme.muted
                     font.pixelSize: 11
                     horizontalAlignment: Text.AlignHCenter

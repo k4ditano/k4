@@ -1,4 +1,5 @@
 import QtQuick
+import "../../services"
 import QtQuick.Layouts
 import "../../core"
 
@@ -36,7 +37,7 @@ FadeIn {
             }
 
             IslandLabel {
-                text: "Tema de Hyprland"
+                text: Idioma.t("Tema de Hyprland")
                 font.pixelSize: 15
                 font.weight: Font.DemiBold
                 Layout.alignment: Qt.AlignVCenter
@@ -124,7 +125,7 @@ FadeIn {
                 visible: view.plugin.tab === "tema"
 
                 IslandLabel {
-                    text: "Presets"
+                    text: Idioma.t("Presets")
                     color: Theme.muted
                     font.pixelSize: 11
                 }
@@ -287,7 +288,7 @@ FadeIn {
                         Layout.fillWidth: true
                         spacing: 10
 
-                        IslandLabel { text: "Desenfoque"; font.pixelSize: 12; font.weight: Font.DemiBold }
+                        IslandLabel { text: Idioma.t("Desenfoque"); font.pixelSize: 12; font.weight: Font.DemiBold }
                         Item { Layout.fillWidth: true }
                         IslandSwitch {
                             checked: view.plugin.blur
@@ -320,7 +321,7 @@ FadeIn {
                         Layout.topMargin: 6
                         spacing: 10
 
-                        IslandLabel { text: "Sombras"; font.pixelSize: 12; font.weight: Font.DemiBold }
+                        IslandLabel { text: Idioma.t("Sombras"); font.pixelSize: 12; font.weight: Font.DemiBold }
                         Item { Layout.fillWidth: true }
                         IslandSwitch {
                             checked: view.plugin.shadow
@@ -359,7 +360,7 @@ FadeIn {
                         Layout.topMargin: 6
                         spacing: 10
 
-                        IslandLabel { text: "Animaciones"; font.pixelSize: 12; font.weight: Font.DemiBold }
+                        IslandLabel { text: Idioma.t("Animaciones"); font.pixelSize: 12; font.weight: Font.DemiBold }
                         Item { Layout.fillWidth: true }
                         IslandSwitch {
                             checked: view.plugin.animEnabled
@@ -394,8 +395,8 @@ FadeIn {
 
                     IslandLabel {
                         text: view.plugin.wallTool.length === 0
-                            ? "Sin programa de fondo instalado"
-                            : view.plugin.wallpapers.length + " imágenes · usando " + view.plugin.wallTool
+                            ? Idioma.t("Sin programa de fondo instalado")
+                            : view.plugin.wallpapers.length + Idioma.t(" imágenes · usando ") + view.plugin.wallTool
                         color: view.plugin.wallTool.length === 0 ? Theme.red : Theme.muted
                         font.pixelSize: 11
                         Layout.alignment: Qt.AlignVCenter
@@ -405,7 +406,7 @@ FadeIn {
 
                     IslandLabel {
                         visible: view.plugin.wallTool === "swaybg"
-                        text: "instala awww para tener transiciones"
+                        text: Idioma.t("instala awww para tener transiciones")
                         color: Theme.dim
                         font.pixelSize: 10
                         Layout.alignment: Qt.AlignVCenter
@@ -489,7 +490,7 @@ FadeIn {
                     IslandLabel {
                         anchors.centerIn: parent
                         visible: view.plugin.wallpapers.length === 0
-                        text: "No hay imágenes en Imágenes, Descargas ni en las carpetas del sistema"
+                        text: Idioma.t("No hay imágenes en Imágenes, Descargas ni en las carpetas del sistema")
                         color: Theme.muted
                         font.pixelSize: 12
                     }
@@ -513,8 +514,8 @@ FadeIn {
 
             IslandLabel {
                 text: view.plugin.isPersisted()
-                    ? "Guardado en config/k4-theme.lua · sobrevive al reinicio"
-                    : "Aplicado solo en esta sesión · pulsa Guardar para que persista"
+                    ? Idioma.t("Guardado en config/k4-theme.lua · sobrevive al reinicio")
+                    : Idioma.t("Aplicado solo en esta sesión · pulsa Guardar para que persista")
                 color: Theme.muted
                 font.pixelSize: 10
                 Layout.alignment: Qt.AlignVCenter
@@ -534,7 +535,7 @@ FadeIn {
                 IslandLabel {
                     id: saveLabel
                     anchors.centerIn: parent
-                    text: "Guardar"
+                    text: Idioma.t("Guardar")
                     font.pixelSize: 11
                     font.weight: Font.DemiBold
                 }

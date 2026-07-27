@@ -60,7 +60,7 @@ FadeIn {
                 IslandLabel {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: entrada.text.length === 0
-                    text: "Buscar en el portapapeles…"
+                    text: Idioma.t("Buscar en el portapapeles…")
                     color: Theme.dim
                     font.pixelSize: 15
                 }
@@ -89,7 +89,7 @@ FadeIn {
             }
 
             IslandLabel {
-                text: view.plugin.count + (view.plugin.count === 1 ? " copia" : " copias")
+                text: view.plugin.count + (view.plugin.count === 1 ? Idioma.t(" copia") : Idioma.t(" copias"))
                 color: Theme.dim
                 font.pixelSize: 10
                 Layout.alignment: Qt.AlignVCenter
@@ -107,7 +107,7 @@ FadeIn {
                 IslandLabel {
                     id: vaciar
                     anchors.centerIn: parent
-                    text: "Vaciar"
+                    text: Idioma.t("Vaciar")
                     font.pixelSize: 10
                     font.weight: Font.DemiBold
                 }
@@ -219,7 +219,7 @@ FadeIn {
 
                             IslandLabel {
                                 visible: fila.modelData.lineas > 1
-                                text: fila.modelData.lineas + " líneas"
+                                text: fila.modelData.lineas + Idioma.t(" líneas")
                                 color: Theme.dim
                                 font.pixelSize: 9
                             }
@@ -295,8 +295,8 @@ FadeIn {
             Layout.fillWidth: true
             visible: view.plugin.count === 0
             text: Clipboard.count === 0
-                ? "Todavía no has copiado nada"
-                : "Nada que coincida con la búsqueda"
+                ? Idioma.t("Todavía no has copiado nada")
+                : Idioma.t("Nada que coincida con la búsqueda")
             color: Theme.muted
             font.pixelSize: 12
             horizontalAlignment: Text.AlignHCenter
@@ -305,7 +305,7 @@ FadeIn {
         IslandLabel {
             Layout.fillWidth: true
             visible: view.plugin.count > 0
-            text: "intro copia · supr borra · ctrl+p fija · esc cierra"
+            text: Idioma.t("intro copia · supr borra · ctrl+p fija · esc cierra")
             color: Theme.dim
             font.pixelSize: 9
             horizontalAlignment: Text.AlignHCenter

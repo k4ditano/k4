@@ -59,7 +59,7 @@ FadeIn {
                 IslandLabel {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: entrada.text.length === 0
-                    text: "Buscar archivos y carpetas…"
+                    text: Idioma.t("Buscar archivos y carpetas…")
                     color: Theme.dim
                     font.pixelSize: 15
                 }
@@ -251,12 +251,12 @@ FadeIn {
             IslandLabel {
                 text: {
                     if (Archivos.consulta.trim().length < 2)
-                        return "escribe al menos dos letras"
+                        return Idioma.t("escribe al menos dos letras")
                     if (Archivos.buscando)
-                        return "buscando…"
+                        return Idioma.t("buscando…")
                     if (view.plugin.count === 0)
-                        return "nada que coincida"
-                    return view.plugin.count + " de " + Archivos.total
+                        return Idioma.t("nada que coincida")
+                    return view.plugin.count + Idioma.t(" de ") + Archivos.total
                         + " · " + Archivos.ms + " ms"
                 }
                 color: Theme.dim
@@ -266,7 +266,7 @@ FadeIn {
             Item { Layout.fillWidth: true }
 
             IslandLabel {
-                text: "intro abre · ctrl+intro la carpeta · ctrl+c copia la ruta · tab cambia el ámbito"
+                text: Idioma.t("intro abre · ctrl+intro la carpeta · ctrl+c copia la ruta · tab cambia el ámbito")
                 color: Theme.dim
                 font.pixelSize: 9
             }

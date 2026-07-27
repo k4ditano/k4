@@ -31,13 +31,13 @@ ColumnLayout {
         spacing: 8
 
         IslandLabel {
-            text: Game.logrosHechos.length + " / " + Logros.definicion.length + " logros"
+            text: Game.logrosHechos.length + " / " + Logros.definicion.length + Idioma.t(" logros")
             font.pixelSize: 11
             font.weight: Font.DemiBold
         }
 
         IslandLabel {
-            text: "dan reliquias y cofres al caer"
+            text: Idioma.t("dan reliquias y cofres al caer")
             color: Theme.dim
             font.pixelSize: 9
             Layout.fillWidth: true
@@ -93,7 +93,7 @@ ColumnLayout {
                     }
 
                     IslandLabel {
-                        text: "tokens en IA"
+                        text: Idioma.t("tokens en IA")
                         color: Theme.muted
                         font.pixelSize: 10
                         Layout.alignment: Qt.AlignBottom
@@ -103,10 +103,10 @@ ColumnLayout {
 
                 IslandLabel {
                     text: {
-                        const p = ["hoy " + Tokens.cifra(Tokens.tokensHoy)]
+                        const p = [Idioma.t("hoy ") + Tokens.cifra(Tokens.tokensHoy)]
                         if (Tokens.racha > 0)
-                            p.push("racha de " + Tokens.racha
-                                + (Tokens.racha === 1 ? " día" : " días"))
+                            p.push(Idioma.t("racha de ") + Tokens.racha
+                                + (Tokens.racha === 1 ? Idioma.t(" día") : Idioma.t(" días")))
                         for (const n in Tokens.porFuente)
                             p.push(n + " " + Tokens.cifra(Tokens.porFuente[n].tokens))
                         return p.join(" · ")

@@ -58,7 +58,7 @@ FadeIn {
                 spacing: 6
 
                 IslandLabel {
-                    text: view.notification ? view.notification.summary : "Notificación"
+                    text: view.notification ? view.notification.summary : Idioma.t("Notificación")
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight

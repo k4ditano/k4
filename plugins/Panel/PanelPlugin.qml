@@ -10,7 +10,7 @@ K4Plugin {
     id: self
 
     name: "panel"
-    title: "Centro de control"
+    title: Idioma.t("Centro de control")
     priority: 60
     active: open
 

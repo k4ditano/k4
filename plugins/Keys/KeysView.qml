@@ -56,14 +56,14 @@ FadeIn {
                 IslandLabel {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: entrada.text.length === 0
-                    text: "Buscar atajo, tecla o acción…"
+                    text: Idioma.t("Buscar atajo, tecla o acción…")
                     color: Theme.dim
                     font.pixelSize: 15
                 }
             }
 
             IslandLabel {
-                text: view.plugin.count + " de " + Atajos.lista.length
+                text: view.plugin.count + Idioma.t(" de ") + Atajos.lista.length
                 color: Theme.dim
                 font.pixelSize: 10
                 Layout.alignment: Qt.AlignVCenter
@@ -185,7 +185,7 @@ FadeIn {
             Layout.fillWidth: true
             visible: view.plugin.count === 0
             text: Atajos.cargado
-                ? "Ningún atajo coincide" : "Leyendo la configuración…"
+                ? Idioma.t("Ningún atajo coincide") : Idioma.t("Leyendo la configuración…")
             color: Theme.muted
             font.pixelSize: 11
             horizontalAlignment: Text.AlignHCenter

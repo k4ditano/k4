@@ -1,6 +1,7 @@
 // Fila de una red Wi‑Fi o de un dispositivo Bluetooth
 
 import QtQuick
+import "../services"
 import QtQuick.Layouts
 
 Rectangle {
@@ -82,7 +83,7 @@ Rectangle {
 
         IslandLabel {
             visible: rowMouse.containsMouse && !row.busy
-            text: row.active ? "Desconectar" : "Conectar"
+            text: row.active ? Idioma.t("Desconectar") : Idioma.t("Conectar")
             color: Theme.muted
             font.pixelSize: 10
             Layout.alignment: Qt.AlignVCenter

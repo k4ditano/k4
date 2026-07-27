@@ -41,8 +41,8 @@ ColumnLayout {
 
         IslandLabel {
             text: Notifs.recent.length === 1
-                ? "1 notificación"
-                : Notifs.recent.length + " notificaciones"
+                ? Idioma.t("1 notificación")
+                : Notifs.recent.length + Idioma.t(" notificaciones")
             color: Theme.muted
             font.pixelSize: 10
             Layout.alignment: Qt.AlignVCenter
@@ -52,7 +52,7 @@ ColumnLayout {
 
         IslandLabel {
             visible: Notifs.recent.length > strip.shown
-            text: "+" + (Notifs.recent.length - strip.shown) + " más"
+            text: "+Idioma.t(" + (Notifs.recent.length - strip.shown) + ") más"
             color: Theme.dim
             font.pixelSize: 10
             Layout.alignment: Qt.AlignVCenter
@@ -82,7 +82,7 @@ ColumnLayout {
                 }
 
                 IslandLabel {
-                    text: "Borrar todas"
+                    text: Idioma.t("Borrar todas")
                     color: vaciarRaton.containsMouse ? Theme.ink : Theme.muted
                     font.pixelSize: 9
                     font.weight: Font.DemiBold
