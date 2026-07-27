@@ -22,9 +22,9 @@ Singleton {
     // ── curvas ────────────────────────────────────────────────────
     readonly property int tickMs: 1000
     readonly property real enemigoVidaBase: 48
-    readonly property real enemigoVidaCrec: 1.115
+    readonly property real enemigoVidaCrec: 1.145
     readonly property real enemigoDañoBase: 3.2
-    readonly property real enemigoDañoCrec: 1.07
+    readonly property real enemigoDañoCrec: 1.095
     readonly property real oroBase: 11
     readonly property real oroCrec: 1.15
     // Por encima del crecimiento del oro a propósito: si comprar diera daño al
@@ -196,7 +196,10 @@ Singleton {
     // matando, y al subir aprenden. El oro pasa a comprar cofres, que es
     // decidir qué te llevas y no cuánta vida tienes.
     readonly property real expBase: 46
-    readonly property real expCrec: 1.19
+    // Sube más rápido a propósito: con los niveles ya permanentes, cada partida
+    // empieza donde acabó la anterior y una curva suave dejaba el juego sin
+    // muro. Medido: llegaba a la oleada 70 sin despeinarse.
+    readonly property real expCrec: 1.27
 
     function expParaNivel(nivel) {
         return Math.ceil(expBase * Math.pow(expCrec, nivel - 1))
