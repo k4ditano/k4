@@ -27,7 +27,15 @@ K4Plugin {
     readonly property int juegoWidth: Game.cargado && Settings.juegoEnPildora
         ? (Game.cofres > 0 ? 44 : 36) : 0
 
-    islandWidth: (Media.isPlaying ? 210 : 176) + Workspaces.dotsWidth + trayWidth + juegoWidth
+    // Los dos flancos reservan lo mismo —el del más ancho— para que la hora
+    // quede en el centro de verdad y no se mueva al aparecer o irse un icono.
+    // Sale una píldora algo más ancha cuando un lado va cargado, que es el
+    // precio de la simetría y merece la pena en algo que se mira todo el día.
+    readonly property int ladoIzq: Workspaces.dotsWidth + (Media.isPlaying ? 28 : 0)
+    readonly property int ladoDer: trayWidth + juegoWidth + (Media.isPlaying ? 30 : 0)
+    readonly property int ladoAncho: Math.max(ladoIzq, ladoDer)
+
+    islandWidth: 46 + 2 * ladoAncho + 44
     islandHeight: Theme.baseHeight
 
     view: Component {

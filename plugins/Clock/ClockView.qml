@@ -18,16 +18,17 @@ FadeIn {
         anchors.bottomMargin: Notifs.recent.length > 0 ? 12 : 0
         spacing: 6
 
-        RowLayout {
+        // Tres zonas ancladas, igual que en la píldora: la hora al centro real
+        // de la island. Antes iba pegada al grupo de la derecha, detrás de un
+        // único espaciador, así que ni estaba centrada ni se quedaba quieta.
+        Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 68
-            spacing: 12
 
             ColumnLayout {
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
                 spacing: 0
-                Layout.fillWidth: false
-                Layout.fillHeight: false
-                Layout.alignment: Qt.AlignVCenter
 
                 IslandLabel {
                     text: Clock.date.toLocaleDateString(Theme.locale, "dddd")
@@ -43,30 +44,33 @@ FadeIn {
                 }
             }
 
-            Item { Layout.fillWidth: true }
-
             IslandLabel {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.verticalCenter
                 text: Qt.formatDateTime(Clock.date, "HH:mm")
                 font.pixelSize: 30
                 font.weight: Font.Light
-                Layout.alignment: Qt.AlignVCenter
             }
 
-            JuegoPildora {
-                interactive: true
-                Layout.leftMargin: 4
-                Layout.alignment: Qt.AlignVCenter
-                onAbrir: if (view.juego) view.juego.toggle()
-            }
+            RowLayout {
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 6
 
-            // La island ya está desplegada y quieta: aquí sí se puede pinchar.
-            TrayRow {
-                max: 5
-                iconSize: 16
-                interactive: true
-                Layout.leftMargin: 4
-                Layout.alignment: Qt.AlignVCenter
-                onMenuRequested: if (view.tray) view.tray.toggle()
+                JuegoPildora {
+                    interactive: true
+                    Layout.alignment: Qt.AlignVCenter
+                    onAbrir: if (view.juego) view.juego.toggle()
+                }
+
+                // La island ya está desplegada y quieta: aquí sí se pincha.
+                TrayRow {
+                    max: 5
+                    iconSize: 16
+                    interactive: true
+                    Layout.alignment: Qt.AlignVCenter
+                    onMenuRequested: if (view.tray) view.tray.toggle()
+                }
             }
         }
 

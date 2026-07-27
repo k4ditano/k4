@@ -20,7 +20,14 @@ K4Plugin {
     property var tray: null
     property var juego: null
 
-    islandWidth: 300 + (Tray.count > 0 ? Math.min(Tray.count, 5) * 24 + 8 : 0)
+    // Mismo criterio que la píldora: los dos flancos ocupan lo del más ancho,
+    // así la hora cae en el centro exacto. La fecha ronda los 96 y la derecha
+    // depende de la bandeja y del aviso del juego.
+    readonly property int ladoDer: (Tray.count > 0
+        ? Math.min(Tray.count, 5) * 24 + 8 : 0) + 48
+    readonly property int ladoAncho: Math.max(96, ladoDer)
+
+    islandWidth: 92 + 2 * ladoAncho + 44
         + (Game.cargado ? 52 : 0)
     // crece para dejar sitio a las notificaciones recientes
     islandHeight: 68 + (Settings.notificacionesAlPasar ? Notifs.stripHeight(3) : 0)
