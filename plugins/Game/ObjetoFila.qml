@@ -41,7 +41,10 @@ Rectangle {
             Layout.preferredHeight: 20
             Layout.alignment: Qt.AlignVCenter
             fillMode: Image.PreserveAspectFit
-            smooth: false
+            // Aquí se REDUCE (32 -> 20), y reduciendo con vecino más cercano
+            // se pierden filas de píxeles enteras. Suavizar es lo correcto.
+            smooth: true
+            mipmap: true
         }
 
         IconGlyph {

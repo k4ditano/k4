@@ -172,8 +172,9 @@ Item {
             source: apertura.objeto
                 ? "assets/objetos/i" + String(apertura.objeto.icono).padStart(2, "0") + ".png"
                 : ""
-            Layout.preferredWidth: 40
-            Layout.preferredHeight: 40
+            // 64 = dos veces el sprite; a 40 quedaba a 1,25 y se ensuciaba
+            Layout.preferredWidth: 64
+            Layout.preferredHeight: 64
             Layout.alignment: Qt.AlignHCenter
             fillMode: Image.PreserveAspectFit
             smooth: false

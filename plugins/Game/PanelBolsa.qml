@@ -96,7 +96,8 @@ Item {
                             Layout.preferredHeight: 22
                             Layout.alignment: Qt.AlignVCenter
                             fillMode: Image.PreserveAspectFit
-                            smooth: false
+                            smooth: true
+                            mipmap: true
                             opacity: cofre.cuantos > 0 ? 1 : 0.5
                         }
 

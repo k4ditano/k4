@@ -55,8 +55,15 @@ Item {
 
         Image {
             anchors.centerIn: parent
+            // sube un poco: la insignia de rareza vive abajo a la izquierda y
+            // con el icono al doble de tamaño se le echaba encima
+            anchors.verticalCenterOffset: -5
             opacity: celda.usable ? 1 : 0.35
-            width: parent.width * 0.62
+
+            // Múltiplo entero del sprite (32 px): a 1,4 aumentos unos píxeles
+            // salían dobles y otros no, y se veía sucio.
+            readonly property int lado: 32
+            width: lado * Math.max(1, Math.floor(parent.width * 0.92 / lado))
             height: width
             source: celda.objeto
                 ? "assets/objetos/i" + String(celda.objeto.icono).padStart(2, "0") + ".png"

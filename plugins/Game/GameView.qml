@@ -88,15 +88,20 @@ FadeIn {
                         // cuántos cofres esperan, para que no se olviden
                         Rectangle {
                             visible: pestaña.modelData.id === "bolsa" && Game.cofres > 0
-                            Layout.preferredWidth: 13
-                            Layout.preferredHeight: 12
-                            radius: 6
-                            color: "#c78fff"
+
+                            // Crece con la cifra, que con seiscientos cofres se
+                            // salía del círculo. Y morado oscuro con letra
+                            // blanca: en negro sobre lila claro no se leía.
+                            Layout.preferredWidth: Math.max(14, cuantosCofres.implicitWidth + 9)
+                            Layout.preferredHeight: 13
+                            radius: height / 2
+                            color: "#7b3fe4"
 
                             IslandLabel {
+                                id: cuantosCofres
                                 anchors.centerIn: parent
-                                text: Game.cofres
-                                color: "#000000"
+                                text: Game.cifra(Game.cofres)
+                                color: "#ffffff"
                                 font.pixelSize: 8
                                 font.weight: Font.Bold
                             }
