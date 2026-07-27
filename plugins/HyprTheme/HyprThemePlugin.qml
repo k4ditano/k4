@@ -22,7 +22,7 @@ K4Plugin {
     title: "Tema de Hyprland"
     priority: 65
     active: open
-    grabKeyboard: false
+    grabKeyboard: open
 
     property bool open: false
     property string tab: "tema"        // "tema" | "ventanas" | "efectos" | "fondo"

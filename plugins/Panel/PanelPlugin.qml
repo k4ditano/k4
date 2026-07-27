@@ -32,7 +32,7 @@ K4Plugin {
     islandHeight: tab === "controls" ? 268 : 400
 
     // solo mientras se escribe la contraseña de una red
-    grabKeyboard: Wifi.pskTarget !== null
+    grabKeyboard: open
 
     handlesBackgroundTap: true
     onBackgroundTapped: toggle()

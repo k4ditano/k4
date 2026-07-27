@@ -17,6 +17,7 @@ K4Plugin {
     title: "Ajustes"
     priority: 66
     active: open
+    grabKeyboard: open
 
     property bool open: false
     property var panel: null

@@ -16,6 +16,7 @@ K4Plugin {
     title: "Mazmorra"
     priority: 64
     active: open
+    grabKeyboard: open
 
     property bool open: false
     property string pestaña: "lucha"

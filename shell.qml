@@ -219,6 +219,26 @@ Scope {
 
                 readonly property real bodyRadius: Math.min(32, height / 2)
 
+                // ESC cierra el módulo que esté abierto, sea cual sea.
+                //
+                // Va aquí y no en cada vista por dos razones: los módulos que
+                // vengan después lo heredan sin hacer nada, y las vistas que ya
+                // tratan la tecla —el lanzador, el portapapeles, la clave de
+                // wifi— la consumen antes de llegar hasta aquí, que es
+                // justamente lo que se quiere: primero cancela lo de dentro y
+                // solo después cierra el módulo.
+                focus: true
+
+                Keys.onPressed: function (ev) {
+                    if (ev.key !== Qt.Key_Escape)
+                        return
+                    const p = root.activePlugin
+                    if (p && typeof p.close === "function") {
+                        p.close()
+                        ev.accepted = true
+                    }
+                }
+
                 Behavior on width {
                     NumberAnimation {
                         duration: 440
