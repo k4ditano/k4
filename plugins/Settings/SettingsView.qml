@@ -9,6 +9,18 @@ FadeIn {
 
     required property var plugin
 
+    // El botón de borrar la partida está armado esperando confirmación.
+    property bool armado: false
+
+    Timer {
+        id: desarme
+        interval: 6000
+        onTriggered: view.armado = false
+    }
+
+    // cerrar y volver a abrir no debe dejarlo armado
+    onVisibleChanged: if (!visible) armado = false
+
     ColumnLayout {
         anchors.fill: parent
         anchors.leftMargin: 18
@@ -142,6 +154,127 @@ FadeIn {
         }
 
         Item { Layout.fillHeight: true }
+
+        // ── zona peligrosa
+        //
+        //  Va en dos tiempos a propósito: el primer toque arma y el segundo
+        //  ejecuta, y si te lo piensas más de unos segundos se desarma solo.
+        //  Un diálogo modal sería más aparatoso y no protegería más.
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.fillHeight: false
+            Layout.preferredHeight: 46
+            radius: 12
+            color: view.armado ? "#2a0f12" : Theme.surface
+            border.width: view.armado ? 1 : 0
+            border.color: Theme.red
+
+            Behavior on color { ColorAnimation { duration: 160 } }
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 12
+                anchors.rightMargin: 10
+                spacing: 10
+
+                IconGlyph {
+                    text: Theme.ico.alert
+                    color: view.armado ? Theme.red : Theme.muted
+                    font.pixelSize: 15
+                    Layout.alignment: Qt.AlignVCenter
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 1
+
+                    IslandLabel {
+                        text: view.armado
+                            ? "¿Seguro? Esto no se puede deshacer"
+                            : "Empezar la mazmorra de cero"
+                        font.pixelSize: 12
+                        font.weight: Font.DemiBold
+                        color: view.armado ? Theme.red : Theme.ink
+                    }
+
+                    IslandLabel {
+                        text: view.armado
+                            ? "pierdes " + Game.mejorOleada + " de récord, nivel "
+                              + Game.nivelMaximo + ", " + Game.logrosHechos.length
+                              + " logros y " + Game.bolsa.length + " piezas"
+                            : "borra niveles, héroes, logros, equipo y reliquias"
+                        color: view.armado ? "#ff9f9f" : Theme.dim
+                        font.pixelSize: 9
+                    }
+                }
+
+                Rectangle {
+                    Layout.preferredWidth: etiquetaBorrar.implicitWidth + 24
+                    Layout.preferredHeight: 26
+                    Layout.alignment: Qt.AlignVCenter
+                    radius: 13
+                    color: view.armado
+                        ? (borrarRaton.containsMouse ? "#ff6961" : Theme.red)
+                        : (borrarRaton.containsMouse ? Theme.surfaceHi : Theme.track)
+
+                    Behavior on color { ColorAnimation { duration: 120 } }
+
+                    IslandLabel {
+                        id: etiquetaBorrar
+                        anchors.centerIn: parent
+                        text: view.armado ? "Sí, borrar todo" : "Reiniciar"
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                    }
+
+                    MouseArea {
+                        id: borrarRaton
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (view.armado) {
+                                Game.borrarTodo()
+                                view.armado = false
+                                desarme.stop()
+                            } else {
+                                view.armado = true
+                                desarme.restart()
+                            }
+                        }
+                    }
+                }
+
+                // salida sin sustos: cancelar está al lado del botón rojo
+                Rectangle {
+                    visible: view.armado
+                    Layout.preferredWidth: cancelar.implicitWidth + 20
+                    Layout.preferredHeight: 26
+                    Layout.alignment: Qt.AlignVCenter
+                    radius: 13
+                    color: cancelarRaton.containsMouse ? Theme.surfaceHi : Theme.track
+
+                    IslandLabel {
+                        id: cancelar
+                        anchors.centerIn: parent
+                        text: "Cancelar"
+                        color: Theme.muted
+                        font.pixelSize: 11
+                    }
+
+                    MouseArea {
+                        id: cancelarRaton
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            view.armado = false
+                            desarme.stop()
+                        }
+                    }
+                }
+            }
+        }
 
         // ── herramientas del sistema
         RowLayout {

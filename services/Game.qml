@@ -1202,6 +1202,39 @@ Singleton {
     signal logroConseguido(string id)
 
     // ── ciclo de partida ──────────────────────────────────────────
+    // Empezar de cero de verdad: no una partida nueva, sino como recién
+    // instalado. Se toca todo lo que sobrevive a morir —niveles, héroes
+    // desbloqueados, logros, equipo, reliquias y las cuentas de por vida—,
+    // que es justo lo que `nuevaPartida` conserva a propósito.
+    function borrarTodo() {
+        heroes = ({})
+        plantilla = ["tanque", "mago", "clerigo"]
+        desbloqueados = ["tanque", "mago", "clerigo"]
+        logrosHechos = []
+        cuentas = ({
+            muertes: 0, jefes: 0, cofres: 0, oleadas: 0,
+            partidas: 0, desguaces: 0, habilidades: 0, oroTotal: 0
+        })
+
+        equipo = ({})
+        bolsa = []
+        cofresPorTipo = [0, 0, 0]
+        meta = ({ vida: 0, daño: 0, fortuna: 0 })
+        reliquias = 0
+
+        mejorOleada = 0
+        partidas = 0
+        inicioElegido = 1
+        oleadasDesdeCofre = 0
+
+        // y a jugar, que dejarlo sin grupo montado sería un tablero muerto
+        nuevaPartida()
+        guardar()
+        borradoTodo()
+    }
+
+    signal borradoTodo()
+
     function nuevaPartida() {
         relevoEn = 0
         oleada = Math.max(1, Math.min(inicioElegido,
