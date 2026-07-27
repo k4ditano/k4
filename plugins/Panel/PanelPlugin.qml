@@ -23,6 +23,7 @@ K4Plugin {
     property var launcher: null
     property var theme: null
     property var weather: null
+    property var ajustes: null
 
     islandWidth: 860
     islandHeight: tab === "controls" ? 274 : 400

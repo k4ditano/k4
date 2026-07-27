@@ -23,7 +23,7 @@ K4Plugin {
     islandWidth: 300 + (Tray.count > 0 ? Math.min(Tray.count, 5) * 24 + 8 : 0)
         + (Game.cargado ? 52 : 0)
     // crece para dejar sitio a las notificaciones recientes
-    islandHeight: 68 + Notifs.stripHeight(3)
+    islandHeight: 68 + (Settings.notificacionesAlPasar ? Notifs.stripHeight(3) : 0)
 
     view: Component {
         ClockView { tray: self.tray; juego: self.juego }

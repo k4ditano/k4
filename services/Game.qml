@@ -418,7 +418,8 @@ Singleton {
         // muerta esperándote, cada vez que abrieras la barra encontrarías
         // horas tiradas. Se encadena sola, y el resumen se queda un rato por
         // si estabas delante.
-        relevoEn = ahora() + segundosRelevo
+        // solo si lo has dejado activado en Ajustes
+        relevoEn = Settings.juegoContinuar ? ahora() + segundosRelevo : 0
         partidaTerminada(oleada, ganadosCofres, ganadasReliquias)
         guardar()
     }
@@ -624,7 +625,7 @@ Singleton {
     Timer {
         interval: 1000
         repeat: true
-        running: game.cargado && !game.viva && game.relevoEn > 0
+        running: game.cargado && !game.viva && game.relevoEn > 0 && Settings.juegoContinuar
         onTriggered: {
             if (game.ahora() >= game.relevoEn)
                 game.nuevaPartida()
@@ -754,7 +755,8 @@ Singleton {
 
         // Si murió mientras no mirabas —o viene de un guardado anterior al
         // relevo—, se encadena en cuanto te dé tiempo a leer el resumen.
-        if (!viva && grupo.length > 0 && (relevoEn === 0 || ahora() >= relevoEn))
+        if (Settings.juegoContinuar && !viva && grupo.length > 0
+            && (relevoEn === 0 || ahora() >= relevoEn))
             relevoEn = ahora() + 8
 
         ultimoTick = ahora()

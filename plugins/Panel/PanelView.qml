@@ -577,7 +577,11 @@ FadeIn {
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: Quickshell.execDetached(["nm-connection-editor"])
+                        onClicked: {
+                            view.plugin.close()
+                            if (view.plugin.ajustes)
+                                view.plugin.ajustes.toggle()
+                        }
                     }
                 }
             }

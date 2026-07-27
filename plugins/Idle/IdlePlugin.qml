@@ -20,11 +20,12 @@ K4Plugin {
 
     // cuántos iconos caben sin que la píldora se desmadre; el resto se resume
     readonly property int trayShown: Math.min(Tray.count, 4)
-    readonly property int trayWidth: Tray.count === 0
+    readonly property int trayWidth: Tray.count === 0 || !Settings.bandejaEnPildora
         ? 0 : trayShown * 18 + (Tray.count > trayShown ? 18 : 0) + 6
 
     // el indicador del juego suma su hueco cuando hay partida cargada
-    readonly property int juegoWidth: Game.cargado ? (Game.cofres > 0 ? 44 : 36) : 0
+    readonly property int juegoWidth: Game.cargado && Settings.juegoEnPildora
+        ? (Game.cofres > 0 ? 44 : 36) : 0
 
     islandWidth: (Media.isPlaying ? 210 : 176) + Workspaces.dotsWidth + trayWidth + juegoWidth
     islandHeight: Theme.baseHeight

@@ -10,3 +10,4 @@ singleton Weather 1.0 Weather.qml
 singleton Tray 1.0 Tray.qml
 singleton Game 1.0 Game.qml
 singleton Items 1.0 Items.qml
+singleton Settings 1.0 Settings.qml

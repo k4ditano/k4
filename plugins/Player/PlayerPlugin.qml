@@ -19,7 +19,8 @@ K4Plugin {
 
     islandWidth: 340 + (Tray.count > 0 ? Math.min(Tray.count, 4) * 24 + 8 : 0)
     // crece para dejar sitio a las notificaciones recientes
-    islandHeight: (Media.hasTimeline ? 140 : 115) + Notifs.stripHeight(3)
+    islandHeight: (Media.hasTimeline ? 140 : 115)
+        + (Settings.notificacionesAlPasar ? Notifs.stripHeight(3) : 0)
 
     view: Component {
         PlayerView { panel: self.panel; tray: self.tray }

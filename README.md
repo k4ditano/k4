@@ -79,8 +79,9 @@ fondo y el hechicero revienta la oleada entera.
 Cada diez oleadas llega un jefe. Cuando cae el grupo se acaba la partida: se
 pierden el oro y las mejoras temporales, y **se conservan el equipo, los cofres
 y las reliquias** — es lo que hace que la siguiente llegue más lejos. Tras el
-resumen arranca sola la siguiente: el combate corre aunque no mires, y una
-partida esperándote muerta serían horas tiradas.
+resumen arranca sola la siguiente —el combate corre aunque no mires, y una
+partida esperándote muerta serían horas tiradas—, aunque eso se puede apagar
+en Ajustes.
 
 El balance está medido, no puesto a ojo: hay un simulador que carga el
 servicio real y corre miles de oleadas en segundos. Con los números actuales,
@@ -112,6 +113,18 @@ y con tope de ocho horas.
 En la píldora queda un indicador con la oleada y un punto morado cuando hay
 cofres sin abrir; desde el reloj se pulsa para abrir la mazmorra. Ver
 [Los sprites](#los-sprites) para cómo se generaron.
+
+**Ajustes.** Interruptores de la barra dentro de la island: si la mazmorra
+encadena partidas sola, si sale en la píldora, si la bandeja muestra iconos
+ahí y si las notificaciones recientes aparecen al pasar el ratón. Antes esa
+tarjeta del centro de control lanzaba directamente `nm-connection-editor`, una
+ventana del sistema con su propio marco y su propia tipografía que no tenía
+nada que ver con la barra; ahora esa herramienta y `pavucontrol` quedan como
+accesos dentro del módulo.
+
+Solo hay interruptores conectados a algo: cada opción declara en
+`services/Settings.qml` qué módulo la lee, para que no queden huérfanas al
+refactorizar.
 
 **El tiempo.** Estado actual, siguientes horas y seis días, con datos de
 [Open-Meteo](https://open-meteo.com) —sin clave ni cuenta—. La ubicación se
@@ -185,6 +198,7 @@ hl.bind("SUPER + CONTROL + G", hl.dsp.exec_cmd(k4 .. "askSelection"))
 | `weather` | módulo del tiempo |
 | `tray` | bandeja del sistema |
 | `game` | la mazmorra |
+| `settings` | ajustes de la barra |
 | `setMode <modo>` | fuerza un estado de la island (depuración) |
 
 Además, cada módulo publica su propio target. El de arriba se mantiene por
@@ -198,6 +212,7 @@ compatibilidad con los atajos ya configurados; en módulos nuevos usa el suyo:
 | `k4.theme` | `toggle` · `close` · `tab <pestaña>` · `preset <id>` · `wallpaper <ruta>` · `apply` · `save` |
 | `k4.weather` | `toggle` · `close` · `refresh` · `locate` · `place <ciudad>` |
 | `k4.tray` | `toggle` · `close` |
+| `k4.settings` | `toggle` · `close` · `alternar <opción>` |
 | `k4.game` | `toggle` · `close` · `nueva` · `habilidad <0-2>` · `ver <pestaña>` · `cofre <tipo>` · `adelantar <segundos>` · `estado` |
 
 ## Dentro de la island
@@ -271,7 +286,7 @@ El `id: self` no es capricho: si lo llamas `plugin`, la línea
 
 Prioridades de los que ya hay: `idle` 0 · `volume` 40 · `clock` 50 ·
 `player` 55 · `panel` 60 · `weather` 62 · `tray` 63 · `game` 64 ·
-`hyprtheme` 65 · `toast` 70 · `launcher` 80 · `ask` 90.
+`hyprtheme` 65 · `settings` 66 · `toast` 70 · `launcher` 80 · `ask` 90.
 
 ## Tema de Hyprland
 

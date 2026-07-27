@@ -23,6 +23,7 @@ import "plugins/HyprTheme"
 import "plugins/Weather"
 import "plugins/Tray"
 import "plugins/Game"
+import "plugins/Settings"
 
 Scope {
     id: root
@@ -35,13 +36,14 @@ Scope {
     ClockPlugin  { id: clockPlugin; tray: trayPlugin; juego: gamePlugin }
     PlayerPlugin { id: playerPlugin; panel: panelPlugin; tray: trayPlugin }
     ToastPlugin  { id: toastPlugin }
-    PanelPlugin  { id: panelPlugin; launcher: launcherPlugin; theme: themePlugin; weather: weatherPlugin }
+    PanelPlugin  { id: panelPlugin; launcher: launcherPlugin; theme: themePlugin; weather: weatherPlugin; ajustes: settingsPlugin }
     LauncherPlugin { id: launcherPlugin; panel: panelPlugin }
     AskPlugin    { id: askPlugin; panel: panelPlugin; launcher: launcherPlugin }
     HyprThemePlugin { id: themePlugin; panel: panelPlugin }
     WeatherPlugin { id: weatherPlugin; panel: panelPlugin }
     TrayPlugin   { id: trayPlugin; panel: panelPlugin }
     GamePlugin   { id: gamePlugin; panel: panelPlugin }
+    SettingsPlugin { id: settingsPlugin; panel: panelPlugin }
 
     readonly property var plugins: [
         idlePlugin,
@@ -55,7 +57,8 @@ Scope {
         themePlugin,
         weatherPlugin,
         trayPlugin,
-        gamePlugin
+        gamePlugin,
+        settingsPlugin
     ]
 
     // ── quién se queda la island ──────────────────────────────────
@@ -104,6 +107,7 @@ Scope {
         void Weather.located
         void Tray.count
         void Game.cargado
+        void Settings.cargado
     }
 
     // ── IPC ───────────────────────────────────────────────────────
@@ -148,6 +152,7 @@ Scope {
         function weather(): void { weatherPlugin.toggle() }
         function tray(): void { trayPlugin.toggle() }
         function game(): void { gamePlugin.toggle() }
+        function settings(): void { settingsPlugin.toggle() }
         function setMode(mode: string): void { Island.debugMode = mode }
     }
 
