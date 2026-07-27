@@ -312,7 +312,24 @@ K4Plugin {
         }
 
         close()
-        entry.execute()
+        abrir(entry)
+    }
+
+    // No se usa entry.execute(): eso hereda el directorio de trabajo de la
+    // barra, que es la carpeta de configuración de quickshell —de ahí que las
+    // terminales abrieran en ~/.config/quickshell/k4—. Se lanza con el
+    // directorio que pida la propia entrada y, si no pide ninguno, en casa.
+    function abrir(entry) {
+        const dir = entry.workingDirectory && entry.workingDirectory.length > 0
+            ? entry.workingDirectory : Quickshell.env("HOME")
+
+        if (!entry.command || entry.command.length === 0) {
+            entry.execute()
+            return
+        }
+
+        Quickshell.execDetached(["sh", "-c",
+            "cd " + JSON.stringify(dir) + " && exec \"$@\"", "sh"].concat(entry.command))
     }
 
     function moveSelection(delta) {

@@ -14,6 +14,10 @@ ColumnLayout {
     spacing: 6
 
     property var plugin: null
+    // pieza bajo el ratón, para el emergente
+    property var mirando: null
+    property real mirandoX: 0
+    property real mirandoY: 0
     property var ultimo: null           // lo último que salió de un cofre
 
     // A quién le viene mejor una pieza: la clase que más gana con ella. Así
@@ -118,6 +122,82 @@ ColumnLayout {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: panel.plugin.abrirConCeremonia(cofre.index)
                 }
+            }
+        }
+    }
+
+    // ── emergente con la ficha de la pieza ────────────────────────
+    // En la rejilla solo caben icono e insignia; el nombre y lo que da hay que
+    // poder verlos sin equiparla para averiguarlo.
+    Rectangle {
+        id: emergente
+        parent: panel
+        z: 30
+        visible: panel.mirando !== null
+        width: Math.min(230, panel.width - 12)
+        height: contenidoFicha.implicitHeight + 14
+        radius: 9
+        color: "#f2101014"
+        border.width: 1
+        border.color: panel.mirando
+            ? Items.rarezaDe(panel.mirando.rareza).color : Theme.surfaceHi
+
+        // se coloca encima de la celda, y se aparta del borde si no cabe
+        x: Math.max(4, Math.min(panel.width - width - 4, panel.mirandoX - width / 2))
+        y: Math.max(4, panel.mirandoY - height - 6)
+
+        ColumnLayout {
+            id: contenidoFicha
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 7
+            spacing: 3
+
+            IslandLabel {
+                text: panel.mirando ? panel.mirando.nombre : ""
+                font.pixelSize: 11
+                font.weight: Font.DemiBold
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
+            RowLayout {
+                spacing: 5
+
+                InsigniaRareza {
+                    rareza: panel.mirando ? panel.mirando.rareza : 0
+                    nivel: Items.nivelDe(panel.mirando)
+                }
+
+                IslandLabel {
+                    text: panel.mirando ? Items.huecoDe(panel.mirando.hueco).nombre : ""
+                    color: Theme.muted
+                    font.pixelSize: 9
+                }
+            }
+
+            IslandLabel {
+                text: panel.mirando ? Items.resumen(panel.mirando) : ""
+                color: Theme.ink
+                font.pixelSize: 10
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
+            IslandLabel {
+                visible: panel.mirando !== null && !Game.algunoPuede(panel.mirando)
+                text: "necesita nivel " + Items.nivelRequerido(panel.mirando)
+                color: Theme.red
+                font.pixelSize: 9
+                font.weight: Font.DemiBold
+            }
+
+            IslandLabel {
+                text: panel.mirando ? "desguace: " + Game.cifra(Items.valorDesguace(panel.mirando))
+                    + " reliquias" : ""
+                color: Theme.dim
+                font.pixelSize: 9
             }
         }
     }
@@ -245,6 +325,17 @@ ColumnLayout {
                     if (it) Game.desguazar(it)
                 }
                 onSoltadoEn: function (desde) { Game.moverEnBolsa(desde, parent.index) }
+
+                onEncimaChanged: {
+                    if (encima) {
+                        panel.mirando = objeto
+                        const pos = mapToItem(panel, width / 2, 0)
+                        panel.mirandoX = pos.x
+                        panel.mirandoY = pos.y
+                    } else if (panel.mirando === objeto) {
+                        panel.mirando = null
+                    }
+                }
             }
         }
 

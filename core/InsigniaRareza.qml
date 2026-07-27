@@ -10,6 +10,7 @@ Rectangle {
     id: insignia
 
     property int rareza: 0
+    property int nivel: 0        // 0 = no mostrarlo
     property bool compacta: false
 
     readonly property var grado: Items.rarezaDe(rareza)
@@ -24,7 +25,8 @@ Rectangle {
     Text {
         id: etiqueta
         anchors.centerIn: parent
-        text: insignia.compacta ? insignia.grado.nombre.substring(0, 3) : insignia.grado.nombre
+        text: (insignia.compacta ? insignia.grado.nombre.substring(0, 3) : insignia.grado.nombre)
+            + (insignia.nivel > 0 ? " " + insignia.nivel : "")
         color: insignia.grado.color
         font.family: Theme.uiFont
         font.pixelSize: insignia.compacta ? 8 : 9

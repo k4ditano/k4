@@ -59,7 +59,8 @@ Rectangle {
             spacing: 0
 
             IslandLabel {
-                text: fila.objeto ? fila.objeto.nombre : fila.vacio
+                text: (fila.objeto && !Game.algunoPuede(fila.objeto) ? "🔒 " : "")
+                    + (fila.objeto ? fila.objeto.nombre : fila.vacio)
                 color: fila.rareza ? fila.rareza.color : Theme.dim
                 font.pixelSize: 11
                 font.weight: fila.objeto && fila.objeto.rareza >= 3 ? Font.DemiBold : Font.Normal
@@ -80,6 +81,7 @@ Rectangle {
         InsigniaRareza {
             visible: fila.objeto !== null
             rareza: fila.objeto ? fila.objeto.rareza : 0
+            nivel: Items.nivelDe(fila.objeto)
             compacta: true
             Layout.alignment: Qt.AlignVCenter
         }

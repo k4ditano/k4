@@ -108,7 +108,11 @@ paisaje despacio y el suelo deprisa, y entre oleada y oleada el grupo camina
 un par de segundos mientras la siguiente entra por la derecha.
 
 Los objetos se generan por afijos —tipo, prefijo declinado y sufijo— con las
-**diez rarezas de TBH** y sus colores, de Común a Cósmico, y tres clases de
+**diez rarezas de TBH** y sus colores, de Común a Cósmico. Cada pieza lleva
+además **nivel**, que escala lo que da y marca el nivel de héroe necesario
+para ponérsela: la rareza dice de qué familia es y el nivel cuánto rinde, así
+que un común alto puede valer más que un legendario recogido pronto. Van
+también y tres clases de
 cofre: corriente cada cinco oleadas, de jefe cada diez y de acto cada cincuenta.
 Con la barra cerrada siguen cayendo cofres corrientes, uno cada cuarto de hora
 y con tope de ocho horas.

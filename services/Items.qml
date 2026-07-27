@@ -157,6 +157,7 @@ Singleton {
 
         return {
             id: Math.floor(Math.random() * 1e9),
+            nivel: Math.max(1, Math.round(oleada / 3) + 1),
             hueco: hueco.id,
             tipo: hueco.tipos[cual],
             icono: hueco.iconos[cual],
@@ -167,10 +168,22 @@ Singleton {
         }
     }
 
+    // Nivel de la pieza, como en TBH: la rareza dice de qué familia es y el
+    // nivel cuánto rinde. Así un común de nivel alto puede valer más que un
+    // legendario recogido en las primeras oleadas, y mirar el botín deja de
+    // ser leer un color.
+    function nivelDe(objeto) {
+        if (!objeto)
+            return 1
+        if (objeto.nivel !== undefined)
+            return objeto.nivel
+        return Math.max(1, Math.round((objeto.oleada || 1) / 3) + 1)   // piezas antiguas
+    }
+
     function valorDesguace(objeto) {
         if (!objeto)
             return 0
-        return Math.ceil(rarezaDe(objeto.rareza).valor * (1 + objeto.oleada * 0.06))
+        return Math.ceil(rarezaDe(objeto.rareza).valor * (1 + nivelDe(objeto) * 0.24))
     }
 
     // Puntuación para ordenar la bolsa y para decidir si algo es mejor que lo
@@ -181,6 +194,19 @@ Singleton {
         const s = objeto.stats
         return (s.daño || 0) * 3 + (s.vida || 0) * 0.5
             + (s.armadura || 0) * 6 + (s.cura || 0) * 4
+    }
+
+    // Lo que hay que tener para ponérselo. Que el nivel sea también un
+    // requisito es lo que lo convierte en una meta: encontrar una pieza buena
+    // pronto da algo por lo que seguir subiendo, en vez de equiparla y ya.
+    function nivelRequerido(objeto) {
+        return nivelDe(objeto)
+    }
+
+    function etiqueta(objeto) {
+        if (!objeto)
+            return ""
+        return rarezaDe(objeto.rareza).nombre + " · nivel " + nivelDe(objeto)
     }
 
     function resumen(objeto) {

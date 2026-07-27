@@ -18,6 +18,9 @@ Item {
     signal secundario()
     signal soltadoEn(int destino)
 
+    readonly property bool usable: objeto ? Game.algunoPuede(objeto) : true
+    property alias encima: raton.containsMouse
+
     readonly property var rareza: objeto ? Items.rarezaDe(objeto.rareza) : null
 
     // ── zona de recepción: acepta la pieza que venga de otra celda
@@ -52,6 +55,7 @@ Item {
 
         Image {
             anchors.centerIn: parent
+            opacity: celda.usable ? 1 : 0.35
             width: parent.width * 0.62
             height: width
             source: celda.objeto
@@ -61,10 +65,20 @@ Item {
             smooth: false
         }
 
+        // candado: aún no tienes nivel para ponértelo
+        IconGlyph {
+            visible: celda.objeto !== null && !celda.usable
+            anchors.centerIn: parent
+            text: Theme.ico.lock
+            color: Theme.red
+            font.pixelSize: 14
+        }
+
         // el grado, abajo a la izquierda
         InsigniaRareza {
             visible: celda.objeto !== null
             rareza: celda.objeto ? celda.objeto.rareza : 0
+            nivel: Items.nivelDe(celda.objeto)
             compacta: true
             anchors.left: parent.left
             anchors.bottom: parent.bottom

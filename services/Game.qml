@@ -343,8 +343,23 @@ Singleton {
     }
 
     // ── equipar y desguazar ───────────────────────────────────────
-    function equipar(objeto, claseId) {
+    function puedeEquipar(objeto, claseId) {
         if (!objeto)
+            return false
+        return datosHeroe(claseId).nivel >= Items.nivelRequerido(objeto)
+    }
+
+    // A quién le vale de los tres, para avisar en la bolsa sin abrir fichas
+    function algunoPuede(objeto) {
+        for (let i = 0; i < clases.length; ++i) {
+            if (puedeEquipar(objeto, clases[i].id))
+                return true
+        }
+        return false
+    }
+
+    function equipar(objeto, claseId) {
+        if (!objeto || !puedeEquipar(objeto, claseId))
             return
 
         const eq = Object.assign({}, equipo)

@@ -71,7 +71,7 @@ Item {
             }
             NumberAnimation {
                 target: premio; property: "y"
-                from: apertura.height * 0.46; to: apertura.height * 0.2
+                from: apertura.height * 0.34; to: apertura.height * 0.02
                 duration: 520; easing.type: Easing.OutBack
             }
             NumberAnimation {
@@ -145,8 +145,21 @@ Item {
         opacity: 0
         spacing: 2
 
+        // el icono de la pieza: ver qué ha salido, no solo leerlo
+        Image {
+            source: apertura.objeto
+                ? "assets/objetos/i" + String(apertura.objeto.icono).padStart(2, "0") + ".png"
+                : ""
+            Layout.preferredWidth: 40
+            Layout.preferredHeight: 40
+            Layout.alignment: Qt.AlignHCenter
+            fillMode: Image.PreserveAspectFit
+            smooth: false
+        }
+
         InsigniaRareza {
             rareza: apertura.objeto ? apertura.objeto.rareza : 0
+            nivel: Items.nivelDe(apertura.objeto)
             Layout.alignment: Qt.AlignHCenter
         }
 
