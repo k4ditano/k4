@@ -219,7 +219,10 @@ K4Plugin {
         close()
     }
 
-    function rebuild() {
+    // `conservarSeleccion` lo usa el refresco periódico: sin él, cada segundo
+    // se reponía el índice a cero y la lista te devolvía arriba mientras
+    // bajabas con las flechas o la rueda.
+    function rebuild(conservarSeleccion) {
         const q = query.trim().toLowerCase()
         const applications = DesktopEntries.applications.values
         const found = []
@@ -255,7 +258,10 @@ K4Plugin {
         }
 
         matches = list
-        index = 0
+        if (conservarSeleccion === true)
+            index = Math.max(0, Math.min(index, list.length - 1))
+        else
+            index = 0
     }
 
     function refreshApplications() {
@@ -337,7 +343,7 @@ K4Plugin {
         interval: 1000
         repeat: true
         running: self.open && self.mode === "apps"
-        onTriggered: self.rebuild()
+        onTriggered: self.rebuild(true)
     }
 
     Process {

@@ -77,6 +77,13 @@ Rectangle {
             }
         }
 
+        InsigniaRareza {
+            visible: fila.objeto !== null
+            rareza: fila.objeto ? fila.objeto.rareza : 0
+            compacta: true
+            Layout.alignment: Qt.AlignVCenter
+        }
+
         IslandLabel {
             visible: fila.objeto !== null && raton.containsMouse
             text: "ol " + (fila.objeto ? fila.objeto.oleada : 0)

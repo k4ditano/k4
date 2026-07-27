@@ -381,6 +381,20 @@ Singleton {
         guardar()
     }
 
+    // Reordenar la bolsa a mano. El orden es el del array, así que moverlo es
+    // sacar y volver a insertar; se guarda para que sobreviva al reinicio.
+    function moverEnBolsa(desde, hasta) {
+        if (desde === hasta || desde < 0 || hasta < 0
+            || desde >= bolsa.length || hasta >= bolsa.length)
+            return
+
+        const lista = bolsa.slice()
+        const pieza = lista.splice(desde, 1)[0]
+        lista.splice(hasta, 0, pieza)
+        bolsa = lista
+        guardar()
+    }
+
     function desguazar(objeto) {
         if (!objeto)
             return

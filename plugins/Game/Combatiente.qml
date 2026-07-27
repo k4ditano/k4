@@ -135,15 +135,21 @@ Item {
                 anchors.fill: parent
 
                 property var plantilla: Qt.createComponent("NumeroFlotante.qml")
+                // se van escalonando: si todos salen del mismo punto se tapan
+                // unos a otros y no se lee ninguno
+                property int turno: 0
 
                 function lanzar(texto, curacion) {
                     if (plantilla.status !== Component.Ready)
                         return
+
+                    turno = (turno + 1) % 4
                     plantilla.createObject(numeros, {
                         texto: texto,
                         critico: curacion === true,
-                        x: numeros.width / 2 - 14 + (Math.random() * 16 - 8),
-                        y: numeros.height * 0.35
+                        x: numeros.width / 2 - 16 + (turno % 2 === 0 ? -13 : 13)
+                            + (Math.random() * 8 - 4),
+                        y: numeros.height * 0.34 - turno * 11
                     })
                 }
             }

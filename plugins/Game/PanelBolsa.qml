@@ -179,7 +179,7 @@ ColumnLayout {
         }
 
         IslandLabel {
-            text: "izquierdo equipa · derecho desguaza"
+            text: "izquierdo equipa · derecho desguaza · arrastra para ordenar"
             color: Theme.dim
             font.pixelSize: 9
             Layout.fillWidth: true
@@ -213,25 +213,39 @@ ColumnLayout {
         }
     }
 
-    ListView {
+    // ── la bolsa, en rejilla ──────────────────────────────────────
+    // Antes era una lista ordenada por puntuación: no se veía de un vistazo y
+    // no se podía colocar nada. Aquí el orden es tuyo y se arrastra.
+    GridView {
+        id: rejilla
         Layout.fillWidth: true
         Layout.fillHeight: true
         clip: true
-        spacing: 3
+        cellWidth: Math.floor(width / 10)
+        cellHeight: cellWidth
+        model: Game.bolsa.length
         boundsBehavior: Flickable.StopAtBounds
 
-        // las mejores arriba: con sesenta piezas, buscar a ojo es inviable
-        model: Game.bolsa.slice().sort(function (a, b) {
-            return Items.puntuacion(b) - Items.puntuacion(a)
-        })
+        delegate: Item {
+            required property int index
+            width: rejilla.cellWidth
+            height: rejilla.cellHeight
 
-        delegate: ObjetoFila {
-            id: pieza
-            required property var modelData
-            width: ListView.view.width
-            objeto: modelData
-            onPulsado: Game.equipar(modelData, panel.mejorDestino(modelData))
-            onSecundario: Game.desguazar(modelData)
+            CeldaObjeto {
+                anchors.fill: parent
+                anchors.margins: 3
+                objeto: Game.bolsa[parent.index]
+                posicion: parent.index
+                onPulsado: {
+                    const it = Game.bolsa[parent.index]
+                    if (it) Game.equipar(it, panel.mejorDestino(it))
+                }
+                onSecundario: {
+                    const it = Game.bolsa[parent.index]
+                    if (it) Game.desguazar(it)
+                }
+                onSoltadoEn: function (desde) { Game.moverEnBolsa(desde, parent.index) }
+            }
         }
 
         IslandLabel {

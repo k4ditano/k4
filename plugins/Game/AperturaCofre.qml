@@ -80,13 +80,17 @@ Item {
             }
         }
 
-        PauseAnimation { duration: 900 }
+        // tiempo de sobra para leer qué ha salido
+        PauseAnimation { duration: 3200 }
         ScriptAction { script: apertura.terminado() }
     }
 
     // ── resplandor detrás de todo
+    // Centrado en `sacudida`, que es hermano suyo: anclarlo a `tapa`, que vive
+    // dentro de otro item, no es válido y lo mandaba a la esquina superior
+    // izquierda.
     Rectangle {
-        anchors.centerIn: tapa
+        anchors.centerIn: sacudida
         width: 260 * apertura.fulgor
         height: width
         radius: width / 2
@@ -110,8 +114,8 @@ Item {
             color: apertura.rareza ? apertura.rareza.color : "#ffd60a"
             opacity: apertura.fulgor
             visible: apertura.fulgor > 0
-            x: tapa.x + tapa.width / 2 - 2 + Math.cos(angulo) * 90 * apertura.fulgor
-            y: tapa.y + tapa.height / 2 - 2 + Math.sin(angulo) * 70 * apertura.fulgor
+            x: sacudida.x + sacudida.width / 2 - 2 + Math.cos(angulo) * 90 * apertura.fulgor
+            y: sacudida.y + sacudida.height / 2 - 2 + Math.sin(angulo) * 70 * apertura.fulgor
         }
     }
 
@@ -141,14 +145,9 @@ Item {
         opacity: 0
         spacing: 2
 
-        IslandLabel {
-            text: apertura.rareza ? apertura.rareza.nombre : ""
-            color: apertura.rareza ? apertura.rareza.color : Theme.ink
-            font.pixelSize: 10
-            font.weight: Font.DemiBold
-            font.capitalization: Font.AllUppercase
-            horizontalAlignment: Text.AlignHCenter
-            Layout.fillWidth: true
+        InsigniaRareza {
+            rareza: apertura.objeto ? apertura.objeto.rareza : 0
+            Layout.alignment: Qt.AlignHCenter
         }
 
         IslandLabel {
