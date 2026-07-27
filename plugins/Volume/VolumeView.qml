@@ -37,7 +37,7 @@ FadeIn {
         }
 
         IslandLabel {
-            text: Audio.muted ? "—Idioma.t(" : Audio.volume + ")%"
+            text: Audio.muted ? "—" : Audio.volume + "%"
             color: Theme.muted
             font.pixelSize: 11
             horizontalAlignment: Text.AlignRight

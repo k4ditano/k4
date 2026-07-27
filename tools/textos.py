@@ -5,15 +5,15 @@ Tres órdenes, y ninguna necesita saber QML:
 
     textos.py plantilla     rehace traducciones/plantilla.json con todas las
                             cadenas que hay ahora en la interfaz
-    textos.py estado        dice cuánto lleva traducido cada idioma y qué falta
+    textos.py estado        dice cuánto lleva traducido cada idioma
     textos.py envolver      envuelve en Idioma.t(...) las cadenas que aún están
                             sueltas en el código (--seco para solo mirar)
 
-La clave de cada texto es el propio texto en español. Suena raro hasta que se
-piensa en la alternativa: con 422 cadenas repartidas por 70 ficheros, inventar
-un identificador para cada una es mucho trabajo, se desincroniza sola y deja al
-traductor mirando etiquetas en vez de frases. Así, además, lo que no esté
-traducido sale en español en vez de salir roto.
+La clave de cada texto es el propio texto en español. Con más de quinientas
+cadenas repartidas por setenta ficheros, inventar un identificador para cada
+una es mucho trabajo, se desincroniza sola y deja al traductor mirando
+etiquetas en vez de frases. Así, además, lo que no esté traducido sale en
+español en vez de salir roto.
 """
 
 import json
@@ -23,69 +23,118 @@ import sys
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TRADUCCIONES = os.path.join(RAIZ, "traducciones")
-CARPETAS = ["core", "widgets", "services", "plugins"]
+# `core` queda fuera a propósito: es la capa base y no depende de
+# ninguna otra, así que no puede llamar a un servicio. Sus dos textos
+# —«Conectar» y «Desconectar»— se quedan en español hasta que se
+# reciban desde fuera como propiedades.
+CARPETAS = ["widgets", "services", "plugins"]
 
-# Propiedades cuyo valor ve el usuario. Deliberadamente corta: `id`, `command`,
-# `source` y compañía llevan cadenas que NO se traducen, y meterlas rompería
-# el programa en cuanto alguien tradujera un identificador.
-# `etiqueta` queda fuera aunque se vea: en el portapapeles se compara
-# contra "enlace", "color"… para elegir el icono, así que traducirla
-# rompería la lógica. Esas salen de los guiones de Python y se
-# traducen allí.
+# Propiedades cuyo valor ve el usuario.
 PROPIEDADES = ("text", "nombre", "desc", "papel", "titulo", "grupo", "title")
 
-RE_SUELTA = re.compile(
-    r'\b(' + "|".join(PROPIEDADES) + r')\s*:\s*"([^"\\]{2,})"')
-RE_ENVUELTA = re.compile(
-    r'\b(' + "|".join(PROPIEDADES) + r')\s*:\s*Idioma\.t\(\s*"([^"\\]+)"\s*\)')
+# Propiedades que llevan identificadores y no se traducen nunca, aunque caigan
+# dentro del bloque de un texto. Traducir un `id` rompe el programa en cuanto
+# alguien cambia de idioma, y no se nota hasta que pasa.
+NO_TEXTO = ("id", "source", "command", "target", "path", "icono", "glifo",
+            "tipo", "efecto", "forma", "clase", "hueco", "sprite", "color",
+            "de", "requiere", "afinidad", "codigo", "reto", "valor", "etiqueta",
+            "family", "objectName", "sufijo", "prefijo")
 
-# Lo que parece texto pero no lo es.
+RE_ABRE = re.compile(r'\b(' + "|".join(PROPIEDADES) + r')\s*:')
+RE_ANTES = re.compile(r'\b(' + "|".join(NO_TEXTO) + r')\s*:\s*$')
+
+
 def traducible(s):
+    """Lo que parece texto y de verdad lo es."""
     if len(s.strip()) < 2:
         return False
     if not re.search(r'[A-Za-zÁÉÍÓÚÑáéíóúñü]', s):
         return False
-    # rutas, órdenes de shell, identificadores y formatos de fecha
+    # identificadores, rutas y órdenes de shell
     if re.match(r'^[a-z0-9_.\-/]+$', s) and " " not in s:
         return False
     if s.startswith("/") or s.startswith("~") or s.startswith("assets/"):
         return False
+    # formatos de fecha tipo "d MMMM" o "HH:mm"
     if re.match(r'^[dMyHhms:\s]+$', s):
         return False
     return True
 
 
-# ── segundo barrido: los textos que viven dentro de una expresión ──
+# ── literales de verdad ──────────────────────────────────────────────
 #
-#  La mitad de la interfaz no dice `text: "Hola"` sino
-#      text: algo ? "Hola" : "Adiós"
-#  o concatena trozos en varias líneas. Con solo el patrón simple se escapaban
-#  359 de 411 cadenas, así que hace falta seguir la expresión entera: empieza
-#  en la línea del `text:` y sigue mientras la anterior quede a medias.
+#  Buscar cadenas con una expresión regular fue un error caro: `"([^"]{2,})"`
+#  no sabe de paridad de comillas, así que en
+#      text: "+" + Tokens.cifra(x) + " " + fuente
+#  emparejaba la comilla que CIERRA la primera con la que ABRE la segunda y se
+#  tragaba el código de en medio como si fuera texto. En pantalla salía
+#  «+Idioma.t(72K) claude». Hay que recorrer el renglón carácter a carácter.
 
-RE_ABRE = re.compile(r'\b(' + "|".join(PROPIEDADES) + r')\s*:')
-RE_CADENA = re.compile(r'"([^"\\]{2,})"')
-COLGANDO = ("?", ":", "+", "(", "&&", "||", ",", "=")
+def literales(linea):
+    """(inicio, fin, contenido) de cada cadena real del renglón."""
+    salida = []
+    i, n = 0, len(linea)
+    while i < n:
+        if linea[i] != '"':
+            i += 1
+            continue
+        j = i + 1
+        while j < n:
+            if linea[j] == "\\":
+                j += 2
+                continue
+            if linea[j] == '"':
+                break
+            j += 1
+        if j >= n:
+            break
+        salida.append((i, j + 1, linea[i + 1:j]))
+        i = j + 1
+    return salida
+
+
+def envolver_linea(linea):
+    """Envuelve las cadenas traducibles del renglón, y solo esas."""
+    elegidas = []
+    for a, b, contenido in literales(linea):
+        delante = linea[:a].rstrip()
+        if delante.endswith("Idioma.t("):
+            continue
+        if RE_ANTES.search(delante):
+            continue
+        if not traducible(contenido):
+            continue
+        elegidas.append((a, b, contenido))
+
+    if not elegidas:
+        return linea, 0
+
+    trozos = []
+    ultimo = 0
+    for a, b, contenido in elegidas:
+        trozos.append(linea[ultimo:a])
+        trozos.append('Idioma.t("%s")' % contenido)
+        ultimo = b
+    trozos.append(linea[ultimo:])
+    return "".join(trozos), len(elegidas)
 
 
 def bloques_de_texto(lineas):
     """Índices de las líneas que forman parte de un binding de texto.
 
     Se decide mirando la línea SIGUIENTE, no la actual: en QML un ternario se
-    parte dejando el `:` al principio del renglón de abajo, así que la de
-    arriba termina en algo que parece completo. Mirando solo hacia atrás se
-    escapaban tres de las cuatro ramas de cada ternario.
+    parte dejando el `:` al principio del renglón de abajo, así que el de
+    arriba parece completo. Mirando solo hacia atrás se escapaban tres de las
+    cuatro ramas de cada ternario.
     """
     def limpia(x):
         return x.split("//")[0].rstrip()
 
     def continua(x):
-        t = limpia(x).lstrip()
-        return t.startswith(("?", ":", "+", "&&", "||", "."))
+        return limpia(x).lstrip().startswith(("?", ":", "+", "&&", "||", "."))
 
     dentro = set()
-    i = 0
-    n = len(lineas)
+    i, n = 0, len(lineas)
 
     while i < n:
         actual = limpia(lineas[i])
@@ -96,7 +145,7 @@ def bloques_de_texto(lineas):
         dentro.add(i)
 
         # `text: {` … `}`: se sigue por llaves hasta cerrar
-        if actual.rstrip().endswith("{"):
+        if actual.endswith("{"):
             hondo = actual.count("{") - actual.count("}")
             j = i + 1
             while j < n and hondo > 0:
@@ -106,7 +155,6 @@ def bloques_de_texto(lineas):
             i = j
             continue
 
-        # expresión partida en varias líneas
         j = i + 1
         while j < n and continua(lineas[j]):
             dentro.add(j)
@@ -135,12 +183,58 @@ def recolectar():
             continue
         rel = os.path.relpath(ruta, RAIZ)
         lineas = texto.split("\n")
+
         for i in bloques_de_texto(lineas):
-            for m in RE_CADENA.finditer(lineas[i].split("//")[0]):
-                s = m.group(1)
-                if traducible(s):
-                    encontradas.setdefault(s, set()).add(rel)
+            codigo = lineas[i].split("//")[0]
+            for a, b, contenido in literales(codigo):
+                if RE_ANTES.search(codigo[:a].rstrip()):
+                    continue
+                if traducible(contenido):
+                    encontradas.setdefault(contenido, set()).add(rel)
     return encontradas
+
+
+def envolver(seco=False):
+    tocados = 0
+    cambios = 0
+
+    for ruta in ficheros():
+        if os.path.basename(ruta) == "Idioma.qml":
+            continue
+        try:
+            texto = open(ruta, encoding="utf-8").read()
+        except OSError:
+            continue
+
+        lineas = texto.split("\n")
+        for i in sorted(bloques_de_texto(lineas)):
+            codigo = lineas[i].split("//")[0]
+            resto = lineas[i][len(codigo):]
+            codigo, n = envolver_linea(codigo)
+            cambios += n
+            lineas[i] = codigo + resto
+
+        nuevo = "\n".join(lineas)
+        if nuevo == texto:
+            continue
+
+        # Hace falta el import de los servicios para llamar a Idioma. Los
+        # singletons viven en la misma carpeta y no lo necesitan.
+        if ('import "../../services"' not in nuevo
+                and 'import "../services"' not in nuevo
+                and "pragma Singleton" not in nuevo):
+            rel = os.path.relpath(ruta, RAIZ)
+            subida = "../" * rel.count(os.sep)
+            marca = "import QtQuick\n"
+            if marca in nuevo:
+                nuevo = nuevo.replace(marca, marca + 'import "%sservices"\n' % subida, 1)
+
+        tocados += 1
+        if not seco:
+            open(ruta, "w", encoding="utf-8").write(nuevo)
+
+    print(("(en seco) " if seco else "")
+          + "%d cadenas envueltas en %d ficheros" % (cambios, tocados))
 
 
 def plantilla():
@@ -152,9 +246,9 @@ def plantilla():
             "idioma": "PLANTILLA",
             "codigo": "xx",
             "traducido por": "",
-            "cómo": "Copia este fichero a <código>.json, rellena cada valor "
-                    "y mándalo por GitHub. Deja vacío lo que no sepas: sale "
-                    "en español y no rompe nada.",
+            "cómo": "Copia este fichero a <código>.json, rellena cada valor y "
+                    "mándalo por GitHub. Lo que dejes vacío sale en español y "
+                    "no rompe nada.",
         }
     }
     for s in sorted(encontradas):
@@ -165,91 +259,33 @@ def plantilla():
         json.dump(datos, f, ensure_ascii=False, indent=1)
         f.write("\n")
 
-    print(f"{len(encontradas)} cadenas -> {os.path.relpath(ruta, RAIZ)}")
+    print("%d cadenas -> %s" % (len(encontradas), os.path.relpath(ruta, RAIZ)))
 
 
 def estado():
     encontradas = recolectar()
     total = len(encontradas)
-    print(f"{total} cadenas en la interfaz\n")
+    print("%d cadenas en la interfaz\n" % total)
 
-    for n in sorted(os.listdir(TRADUCCIONES)) if os.path.isdir(TRADUCCIONES) else []:
+    if not os.path.isdir(TRADUCCIONES):
+        return
+
+    for n in sorted(os.listdir(TRADUCCIONES)):
         if not n.endswith(".json") or n == "plantilla.json":
             continue
-        ruta = os.path.join(TRADUCCIONES, n)
         try:
-            d = json.load(open(ruta, encoding="utf-8"))
+            d = json.load(open(os.path.join(TRADUCCIONES, n), encoding="utf-8"))
         except Exception:
-            print(f"  {n}: ilegible")
+            print("  %s: ilegible" % n)
             continue
 
         meta = d.pop("_meta", {})
         hechas = sum(1 for k in encontradas if d.get(k))
         sobran = [k for k in d if k not in encontradas]
         pct = hechas / total * 100 if total else 0
-        print(f"  {n:12s} {meta.get('idioma', '?'):12s} "
-              f"{hechas:4d}/{total}  {pct:5.1f}%"
-              + (f"   ({len(sobran)} ya no se usan)" if sobran else ""))
-
-
-def envolver(seco=False):
-    """Deja las cadenas sueltas listas para traducirse."""
-    tocados = 0
-    cambios = 0
-
-    for ruta in ficheros():
-        try:
-            texto = open(ruta, encoding="utf-8").read()
-        except OSError:
-            continue
-
-        # El propio servicio de idioma no se envuelve a sí mismo.
-        if os.path.basename(ruta) == "Idioma.qml":
-            continue
-
-        lineas = texto.split("\n")
-        dentro = bloques_de_texto(lineas)
-
-        def sustituir(m):
-            nonlocal cambios
-            s = m.group(1)
-            if not traducible(s):
-                return m.group(0)
-            cambios += 1
-            return 'Idioma.t("%s")' % s
-
-        for i in sorted(dentro):
-            codigo = lineas[i].split("//")[0]
-            resto = lineas[i][len(codigo):]
-            # lo ya envuelto no se vuelve a envolver
-            if "Idioma.t(" in codigo:
-                trozos = re.split(r'(Idioma\.t\(\s*"[^"]*"\s*\))', codigo)
-                codigo = "".join(x if x.startswith("Idioma.t(")
-                                 else RE_CADENA.sub(sustituir, x) for x in trozos)
-            else:
-                codigo = RE_CADENA.sub(sustituir, codigo)
-            lineas[i] = codigo + resto
-
-        nuevo = "\n".join(lineas)
-        if nuevo == texto:
-            continue
-
-        # Hace falta el import de los servicios para poder llamar a Idioma.
-        if 'import "../../services"' not in nuevo and 'import "../services"' not in nuevo \
-                and "pragma Singleton" not in nuevo:
-            rel = os.path.relpath(ruta, RAIZ)
-            hondo = rel.count(os.sep)
-            subida = "../" * hondo
-            marca = 'import QtQuick\n'
-            if marca in nuevo:
-                nuevo = nuevo.replace(marca, marca + 'import "%sservices"\n' % subida, 1)
-
-        tocados += 1
-        if not seco:
-            open(ruta, "w", encoding="utf-8").write(nuevo)
-
-    print(("(en seco) " if seco else "") +
-          f"{cambios} cadenas envueltas en {tocados} ficheros")
+        print("  %-12s %-12s %4d/%d  %5.1f%%%s"
+              % (n, meta.get("idioma", "?"), hechas, total, pct,
+                 "   (%d ya no se usan)" % len(sobran) if sobran else ""))
 
 
 def main():

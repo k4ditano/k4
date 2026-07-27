@@ -59,17 +59,17 @@ Singleton {
     //  hay que jugar. `ruptura` en particular existe porque el escudo era la
     //  respuesta a todo.
     readonly property var rasgos: [
-        { id: "coraza",  nombre: Idioma.t("Coraza"),  desde: 12, color: Idioma.t("#8e8e93"),
+        { id: "coraza",  nombre: Idioma.t("Coraza"),  desde: 12, color: "#8e8e93",
           desc: Idioma.t("aguanta mejor los golpes") },
-        { id: "furia",   nombre: Idioma.t("Furia"),   desde: 25, color: Idioma.t("#ff453a"),
+        { id: "furia",   nombre: Idioma.t("Furia"),   desde: 25, color: "#ff453a",
           desc: Idioma.t("pega más fuerte cuanta menos vida le queda") },
-        { id: "ponzona", nombre: Idioma.t("Ponzoña"), desde: 40, color: Idioma.t("#32d74b"),
+        { id: "ponzona", nombre: Idioma.t("Ponzoña"), desde: 40, color: "#32d74b",
           desc: Idioma.t("envenena a quien golpea") },
-        { id: "drenaje", nombre: Idioma.t("Drenaje"), desde: 55, color: Idioma.t("#bf5af2"),
+        { id: "drenaje", nombre: Idioma.t("Drenaje"), desde: 55, color: "#bf5af2",
           desc: Idioma.t("se cura con el daño que hace") },
-        { id: "ruptura", nombre: Idioma.t("Ruptura"), desde: 70, color: Idioma.t("#ffd60a"),
+        { id: "ruptura", nombre: Idioma.t("Ruptura"), desde: 70, color: "#ffd60a",
           desc: Idioma.t("sus golpes ignoran los escudos") },
-        { id: "eco",     nombre: Idioma.t("Eco"),     desde: 92, color: Idioma.t("#0a84ff"),
+        { id: "eco",     nombre: Idioma.t("Eco"),     desde: 92, color: "#0a84ff",
           desc: Idioma.t("salpica al resto del grupo") }
     ]
 
@@ -126,7 +126,7 @@ Singleton {
     //  oleada y no hay que retocarla nunca.
     readonly property var habilidadesEnemigo: [
         { id: "embestida", nombre: Idioma.t("Embestida"), desde: 20, recarga: 9,
-          efecto: Idioma.t("granGolpe"), potencia: 3.2, forma: "onda" },
+          efecto: "granGolpe", potencia: 3.2, forma: "onda" },
         { id: "escupitajo", nombre: Idioma.t("Escupitajo"), desde: 34, recarga: 12,
           efecto: "salpicar", potencia: 1.1, forma: "nube" },
         { id: "aullido", nombre: Idioma.t("Aullido"), desde: 48, recarga: 15,
@@ -209,8 +209,8 @@ Singleton {
         {
             id: "tanque", nombre: Idioma.t("Guardián"), sprite: "h00",
             vida: 300, daño: 4, armadura: 6, papel: Idioma.t("Aguanta los golpes"),
-            ataque: Idioma.t("Mandoble"), glifo: 0xF0498,
-            visual: { forma: "tajo", color: Idioma.t("#e5e5ea") }, reto: null,
+            ataque: "Mandoble", glifo: 0xF0498,
+            visual: { forma: "tajo", color: "#e5e5ea" }, reto: null,
             porNivel: { vida: 0.11, daño: 0.06, armadura: 0.6 },
             habilidades: [
                 { nivel: 1, id: "provocar", nombre: Idioma.t("Provocar"),
@@ -218,7 +218,7 @@ Singleton {
                   efecto: "provocar", potencia: 6 },
                 { nivel: 5, id: "muro", nombre: Idioma.t("Muro de escudos"),
                   desc: Idioma.t("Escudo para todo el grupo"), recarga: 26, glifo: 0xF0A38,
-                  efecto: Idioma.t("escudoGrupo"), potencia: 0.22 },
+                  efecto: "escudoGrupo", potencia: 0.22 },
                 { nivel: 12, id: "represalia", nombre: Idioma.t("Represalia"),
                   desc: Idioma.t("Devuelve parte del daño recibido"), recarga: 22, glifo: 0xF04E5,
                   efecto: "reflejo", potencia: 8 },
@@ -230,8 +230,8 @@ Singleton {
         {
             id: "mago", nombre: Idioma.t("Hechicero"), sprite: "h02",
             vida: 130, daño: 12, armadura: 0, papel: Idioma.t("Daño en área"),
-            ataque: Idioma.t("Dardo arcano"), glifo: 0xF0E20,
-            visual: { forma: "proyectil", color: Idioma.t("#bf5af2") }, reto: null,
+            ataque: "Dardo arcano", glifo: 0xF0E20,
+            visual: { forma: "proyectil", color: "#bf5af2" }, reto: null,
             porNivel: { vida: 0.06, daño: 0.13, armadura: 0.1 },
             habilidades: [
                 { nivel: 1, id: "llamarada", nombre: Idioma.t("Llamarada"),
@@ -242,7 +242,7 @@ Singleton {
                   efecto: "cadena", potencia: 3 },
                 { nivel: 14, id: "meteoro", nombre: Idioma.t("Meteoro"),
                   desc: Idioma.t("Un golpe enorme al más sano"), recarga: 30, glifo: 0xF0F1B,
-                  efecto: Idioma.t("golpeUnico"), potencia: 16 },
+                  efecto: "golpeUnico", potencia: 16 },
                 { nivel: 22, id: "quietud", nombre: Idioma.t("Quietud"),
                   desc: Idioma.t("La oleada deja de atacar"), recarga: 45, glifo: 0xF04AB,
                   efecto: "aturdir", potencia: 5 }
@@ -251,16 +251,16 @@ Singleton {
         {
             id: "clerigo", nombre: Idioma.t("Clériga"), sprite: "h04",
             vida: 190, daño: 5, armadura: 3, papel: Idioma.t("Cura al grupo"),
-            ataque: Idioma.t("Fulgor"), glifo: 0xF05E1,
-            visual: { forma: "destello", color: Idioma.t("#ffd60a") }, reto: null,
+            ataque: "Fulgor", glifo: 0xF05E1,
+            visual: { forma: "destello", color: "#ffd60a" }, reto: null,
             porNivel: { vida: 0.09, daño: 0.07, armadura: 0.35 },
             habilidades: [
                 { nivel: 1, id: "bendicion", nombre: Idioma.t("Bendición"),
                   desc: Idioma.t("Cura a todo el grupo"), recarga: 22, glifo: 0xF05E1,
-                  efecto: Idioma.t("curaGrupo"), potencia: 0.35 },
+                  efecto: "curaGrupo", potencia: 0.35 },
                 { nivel: 7, id: "egida", nombre: Idioma.t("Égida"),
                   desc: Idioma.t("Escudo al más malherido"), recarga: 20, glifo: 0xF0A38,
-                  efecto: Idioma.t("escudoUno"), potencia: 0.45 },
+                  efecto: "escudoUno", potencia: 0.45 },
                 { nivel: 15, id: "renovar", nombre: Idioma.t("Renovación"),
                   desc: Idioma.t("Cura poco a poco"), recarga: 28, glifo: 0xF058C,
                   efecto: "regenerar", potencia: 10 },
@@ -272,8 +272,8 @@ Singleton {
         {
             id: "arquera", nombre: Idioma.t("Arquera"), sprite: "h01",
             vida: 150, daño: 15, armadura: 1, papel: Idioma.t("Golpes certeros"),
-            ataque: Idioma.t("Saeta"), glifo: 0xF0289,
-            visual: { forma: "flecha", color: Idioma.t("#30d158") }, reto: { tipo: "oleada", meta: 25 },
+            ataque: "Saeta", glifo: 0xF0289,
+            visual: { forma: "flecha", color: "#30d158" }, reto: { tipo: "oleada", meta: 25 },
             porNivel: { vida: 0.07, daño: 0.14, armadura: 0.15 },
             habilidades: [
                 { nivel: 1, id: "lluvia", nombre: Idioma.t("Lluvia de flechas"),
@@ -281,7 +281,7 @@ Singleton {
                   efecto: "area", potencia: 4 },
                 { nivel: 6, id: "perforar", nombre: Idioma.t("Perforante"),
                   desc: Idioma.t("Un disparo que atraviesa"), recarga: 20, glifo: 0xF04E5,
-                  efecto: Idioma.t("golpeUnico"), potencia: 10 },
+                  efecto: "golpeUnico", potencia: 10 },
                 { nivel: 14, id: "veneno", nombre: Idioma.t("Punta envenenada"),
                   desc: Idioma.t("Desangra a la oleada"), recarga: 26, glifo: 0xF0BC2,
                   efecto: "veneno", potencia: 12 },
@@ -293,8 +293,8 @@ Singleton {
         {
             id: "picaro", nombre: Idioma.t("Pícaro"), sprite: "h03",
             vida: 140, daño: 17, armadura: 0, papel: Idioma.t("Remata heridos"),
-            ataque: Idioma.t("Puñalada"), glifo: 0xF04E5,
-            visual: { forma: "tajo", color: Idioma.t("#ff453a") }, reto: { tipo: "muertes", meta: 1500 },
+            ataque: "Puñalada", glifo: 0xF04E5,
+            visual: { forma: "tajo", color: "#ff453a" }, reto: { tipo: "muertes", meta: 1500 },
             porNivel: { vida: 0.06, daño: 0.15, armadura: 0.1 },
             habilidades: [
                 { nivel: 1, id: "emboscada", nombre: Idioma.t("Emboscada"),
@@ -314,8 +314,8 @@ Singleton {
         {
             id: "barbaro", nombre: Idioma.t("Bárbaro"), sprite: "h05",
             vida: 260, daño: 11, armadura: 3, papel: Idioma.t("Cuanto más herido, más pega"),
-            ataque: Idioma.t("Hachazo"), glifo: 0xF0F1B,
-            visual: { forma: "tajo", color: Idioma.t("#ff9f0a") }, reto: { tipo: "jefes", meta: 30 },
+            ataque: "Hachazo", glifo: 0xF0F1B,
+            visual: { forma: "tajo", color: "#ff9f0a" }, reto: { tipo: "jefes", meta: 30 },
             porNivel: { vida: 0.10, daño: 0.11, armadura: 0.4 },
             habilidades: [
                 { nivel: 1, id: "furia", nombre: Idioma.t("Furia"),
@@ -335,8 +335,8 @@ Singleton {
         {
             id: "druida", nombre: Idioma.t("Druida"), sprite: "h06",
             vida: 200, daño: 9, armadura: 2, papel: Idioma.t("Regenera sin parar"),
-            ataque: Idioma.t("Zarza"), glifo: 0xF058C,
-            visual: { forma: "proyectil", color: Idioma.t("#32d74b") }, reto: { tipo: "cofres", meta: 60 },
+            ataque: "Zarza", glifo: 0xF058C,
+            visual: { forma: "proyectil", color: "#32d74b" }, reto: { tipo: "cofres", meta: 60 },
             porNivel: { vida: 0.10, daño: 0.08, armadura: 0.3 },
             habilidades: [
                 { nivel: 1, id: "brotar", nombre: Idioma.t("Brotes"),
@@ -347,7 +347,7 @@ Singleton {
                   efecto: "reflejo", potencia: 10 },
                 { nivel: 14, id: "savia", nombre: Idioma.t("Savia"),
                   desc: Idioma.t("Cura fuerte a todos"), recarga: 30, glifo: 0xF05E1,
-                  efecto: Idioma.t("curaGrupo"), potencia: 0.5 },
+                  efecto: "curaGrupo", potencia: 0.5 },
                 { nivel: 22, id: "bosque", nombre: Idioma.t("Ira del bosque"),
                   desc: Idioma.t("Arrasa la oleada"), recarga: 38, glifo: 0xF0F1B,
                   efecto: "area", potencia: 9 }
@@ -356,19 +356,19 @@ Singleton {
         {
             id: "paladin", nombre: Idioma.t("Paladín"), sprite: "h08",
             vida: 280, daño: 10, armadura: 7, papel: Idioma.t("Muro con castigo"),
-            ataque: Idioma.t("Maza sagrada"), glifo: 0xF0A38,
-            visual: { forma: "destello", color: Idioma.t("#0a84ff") }, reto: { tipo: "nivel", meta: 60 },
+            ataque: "Maza sagrada", glifo: 0xF0A38,
+            visual: { forma: "destello", color: "#0a84ff" }, reto: { tipo: "nivel", meta: 60 },
             porNivel: { vida: 0.11, daño: 0.09, armadura: 0.65 },
             habilidades: [
-                { nivel: 1, id: Idioma.t("escudoFe"), nombre: Idioma.t("Escudo de fe"),
+                { nivel: 1, id: "escudoFe", nombre: Idioma.t("Escudo de fe"),
                   desc: Idioma.t("Escudo a todo el grupo"), recarga: 22, glifo: 0xF0A38,
-                  efecto: Idioma.t("escudoGrupo"), potencia: 0.28 },
+                  efecto: "escudoGrupo", potencia: 0.28 },
                 { nivel: 6, id: "castigo", nombre: Idioma.t("Castigo"),
                   desc: Idioma.t("Golpe sagrado al más sano"), recarga: 24, glifo: 0xF05E1,
-                  efecto: Idioma.t("golpeUnico"), potencia: 9 },
+                  efecto: "golpeUnico", potencia: 9 },
                 { nivel: 14, id: "consagrar", nombre: Idioma.t("Consagrar"),
                   desc: Idioma.t("Cura y protege a la vez"), recarga: 32, glifo: 0xF05E1,
-                  efecto: Idioma.t("curaGrupo"), potencia: 0.3 },
+                  efecto: "curaGrupo", potencia: 0.3 },
                 { nivel: 22, id: "juicio", nombre: Idioma.t("Juicio"),
                   desc: Idioma.t("Detiene y castiga a la oleada"), recarga: 48, glifo: 0xF04AB,
                   efecto: "aturdir", potencia: 4 }
@@ -383,15 +383,15 @@ Singleton {
         {
             id: "monje", nombre: Idioma.t("Monje"), sprite: "h07",
             vida: 175, daño: 13, armadura: 3, papel: Idioma.t("Encadena golpes"),
-            ataque: Idioma.t("Palma de hierro"), glifo: 0xF0498,
-            visual: { forma: "tajo", color: Idioma.t("#ff9f0a") },
+            ataque: "Palma de hierro", glifo: 0xF0498,
+            visual: { forma: "tajo", color: "#ff9f0a" },
             reto: { tipo: "nivel", meta: 25 },
             porNivel: { vida: 0.075, daño: 0.135, armadura: 0.25 },
             habilidades: [
                 { nivel: 1, id: "rafaga", nombre: Idioma.t("Ráfaga"),
                   desc: Idioma.t("Golpes que saltan de uno a otro"), recarga: 14, glifo: 0xF0498,
                   efecto: "cadena", potencia: 2.2 },
-                { nivel: 7, id: Idioma.t("palmaAturde"), nombre: Idioma.t("Palma quebrantahuesos"),
+                { nivel: 7, id: "palmaAturde", nombre: Idioma.t("Palma quebrantahuesos"),
                   desc: Idioma.t("Deja quieta a la oleada"), recarga: 30, glifo: 0xF04AB,
                   efecto: "aturdir", potencia: 3 },
                 { nivel: 15, id: "meditar", nombre: Idioma.t("Meditación"),
@@ -405,14 +405,14 @@ Singleton {
         {
             id: "nigromante", nombre: Idioma.t("Nigromante"), sprite: "h09",
             vida: 145, daño: 12, armadura: 0, papel: Idioma.t("Roba vida y pudre"),
-            ataque: Idioma.t("Toque marchito"), glifo: 0xF0E20,
-            visual: { forma: "proyectil", color: Idioma.t("#8e4ec6") },
+            ataque: "Toque marchito", glifo: 0xF0E20,
+            visual: { forma: "proyectil", color: "#8e4ec6" },
             reto: { tipo: "muertes", meta: 3000 },
             porNivel: { vida: 0.065, daño: 0.13, armadura: 0.1 },
             habilidades: [
                 { nivel: 1, id: "sorbo", nombre: Idioma.t("Sorbo de vida"),
                   desc: Idioma.t("Golpea y se cura con ello"), recarga: 16, glifo: 0xF0E20,
-                  efecto: Idioma.t("robarVida"), potencia: 5 },
+                  efecto: "robarVida", potencia: 5 },
                 { nivel: 8, id: "peste", nombre: Idioma.t("Peste"),
                   desc: Idioma.t("Pudre a toda la oleada"), recarga: 24, glifo: 0xF058C,
                   efecto: "veneno", potencia: 7 },
@@ -427,17 +427,17 @@ Singleton {
         {
             id: "herrero", nombre: Idioma.t("Herrero rúnico"), sprite: "h10",
             vida: 265, daño: 9, armadura: 8, papel: Idioma.t("Blinda al grupo"),
-            ataque: Idioma.t("Martillo rúnico"), glifo: 0xF0F1B,
-            visual: { forma: "tajo", color: Idioma.t("#ffd60a") },
+            ataque: "Martillo rúnico", glifo: 0xF0F1B,
+            visual: { forma: "tajo", color: "#ffd60a" },
             reto: { tipo: "cofres", meta: 120 },
             porNivel: { vida: 0.105, daño: 0.08, armadura: 0.7 },
             habilidades: [
                 { nivel: 1, id: "yunque", nombre: Idioma.t("Yunque"),
                   desc: Idioma.t("Blinda a todo el grupo"), recarga: 20, glifo: 0xF0F1B,
-                  efecto: Idioma.t("escudoGrupo"), potencia: 0.24 },
+                  efecto: "escudoGrupo", potencia: 0.24 },
                 { nivel: 6, id: "temple", nombre: Idioma.t("Temple"),
                   desc: Idioma.t("Un escudo grueso a quien más falta le hace"), recarga: 17, glifo: 0xF0F1B,
-                  efecto: Idioma.t("escudoUno"), potencia: 0.5 },
+                  efecto: "escudoUno", potencia: 0.5 },
                 { nivel: 14, id: "chispas", nombre: Idioma.t("Lluvia de chispas"),
                   desc: Idioma.t("Castiga a toda la oleada"), recarga: 22, glifo: 0xF0241,
                   efecto: "area", potencia: 3.4 },
@@ -449,8 +449,8 @@ Singleton {
         {
             id: "espadachin", nombre: Idioma.t("Espadachín"), sprite: "h11",
             vida: 195, daño: 16, armadura: 3, papel: Idioma.t("Duelo y desangre"),
-            ataque: Idioma.t("Estocada"), glifo: 0xF0498,
-            visual: { forma: "tajo", color: Idioma.t("#5ac8fa") },
+            ataque: "Estocada", glifo: 0xF0498,
+            visual: { forma: "tajo", color: "#5ac8fa" },
             reto: { tipo: "oleada", meta: 40 },
             porNivel: { vida: 0.08, daño: 0.14, armadura: 0.3 },
             habilidades: [
@@ -460,9 +460,9 @@ Singleton {
                 { nivel: 9, id: "finta", nombre: Idioma.t("Finta"),
                   desc: Idioma.t("Esquiva todo un momento"), recarga: 40, glifo: 0xF0289,
                   efecto: "invulnerable", potencia: 3 },
-                { nivel: 17, id: Idioma.t("estocadaReal"), nombre: Idioma.t("Estocada real"),
+                { nivel: 17, id: "estocadaReal", nombre: Idioma.t("Estocada real"),
                   desc: Idioma.t("Un golpe limpio y enorme"), recarga: 19, glifo: 0xF0498,
-                  efecto: Idioma.t("golpeUnico"), potencia: 13 },
+                  efecto: "golpeUnico", potencia: 13 },
                 { nivel: 27, id: "danza", nombre: Idioma.t("Danza de aceros"),
                   desc: Idioma.t("Barre a toda la oleada"), recarga: 27, glifo: 0xF0F1B,
                   efecto: "area", potencia: 4.2 }
@@ -471,8 +471,8 @@ Singleton {
         {
             id: "montaraz", nombre: Idioma.t("Montaraz"), sprite: "h12",
             vida: 160, daño: 15, armadura: 2, papel: Idioma.t("Tiro sostenido"),
-            ataque: Idioma.t("Saeta larga"), glifo: 0xF0289,
-            visual: { forma: "flecha", color: Idioma.t("#a8d84a") },
+            ataque: "Saeta larga", glifo: 0xF0289,
+            visual: { forma: "flecha", color: "#a8d84a" },
             reto: { tipo: "muertes", meta: 5000 },
             porNivel: { vida: 0.07, daño: 0.145, armadura: 0.2 },
             habilidades: [
@@ -482,10 +482,10 @@ Singleton {
                 { nivel: 8, id: "trampa", nombre: Idioma.t("Trampa de lazo"),
                   desc: Idioma.t("Los deja quietos"), recarga: 32, glifo: 0xF04AB,
                   efecto: "aturdir", potencia: 3 },
-                { nivel: 16, id: Idioma.t("puntaHerbada"), nombre: Idioma.t("Punta herbada"),
+                { nivel: 16, id: "puntaHerbada", nombre: Idioma.t("Punta herbada"),
                   desc: Idioma.t("Veneno en cada punta"), recarga: 22, glifo: 0xF058C,
                   efecto: "veneno", potencia: 6 },
-                { nivel: 25, id: Idioma.t("tiroCerte"), nombre: Idioma.t("Tiro certero"),
+                { nivel: 25, id: "tiroCerte", nombre: Idioma.t("Tiro certero"),
                   desc: Idioma.t("Al más malherido, y sin fallo"), recarga: 18, glifo: 0xF0289,
                   efecto: "remate", potencia: 10 }
             ]
@@ -493,8 +493,8 @@ Singleton {
         {
             id: "domadora", nombre: Idioma.t("Domadora"), sprite: "h13",
             vida: 205, daño: 12, armadura: 4, papel: Idioma.t("Controla la oleada"),
-            ataque: Idioma.t("Latigazo"), glifo: 0xF04E5,
-            visual: { forma: "flecha", color: Idioma.t("#ff2d92") },
+            ataque: "Latigazo", glifo: 0xF04E5,
+            visual: { forma: "flecha", color: "#ff2d92" },
             reto: { tipo: "jefes", meta: 50 },
             porNivel: { vida: 0.085, daño: 0.115, armadura: 0.4 },
             habilidades: [
@@ -515,8 +515,8 @@ Singleton {
         {
             id: "cazadora", nombre: Idioma.t("Cazadora"), sprite: "h14",
             vida: 165, daño: 16, armadura: 1, papel: Idioma.t("Remata heridos"),
-            ataque: Idioma.t("Venablo"), glifo: 0xF0289,
-            visual: { forma: "flecha", color: Idioma.t("#64d2ff") },
+            ataque: "Venablo", glifo: 0xF0289,
+            visual: { forma: "flecha", color: "#64d2ff" },
             reto: { tipo: "oleada", meta: 60 },
             porNivel: { vida: 0.07, daño: 0.15, armadura: 0.15 },
             habilidades: [
@@ -526,7 +526,7 @@ Singleton {
                 { nivel: 9, id: "cepo", nombre: Idioma.t("Cepo"),
                   desc: Idioma.t("Detiene a la oleada entera"), recarga: 34, glifo: 0xF04AB,
                   efecto: "aturdir", potencia: 3 },
-                { nivel: 18, id: Idioma.t("estocadaFinal"), nombre: Idioma.t("Golpe de gracia"),
+                { nivel: 18, id: "estocadaFinal", nombre: Idioma.t("Golpe de gracia"),
                   desc: Idioma.t("Se ceba en el más malherido"), recarga: 16, glifo: 0xF04E5,
                   efecto: "remate", potencia: 12 },
                 { nivel: 28, id: "jauria", nombre: Idioma.t("Jauría"),
@@ -537,17 +537,17 @@ Singleton {
         {
             id: "corsario", nombre: Idioma.t("Corsario"), sprite: "h15",
             vida: 185, daño: 15, armadura: 2, papel: Idioma.t("Saquea y aguanta"),
-            ataque: Idioma.t("Sable"), glifo: 0xF0498,
-            visual: { forma: "tajo", color: Idioma.t("#ff9f0a") },
+            ataque: "Sable", glifo: 0xF0498,
+            visual: { forma: "tajo", color: "#ff9f0a" },
             reto: { tipo: "cofres", meta: 250 },
             porNivel: { vida: 0.08, daño: 0.135, armadura: 0.25 },
             habilidades: [
                 { nivel: 1, id: "abordaje", nombre: Idioma.t("Abordaje"),
                   desc: Idioma.t("Se lanza y se lleva parte"), recarga: 15, glifo: 0xF0498,
-                  efecto: Idioma.t("robarVida"), potencia: 4.5 },
+                  efecto: "robarVida", potencia: 4.5 },
                 { nivel: 8, id: "botin", nombre: Idioma.t("Reparto del botín"),
                   desc: Idioma.t("Cura a toda la tripulación"), recarga: 28, glifo: 0xF05E1,
-                  efecto: Idioma.t("curaGrupo"), potencia: 0.26 },
+                  efecto: "curaGrupo", potencia: 0.26 },
                 { nivel: 17, id: "metralla", nombre: Idioma.t("Metralla"),
                   desc: Idioma.t("Barre la cubierta entera"), recarga: 21, glifo: 0xF0241,
                   efecto: "area", potencia: 3.6 },
@@ -557,22 +557,22 @@ Singleton {
             ]
         },
         {
-            id: Idioma.t("brujoSangre"), nombre: Idioma.t("Brujo de sangre"), sprite: "h16",
+            id: "brujoSangre", nombre: Idioma.t("Brujo de sangre"), sprite: "h16",
             vida: 150, daño: 18, armadura: 0, papel: Idioma.t("Pega fuerte y se sirve"),
-            ataque: Idioma.t("Zarpa carmesí"), glifo: 0xF0E20,
-            visual: { forma: "proyectil", color: Idioma.t("#ff375f") },
+            ataque: "Zarpa carmesí", glifo: 0xF0E20,
+            visual: { forma: "proyectil", color: "#ff375f" },
             reto: { tipo: "nivel", meta: 90 },
             porNivel: { vida: 0.06, daño: 0.16, armadura: 0.1 },
             habilidades: [
                 { nivel: 1, id: "sangria", nombre: Idioma.t("Sangría"),
                   desc: Idioma.t("Le arranca la vida y se la queda"), recarga: 14, glifo: 0xF0E20,
-                  efecto: Idioma.t("robarVida"), potencia: 6.5 },
+                  efecto: "robarVida", potencia: 6.5 },
                 { nivel: 10, id: "hemorragia", nombre: Idioma.t("Hemorragia"),
                   desc: Idioma.t("El de delante se desangra a chorros"), recarga: 18, glifo: 0xF058C,
                   efecto: "sangrar", potencia: 9 },
                 { nivel: 19, id: "ofrenda", nombre: Idioma.t("Ofrenda"),
                   desc: Idioma.t("Cura al grupo con lo robado"), recarga: 32, glifo: 0xF05E1,
-                  efecto: Idioma.t("curaGrupo"), potencia: 0.3 },
+                  efecto: "curaGrupo", potencia: 0.3 },
                 { nivel: 30, id: "carniceria", nombre: Idioma.t("Carnicería"),
                   desc: Idioma.t("Estalla sobre toda la oleada"), recarga: 25, glifo: 0xF0241,
                   efecto: "area", potencia: 5 }
@@ -581,17 +581,17 @@ Singleton {
         {
             id: "licantropo", nombre: Idioma.t("Licántropo"), sprite: "h17",
             vida: 230, daño: 17, armadura: 3, papel: Idioma.t("Se crece herido"),
-            ataque: Idioma.t("Dentellada"), glifo: 0xF04E5,
-            visual: { forma: "tajo", color: Idioma.t("#c7c7cc") },
+            ataque: "Dentellada", glifo: 0xF04E5,
+            visual: { forma: "tajo", color: "#c7c7cc" },
             reto: { tipo: "muertes", meta: 12000 },
             porNivel: { vida: 0.095, daño: 0.145, armadura: 0.3 },
             habilidades: [
                 { nivel: 1, id: "desgarro", nombre: Idioma.t("Desgarro"),
                   desc: Idioma.t("Deja una herida que no cierra"), recarga: 12, glifo: 0xF04E5,
                   efecto: "sangrar", potencia: 7 },
-                { nivel: 9, id: Idioma.t("sedSangre"), nombre: Idioma.t("Sed de sangre"),
+                { nivel: 9, id: "sedSangre", nombre: Idioma.t("Sed de sangre"),
                   desc: Idioma.t("Muerde y se alimenta"), recarga: 16, glifo: 0xF04E5,
-                  efecto: Idioma.t("robarVida"), potencia: 5.5 },
+                  efecto: "robarVida", potencia: 5.5 },
                 { nivel: 18, id: "pelaje", nombre: Idioma.t("Pelaje hirsuto"),
                   desc: Idioma.t("Se recompone solo"), recarga: 24, glifo: 0xF05E1,
                   efecto: "regenerar", potencia: 10 },
@@ -601,10 +601,10 @@ Singleton {
             ]
         },
         {
-            id: Idioma.t("caballeroNegro"), nombre: Idioma.t("Caballero negro"), sprite: "h18",
+            id: "caballeroNegro", nombre: Idioma.t("Caballero negro"), sprite: "h18",
             vida: 300, daño: 11, armadura: 9, papel: Idioma.t("Castiga al que le pega"),
-            ataque: Idioma.t("Mandoble negro"), glifo: 0xF0498,
-            visual: { forma: "tajo", color: Idioma.t("#8e8e93") },
+            ataque: "Mandoble negro", glifo: 0xF0498,
+            visual: { forma: "tajo", color: "#8e8e93" },
             reto: { tipo: "jefes", meta: 120 },
             porNivel: { vida: 0.115, daño: 0.085, armadura: 0.75 },
             habilidades: [
@@ -625,8 +625,8 @@ Singleton {
         {
             id: "lancero", nombre: Idioma.t("Lancero carmesí"), sprite: "h19",
             vida: 215, daño: 14, armadura: 5, papel: Idioma.t("Alcanza a toda la fila"),
-            ataque: Idioma.t("Lanzada"), glifo: 0xF0F1B,
-            visual: { forma: "flecha", color: Idioma.t("#ff453a") },
+            ataque: "Lanzada", glifo: 0xF0F1B,
+            visual: { forma: "flecha", color: "#ff453a" },
             reto: { tipo: "oleada", meta: 100 },
             porNivel: { vida: 0.09, daño: 0.125, armadura: 0.45 },
             habilidades: [
@@ -638,7 +638,7 @@ Singleton {
                   efecto: "sangrar", potencia: 7 },
                 { nivel: 17, id: "muralla", nombre: Idioma.t("Muralla de astas"),
                   desc: Idioma.t("Cubre al grupo tras las lanzas"), recarga: 26, glifo: 0xF0BC2,
-                  efecto: Idioma.t("escudoGrupo"), potencia: 0.22 },
+                  efecto: "escudoGrupo", potencia: 0.22 },
                 { nivel: 27, id: "carga", nombre: Idioma.t("Carga carmesí"),
                   desc: Idioma.t("Se lleva por delante al primero"), recarga: 20, glifo: 0xF0F1B,
                   efecto: "golpeUnico", potencia: 12 }
@@ -831,7 +831,7 @@ Singleton {
 
     readonly property var metaDef: [
         { id: "vida",    nombre: Idioma.t("Linaje robusto"), desc: Idioma.t("+8% vida del grupo"),     base: 40, glifo: 0xF1076 },
-        { id: Idioma.t("daño"),    nombre: Idioma.t("Filo ancestral"), desc: Idioma.t("+8% daño del grupo"),     base: 40, glifo: 0xF04E5 },
+        { id: "daño",    nombre: Idioma.t("Filo ancestral"), desc: Idioma.t("+8% daño del grupo"),     base: 40, glifo: 0xF04E5 },
         { id: "fortuna", nombre: Idioma.t("Fortuna"),        desc: Idioma.t("Mejores rarezas"),        base: 60, glifo: 0xF0BC2 }
     ]
 

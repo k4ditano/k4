@@ -47,7 +47,7 @@ FadeIn {
             }
 
             IslandLabel {
-                text: Tray.count === 0 ? "Idioma.t(" : Tray.count + (Tray.count === 1 ? ") aplicación" : " aplicaciones")
+                text: Tray.count === 0 ? "" : Tray.count + (Tray.count === 1 ? Idioma.t(" aplicación") : Idioma.t(" aplicaciones"))
                 color: Theme.muted
                 font.pixelSize: 11
                 Layout.alignment: Qt.AlignVCenter

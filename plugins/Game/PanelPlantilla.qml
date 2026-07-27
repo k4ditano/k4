@@ -35,7 +35,7 @@ ColumnLayout {
         }
 
         IslandLabel {
-            text: Game.desbloqueados.length + "/Idioma.t(" + Game.clases.length + ") héroes"
+            text: Game.desbloqueados.length + "/" + Game.clases.length + Idioma.t(" héroes")
             color: "#c78fff"
             font.pixelSize: 10
             font.weight: Font.DemiBold

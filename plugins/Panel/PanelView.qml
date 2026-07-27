@@ -463,9 +463,9 @@ FadeIn {
             Repeater {
                 model: [
                     { id: "apps",  nombre: Idioma.t("Buscar apps"), glifo: Theme.ico.search,  color: Theme.muted },
-                    { id: "juego", nombre: Idioma.t("Mazmorra"),    glifo: 0xF04E5,           color: Idioma.t("#ff9f0a") },
-                    { id: "tema",  nombre: Idioma.t("Tema"),        glifo: Theme.ico.palette, color: Idioma.t("#c78fff") },
-                    { id: "sistema", nombre: Idioma.t("Sistema"),   glifo: 0xF035B,           color: Idioma.t("#0a84ff") },
+                    { id: "juego", nombre: Idioma.t("Mazmorra"),    glifo: 0xF04E5,           color: "#ff9f0a" },
+                    { id: "tema",  nombre: Idioma.t("Tema"),        glifo: Theme.ico.palette, color: "#c78fff" },
+                    { id: "sistema", nombre: Idioma.t("Sistema"),   glifo: 0xF035B,           color: "#0a84ff" },
                     { id: "ajustes", nombre: Idioma.t("Ajustes"),   glifo: Theme.ico.cog,     color: Theme.muted }
                 ]
 

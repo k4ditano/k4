@@ -176,7 +176,7 @@ RowLayout {
                         }
 
                         IslandLabel {
-                            text: hab.sabida ? "" : "nv " + hab.modelData.nivel
+                            text: hab.sabida ? "" : Idioma.t("nv ") + hab.modelData.nivel
                             color: Theme.dim
                             font.pixelSize: 9
                         }

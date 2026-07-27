@@ -142,9 +142,63 @@ FadeIn {
                             }
 
                             IslandSwitch {
+                                visible: opcion.modelData.tipo !== "eleccion"
                                 checked: opcion.activa
                                 onToggled: if (opcion.disponible) Settings.alternar(opcion.modelData.id)
                                 Layout.alignment: Qt.AlignVCenter
+                            }
+
+                            // ── opciones de varias respuestas
+                            //  Las alternativas salen de Idioma.disponibles, no
+                            //  de una lista repetida aquí: añadir un idioma es
+                            //  tocar un sitio, no dos.
+                            RowLayout {
+                                visible: opcion.modelData.tipo === "eleccion"
+                                Layout.fillWidth: false
+                                Layout.alignment: Qt.AlignVCenter
+                                spacing: 5
+
+                                Repeater {
+                                    model: opcion.modelData.de === "idiomas"
+                                        ? [{ codigo: "auto", nombre: Idioma.t("Automático") }]
+                                            .concat(Idioma.disponibles)
+                                        : []
+
+                                    delegate: Rectangle {
+                                        id: eleccion
+                                        required property var modelData
+                                        readonly property bool puesta:
+                                            Settings.valor(opcion.modelData.id) === modelData.codigo
+
+                                        Layout.preferredWidth: textoEleccion.implicitWidth + 20
+                                        Layout.preferredHeight: 24
+                                        radius: 12
+                                        color: puesta ? Theme.blue
+                                            : (eleccionRaton.containsMouse
+                                               ? Theme.surfaceHi : Theme.track)
+
+                                        Behavior on color { ColorAnimation { duration: 120 } }
+
+                                        IslandLabel {
+                                            id: textoEleccion
+                                            anchors.centerIn: parent
+                                            text: eleccion.modelData.nombre
+                                            color: eleccion.puesta ? Theme.ink : Theme.muted
+                                            font.pixelSize: 10
+                                            font.weight: eleccion.puesta
+                                                ? Font.DemiBold : Font.Normal
+                                        }
+
+                                        MouseArea {
+                                            id: eleccionRaton
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: Settings.poner(opcion.modelData.id,
+                                                                      eleccion.modelData.codigo)
+                                        }
+                                    }
+                                }
                             }
                         }
 
@@ -157,7 +211,8 @@ FadeIn {
                             anchors.rightMargin: 54     // deja pasar el interruptor
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: if (opcion.disponible) Settings.alternar(opcion.modelData.id)
+                            onClicked: if (opcion.disponible && opcion.modelData.tipo !== "eleccion")
+                                    Settings.alternar(opcion.modelData.id)
                         }
                     }
                 }

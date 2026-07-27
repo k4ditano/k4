@@ -30,7 +30,7 @@ FadeIn {
             }
 
             IslandLabel {
-                text: (Game.pausada ? Idioma.t("En pausa · ") : "") + "Oleada " + Game.oleada
+                text: (Game.pausada ? Idioma.t("En pausa · ") : "") + Idioma.t("Oleada ") + Game.oleada
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
                 color: Game.esJefe ? Theme.red : Theme.ink
@@ -151,15 +151,17 @@ FadeIn {
 
                     IconGlyph {
                         text: String.fromCodePoint(0xF0241)
-                        color: Tokens.activo ? "#ffd60a" : Theme.dim
+                        color: Tokens.activo && !Game.pausada ? "#ffd60a" : Theme.dim
                         font.pixelSize: 11
                     }
 
                     IslandLabel {
-                        // En pausa el depósito no baja: hay que decirlo, o
-                        // parece que la chispa no se gasta.
-                        text: Game.pausada ? Idioma.t("en pausa") : Tokens.resto()
-                        color: Game.pausada ? "#ffd60a"
+                        // El título ya dice «En pausa»: repetirlo aquí lo
+                        // decía dos veces y ensanchaba la cabecera hasta pegar
+                        // los botones al borde. Basta con apagar el color para
+                        // que se vea que el depósito no está bajando.
+                        text: Tokens.resto()
+                        color: Game.pausada ? Theme.dim
                             : (Tokens.hay ? Theme.ink : Theme.muted)
                         font.pixelSize: 10
                         font.weight: Font.DemiBold
@@ -175,7 +177,7 @@ FadeIn {
                     anchors.right: parent.left
                     anchors.rightMargin: 6
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "+Idioma.t(" + Tokens.cifra(Tokens.ultimaCantidad) + ") " + Tokens.ultimaFuente
+                    text: "+" + Tokens.cifra(Tokens.ultimaCantidad) + " " + Tokens.ultimaFuente
                     color: "#ffd60a"
                     font.pixelSize: 9
                     font.weight: Font.DemiBold

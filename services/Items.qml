@@ -16,16 +16,16 @@ Singleton {
     // Los diez grados de TBH, con sus colores. El valor de desguace sube
     // ~×3,2 por grado, igual que allí.
     readonly property var rarezas: [
-        { nombre: Idioma.t("Común"),      color: Idioma.t("#e4e4e4"), valor: 10,     mult: 1.00 },
-        { nombre: Idioma.t("Poco común"), color: Idioma.t("#54fc0c"), valor: 30,     mult: 1.35 },
-        { nombre: Idioma.t("Raro"),       color: Idioma.t("#2f8bfc"), valor: 90,     mult: 1.80 },
-        { nombre: Idioma.t("Legendario"), color: Idioma.t("#fc9c0c"), valor: 270,    mult: 2.40 },
-        { nombre: Idioma.t("Inmortal"),   color: Idioma.t("#fc2424"), valor: 810,    mult: 3.20 },
-        { nombre: Idioma.t("Arcano"),     color: Idioma.t("#b40cfc"), valor: 2592,   mult: 4.30 },
-        { nombre: Idioma.t("Más allá"),   color: Idioma.t("#fc246c"), valor: 8294,   mult: 5.70 },
-        { nombre: Idioma.t("Celestial"),  color: Idioma.t("#6ccce4"), valor: 29029,  mult: 7.60 },
-        { nombre: Idioma.t("Divino"),     color: Idioma.t("#fce454"), valor: 101602, mult: 10.10 },
-        { nombre: Idioma.t("Cósmico"),    color: Idioma.t("#fcfcfc"), valor: 355607, mult: 13.50 }
+        { nombre: Idioma.t("Común"),      color: "#e4e4e4", valor: 10,     mult: 1.00 },
+        { nombre: Idioma.t("Poco común"), color: "#54fc0c", valor: 30,     mult: 1.35 },
+        { nombre: Idioma.t("Raro"),       color: "#2f8bfc", valor: 90,     mult: 1.80 },
+        { nombre: Idioma.t("Legendario"), color: "#fc9c0c", valor: 270,    mult: 2.40 },
+        { nombre: Idioma.t("Inmortal"),   color: "#fc2424", valor: 810,    mult: 3.20 },
+        { nombre: Idioma.t("Arcano"),     color: "#b40cfc", valor: 2592,   mult: 4.30 },
+        { nombre: Idioma.t("Más allá"),   color: "#fc246c", valor: 8294,   mult: 5.70 },
+        { nombre: Idioma.t("Celestial"),  color: "#6ccce4", valor: 29029,  mult: 7.60 },
+        { nombre: Idioma.t("Divino"),     color: "#fce454", valor: 101602, mult: 10.10 },
+        { nombre: Idioma.t("Cósmico"),    color: "#fcfcfc", valor: 355607, mult: 13.50 }
     ]
 
     // Cuatro huecos por héroe, uno por categoría. El icono es el índice en la
@@ -33,28 +33,28 @@ Singleton {
     readonly property var huecos: [
         {
             id: "arma", nombre: Idioma.t("Arma"), glifo: 0xF04E5,
-            tipos: [Idioma.t("Espada"), Idioma.t("Hacha"), Idioma.t("Bastón"), Idioma.t("Arco"), Idioma.t("Daga")],
+            tipos: ["Espada", "Hacha", "Bastón", "Arco", "Daga"],
             generos: ["f", "f", "m", "m", "f"],
             iconos: [0, 1, 2, 3, 4],
             reparte: { daño: 4.0 }
         },
         {
             id: "escudo", nombre: Idioma.t("Mano izquierda"), glifo: 0xF0498,
-            tipos: [Idioma.t("Escudo"), Idioma.t("Tomo"), Idioma.t("Orbe"), Idioma.t("Carcaj"), Idioma.t("Broquel")],
+            tipos: ["Escudo", "Tomo", "Orbe", "Carcaj", "Broquel"],
             generos: ["m", "m", "m", "m", "m"],
             iconos: [5, 6, 7, 8, 9],
             reparte: { armadura: 1.4, vida: 10 }
         },
         {
             id: "armadura", nombre: Idioma.t("Armadura"), glifo: 0xF0A38,
-            tipos: [Idioma.t("Yelmo"), Idioma.t("Coraza"), Idioma.t("Guantes"), Idioma.t("Botas"), Idioma.t("Capa")],
+            tipos: ["Yelmo", "Coraza", "Guantes", "Botas", "Capa"],
             generos: ["m", "f", "mp", "fp", "f"],
             iconos: [10, 11, 12, 13, 14],
             reparte: { vida: 22, armadura: 0.8 }
         },
         {
             id: "amuleto", nombre: Idioma.t("Accesorio"), glifo: 0xF0DFA,
-            tipos: [Idioma.t("Amuleto"), Idioma.t("Anillo"), Idioma.t("Brazal"), Idioma.t("Pendiente"), Idioma.t("Frasco")],
+            tipos: ["Amuleto", "Anillo", "Brazal", "Pendiente", "Frasco"],
             generos: ["m", "m", "m", "m", "m"],
             iconos: [15, 16, 17, 18, 19],
             reparte: { vida: 9, daño: 1.6, cura: 1.2 },
@@ -89,9 +89,9 @@ Singleton {
     // cada diez oleadas y el de acto cada cincuenta. Lo que cambian es el
     // suelo de rareza y cuánto empujan hacia arriba.
     readonly property var cofres: [
-        { nombre: Idioma.t("Cofre corriente"), color: Idioma.t("#8e8e93"), suelo: 0, empuje: 0.0,  glifo: 0xF04D6 },
-        { nombre: Idioma.t("Cofre de jefe"),   color: Idioma.t("#2f8bfc"), suelo: 2, empuje: 0.35, glifo: 0xF04D7 },
-        { nombre: Idioma.t("Cofre de acto"),   color: Idioma.t("#fc9c0c"), suelo: 3, empuje: 0.75, glifo: 0xF0A75 }
+        { nombre: Idioma.t("Cofre corriente"), color: "#8e8e93", suelo: 0, empuje: 0.0,  glifo: 0xF04D6 },
+        { nombre: Idioma.t("Cofre de jefe"),   color: "#2f8bfc", suelo: 2, empuje: 0.35, glifo: 0xF04D7 },
+        { nombre: Idioma.t("Cofre de acto"),   color: "#fc9c0c", suelo: 3, empuje: 0.75, glifo: 0xF0A75 }
     ]
 
     function rarezaDe(indice) {
@@ -191,7 +191,7 @@ Singleton {
             icono: hueco.iconos[cual],
             rareza: rareza,
             oleada: oleada,
-            nombre: hueco.tipos[cual] + " Idioma.t(" + prefijo + ") " + sufijo,
+            nombre: hueco.tipos[cual] + " " + prefijo + " " + sufijo,
             stats: stats
         }
     }

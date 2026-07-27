@@ -2,7 +2,6 @@
 //  solo al terminar la animación: son efímeros y no merecen un modelo.
 
 import QtQuick
-import "../../services"
 import "../../core"
 
 Text {
@@ -11,7 +10,7 @@ Text {
     property string texto: ""
     property bool critico: false
 
-    text: (critico ? "¡Idioma.t(" + texto + ")!" : texto)
+    text: (critico ? "¡" + texto + "!" : texto)
     color: critico ? "#ffd60a" : Theme.ink
     font.family: Theme.uiFont
     font.pixelSize: critico ? 18 : 14

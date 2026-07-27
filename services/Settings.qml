@@ -37,26 +37,41 @@ Singleton {
     // widgets/NotifStrip.qml: notificaciones recientes al pasar el ratón
     property bool notificacionesAlPasar: true
 
+    // Cambia el valor de una opción que no es un interruptor.
+    function poner(id, valor) {
+        ajustes[id] = valor
+        guardar()
+    }
+
     readonly property var definicion: [
+        {
+            grupo: Idioma.t("Idioma"),
+            opciones: [
+                { id: "idioma", tipo: "eleccion", de: "idiomas",
+                  nombre: Idioma.t("Idioma de la barra"),
+                  desc: Idioma.t("Automático sigue al del sistema"),
+                  glifo: 0xF05CA }
+            ]
+        },
         {
             grupo: Idioma.t("Mazmorra"),
             opciones: [
-                { id: Idioma.t("juegoActivo"), nombre: Idioma.t("Mazmorra activa"),
+                { id: "juegoActivo", nombre: Idioma.t("Mazmorra activa"),
                   desc: Idioma.t("Apagada no corre, no guarda y no ocupa sitio"), glifo: 0xF04E5 },
-                { requiere: Idioma.t("juegoActivo"), id: Idioma.t("juegoContinuar"), nombre: Idioma.t("Continuar sola al morir"),
+                { requiere: "juegoActivo", id: "juegoContinuar", nombre: Idioma.t("Continuar sola al morir"),
                   desc: Idioma.t("Encadena la siguiente partida tras el resumen"), glifo: 0xF04E5 },
-                { requiere: Idioma.t("juegoActivo"), id: Idioma.t("juegoEnPildora"), nombre: Idioma.t("Mostrar en la píldora"),
+                { requiere: "juegoActivo", id: "juegoEnPildora", nombre: Idioma.t("Mostrar en la píldora"),
                   desc: Idioma.t("Oleada actual y aviso de cofres sin abrir"), glifo: 0xF0BC2 },
-                { requiere: Idioma.t("juegoActivo"), id: Idioma.t("juegoPorTokens"), nombre: Idioma.t("Pelear con tokens"),
+                { requiere: "juegoActivo", id: "juegoPorTokens", nombre: Idioma.t("Pelear con tokens"),
                   desc: Idioma.t("Avanza solo mientras gastas en Claude o Codex"), glifo: 0xF0241 }
             ]
         },
         {
             grupo: Idioma.t("Island"),
             opciones: [
-                { id: Idioma.t("bandejaEnPildora"), nombre: Idioma.t("Bandeja en la píldora"),
+                { id: "bandejaEnPildora", nombre: Idioma.t("Bandeja en la píldora"),
                   desc: Idioma.t("Iconos de las aplicaciones en segundo plano"), glifo: 0xF0FB0 },
-                { id: Idioma.t("notificacionesAlPasar"), nombre: Idioma.t("Notificaciones al pasar el ratón"),
+                { id: "notificacionesAlPasar", nombre: Idioma.t("Notificaciones al pasar el ratón"),
                   desc: Idioma.t("Las recientes, bajo el reloj y el reproductor"), glifo: 0xF009A }
             ]
         }

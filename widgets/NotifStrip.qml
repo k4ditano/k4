@@ -52,7 +52,7 @@ ColumnLayout {
 
         IslandLabel {
             visible: Notifs.recent.length > strip.shown
-            text: "+Idioma.t(" + (Notifs.recent.length - strip.shown) + ") más"
+            text: "+" + (Notifs.recent.length - strip.shown) + Idioma.t(" más")
             color: Theme.dim
             font.pixelSize: 10
             Layout.alignment: Qt.AlignVCenter
