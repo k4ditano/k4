@@ -157,7 +157,7 @@ Singleton {
         // vitalidad sube también la vida actual, si no comprarla en plena
         // pelea no salvaría a nadie
         if (id === "vitalidad") {
-            const g = grupo.slice()
+            const g = clonar(grupo)
             for (let i = 0; i < g.length; ++i) {
                 if (g[i].vida <= 0)
                     continue
@@ -283,7 +283,7 @@ Singleton {
     // Al cambiar el equipo la vida máxima cambia; se conserva la proporción
     // para que ponerse una coraza no cure ni mate a nadie.
     function recalcularVidas() {
-        const g = grupo.slice()
+        const g = clonar(grupo)
         for (let i = 0; i < g.length; ++i) {
             if (g[i].vida <= 0)
                 continue
@@ -360,7 +360,7 @@ Singleton {
         grupo = g
 
         // la vida sale de statsDe, que necesita el grupo ya asignado
-        const conVida = grupo.slice()
+        const conVida = clonar(grupo)
         for (let i = 0; i < conVida.length; ++i)
             conVida[i].vida = vidaMaxDe(conVida[i])
         grupo = conVida
@@ -414,8 +414,8 @@ Singleton {
         if (!viva || !cargado)
             return
 
-        const g = grupo.slice()
-        const e = enemigos.slice()
+        const g = clonar(grupo)
+        const e = clonar(enemigos)
 
         // ¿alguien provocó? el tanque acapara mientras dure
         let objetivoForzado = -1
@@ -508,6 +508,19 @@ Singleton {
         }
     }
 
+    // Copia con objetos nuevos, no solo el array.
+    //
+    // Con slice() el array cambia de identidad pero los objetos de dentro son
+    // los mismos, y una vista que lea `lista[i]` recibe la misma referencia:
+    // QML da la propiedad por no cambiada, no emite señal y las barras se
+    // quedan congeladas. Clonando cada elemento, cualquier binding se entera.
+    function clonar(lista) {
+        const salida = []
+        for (let i = 0; i < lista.length; ++i)
+            salida.push(Object.assign({}, lista[i]))
+        return salida
+    }
+
     function primerVivo(lista) {
         for (let i = 0; i < lista.length; ++i) {
             if (lista[i].vida > 0)
@@ -536,8 +549,8 @@ Singleton {
         if (!habilidadLista(i))
             return
 
-        const g = grupo.slice()
-        const e = enemigos.slice()
+        const g = clonar(grupo)
+        const e = clonar(enemigos)
         lanzarInterno(g, e, i)
         grupo = g
         enemigos = e
@@ -620,6 +633,7 @@ Singleton {
             version: 2,
             oleada: oleada, oro: oro, niveles: niveles,
             grupo: grupo, enemigos: enemigos, viva: viva,
+            finalizada: finalizada,
             cofresPorTipo: cofresPorTipo, reliquias: reliquias,
             equipo: equipo, bolsa: bolsa, meta: meta,
             mejorOleada: mejorOleada, partidas: partidas,
@@ -701,7 +715,14 @@ Singleton {
             mejorOleada = s.mejorOleada || 0
             partidas = s.partidas || 0
             oleadasDesdeCofre = s.oleadasDesdeCofre || 0
+            finalizada = s.finalizada || ""
         }
+
+        // Una partida terminada tiene que decirlo. Sin esto el tablero se
+        // queda congelado —héroes en gris, sin cartel y sin botón— porque el
+        // cartel de fin solo sale si hay texto que enseñar.
+        if (!viva && grupo.length > 0 && finalizada.length === 0)
+            finalizada = "Has caído en la oleada " + oleada
 
         ultimoTick = ahora()
         cargado = true
