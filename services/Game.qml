@@ -107,10 +107,39 @@ Singleton {
         return null
     }
 
-    // Lo que de verdad recibe un enemigo, contando su coraza.
-    function mermar(enemigo, cantidad) {
-        return (enemigo.rasgos && enemigo.rasgos.indexOf("coraza") !== -1)
-            ? cantidad * 0.62 : cantidad
+    // Cuánto encaja un enemigo de cada tipo de daño según su carne. Un bicho
+    // acorazado se come el acero pero no la magia, y al revés: es lo que hace
+    // que llevar daño mixto importe.
+    readonly property var defensaDe: ({
+        fisica:      { fis: 0.68, mag: 1.18 },
+        magica:      { fis: 1.18, mag: 0.68 },
+        equilibrada: { fis: 1.0,  mag: 1.0 }
+    })
+
+    // Lo que de verdad recibe un enemigo: su carne, y encima la coraza si la
+    // trae como rasgo.
+    function mermar(enemigo, fis, mag) {
+        const d = defensaDe[enemigo.defensa || "equilibrada"] || defensaDe.equilibrada
+        let total = (fis || 0) * d.fis + (mag || 0) * d.mag
+        if (enemigo.rasgos && enemigo.rasgos.indexOf("coraza") !== -1)
+            total *= 0.62
+        return total
+    }
+
+    // Reparte una cantidad con la misma mezcla que tenga el héroe, para que
+    // una habilidad de un mago pegue como magia sin declararlo una por una.
+    function comoPega(st, cantidad) {
+        const total = (st.daño || 0) + (st.dañoMag || 0)
+        if (total <= 0)
+            return { fis: cantidad, mag: 0 }
+        const f = st.dañoMag / total
+        return { fis: cantidad * (1 - f), mag: cantidad * f }
+    }
+
+    // Atajo para los sitios que solo quieren pegar una cantidad.
+    function pegarA(enemigo, st, cantidad) {
+        const r = comoPega(st, cantidad)
+        return mermar(enemigo, r.fis, r.mag)
     }
 
 
@@ -168,26 +197,26 @@ Singleton {
     //  `vida` y `daño` son multiplicadores sobre lo que toca en esa oleada, y
     //  se compensan entre sí: lo que aguanta pega poco y al revés.
     readonly property var especies: [
-        { nombre: Idioma.t("Limo"),              afinidad: "coraza",  vida: 1.35, daño: 0.75 },
-        { nombre: Idioma.t("Limo helado"),       afinidad: "coraza",  vida: 1.30, daño: 0.80 },
-        { nombre: Idioma.t("Cangrejo rojo"),     afinidad: "coraza",  vida: 1.25, daño: 0.90 },
-        { nombre: Idioma.t("Mariposa espectral"), afinidad: "ruptura", vida: 0.70, daño: 1.25 },
-        { nombre: Idioma.t("Osamenta"),          afinidad: "furia",   vida: 0.85, daño: 1.20 },
-        { nombre: Idioma.t("Limo tóxico"),       afinidad: "ponzona", vida: 1.30, daño: 0.85 },
-        { nombre: Idioma.t("Araña"),             afinidad: "ponzona", vida: 0.85, daño: 1.15 },
-        { nombre: Idioma.t("Espectro"),          afinidad: "ruptura", vida: 0.75, daño: 1.30 },
-        { nombre: Idioma.t("Rata"),              afinidad: "furia",   vida: 0.70, daño: 1.10 },
-        { nombre: Idioma.t("Murciélago"),        afinidad: "drenaje", vida: 0.65, daño: 1.30 },
-        { nombre: Idioma.t("Jabalí"),            afinidad: "furia",   vida: 1.20, daño: 1.15 },
-        { nombre: Idioma.t("Goblin"),            afinidad: "furia",   vida: 0.95, daño: 1.10 },
-        { nombre: Idioma.t("Diablillo"),         afinidad: "eco",     vida: 0.90, daño: 1.25 },
-        { nombre: Idioma.t("Seta andante"),      afinidad: "ponzona", vida: 1.25, daño: 0.85 },
-        { nombre: Idioma.t("Cochinilla"),        afinidad: "coraza",  vida: 1.40, daño: 0.70 },
-        { nombre: Idioma.t("Limo dorado"),       afinidad: "drenaje", vida: 1.15, daño: 0.95 },
-        { nombre: Idioma.t("Oruga espinosa"),    afinidad: "ponzona", vida: 1.10, daño: 1.00 },
-        { nombre: Idioma.t("Zombi"),             afinidad: "drenaje", vida: 1.20, daño: 0.95 },
-        { nombre: Idioma.t("Cubo gelatinoso"),   afinidad: "coraza",  vida: 1.45, daño: 0.75 },
-        { nombre: Idioma.t("Escorpión"),         afinidad: "ponzona", vida: 0.90, daño: 1.20 }
+        { nombre: Idioma.t("Limo"),              afinidad: "coraza",  vida: 1.35, daño: 0.75, defensa: "fisica", ataque: "fisico" },
+        { nombre: Idioma.t("Limo helado"),       afinidad: "coraza",  vida: 1.30, daño: 0.80, defensa: "fisica", ataque: "fisico" },
+        { nombre: Idioma.t("Cangrejo rojo"),     afinidad: "coraza",  vida: 1.25, daño: 0.90, defensa: "fisica", ataque: "fisico" },
+        { nombre: Idioma.t("Mariposa espectral"), afinidad: "ruptura", vida: 0.70, daño: 1.25, defensa: "magica", ataque: "magico" },
+        { nombre: Idioma.t("Osamenta"),          afinidad: "furia",   vida: 0.85, daño: 1.20, defensa: "magica", ataque: "magico" },
+        { nombre: Idioma.t("Limo tóxico"),       afinidad: "ponzona", vida: 1.30, daño: 0.85, defensa: "fisica", ataque: "magico" },
+        { nombre: Idioma.t("Araña"),             afinidad: "ponzona", vida: 0.85, daño: 1.15, defensa: "equilibrada", ataque: "fisico" },
+        { nombre: Idioma.t("Espectro"),          afinidad: "ruptura", vida: 0.75, daño: 1.30, defensa: "magica", ataque: "magico" },
+        { nombre: Idioma.t("Rata"),              afinidad: "furia",   vida: 0.70, daño: 1.10, defensa: "equilibrada", ataque: "fisico" },
+        { nombre: Idioma.t("Murciélago"),        afinidad: "drenaje", vida: 0.65, daño: 1.30, defensa: "equilibrada", ataque: "fisico" },
+        { nombre: Idioma.t("Jabalí"),            afinidad: "furia",   vida: 1.20, daño: 1.15, defensa: "equilibrada", ataque: "fisico" },
+        { nombre: Idioma.t("Goblin"),            afinidad: "furia",   vida: 0.95, daño: 1.10, defensa: "equilibrada", ataque: "fisico" },
+        { nombre: Idioma.t("Diablillo"),         afinidad: "eco",     vida: 0.90, daño: 1.25, defensa: "magica", ataque: "magico" },
+        { nombre: Idioma.t("Seta andante"),      afinidad: "ponzona", vida: 1.25, daño: 0.85, defensa: "magica", ataque: "magico" },
+        { nombre: Idioma.t("Cochinilla"),        afinidad: "coraza",  vida: 1.40, daño: 0.70, defensa: "fisica", ataque: "fisico" },
+        { nombre: Idioma.t("Limo dorado"),       afinidad: "drenaje", vida: 1.15, daño: 0.95, defensa: "fisica", ataque: "fisico" },
+        { nombre: Idioma.t("Oruga espinosa"),    afinidad: "ponzona", vida: 1.10, daño: 1.00, defensa: "equilibrada", ataque: "fisico" },
+        { nombre: Idioma.t("Zombi"),             afinidad: "drenaje", vida: 1.20, daño: 0.95, defensa: "equilibrada", ataque: "fisico" },
+        { nombre: Idioma.t("Cubo gelatinoso"),   afinidad: "coraza",  vida: 1.45, daño: 0.75, defensa: "fisica", ataque: "fisico" },
+        { nombre: Idioma.t("Escorpión"),         afinidad: "ponzona", vida: 0.90, daño: 1.20, defensa: "equilibrada", ataque: "fisico" }
     ]
 
     // A los jefes se les nombra por bioma y altura, que es lo único que se
@@ -208,10 +237,10 @@ Singleton {
     readonly property var clases: [
         {
             id: "tanque", nombre: Idioma.t("Guardián"), sprite: "h00",
-            vida: 300, daño: 4, armadura: 6, papel: Idioma.t("Aguanta los golpes"),
+            vida: 300, daño: 4, armadura: 6, magia: 0.0, resistencia: 2, papel: Idioma.t("Aguanta los golpes"),
             ataque: "Mandoble", glifo: 0xF0498,
             visual: { forma: "tajo", color: "#e5e5ea" }, reto: null,
-            porNivel: { vida: 0.11, daño: 0.06, armadura: 0.6 },
+            porNivel: { vida: 0.11, daño: 0.06, armadura: 0.6, resistencia: 0.42 },
             habilidades: [
                 { nivel: 1, id: "provocar", nombre: Idioma.t("Provocar"),
                   desc: Idioma.t("Atrae los golpes y reduce el daño"), recarga: 18, glifo: 0xF0498,
@@ -229,10 +258,10 @@ Singleton {
         },
         {
             id: "mago", nombre: Idioma.t("Hechicero"), sprite: "h02",
-            vida: 130, daño: 12, armadura: 0, papel: Idioma.t("Daño en área"),
+            vida: 130, daño: 12, armadura: 0, magia: 1.0, resistencia: 5, papel: Idioma.t("Daño en área"),
             ataque: "Dardo arcano", glifo: 0xF0E20,
             visual: { forma: "proyectil", color: "#bf5af2" }, reto: null,
-            porNivel: { vida: 0.06, daño: 0.13, armadura: 0.1 },
+            porNivel: { vida: 0.06, daño: 0.13, armadura: 0.1, resistencia: 0.42 },
             habilidades: [
                 { nivel: 1, id: "llamarada", nombre: Idioma.t("Llamarada"),
                   desc: Idioma.t("Golpea a toda la oleada"), recarga: 14, glifo: 0xF0E20,
@@ -250,10 +279,10 @@ Singleton {
         },
         {
             id: "clerigo", nombre: Idioma.t("Clériga"), sprite: "h04",
-            vida: 190, daño: 5, armadura: 3, papel: Idioma.t("Cura al grupo"),
+            vida: 190, daño: 5, armadura: 3, magia: 0.6, resistencia: 3, papel: Idioma.t("Cura al grupo"),
             ataque: "Fulgor", glifo: 0xF05E1,
             visual: { forma: "destello", color: "#ffd60a" }, reto: null,
-            porNivel: { vida: 0.09, daño: 0.07, armadura: 0.35 },
+            porNivel: { vida: 0.09, daño: 0.07, armadura: 0.35, resistencia: 0.455 },
             habilidades: [
                 { nivel: 1, id: "bendicion", nombre: Idioma.t("Bendición"),
                   desc: Idioma.t("Cura a todo el grupo"), recarga: 22, glifo: 0xF05E1,
@@ -271,10 +300,10 @@ Singleton {
         },
         {
             id: "arquera", nombre: Idioma.t("Arquera"), sprite: "h01",
-            vida: 150, daño: 15, armadura: 1, papel: Idioma.t("Golpes certeros"),
+            vida: 150, daño: 15, armadura: 1, magia: 0.0, resistencia: 1, papel: Idioma.t("Golpes certeros"),
             ataque: "Saeta", glifo: 0xF0289,
             visual: { forma: "flecha", color: "#30d158" }, reto: { tipo: "oleada", meta: 25 },
-            porNivel: { vida: 0.07, daño: 0.14, armadura: 0.15 },
+            porNivel: { vida: 0.07, daño: 0.14, armadura: 0.15, resistencia: 0.105 },
             habilidades: [
                 { nivel: 1, id: "lluvia", nombre: Idioma.t("Lluvia de flechas"),
                   desc: Idioma.t("Cae sobre toda la oleada"), recarga: 16, glifo: 0xF0289,
@@ -292,10 +321,10 @@ Singleton {
         },
         {
             id: "picaro", nombre: Idioma.t("Pícaro"), sprite: "h03",
-            vida: 140, daño: 17, armadura: 0, papel: Idioma.t("Remata heridos"),
+            vida: 140, daño: 17, armadura: 0, magia: 0.0, resistencia: 1, papel: Idioma.t("Remata heridos"),
             ataque: "Puñalada", glifo: 0xF04E5,
             visual: { forma: "tajo", color: "#ff453a" }, reto: { tipo: "muertes", meta: 1500 },
-            porNivel: { vida: 0.06, daño: 0.15, armadura: 0.1 },
+            porNivel: { vida: 0.06, daño: 0.15, armadura: 0.1, resistencia: 0.07 },
             habilidades: [
                 { nivel: 1, id: "emboscada", nombre: Idioma.t("Emboscada"),
                   desc: Idioma.t("Golpe brutal al más débil"), recarga: 15, glifo: 0xF04E5,
@@ -313,10 +342,10 @@ Singleton {
         },
         {
             id: "barbaro", nombre: Idioma.t("Bárbaro"), sprite: "h05",
-            vida: 260, daño: 11, armadura: 3, papel: Idioma.t("Cuanto más herido, más pega"),
+            vida: 260, daño: 11, armadura: 3, magia: 0.0, resistencia: 1, papel: Idioma.t("Cuanto más herido, más pega"),
             ataque: "Hachazo", glifo: 0xF0F1B,
             visual: { forma: "tajo", color: "#ff9f0a" }, reto: { tipo: "jefes", meta: 30 },
-            porNivel: { vida: 0.10, daño: 0.11, armadura: 0.4 },
+            porNivel: { vida: 0.10, daño: 0.11, armadura: 0.4, resistencia: 0.28 },
             habilidades: [
                 { nivel: 1, id: "furia", nombre: Idioma.t("Furia"),
                   desc: Idioma.t("Se enfurece y golpea el área"), recarga: 18, glifo: 0xF0F1B,
@@ -334,10 +363,10 @@ Singleton {
         },
         {
             id: "druida", nombre: Idioma.t("Druida"), sprite: "h06",
-            vida: 200, daño: 9, armadura: 2, papel: Idioma.t("Regenera sin parar"),
+            vida: 200, daño: 9, armadura: 2, magia: 0.7, resistencia: 2, papel: Idioma.t("Regenera sin parar"),
             ataque: "Zarza", glifo: 0xF058C,
             visual: { forma: "proyectil", color: "#32d74b" }, reto: { tipo: "cofres", meta: 60 },
-            porNivel: { vida: 0.10, daño: 0.08, armadura: 0.3 },
+            porNivel: { vida: 0.10, daño: 0.08, armadura: 0.3, resistencia: 0.455 },
             habilidades: [
                 { nivel: 1, id: "brotar", nombre: Idioma.t("Brotes"),
                   desc: Idioma.t("Regeneración para el grupo"), recarga: 20, glifo: 0xF058C,
@@ -355,10 +384,10 @@ Singleton {
         },
         {
             id: "paladin", nombre: Idioma.t("Paladín"), sprite: "h08",
-            vida: 280, daño: 10, armadura: 7, papel: Idioma.t("Muro con castigo"),
+            vida: 280, daño: 10, armadura: 7, magia: 0.4, resistencia: 5, papel: Idioma.t("Muro con castigo"),
             ataque: "Maza sagrada", glifo: 0xF0A38,
             visual: { forma: "destello", color: "#0a84ff" }, reto: { tipo: "nivel", meta: 60 },
-            porNivel: { vida: 0.11, daño: 0.09, armadura: 0.65 },
+            porNivel: { vida: 0.11, daño: 0.09, armadura: 0.65, resistencia: 0.595 },
             habilidades: [
                 { nivel: 1, id: "escudoFe", nombre: Idioma.t("Escudo de fe"),
                   desc: Idioma.t("Escudo a todo el grupo"), recarga: 22, glifo: 0xF0A38,
@@ -382,11 +411,11 @@ Singleton {
         //  otro dibujo no aporta nada.
         {
             id: "monje", nombre: Idioma.t("Monje"), sprite: "h07",
-            vida: 175, daño: 13, armadura: 3, papel: Idioma.t("Encadena golpes"),
+            vida: 175, daño: 13, armadura: 3, magia: 0.25, resistencia: 2, papel: Idioma.t("Encadena golpes"),
             ataque: "Palma de hierro", glifo: 0xF0498,
             visual: { forma: "tajo", color: "#ff9f0a" },
             reto: { tipo: "nivel", meta: 25 },
-            porNivel: { vida: 0.075, daño: 0.135, armadura: 0.25 },
+            porNivel: { vida: 0.075, daño: 0.135, armadura: 0.25, resistencia: 0.262 },
             habilidades: [
                 { nivel: 1, id: "rafaga", nombre: Idioma.t("Ráfaga"),
                   desc: Idioma.t("Golpes que saltan de uno a otro"), recarga: 14, glifo: 0xF0498,
@@ -404,11 +433,11 @@ Singleton {
         },
         {
             id: "nigromante", nombre: Idioma.t("Nigromante"), sprite: "h09",
-            vida: 145, daño: 12, armadura: 0, papel: Idioma.t("Roba vida y pudre"),
+            vida: 145, daño: 12, armadura: 0, magia: 0.9, resistencia: 4, papel: Idioma.t("Roba vida y pudre"),
             ataque: "Toque marchito", glifo: 0xF0E20,
             visual: { forma: "proyectil", color: "#8e4ec6" },
             reto: { tipo: "muertes", meta: 3000 },
-            porNivel: { vida: 0.065, daño: 0.13, armadura: 0.1 },
+            porNivel: { vida: 0.065, daño: 0.13, armadura: 0.1, resistencia: 0.385 },
             habilidades: [
                 { nivel: 1, id: "sorbo", nombre: Idioma.t("Sorbo de vida"),
                   desc: Idioma.t("Golpea y se cura con ello"), recarga: 16, glifo: 0xF0E20,
@@ -426,11 +455,11 @@ Singleton {
         },
         {
             id: "herrero", nombre: Idioma.t("Herrero rúnico"), sprite: "h10",
-            vida: 265, daño: 9, armadura: 8, papel: Idioma.t("Blinda al grupo"),
+            vida: 265, daño: 9, armadura: 8, magia: 0.15, resistencia: 4, papel: Idioma.t("Blinda al grupo"),
             ataque: "Martillo rúnico", glifo: 0xF0F1B,
             visual: { forma: "tajo", color: "#ffd60a" },
             reto: { tipo: "cofres", meta: 120 },
-            porNivel: { vida: 0.105, daño: 0.08, armadura: 0.7 },
+            porNivel: { vida: 0.105, daño: 0.08, armadura: 0.7, resistencia: 0.542 },
             habilidades: [
                 { nivel: 1, id: "yunque", nombre: Idioma.t("Yunque"),
                   desc: Idioma.t("Blinda a todo el grupo"), recarga: 20, glifo: 0xF0F1B,
@@ -448,11 +477,11 @@ Singleton {
         },
         {
             id: "espadachin", nombre: Idioma.t("Espadachín"), sprite: "h11",
-            vida: 195, daño: 16, armadura: 3, papel: Idioma.t("Duelo y desangre"),
+            vida: 195, daño: 16, armadura: 3, magia: 0.0, resistencia: 1, papel: Idioma.t("Duelo y desangre"),
             ataque: "Estocada", glifo: 0xF0498,
             visual: { forma: "tajo", color: "#5ac8fa" },
             reto: { tipo: "oleada", meta: 40 },
-            porNivel: { vida: 0.08, daño: 0.14, armadura: 0.3 },
+            porNivel: { vida: 0.08, daño: 0.14, armadura: 0.3, resistencia: 0.21 },
             habilidades: [
                 { nivel: 1, id: "sajar", nombre: Idioma.t("Sajar"),
                   desc: Idioma.t("Deja al de delante desangrándose"), recarga: 13, glifo: 0xF0498,
@@ -470,11 +499,11 @@ Singleton {
         },
         {
             id: "montaraz", nombre: Idioma.t("Montaraz"), sprite: "h12",
-            vida: 160, daño: 15, armadura: 2, papel: Idioma.t("Tiro sostenido"),
+            vida: 160, daño: 15, armadura: 2, magia: 0.0, resistencia: 1, papel: Idioma.t("Tiro sostenido"),
             ataque: "Saeta larga", glifo: 0xF0289,
             visual: { forma: "flecha", color: "#a8d84a" },
             reto: { tipo: "muertes", meta: 5000 },
-            porNivel: { vida: 0.07, daño: 0.145, armadura: 0.2 },
+            porNivel: { vida: 0.07, daño: 0.145, armadura: 0.2, resistencia: 0.14 },
             habilidades: [
                 { nivel: 1, id: "andanada", nombre: Idioma.t("Andanada"),
                   desc: Idioma.t("Una lluvia sobre toda la oleada"), recarga: 16, glifo: 0xF0289,
@@ -492,11 +521,11 @@ Singleton {
         },
         {
             id: "domadora", nombre: Idioma.t("Domadora"), sprite: "h13",
-            vida: 205, daño: 12, armadura: 4, papel: Idioma.t("Controla la oleada"),
+            vida: 205, daño: 12, armadura: 4, magia: 0.1, resistencia: 2, papel: Idioma.t("Controla la oleada"),
             ataque: "Latigazo", glifo: 0xF04E5,
             visual: { forma: "flecha", color: "#ff2d92" },
             reto: { tipo: "jefes", meta: 50 },
-            porNivel: { vida: 0.085, daño: 0.115, armadura: 0.4 },
+            porNivel: { vida: 0.085, daño: 0.115, armadura: 0.4, resistencia: 0.315 },
             habilidades: [
                 { nivel: 1, id: "restallar", nombre: Idioma.t("Restallar"),
                   desc: Idioma.t("Los deja quietos de golpe"), recarga: 24, glifo: 0xF04AB,
@@ -514,11 +543,11 @@ Singleton {
         },
         {
             id: "cazadora", nombre: Idioma.t("Cazadora"), sprite: "h14",
-            vida: 165, daño: 16, armadura: 1, papel: Idioma.t("Remata heridos"),
+            vida: 165, daño: 16, armadura: 1, magia: 0.0, resistencia: 1, papel: Idioma.t("Remata heridos"),
             ataque: "Venablo", glifo: 0xF0289,
             visual: { forma: "flecha", color: "#64d2ff" },
             reto: { tipo: "oleada", meta: 60 },
-            porNivel: { vida: 0.07, daño: 0.15, armadura: 0.15 },
+            porNivel: { vida: 0.07, daño: 0.15, armadura: 0.15, resistencia: 0.105 },
             habilidades: [
                 { nivel: 1, id: "rastro", nombre: Idioma.t("Rastro de sangre"),
                   desc: Idioma.t("Desangra al de delante"), recarga: 14, glifo: 0xF0289,
@@ -536,11 +565,11 @@ Singleton {
         },
         {
             id: "corsario", nombre: Idioma.t("Corsario"), sprite: "h15",
-            vida: 185, daño: 15, armadura: 2, papel: Idioma.t("Saquea y aguanta"),
+            vida: 185, daño: 15, armadura: 2, magia: 0.0, resistencia: 1, papel: Idioma.t("Saquea y aguanta"),
             ataque: "Sable", glifo: 0xF0498,
             visual: { forma: "tajo", color: "#ff9f0a" },
             reto: { tipo: "cofres", meta: 250 },
-            porNivel: { vida: 0.08, daño: 0.135, armadura: 0.25 },
+            porNivel: { vida: 0.08, daño: 0.135, armadura: 0.25, resistencia: 0.175 },
             habilidades: [
                 { nivel: 1, id: "abordaje", nombre: Idioma.t("Abordaje"),
                   desc: Idioma.t("Se lanza y se lleva parte"), recarga: 15, glifo: 0xF0498,
@@ -558,11 +587,11 @@ Singleton {
         },
         {
             id: "brujoSangre", nombre: Idioma.t("Brujo de sangre"), sprite: "h16",
-            vida: 150, daño: 18, armadura: 0, papel: Idioma.t("Pega fuerte y se sirve"),
+            vida: 150, daño: 18, armadura: 0, magia: 0.85, resistencia: 4, papel: Idioma.t("Pega fuerte y se sirve"),
             ataque: "Zarpa carmesí", glifo: 0xF0E20,
             visual: { forma: "proyectil", color: "#ff375f" },
             reto: { tipo: "nivel", meta: 90 },
-            porNivel: { vida: 0.06, daño: 0.16, armadura: 0.1 },
+            porNivel: { vida: 0.06, daño: 0.16, armadura: 0.1, resistencia: 0.367 },
             habilidades: [
                 { nivel: 1, id: "sangria", nombre: Idioma.t("Sangría"),
                   desc: Idioma.t("Le arranca la vida y se la queda"), recarga: 14, glifo: 0xF0E20,
@@ -580,11 +609,11 @@ Singleton {
         },
         {
             id: "licantropo", nombre: Idioma.t("Licántropo"), sprite: "h17",
-            vida: 230, daño: 17, armadura: 3, papel: Idioma.t("Se crece herido"),
+            vida: 230, daño: 17, armadura: 3, magia: 0.0, resistencia: 1, papel: Idioma.t("Se crece herido"),
             ataque: "Dentellada", glifo: 0xF04E5,
             visual: { forma: "tajo", color: "#c7c7cc" },
             reto: { tipo: "muertes", meta: 12000 },
-            porNivel: { vida: 0.095, daño: 0.145, armadura: 0.3 },
+            porNivel: { vida: 0.095, daño: 0.145, armadura: 0.3, resistencia: 0.21 },
             habilidades: [
                 { nivel: 1, id: "desgarro", nombre: Idioma.t("Desgarro"),
                   desc: Idioma.t("Deja una herida que no cierra"), recarga: 12, glifo: 0xF04E5,
@@ -602,11 +631,11 @@ Singleton {
         },
         {
             id: "caballeroNegro", nombre: Idioma.t("Caballero negro"), sprite: "h18",
-            vida: 300, daño: 11, armadura: 9, papel: Idioma.t("Castiga al que le pega"),
+            vida: 300, daño: 11, armadura: 9, magia: 0.25, resistencia: 5, papel: Idioma.t("Castiga al que le pega"),
             ataque: "Mandoble negro", glifo: 0xF0498,
             visual: { forma: "tajo", color: "#8e8e93" },
             reto: { tipo: "jefes", meta: 120 },
-            porNivel: { vida: 0.115, daño: 0.085, armadura: 0.75 },
+            porNivel: { vida: 0.115, daño: 0.085, armadura: 0.75, resistencia: 0.612 },
             habilidades: [
                 { nivel: 1, id: "afrenta", nombre: Idioma.t("Afrenta"),
                   desc: Idioma.t("Los obliga a ir a por él"), recarga: 20, glifo: 0xF0849,
@@ -624,11 +653,11 @@ Singleton {
         },
         {
             id: "lancero", nombre: Idioma.t("Lancero carmesí"), sprite: "h19",
-            vida: 215, daño: 14, armadura: 5, papel: Idioma.t("Alcanza a toda la fila"),
+            vida: 215, daño: 14, armadura: 5, magia: 0.0, resistencia: 2, papel: Idioma.t("Alcanza a toda la fila"),
             ataque: "Lanzada", glifo: 0xF0F1B,
             visual: { forma: "flecha", color: "#ff453a" },
             reto: { tipo: "oleada", meta: 100 },
-            porNivel: { vida: 0.09, daño: 0.125, armadura: 0.45 },
+            porNivel: { vida: 0.09, daño: 0.125, armadura: 0.45, resistencia: 0.315 },
             habilidades: [
                 { nivel: 1, id: "barrido", nombre: Idioma.t("Barrido"),
                   desc: Idioma.t("Alcanza a toda la fila de un golpe"), recarga: 15, glifo: 0xF0F1B,
@@ -985,9 +1014,16 @@ Singleton {
         const nivel = (heroe.nivel || 1) - 1
         const p = c.porNivel
 
-        let daño = c.daño * Math.pow(1 + p.daño, nivel)
+        // El daño de la clase se reparte entre físico y mágico según su
+        // mezcla; el total no cambia, así que el equilibrio medido sigue
+        // valiendo y lo que se añade es contra qué defensa choca cada parte.
+        const bruto = c.daño * Math.pow(1 + p.daño, nivel)
+        let daño = bruto * (1 - (c.magia || 0))
+        let dañoMag = bruto * (c.magia || 0)
+
         let vida = c.vida * Math.pow(1 + p.vida, nivel)
         let armadura = c.armadura + p.armadura * nivel
+        let resistencia = (c.resistencia || 0) + (p.resistencia || 0) * nivel
         let cura = (c.id === "clerigo" ? 5 : 0) * Math.pow(1 + p.vida, nivel)
         let recorte = 0
 
@@ -997,16 +1033,22 @@ Singleton {
             if (!it)
                 continue
             daño += it.stats.daño || 0
+            dañoMag += it.stats.dañoMag || 0
             vida += it.stats.vida || 0
             armadura += it.stats.armadura || 0
+            resistencia += it.stats.resistencia || 0
             cura += it.stats.cura || 0
             recorte += it.stats.recorte || 0
         }
 
         return {
             daño: daño * metaMultDaño,
+            dañoMag: dañoMag * metaMultDaño,
+            // lo que pega en total, para las fichas y las habilidades
+            total: (daño + dañoMag) * metaMultDaño,
             vida: Math.round(vida * metaMultVida),
             armadura: armadura,
+            resistencia: resistencia,
             cura: cura,
             // Con tope: sin él, cuatro accesorios buenos dejarían las
             // habilidades sin recarga y el combate sería un fuego artificial
@@ -1308,6 +1350,10 @@ Singleton {
                     : (elite ? "★ " : "") + esp.nombre,
                 jefe: esJefe,
                 elite: elite,
+                // De qué está hecho y con qué pega. Los jefes van equilibrados
+                // a propósito: son el examen, no un puzle de resistencias.
+                defensa: esJefe ? "equilibrada" : (esp.defensa || "equilibrada"),
+                ataque: esJefe ? "fisico" : (esp.ataque || "fisico"),
                 quieto: 0,
                 veneno: 0,
                 envalentonado: 0,       // lo que le ha subido un aullido
@@ -1398,7 +1444,7 @@ Singleton {
             const blanco = primerVivo(e)
 
             if (blanco >= 0) {
-                const pega = mermar(e[blanco], st.daño * delta)
+                const pega = mermar(e[blanco], st.daño * delta, st.dañoMag * delta)
                 e[blanco].vida -= pega
                 impacto(blanco, pega)
                 golpea(i, blanco)
@@ -1483,8 +1529,13 @@ Singleton {
             if (marcas.indexOf("furia") !== -1)
                 pega *= 1 + (1 - e[j].vida / e[j].vidaMax) * 0.9
 
-            const armadura = statsDe(g[blanco]).armadura + (g[blanco].provocando > 0 ? 12 : 0)
-            const reduccion = 100 / (100 + armadura * 4)
+            // Contra magia vale la resistencia, no la armadura: un tanque
+            // enlatado deja de ser la respuesta a todo, que era el problema de
+            // tener una sola defensa.
+            const stB = statsDe(g[blanco])
+            const guardia = (e[j].ataque === "magico" ? stB.resistencia : stB.armadura)
+                + (g[blanco].provocando > 0 ? 12 : 0)
+            const reduccion = 100 / (100 + guardia * 4)
             let recibido = pega * reduccion
 
             // el escudo se lleva el golpe antes que la vida, salvo contra
@@ -1590,13 +1641,13 @@ Singleton {
 
         if (h.efecto === "granGolpe") {
             if (blanco < 0) return
-            const golpe = pegarAHeroe(g, blanco, base * h.potencia)
+            const golpe = pegarAHeroe(g, blanco, base * h.potencia, e[j].ataque)
             if (golpe > 0) heroeHerido(blanco, golpe)
 
         } else if (h.efecto === "salpicar") {
             for (let k = 0; k < g.length; ++k) {
                 if (g[k].vida <= 0) continue
-                const golpe = pegarAHeroe(g, k, base * h.potencia)
+                const golpe = pegarAHeroe(g, k, base * h.potencia, e[j].ataque)
                 if (golpe > 0) heroeHerido(k, golpe)
             }
 
@@ -1611,7 +1662,7 @@ Singleton {
 
         } else if (h.efecto === "drenar") {
             if (blanco < 0) return
-            const golpe = pegarAHeroe(g, blanco, base * h.potencia)
+            const golpe = pegarAHeroe(g, blanco, base * h.potencia, e[j].ataque)
             if (golpe > 0) heroeHerido(blanco, golpe)
             e[j].vida = Math.min(e[j].vidaMax, e[j].vida + golpe)
 
@@ -1624,12 +1675,14 @@ Singleton {
 
     // Aplica un golpe a un héroe contando armadura y escudo, y devuelve lo que
     // de verdad le ha entrado en la vida.
-    function pegarAHeroe(g, k, cantidad) {
+    function pegarAHeroe(g, k, cantidad, tipo) {
         if (g[k].invulnerable > 0)
             return 0
 
-        const armadura = statsDe(g[k]).armadura + (g[k].provocando > 0 ? 12 : 0)
-        let recibido = cantidad * (100 / (100 + armadura * 4))
+        const st = statsDe(g[k])
+        const guardia = (tipo === "magico" ? st.resistencia : st.armadura)
+            + (g[k].provocando > 0 ? 12 : 0)
+        let recibido = cantidad * (100 / (100 + guardia * 4))
 
         if (g[k].escudo > 0) {
             const absorbido = Math.min(g[k].escudo, recibido)
@@ -1759,19 +1812,24 @@ Singleton {
         } else if (hab.efecto === "area") {
             for (let j = 0; j < e.length; ++j) {
                 if (e[j].vida <= 0) continue
-                e[j].vida -= st.daño * p
-                impacto(j, st.daño * p)
+                const enArea = pegarA(e[j], st, st.total * p)
+                e[j].vida -= enArea
+                impacto(j, enArea)
                 if (e[j].vida <= 0) enemigoMuerto(j)
             }
 
         } else if (hab.efecto === "cadena") {
-            let golpe = st.daño * p
+            // El multiplicador va aparte del golpe: así cada eslabón pasa por
+            // la carne del enemigo al que le toca, que es lo suyo cuando uno
+            // aguanta el acero y el siguiente la magia.
+            let factor = 1
             for (let j = 0; j < e.length; ++j) {
                 if (e[j].vida <= 0) continue
+                const golpe = pegarA(e[j], st, st.total * p * factor)
                 e[j].vida -= golpe
                 impacto(j, golpe)
                 if (e[j].vida <= 0) enemigoMuerto(j)
-                golpe *= 1.6
+                factor *= 1.6
             }
 
         } else if (hab.efecto === "golpeUnico" || hab.efecto === "remate") {
@@ -1785,14 +1843,15 @@ Singleton {
                 }
             }
             if (elegido >= 0) {
-                e[elegido].vida -= st.daño * p
-                impacto(elegido, st.daño * p)
+                const remate = pegarA(e[elegido], st, st.total * p)
+                e[elegido].vida -= remate
+                impacto(elegido, remate)
                 if (e[elegido].vida <= 0) enemigoMuerto(elegido)
             }
 
         } else if (hab.efecto === "veneno") {
             for (let j = 0; j < e.length; ++j) {
-                if (e[j].vida > 0) e[j].veneno = st.daño * p / 10
+                if (e[j].vida > 0) e[j].veneno = st.total * p / 10
             }
 
         } else if (hab.efecto === "robarVida") {
@@ -1800,7 +1859,7 @@ Singleton {
             // de aguantar que no es ni escudo ni cura del clérigo
             const quien = primerVivo(e)
             if (quien >= 0) {
-                const golpe = mermar(e[quien], st.daño * p)
+                const golpe = pegarA(e[quien], st, st.total * p)
                 e[quien].vida -= golpe
                 impacto(quien, golpe)
                 const roba = golpe * 0.5
@@ -1816,7 +1875,7 @@ Singleton {
             // como el veneno, pero concentrado en uno y mucho más fuerte
             const quien = primerVivo(e)
             if (quien >= 0)
-                e[quien].veneno = Math.max(e[quien].veneno || 0, st.daño * p / 4)
+                e[quien].veneno = Math.max(e[quien].veneno || 0, st.total * p / 4)
 
         } else if (hab.efecto === "aturdir") {
             for (let j = 0; j < e.length; ++j)

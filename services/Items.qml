@@ -171,6 +171,21 @@ Singleton {
             }
         }
 
+        // De acero o arcana: la mitad de las piezas convierten su daño en
+        // mágico y su armadura en resistencia. El nombre no cambia —ya bastante
+        // largo es— pero el resumen lo dice y el color del texto también.
+        const arcana = Math.random() < 0.5
+        if (arcana) {
+            if (stats.daño !== undefined) {
+                stats.dañoMag = stats.daño
+                delete stats.daño
+            }
+            if (stats.armadura !== undefined) {
+                stats.resistencia = stats.armadura
+                delete stats.armadura
+            }
+        }
+
         // El recorte de recarga va en porcentaje, así que no puede escalar con
         // la oleada como el resto: subiría a miles. Depende solo del grado, y
         // el tope de acumulación lo pone el juego.
@@ -190,6 +205,7 @@ Singleton {
             tipo: hueco.tipos[cual],
             icono: hueco.iconos[cual],
             rareza: rareza,
+            escuela: arcana ? "arcana" : "acero",
             oleada: oleada,
             nombre: hueco.tipos[cual] + " " + prefijo + " " + sufijo,
             stats: stats
@@ -216,12 +232,21 @@ Singleton {
 
     // Puntuación para ordenar la bolsa y para decidir si algo es mejor que lo
     // puesto. No es exacta —depende de la clase— pero ordena bien.
+    // Color de la escuela: el acero tira a plata y lo arcano a violeta. Sirve
+    // para distinguirlas de un vistazo sin leer el resumen entero.
+    function tonoEscuela(objeto) {
+        return objeto && objeto.escuela === "arcana" ? "#bf5af2" : "#c7c7cc"
+    }
+
     function puntuacion(objeto) {
         if (!objeto)
             return 0
         const s = objeto.stats
-        return (s.daño || 0) * 3 + (s.vida || 0) * 0.5
-            + (s.armadura || 0) * 6 + (s.cura || 0) * 4
+        // Cuentan los cuatro: si no, el clic que equipa solo daría por vacía
+        // media pieza arcana y nunca la pondría.
+        return ((s.daño || 0) + (s.dañoMag || 0)) * 3 + (s.vida || 0) * 0.5
+            + ((s.armadura || 0) + (s.resistencia || 0)) * 6 + (s.cura || 0) * 4
+            + (s.recorte || 0) * 2
     }
 
     // Lo que hay que tener para ponérselo. Que el nivel sea también un
@@ -242,10 +267,12 @@ Singleton {
             return ""
         const s = objeto.stats
         const partes = []
-        if (s.daño) partes.push("+" + s.daño + " daño")
-        if (s.vida) partes.push("+" + s.vida + " vida")
-        if (s.armadura) partes.push("+" + s.armadura + " arm")
-        if (s.cura) partes.push("+" + s.cura + " cura")
+        if (s.daño) partes.push("+" + s.daño + " " + Idioma.t("daño"))
+        if (s.dañoMag) partes.push("+" + s.dañoMag + " " + Idioma.t("daño mágico"))
+        if (s.vida) partes.push("+" + s.vida + " " + Idioma.t("vida"))
+        if (s.armadura) partes.push("+" + s.armadura + " " + Idioma.t("arm"))
+        if (s.resistencia) partes.push("+" + s.resistencia + " " + Idioma.t("resist"))
+        if (s.cura) partes.push("+" + s.cura + " " + Idioma.t("cura"))
         if (s.recorte) partes.push("-" + s.recorte + "% recarga")
         return partes.join(" · ")
     }

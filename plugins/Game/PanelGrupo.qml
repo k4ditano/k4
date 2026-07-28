@@ -114,15 +114,27 @@ RowLayout {
                     spacing: 0
 
                     Repeater {
+                        // Cinco cifras y no tres: con daño y defensa
+                        // desdoblados, enseñar solo el total escondía justo lo
+                        // que hay que decidir. Se ocultan las que estén a cero
+                        // para que un tanque puro no arrastre columnas vacías.
                         model: [
-                            { e: "daño", v: Game.cifra(tarjeta.stats.daño), c: "#ff9f0a" },
-                            { e: "vida", v: Game.cifra(tarjeta.stats.vida), c: Theme.green },
-                            { e: "arm",  v: Game.cifra(tarjeta.stats.armadura), c: "#6ccce4" }
+                            { e: "fís",  v: Game.cifra(tarjeta.stats.daño),
+                              c: "#ff9f0a", ver: tarjeta.stats.daño >= 1 },
+                            { e: "mág",  v: Game.cifra(tarjeta.stats.dañoMag),
+                              c: "#bf5af2", ver: tarjeta.stats.dañoMag >= 1 },
+                            { e: "vida", v: Game.cifra(tarjeta.stats.vida),
+                              c: Theme.green, ver: true },
+                            { e: "arm",  v: Game.cifra(tarjeta.stats.armadura),
+                              c: "#6ccce4", ver: tarjeta.stats.armadura >= 1 },
+                            { e: "res",  v: Game.cifra(tarjeta.stats.resistencia),
+                              c: "#5ac8fa", ver: tarjeta.stats.resistencia >= 1 }
                         ]
 
                         delegate: ColumnLayout {
                             id: dato
                             required property var modelData
+                            visible: modelData.ver
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1
                             spacing: 0
