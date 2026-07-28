@@ -137,6 +137,7 @@ K4Plugin {
         function cofre(tipo: int): void { self.abrirConCeremonia(tipo) }
         function cadena(tipo: int): void { self.abrirEnCadena(tipo) }
         function parar(): void { self.pararCadena() }
+        function limpiar(): void { Game.desguazarSobrantes() }
         function habilidad(indice: int, id: string): void { Game.lanzar(indice, id) }
 
         // Para afinar el balance sin pasarse horas clicando: adelanta el reloj

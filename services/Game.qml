@@ -1140,6 +1140,28 @@ Singleton {
 
     // Desguaza de golpe todo lo que no supere a lo equipado. Con la bolsa
     // llena de piezas comunes, ir una a una es insufrible.
+    // Quita la marca de recién llegado. Reasigna la bolsa entera a propósito:
+    // tocar un objeto dentro del array no emite señal y la casilla seguiría
+    // enseñando el badge hasta el siguiente cambio.
+    function vistoObjeto(id) {
+        let tocado = false
+        const nueva = bolsa.map(function (o) {
+            if (o && o.id === id && o.nuevo) {
+                tocado = true
+                const copia = Object.assign({}, o)
+                delete copia.nuevo
+                return copia
+            }
+            return o
+        })
+        if (!tocado)
+            return
+        bolsa = nueva
+        guardar()
+    }
+
+    readonly property int sinVer: bolsa.filter(function (o) { return o && o.nuevo }).length
+
     function desguazarSobrantes() {
         let ganado = 0
         const quedan = []
@@ -1194,9 +1216,17 @@ Singleton {
         const objeto = Items.generar(tipo, Math.max(oleada, mejorOleada), fortuna)
 
         if (bolsa.length >= topeBolsa) {
-            // bolsa llena: se desguaza solo, mejor eso que perderlo sin más
-            reliquias += Items.valorDesguace(objeto)
+            // Bolsa llena: se desguaza solo, mejor eso que perderlo sin más.
+            // Pero se marca, porque la ceremonia estaba enseñando una pieza
+            // que en realidad nunca llegaba a la bolsa.
+            const vale = Items.valorDesguace(objeto)
+            reliquias += vale
+            objeto.desguazado = vale
         } else {
+            // Recién salido del cofre: se marca para poder encontrarlo entre
+            // sesenta casillas. La marca se quita al pasar el ratón, que es
+            // justo cuando ya lo has visto.
+            objeto.nuevo = true
             bolsa = bolsa.concat([objeto])
         }
 

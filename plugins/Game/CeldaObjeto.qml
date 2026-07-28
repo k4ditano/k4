@@ -76,7 +76,9 @@ Item {
             visible: celda.objeto !== null && !celda.usable
             anchors.right: parent.right
             anchors.top: parent.top
-            anchors.margins: 2
+            // baja si el badge de nuevo le ocupa la esquina
+            anchors.topMargin: celda.objeto && celda.objeto.nuevo ? 15 : 2
+            anchors.rightMargin: 2
             text: Theme.ico.lock
             color: Theme.red
             font.pixelSize: 10
@@ -105,10 +107,45 @@ Item {
             }
         }
 
+        // ── recién salido de un cofre
+        Rectangle {
+            visible: celda.objeto !== null && celda.objeto.nuevo === true
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 2
+            width: nuevoTexto.implicitWidth + 8
+            height: 11
+            radius: 5
+            color: "#30d158"
+            z: 3
+
+            IslandLabel {
+                id: nuevoTexto
+                anchors.centerIn: parent
+                text: Idioma.t("NUEVO")
+                color: "#06210d"
+                font.pixelSize: 7
+                font.weight: Font.Bold
+            }
+
+            SequentialAnimation on opacity {
+                running: parent.visible
+                loops: Animation.Infinite
+                NumberAnimation { to: 0.45; duration: 700; easing.type: Easing.InOutSine }
+                NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
+            }
+        }
+
         MouseArea {
             id: raton
             anchors.fill: parent
             hoverEnabled: true
+
+            // pasar por encima ya es haberlo visto
+            onContainsMouseChanged: {
+                if (containsMouse && celda.objeto && celda.objeto.nuevo)
+                    Game.vistoObjeto(celda.objeto.id)
+            }
             enabled: celda.objeto !== null
             cursorShape: Qt.PointingHandCursor
             acceptedButtons: Qt.LeftButton | Qt.RightButton

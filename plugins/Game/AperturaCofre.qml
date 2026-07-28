@@ -212,6 +212,21 @@ Item {
             horizontalAlignment: Text.AlignHCenter
             Layout.fillWidth: true
         }
+
+        // Con la bolsa llena la pieza no llega: se desguaza sola. Callarlo era
+        // enseñar un premio que en realidad no tienes.
+        IslandLabel {
+            visible: apertura.objeto !== null && apertura.objeto.desguazado > 0
+            text: apertura.objeto
+                ? Idioma.t("bolsa llena · desguazado por ")
+                  + apertura.objeto.desguazado + Idioma.t(" reliquias")
+                : ""
+            color: "#ff9f0a"
+            font.pixelSize: 9
+            font.weight: Font.DemiBold
+            horizontalAlignment: Text.AlignHCenter
+            Layout.fillWidth: true
+        }
     }
 
     // pulsar salta la ceremonia
