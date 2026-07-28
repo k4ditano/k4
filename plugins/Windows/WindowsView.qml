@@ -107,6 +107,29 @@ FadeIn {
                         }
                     }
 
+                    // En qué escritorio vive. Es la mitad de la información
+                    // cuando tienes ventanas repartidas: saber que la que
+                    // buscas está en el 3 evita ir probando.
+                    Rectangle {
+                        visible: Ventanas.espacio(tarjeta.modelData).length > 0
+                        anchors.top: parent.top
+                        anchors.right: parent.right
+                        anchors.margins: 6
+                        width: Math.max(16, espacioTexto.implicitWidth + 8)
+                        height: 15
+                        radius: 7
+                        color: tarjeta.elegida ? Theme.blue : "#66000000"
+
+                        IslandLabel {
+                            id: espacioTexto
+                            anchors.centerIn: parent
+                            text: Ventanas.espacio(tarjeta.modelData)
+                            color: Theme.ink
+                            font.pixelSize: 9
+                            font.weight: Font.DemiBold
+                        }
+                    }
+
                     MouseArea {
                         id: tarjetaRaton
                         anchors.fill: parent
@@ -131,7 +154,7 @@ FadeIn {
             horizontalAlignment: Text.AlignHCenter
             text: {
                 const t = view.plugin.lista[view.plugin.index]
-                return t ? (t.title || "") : ""
+                return t ? Ventanas.tituloVentana(t) : ""
             }
             color: Theme.muted
             font.pixelSize: 11

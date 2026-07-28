@@ -36,6 +36,8 @@ K4Plugin {
     }
 
     function abrir() {
+        // la lista puede venir de hace rato: se pide fresca antes de enseñarla
+        Ventanas.refrescar()
         if (Ventanas.count === 0)
             return
         // arranca en la anterior, no en la actual: es lo que se espera
@@ -83,5 +85,10 @@ K4Plugin {
         function open(): void { self.abrir() }
         function close(): void { self.close() }
         function next(): void { self.avanzar() }
+        function focus(i: int): void {
+            Ventanas.refrescar()
+            self.index = i
+            self.elegir()
+        }
     }
 }
