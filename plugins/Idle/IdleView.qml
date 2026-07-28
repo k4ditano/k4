@@ -92,6 +92,8 @@ FadeIn {
                 visible: Media.isPlaying
             }
 
+            GrabacionPildora { Layout.alignment: Qt.AlignVCenter }
+
             JuegoPildora { Layout.alignment: Qt.AlignVCenter }
 
             TrayRow {

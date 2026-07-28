@@ -178,11 +178,102 @@ FadeIn {
 
             Item { Layout.fillWidth: true }
 
+            // Grabar vive aquí y no como una cuarta tarjeta arriba: es otra
+            // cosa —empieza algo que dura— y mezclarlo con las tres de foto
+            // invita a pulsarlo por error.
+            Rectangle {
+                Layout.preferredWidth: grabarFila.implicitWidth + 18
+                Layout.preferredHeight: 24
+                radius: 12
+                color: grabarRaton.containsMouse ? "#3a1416" : Theme.surface
+                border.width: 1
+                border.color: Qt.rgba(1, 0.27, 0.23, 0.35)
+
+                Behavior on color { ColorAnimation { duration: 120 } }
+
+                RowLayout {
+                    id: grabarFila
+                    anchors.centerIn: parent
+                    spacing: 6
+
+                    Rectangle {
+                        Layout.preferredWidth: 9
+                        Layout.preferredHeight: 9
+                        radius: 4.5
+                        color: Theme.red
+                    }
+
+                    IslandLabel {
+                        text: Idioma.t("Grabar")
+                        color: Theme.ink
+                        font.pixelSize: 10
+                        font.weight: Font.DemiBold
+                    }
+                }
+
+                MouseArea {
+                    id: grabarRaton
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: function (raton) {
+                        view.plugin.close()
+                        // Clic derecho para grabar solo un trozo: pasa por el
+                        // mismo selector que las fotos.
+                        if (raton.button === Qt.RightButton)
+                            Captura.grabarRegion()
+                        else
+                            Captura.grabar("")
+                    }
+                }
+            }
+
             IslandLabel {
                 text: Idioma.t("← → elige · intro captura")
                 color: Theme.dim
                 font.pixelSize: 9
             }
+        }
+    }
+
+    // ── la cuenta atrás ───────────────────────────────────────────
+    //
+    //  Ocurre antes de arrancar wf-recorder, así que el 3-2-1 no sale en el
+    //  vídeo. Sirve para colocar la ventana y apartar el ratón.
+    Item {
+        anchors.fill: parent
+        visible: view.plugin.modo === "cuenta"
+
+        IslandLabel {
+            id: numero
+            anchors.centerIn: parent
+            anchors.verticalCenterOffset: -8
+            text: Captura.cuentaAtras
+            color: Theme.ink
+            font.pixelSize: 72
+            font.weight: Font.Light
+
+            // Un salto por segundo: sin él no se distingue un 3 de un 2 con el
+            // rabillo del ojo, que es como se mira una cuenta atrás.
+            scale: 1
+            Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+            onTextChanged: { scale = 1.35; rebote.restart() }
+
+            Timer {
+                id: rebote
+                interval: 40
+                onTriggered: numero.scale = 1
+            }
+        }
+
+        IslandLabel {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 12
+            text: Idioma.t("esc cancela")
+            color: Theme.dim
+            font.pixelSize: 10
         }
     }
 

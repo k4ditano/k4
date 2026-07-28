@@ -101,6 +101,9 @@ Singleton {
                               "--geometria", x + "," + y + " " + w + "x" + h]
             disparo.command = pendienteOrden
             disparo.running = true
+        } else if (motivoSeleccion === "grabar") {
+            estado = ""
+            grabar(x + "," + y + " " + w + "x" + h)
         } else {
             estado = ""
         }
@@ -192,6 +195,188 @@ Singleton {
         interval: 20000
         running: Island.escondida
         onTriggered: Island.escondida = false
+    }
+
+    // ── grabar ────────────────────────────────────────────────────
+    //
+    //  Quien graba es wf-recorder, y se para con SIGINT y no matándolo: un
+    //  contenedor MP4 necesita que le escriban el índice al final, y un vídeo
+    //  sin índice no lo abre nadie. De ahí que el fichero no se dé por bueno
+    //  hasta `onExited`.
+    property bool grabando: false
+    property double inicio: 0
+    property int duracion: 0                  // segundos, para el cronómetro
+    property string rutaVideo: ""
+    property string regionActual: ""          // "" = pantalla entera
+
+    property string audio: "sistema"          // ninguno · sistema · micro
+    property string codec: "h264"             // h264 · hevc
+    property int fps: 60
+
+    property int cuentaAtras: 0
+
+    signal videoListo(string ruta)
+    signal videoFallido(string motivo)
+
+    readonly property string duracionTexto: {
+        const m = Math.floor(duracion / 60)
+        const sg = duracion % 60
+        return (m < 10 ? "0" : "") + m + ":" + (sg < 10 ? "0" : "") + sg
+    }
+
+    function grabar(region) {
+        if (grabando || estado === "cuenta")
+            return
+        regionActual = region || ""
+        // Tres segundos de cortesía: da tiempo a colocar la ventana y a apartar
+        // el ratón, y ocurre ANTES de arrancar wf-recorder, así que la cuenta
+        // atrás no sale en el vídeo.
+        cuentaAtras = 3
+        estado = "cuenta"
+        tictac.restart()
+    }
+
+    function grabarRegion() {
+        if (grabando)
+            return
+        pedirRegion("grabar")
+    }
+
+    function parar() {
+        if (estado === "cuenta") {
+            // Aún no había empezado: cancelar es simplemente no empezar.
+            tictac.stop()
+            cuentaAtras = 0
+            estado = ""
+            return
+        }
+        if (!grabando)
+            return
+        estado = "cerrando"
+        grabador.signal(2)                    // SIGINT
+        rescate.restart()
+    }
+
+    function alternarGrabacion() { grabando || estado === "cuenta" ? parar() : grabar("") }
+
+    function arrancarGrabador() {
+        pedirNombreVideo.running = true
+    }
+
+    Timer {
+        id: tictac
+        interval: 1000
+        repeat: true
+        onTriggered: {
+            captura.cuentaAtras -= 1
+            if (captura.cuentaAtras <= 0) {
+                stop()
+                captura.estado = ""
+                captura.arrancarGrabador()
+            }
+        }
+    }
+
+    // El nombre lo decide el guion, que es quien sabe esquivar colisiones.
+    Process {
+        id: pedirNombreVideo
+        command: ["python3", Quickshell.shellPath("tools/captura.py"),
+                  "nombre", "--que", "video"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let ruta = ""
+                try { ruta = JSON.parse(this.text).ruta || "" } catch (e) { }
+                if (ruta.length === 0) {
+                    captura.videoFallido("fallo")
+                    return
+                }
+                captura.rutaVideo = ruta
+                grabador.command = captura.ordenGrabar(ruta)
+                grabador.running = true
+            }
+        }
+    }
+
+    function ordenGrabar(ruta) {
+        const orden = ["wf-recorder", "-f", ruta,
+                       "-c", codec === "hevc" ? "hevc_nvenc" : "h264_nvenc",
+                       "-p", "preset=p5", "-p", "rc=vbr", "-p", "cq=23",
+                       "-r", String(fps),
+                       // Fotogramas a ritmo constante. No es opcional: sin
+                       // esto wf-recorder solo emite cuando algo cambia, y
+                       // entonces el `t` de un vídeo no se corresponde con el
+                       // tiempo real. El zoom en posproceso caería descuadrado.
+                       "-D"]
+
+        if (regionActual.length > 0)
+            orden.push("-g", regionActual)
+        else
+            orden.push("-o", monitorActual())
+
+        if (audio === "sistema")
+            orden.push("-a", sinkMonitor)
+        else if (audio === "micro")
+            orden.push("-a")
+
+        return orden
+    }
+
+    // El monitor del sink por defecto, que es por donde sale el sonido del
+    // sistema. Se pregunta cada vez que empieza una grabación porque cambia al
+    // enchufar unos auriculares.
+    property string sinkMonitor: "@DEFAULT_MONITOR@"
+
+    Process {
+        command: ["sh", "-c", "echo \"$(pactl get-default-sink).monitor\""]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const n = String(this.text).trim()
+                if (n.length > 8)
+                    captura.sinkMonitor = n
+            }
+        }
+    }
+
+    Process {
+        id: grabador
+
+        onStarted: {
+            captura.grabando = true
+            captura.estado = "grabando"
+            captura.inicio = Date.now()
+            captura.duracion = 0
+            crono.start()
+        }
+
+        onExited: function (codigo) {
+            crono.stop()
+            rescate.stop()
+            captura.grabando = false
+            captura.estado = ""
+
+            // wf-recorder sale con 0 al recibir el SIGINT que le mandamos: eso
+            // es una parada limpia, no un fallo.
+            if (captura.rutaVideo.length > 0)
+                captura.videoListo(captura.rutaVideo)
+            else
+                captura.videoFallido("fallo")
+        }
+    }
+
+    Timer {
+        id: crono
+        interval: 1000
+        repeat: true
+        onTriggered: captura.duracion = Math.floor((Date.now() - captura.inicio) / 1000)
+    }
+
+    // Si no cierra por las buenas en cinco segundos, se insiste. Más allá de
+    // eso el contenedor ya estaría roto de todas formas.
+    Timer {
+        id: rescate
+        interval: 5000
+        onTriggered: if (captura.grabando) grabador.signal(15)
     }
 
     // El monitor donde está el ratón. Con una sola pantalla da igual, pero en

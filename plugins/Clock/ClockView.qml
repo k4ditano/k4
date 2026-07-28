@@ -57,6 +57,12 @@ FadeIn {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 6
 
+                GrabacionPildora {
+                    interactive: true
+                    Layout.alignment: Qt.AlignVCenter
+                    onParar: Captura.parar()
+                }
+
                 JuegoPildora {
                     interactive: true
                     Layout.alignment: Qt.AlignVCenter

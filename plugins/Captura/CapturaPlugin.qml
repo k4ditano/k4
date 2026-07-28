@@ -19,15 +19,20 @@ K4Plugin {
 
     name: "captura"
     title: Idioma.t("Captura")
-    priority: 84
     active: open
     viewLoaded: open
-    grabKeyboard: open && modo === "menu"
+    //  También durante la cuenta atrás, o el ESC que la cancela no llega a
+    //  ninguna parte. Son tres segundos en los que nadie está escribiendo.
+    grabKeyboard: open && (modo === "menu" || modo === "cuenta")
+
+    //  La cuenta atrás manda sobre todo lo demás mientras dura: si te tapa el
+    //  reloj tres segundos no pasa nada, pero perderte el 3-2-1 sí importa.
+    priority: modo === "cuenta" ? 92 : 84
 
     property var panel: null
 
     property bool open: false
-    property string modo: "menu"            // menu · hecha
+    property string modo: "menu"            // menu · cuenta · hecha
     property int index: 0
 
     readonly property var ambitos: [
@@ -45,8 +50,12 @@ K4Plugin {
 
     // 500 y no 440: con cuatro botones debajo del nombre del fichero, a 440 se
     // salía «Copiar» por el borde derecho.
-    islandWidth: modo === "hecha" ? 500 : 520
-    islandHeight: modo === "hecha" ? 132 : 208
+    // La cuenta atrás se queda la island entera y sin nada más: es un número
+    // gigante, y para eso no hace falta anchura.
+    islandWidth: modo === "cuenta" ? 200
+        : (modo === "hecha" ? 500 : 520)
+    islandHeight: modo === "cuenta" ? 150
+        : (modo === "hecha" ? 132 : 208)
 
     view: Component {
         CapturaView { plugin: self }
@@ -61,7 +70,15 @@ K4Plugin {
             panel.close()
     }
 
-    function close() { open = false }
+    //  El ESC del host entra por aquí, así que cerrar durante la cuenta atrás
+    //  tiene que significar «no grabes», no solo «quita la vista».
+    function close() {
+        if (modo === "cuenta") {
+            Captura.parar()
+            return
+        }
+        open = false
+    }
     function toggle() { open && modo === "menu" ? close() : abrir() }
 
     function avanzar()    { index = (index + 1) % ambitos.length }
@@ -97,9 +114,30 @@ K4Plugin {
         SelectorRegion {}
     }
 
-    // ── el asomo de después ───────────────────────────────────────
+    // ── la cuenta atrás y el vídeo ────────────────────────────────
     Connections {
         target: Captura
+
+        function onEstadoChanged() {
+            if (Captura.estado === "cuenta") {
+                self.modo = "cuenta"
+                self.open = true
+            } else if (self.modo === "cuenta") {
+                self.modo = "menu"
+                self.open = false
+            }
+        }
+
+        function onVideoListo(ruta) {
+            Quickshell.execDetached(["notify-send", "-a", "k4",
+                                     Idioma.t("Grabación guardada"),
+                                     ruta.split("/").pop()])
+        }
+
+        function onVideoFallido(motivo) {
+            Quickshell.execDetached(["notify-send", "-a", "k4", "-u", "critical",
+                                     Idioma.t("No se pudo grabar"), motivo])
+        }
 
         function onFotoLista(ruta) {
             self.modo = "hecha"
@@ -147,5 +185,11 @@ K4Plugin {
         // Capturar y abrir el anotador. El destino va como excepción de esta
         // foto: pedir anotar una vez no debe cambiarte el ajuste.
         function anotar(): void { self.disparar("region", "anotar") }
+
+        // ── vídeo ──
+        function grabar(): void { self.close(); Captura.grabar("") }
+        function grabarRegion(): void { self.close(); Captura.grabarRegion() }
+        function parar(): void { Captura.parar() }
+        function grabarAlternar(): void { self.close(); Captura.alternarGrabacion() }
     }
 }
