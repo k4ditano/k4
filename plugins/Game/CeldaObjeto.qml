@@ -22,6 +22,7 @@ Item {
     signal pulsado()
     signal secundario()
     signal soltadoEn(int destino)
+    signal soltadoGrupo(string clave)
 
     readonly property bool usable: objeto ? Game.algunoPuede(objeto) : true
     property alias encima: raton.containsMouse
@@ -32,7 +33,12 @@ Item {
     DropArea {
         anchors.fill: parent
         onDropped: function (caida) {
-            if (caida.source && caida.source.origen !== undefined)
+            if (!caida.source)
+                return
+            // agrupado se mueve el grupo; suelto, la pieza
+            if (caida.source.grupoClave && caida.source.grupoClave.length > 0)
+                celda.soltadoGrupo(caida.source.grupoClave)
+            else if (caida.source.origen !== undefined)
                 celda.soltadoEn(caida.source.origen)
         }
     }
@@ -186,6 +192,11 @@ Item {
 
             drag.target: celda.arrastrable ? caja : null
             drag.axis: Drag.XAndYAxis
+            // La rejilla es un Flickable y se queda con el gesto en cuanto
+            // detecta desplazamiento vertical: sin esto, arrastrar una pieza
+            // hacia abajo desplaza la lista en vez de mover la pieza.
+            drag.filterChildren: true
+            preventStealing: true
 
             onClicked: function (raton) {
                 // Con el crisol abierto, pulsar mete la pieza. Arrastrar

@@ -138,6 +138,7 @@ K4Plugin {
         function cadena(tipo: int): void { self.abrirEnCadena(tipo) }
         function parar(): void { self.pararCadena() }
         function limpiar(): void { Game.desguazarSobrantes() }
+        function mover(desde: int, hasta: int): void { Game.moverEnBolsa(desde, hasta) }
         function habilidad(indice: int, id: string): void { Game.lanzar(indice, id) }
 
         // Para afinar el balance sin pasarse horas clicando: adelanta el reloj

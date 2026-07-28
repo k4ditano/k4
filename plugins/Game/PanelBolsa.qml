@@ -369,7 +369,9 @@ Item {
                     grupoClave: hueco.grupo ? hueco.grupo.clave : ""
                     modoFusion: panel.fundiendo
                     // arrastrar vale siempre que no estemos reordenando
-                    arrastrable: !panel.agrupado || panel.fundiendo
+                    // Siempre: antes se apagaba al agrupar, y como agrupar
+                    // viene puesto de fábrica, el arrastre no funcionaba nunca.
+                    arrastrable: true
 
                     onAlCrisol: {
                         if (hueco.grupo)
@@ -388,6 +390,7 @@ Item {
                         if (it) Game.desguazar(it)
                     }
                     onSoltadoEn: function (desde) { Game.moverEnBolsa(desde, hueco.index) }
+                    onSoltadoGrupo: function (clave) { Game.moverGrupo(clave, hueco.index) }
 
                     onEncimaChanged: {
                         if (encima) {

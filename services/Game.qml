@@ -1118,6 +1118,36 @@ Singleton {
 
     // Reordenar la bolsa a mano. El orden es el del array, así que moverlo es
     // sacar y volver a insertar; se guarda para que sobreviva al reinicio.
+    // Reordenar agrupado: el orden de los grupos sale del orden de la bolsa
+    // —manda la primera aparición—, así que mover un grupo es sacar todas sus
+    // piezas y volver a meterlas donde empieza el grupo de destino.
+    function moverGrupo(claveDesde, indiceDestino) {
+        const lista = grupos
+        if (indiceDestino < 0 || indiceDestino >= lista.length)
+            return
+
+        const destino = lista[indiceDestino]
+        if (!destino || destino.clave === claveDesde)
+            return
+
+        const mueve = bolsa.filter(function (o) { return claveDe(o) === claveDesde })
+        if (mueve.length === 0)
+            return
+
+        const resto = bolsa.filter(function (o) { return claveDe(o) !== claveDesde })
+        // dónde empieza el grupo de destino dentro de lo que queda
+        let corte = resto.length
+        for (let i = 0; i < resto.length; ++i) {
+            if (claveDe(resto[i]) === destino.clave) {
+                corte = i
+                break
+            }
+        }
+
+        bolsa = resto.slice(0, corte).concat(mueve).concat(resto.slice(corte))
+        guardar()
+    }
+
     function moverEnBolsa(desde, hasta) {
         if (desde === hasta || desde < 0 || hasta < 0
             || desde >= bolsa.length || hasta >= bolsa.length)
