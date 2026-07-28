@@ -10,6 +10,45 @@ ColumnLayout {
 
     property var plugin: null
 
+    // anuncio del megajefe
+    property string megaNombre: ""
+    property int megaFase: -1
+    property real anuncioOpacidad: 0
+    property real anuncioEscala: 1
+    property real faseOpacidad: 0
+
+    SequentialAnimation {
+        id: anuncio
+
+        ParallelAnimation {
+            NumberAnimation {
+                target: panel; property: "anuncioOpacidad"
+                from: 0; to: 1; duration: 220
+            }
+            NumberAnimation {
+                target: panel; property: "anuncioEscala"
+                from: 1.8; to: 1; duration: 420; easing.type: Easing.OutBack
+            }
+        }
+        PauseAnimation { duration: 1500 }
+        NumberAnimation {
+            target: panel; property: "anuncioOpacidad"
+            to: 0; duration: 400
+        }
+    }
+
+    SequentialAnimation {
+        id: fogonazo
+        NumberAnimation {
+            target: panel; property: "faseOpacidad"
+            from: 0; to: 0.55; duration: 90
+        }
+        NumberAnimation {
+            target: panel; property: "faseOpacidad"
+            to: 0; duration: 380
+        }
+    }
+
     spacing: 8
 
     // desplazamiento y opacidad de los enemigos al aparecer
@@ -62,6 +101,23 @@ ColumnLayout {
 
         function onRasgoActuo(enemigo, heroe, rasgo) {
             panel.dibujarRasgo(enemigo, heroe, rasgo)
+        }
+
+        function onMegaEntra(nombre) {
+            panel.megaNombre = nombre
+            panel.megaFase = -1
+            anuncio.restart()
+        }
+
+        function onMegaFase(fase) {
+            panel.megaFase = fase
+            fogonazo.restart()
+        }
+
+        function onCrisolSoltado() {
+            panel.megaNombre = Idioma.t("¡Ha soltado la mejora del crisol!")
+            panel.megaFase = -2
+            anuncio.restart()
         }
 
         function onOleadaSuperada(numero) {
@@ -320,12 +376,16 @@ ColumnLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
 
-                    sprite: (datos.jefe ? "assets/jefes/" : "assets/monstruos/") + datos.sprite + ".png"
+                    sprite: (datos.jefe || datos.mega
+                        ? "assets/jefes/" : "assets/monstruos/") + datos.sprite + ".png"
                     vida: datos.vida
                     vidaMax: datos.vidaMax
                     colorVida: datos.jefe ? Theme.red : "#ff9f0a"
                     mirandoDerecha: false
-                    escala: datos.jefe ? 1.15 : (datos.elite ? 1.08 : 1)
+                    // el megajefe ocupa el doble: es medio campo él solo, que
+                    // es parte de lo que lo hace imponer
+                    escala: datos.mega ? 2.1
+                        : (datos.jefe ? 1.15 : (datos.elite ? 1.08 : 1))
                     nombre: datos.nombre || ""
                     destacado: datos.jefe || datos.elite || false
                     furioso: (datos.envalentonado || 0) > 0
@@ -459,6 +519,35 @@ ColumnLayout {
                     }
                 }
             }
+        }
+
+        // ── entra el megajefe
+        //  Un jefe que empieza igual que los demás no impone nada. El nombre
+        //  cruzando la pantalla es la mitad del trabajo.
+        Rectangle {
+            anchors.centerIn: parent
+            width: parent.width
+            height: 44
+            color: "#cc000000"
+            opacity: panel.anuncioOpacidad
+            visible: opacity > 0.01
+
+            IslandLabel {
+                anchors.centerIn: parent
+                text: panel.megaNombre
+                color: panel.megaFase === -2 ? "#ffd60a" : Theme.red
+                font.pixelSize: 20
+                font.weight: Font.Bold
+                scale: panel.anuncioEscala
+            }
+        }
+
+        // ── fogonazo al cambiar de fase
+        Rectangle {
+            anchors.fill: parent
+            color: "#ffffff"
+            opacity: panel.faseOpacidad
+            visible: opacity > 0.01
         }
 
         // ── depósito vacío

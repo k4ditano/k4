@@ -756,7 +756,7 @@ Singleton {
     property var cuentas: ({
         muertes: 0, jefes: 0, cofres: 0, oleadas: 0,
         partidas: 0, desguaces: 0, habilidades: 0, oroTotal: 0,
-        combinaciones: 0
+        combinaciones: 0, megajefes: 0
     })
 
     function contar(clave, cuanto) {
@@ -1003,6 +1003,47 @@ Singleton {
     readonly property string fondo: biomas[bioma]
 
     readonly property bool esJefe: oleada % oleadasPorJefe === 0
+
+    // ── el megajefe ───────────────────────────────────────────────
+    //
+    //  Cada 80 oleadas cambia el bioma, y ese salto no estaba marcado con
+    //  nada: era una oleada más. Es el sitio natural para un examen de
+    //  verdad, porque separa dos tramos del juego.
+    //
+    //  No es un jefe con más vida. Tiene FASES: al bajar de dos tercios y de
+    //  un tercio de vida se recompone, cambia de color y trae refuerzos. Lo
+    //  que se mide no es cuánto pegas, es si aguantas tres asaltos.
+    readonly property bool esMegajefe: oleada % oleadasPorBioma === 0
+
+    readonly property var megajefes: [
+        { nombre: Idioma.t("Ent milenario"),  sprite: "M00", tono: "#7ac74f" },
+        { nombre: Idioma.t("Reina de quitina"), sprite: "M01", tono: "#b06cd6" },
+        { nombre: Idioma.t("Señor de la fragua"), sprite: "M02", tono: "#ff6b35" },
+        { nombre: Idioma.t("Devorador de estrellas"), sprite: "M03", tono: "#6ccce4" }
+    ]
+
+    readonly property var megajefeActual: megajefes[
+        Math.floor((oleada - 1) / oleadasPorBioma) % megajefes.length]
+
+    // Fase en la que está: 0, 1 o 2. Cada una añade un rasgo y refuerzos.
+    property int faseMega: 0
+    signal megaFase(int fase)
+    signal megaEntra(string nombre)
+    signal crisolSoltado()
+
+    // Mucha vida y tres fases; pegar, lo justo. Medido en la oleada 80, con 3,4
+    // hacía 14.000 por segundo contra un tanque de 16.000: te fulminaba antes
+    // de que llegaras a ver la segunda fase, y un jefe al que no ves las
+    // mecánicas es solo una pared.
+    // 100 y no 26: medido, el grupo hacía más de 35.000 por segundo y se
+    // comía las 378.000 del primer intento en menos de once segundos, sin
+    // llegar a ver una sola fase. Un jefe de fases necesita durar.
+    readonly property real megaVida: 100     // veces la vida de una oleada normal
+    readonly property real megaDaño: 1.9
+
+    // Lo que suelta, aparte del cofre: la ampliación del crisol, y solo a
+    // partir del segundo. El primero ya tiene bastante con ser el primero.
+    readonly property real probCrisol: 0.35
     readonly property bool grupoVivo: grupo.some(function (h) { return h.vida > 0 })
 
     // Estadísticas finales de un héroe: su clase, más lo que lleve puesto,
@@ -1428,7 +1469,7 @@ Singleton {
         cuentas = ({
             muertes: 0, jefes: 0, cofres: 0, oleadas: 0,
             partidas: 0, desguaces: 0, habilidades: 0, oroTotal: 0,
-        combinaciones: 0
+        combinaciones: 0, megajefes: 0
         })
 
         equipo = ({})
@@ -1509,19 +1550,25 @@ Singleton {
             const multVida = (esJefe ? jefeVida : esp.vida) * (elite ? 2.2 : 1)
             const multDaño = (esJefe ? jefeDaño : esp.daño) * (elite ? 1.4 : 1)
 
-            const vida = enemigoVidaBase * Math.pow(enemigoVidaCrec, oleada - 1) * multVida
+            const vida = enemigoVidaBase * Math.pow(enemigoVidaCrec, oleada - 1)
+                * (esMegajefe ? megaVida : multVida)
             lista.push({
                 vida: vida,
                 vidaMax: vida,
-                daño: enemigoDañoBase * Math.pow(enemigoDañoCrec, oleada - 1) * multDaño,
-                sprite: esJefe
+                daño: enemigoDañoBase * Math.pow(enemigoDañoCrec, oleada - 1)
+                    * (esMegajefe ? megaDaño : multDaño),
+                sprite: esMegajefe ? megajefeActual.sprite
+                    : esJefe
                     ? "b" + String((Math.floor(oleada / oleadasPorJefe) * 3) % 20).padStart(2, "0")
                     : "m" + String(cual).padStart(2, "0"),
-                nombre: esJefe
+                nombre: esMegajefe ? megajefeActual.nombre
+                    : esJefe
                     ? titulosJefe[Math.floor(oleada / oleadasPorJefe) % titulosJefe.length]
                         + " " + deBioma[bioma]
                     : (elite ? "★ " : "") + esp.nombre,
                 jefe: esJefe,
+                mega: esMegajefe,
+                secuaz: false,
                 elite: elite,
                 // De qué está hecho y con qué pega. Los jefes van equilibrados
                 // a propósito: son el examen, no un puzle de resistencias.
@@ -1540,11 +1587,17 @@ Singleton {
                     return h ? h.recarga * 0.55 : 0
                 })(),
                 // los jefes llevan uno más: son el examen de las diez oleadas
-                rasgos: rasgosPara(oleada + (esJefe ? 30 : 0), i,
-                    esJefe ? null : esp.afinidad, elite || esJefe)
+                rasgos: esMegajefe
+                    ? rasgosPara(oleada + 60, i, null, true)
+                    : rasgosPara(oleada + (esJefe ? 30 : 0), i,
+                                 esJefe ? null : esp.afinidad, elite || esJefe)
             })
         }
         enemigos = lista
+        if (esMegajefe) {
+            faseMega = 0
+            megaEntra(megajefeActual.nombre)
+        }
     }
 
     // Segundos que se queda el resumen antes de arrancar sola la siguiente.
@@ -1649,6 +1702,48 @@ Singleton {
                 } else {
                     lanzarInterno(g, e, i, id)
                 }
+            }
+        }
+
+        // ── el megajefe cambia de fase
+        if (esMegajefe && e.length > 0 && e[0].mega && e[0].vida > 0) {
+            const parte = e[0].vida / e[0].vidaMax
+            const toca = parte <= 0.33 ? 2 : (parte <= 0.66 ? 1 : 0)
+
+            if (toca > faseMega) {
+                faseMega = toca
+
+                // se recompone un poco y se envalentona
+                e[0].vida = Math.min(e[0].vidaMax, e[0].vida + e[0].vidaMax * 0.08)
+                e[0].envalentonado = (e[0].envalentonado || 0) + 0.25
+
+                // y estrena un rasgo que antes no tenía
+                const nuevos = ["ruptura", "drenaje", "eco"]
+                const r = (e[0].rasgos || []).slice()
+                if (r.indexOf(nuevos[toca]) === -1)
+                    r.push(nuevos[toca])
+                e[0].rasgos = r
+
+                // refuerzos: dos secuaces del bioma, con vida de oleada normal
+                const base = enemigoVidaBase * Math.pow(enemigoVidaCrec, oleada - 1)
+                for (let k = 0; k < 2; ++k) {
+                    const cual = faunaPorBioma[bioma][(oleada + k) % faunaPorBioma[bioma].length]
+                    const esp = especies[cual] || ({ nombre: "Bicho", vida: 1, daño: 1 })
+                    e.push({
+                        vida: base * 0.8, vidaMax: base * 0.8,
+                        daño: enemigoDañoBase * Math.pow(enemigoDañoCrec, oleada - 1) * 0.7,
+                        sprite: "m" + String(cual).padStart(2, "0"),
+                        nombre: esp.nombre,
+                        jefe: false, mega: false, secuaz: true, elite: false,
+                        defensa: esp.defensa || "equilibrada",
+                        ataque: esp.ataque || "fisico",
+                        quieto: 0, veneno: 0, envalentonado: 0,
+                        hab: "", recargaHab: 0,
+                        rasgos: rasgosPara(oleada, k, esp.afinidad, false)
+                    })
+                }
+
+                megaFase(toca)
             }
         }
 
@@ -1791,6 +1886,23 @@ Singleton {
             }
             if (esJefe)
                 sumarCofre(1)
+
+            // El megajefe paga como lo que es: tres cofres de acto, un buen
+            // pellizco de reliquias, y a partir del segundo la ampliación del
+            // crisol. El primero ya tiene bastante con ser el primero.
+            if (esMegajefe) {
+                sumarCofre(2)
+                sumarCofre(2)
+                sumarCofre(2)
+                reliquias += Math.floor(Math.pow(oleada, 1.6))
+                contar("megajefes")
+
+                const cual = Math.floor(oleada / oleadasPorBioma)
+                if (cual >= 2 && !crisolAmpliado && Math.random() < probCrisol) {
+                    crisolAmpliado = true
+                    crisolSoltado()
+                }
+            }
             if (oleada % 50 === 0)
                 sumarCofre(2)
 
