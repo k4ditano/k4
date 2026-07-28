@@ -363,6 +363,11 @@ Item {
         objeto: panel.plugin ? panel.plugin.abriendo : null
 
         rapido: panel.plugin ? panel.plugin.encadenando : false
+        encadenando: panel.plugin ? panel.plugin.encadenando : false
+        quedan: panel.plugin && panel.plugin.enCadena >= 0
+            ? Game.cofresPorTipo[panel.plugin.enCadena] : 0
+
+        onParar: panel.plugin.pararCadena()
 
         onTerminado: {
             panel.ultimo = panel.plugin.abriendo

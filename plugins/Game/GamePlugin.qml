@@ -116,7 +116,15 @@ K4Plugin {
         }
     }
 
-    function close() { open = false }
+    function close() {
+        // Con una tanda de cofres en marcha, el primer ESC la corta y el
+        // segundo cierra: cerrar de golpe dejaría la cadena viva por detrás.
+        if (enCadena >= 0) {
+            pararCadena()
+            return
+        }
+        open = false
+    }
 
     IpcHandler {
         target: "k4.game"
@@ -127,6 +135,8 @@ K4Plugin {
         function pausa(): void { Game.pausada = !Game.pausada }
         function ver(cual: string): void { self.pestaña = cual; self.open = true }
         function cofre(tipo: int): void { self.abrirConCeremonia(tipo) }
+        function cadena(tipo: int): void { self.abrirEnCadena(tipo) }
+        function parar(): void { self.pararCadena() }
         function habilidad(indice: int, id: string): void { Game.lanzar(indice, id) }
 
         // Para afinar el balance sin pasarse horas clicando: adelanta el reloj

@@ -28,7 +28,17 @@ Item {
     // Encadenando cofres no se puede parar seis segundos en cada uno: se
     // recorta el suspense y se acorta la pausa final, que es lo que más pesa.
     property bool rapido: false
-    readonly property real ritmo: rapido ? 0.4 : 1
+    // Y cuanto más larga sea la cola, más corre: con una tanda de veinte se
+    // puede saborear cada cofre, con ochocientos no. A 0,18 salen algo menos
+    // de un segundo por cofre.
+    readonly property real ritmo: !rapido ? 1 : (quedan > 20 ? 0.18 : 0.4)
+
+    // Cuántos quedan de la tanda y cómo cortarla. Hace falta aquí dentro: la
+    // ceremonia tapa el panel entero con su propio ratón, así que el botón de
+    // la tarjeta queda debajo y era imposible parar una vez empezada.
+    property bool encadenando: false
+    property int quedan: 0
+    signal parar()
 
     function abrir() {
         cuadro = 0
@@ -210,6 +220,52 @@ Item {
         onClicked: {
             ceremonia.stop()
             apertura.terminado()
+        }
+    }
+
+    // ── parar la tanda ────────────────────────────────────────────
+    //  Va por encima del ratón de arriba, que si no se queda con el clic.
+    Rectangle {
+        visible: apertura.encadenando
+        z: 10
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: 8
+        width: filaParar.implicitWidth + 20
+        height: 26
+        radius: 13
+        color: pararRaton.containsMouse ? Theme.red : "#66000000"
+        border.width: 1
+        border.color: Theme.red
+
+        Behavior on color { ColorAnimation { duration: 120 } }
+
+        RowLayout {
+            id: filaParar
+            anchors.centerIn: parent
+            spacing: 6
+
+            IconGlyph {
+                text: String.fromCodePoint(0xF04DB)
+                color: Theme.ink
+                font.pixelSize: 12
+            }
+
+            IslandLabel {
+                text: apertura.quedan > 0
+                    ? Idioma.t("Parar") + " · " + apertura.quedan
+                    : Idioma.t("Parar")
+                font.pixelSize: 11
+                font.weight: Font.DemiBold
+            }
+        }
+
+        MouseArea {
+            id: pararRaton
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: apertura.parar()
         }
     }
 }
