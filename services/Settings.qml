@@ -33,7 +33,10 @@ Singleton {
 
     // ── barra ─────────────────────────────────────────────────────
     // widgets/TrayRow.qml: iconos de bandeja en la píldora
-    property bool bandejaEnPildora: true
+    // Apagada de fábrica: en la píldora los iconos de bandeja son ruido casi
+    // siempre, y al acercar el ratón la island ya se abre y ahí sí se ven —y
+    // encima se pueden pulsar, que en la píldora no—.
+    property bool bandejaEnPildora: false
     // widgets/NotifStrip.qml: notificaciones recientes al pasar el ratón
     property bool notificacionesAlPasar: true
 

@@ -32,11 +32,24 @@ K4Plugin {
     // quede en el centro de verdad y no se mueva al aparecer o irse un icono.
     // Sale una píldora algo más ancha cuando un lado va cargado, que es el
     // precio de la simetría y merece la pena en algo que se mira todo el día.
-    readonly property int ladoIzq: Workspaces.dotsWidth + (Media.isPlaying ? 28 : 0)
-    readonly property int ladoDer: trayWidth + juegoWidth + (Media.isPlaying ? 30 : 0)
+    // Grabando: el punto rojo y el mm:ss. Reservarlo es obligatorio, no
+    // cosmético: los flancos tienen hueco fijo y lo que no se reserva se sale
+    // por encima de la hora, que es lo que pasaba.
+    readonly property int grabacionWidth: Captura.grabando
+        || Captura.estado === "cerrando" ? 60 : 0
+
+    // La carátula y las barras van juntas a la izquierda, así que el hueco de
+    // las barras se reserva ahí y no enfrente.
+    readonly property int ladoIzq: Media.isPlaying ? 53 : 0
+    readonly property int ladoDer: trayWidth + juegoWidth + grabacionWidth
     readonly property int ladoAncho: Math.max(ladoIzq, ladoDer)
 
-    islandWidth: 46 + 2 * ladoAncho + 44
+    // El centro ya no es solo la hora: al cambiar de escritorio enseña los
+    // puntos en su lugar, y hay que reservar lo que ocupe el más ancho de los
+    // dos o la píldora daría un salto cada vez.
+    readonly property int centroAncho: Math.max(46, Workspaces.dotsWidth - 8)
+
+    islandWidth: centroAncho + 2 * ladoAncho + 44
     islandHeight: Theme.baseHeight
 
     view: Component {

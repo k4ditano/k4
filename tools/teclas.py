@@ -50,6 +50,7 @@ ESPECIALES = {
     "ESC": 1, "BACKSPACE": 14, "TAB": 15, "ENTER": 28, "SPACE": 57,
     "UP": 103, "DOWN": 108, "LEFT": 105, "RIGHT": 106,
     "DELETE": 111, "HOME": 102, "END": 107, "PAGEUP": 104, "PAGEDOWN": 109,
+    "PRINT": 99, "SUPER": 125, "ALT": 56, "SHIFT": 42, "CTRL": 29,
 }
 
 
@@ -122,13 +123,26 @@ def main():
             t.escribir(" ".join(resto))
         elif orden == "pulsa":
             for nombre in resto:
-                clave = nombre.upper()
-                if clave in ESPECIALES:
-                    t.pulsar(ESPECIALES[clave])
-                else:
-                    c, shift = codigo(nombre)
-                    if c is not None:
-                        t.pulsar(c, shift)
+                # "SUPER+ALT+PRINT" es una combinación: los modificadores se
+                # mantienen pulsados mientras baja y sube la última tecla.
+                partes = [x for x in nombre.upper().split("+") if x]
+                codigos = []
+                for parte in partes:
+                    if parte in ESPECIALES:
+                        codigos.append(ESPECIALES[parte])
+                    else:
+                        c, _ = codigo(parte.lower())
+                        if c is not None:
+                            codigos.append(c)
+                if not codigos:
+                    continue
+                for c in codigos[:-1]:
+                    t.evento(EV_KEY, c, 1)
+                t.sync()
+                t.pulsar(codigos[-1])
+                for c in reversed(codigos[:-1]):
+                    t.evento(EV_KEY, c, 0)
+                t.sync()
         else:
             print("orden desconocida: %s" % orden, file=sys.stderr)
             return 1

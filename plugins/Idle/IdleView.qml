@@ -22,6 +22,38 @@ FadeIn {
     property var tray: null
     property int shown: 0
 
+    // ── los escritorios asoman al cambiar ─────────────────────────
+    property bool mostrandoEscritorios: false
+
+    //  El primer cambio de `activo` es el de arrancar —pasa de -1 al que
+    //  toque—, y no es un cambio de escritorio: sin esta guarda la píldora
+    //  enseñaría los puntos cada vez que se recarga la barra.
+    property bool arrancado: false
+
+    Component.onCompleted: arranque.start()
+
+    Timer {
+        id: arranque
+        interval: 700
+        onTriggered: view.arrancado = true
+    }
+
+    Connections {
+        target: Workspaces
+        function onActivoChanged() {
+            if (!view.arrancado)
+                return
+            view.mostrandoEscritorios = true
+            volver.restart()
+        }
+    }
+
+    Timer {
+        id: volver
+        interval: 1800
+        onTriggered: view.mostrandoEscritorios = false
+    }
+
     Item {
         anchors.fill: parent
         anchors.leftMargin: 11
@@ -41,9 +73,47 @@ FadeIn {
                 visible: Media.isPlaying
             }
 
-            RowLayout {
-                spacing: 4
+            // Las barras, pegadas a la carátula. Estaban al otro lado de la
+            // píldora, y eso obligaba a mirar a dos sitios para saber si
+            // suena algo y qué es: son la misma información.
+            Visualizer {
                 Layout.alignment: Qt.AlignVCenter
+                Layout.preferredHeight: 12
+                visible: Media.isPlaying
+            }
+
+        }
+
+        // ── centro
+        //
+        //  La hora casi siempre, y los escritorios solo cuando cambias de uno:
+        //  aparecen en su sitio, se dejan ver un par de segundos y se van. Los
+        //  puntos fijos a la izquierda estaban ahí todo el día para decir algo
+        //  que solo importa en el instante en que cambia.
+        Item {
+            id: centro
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.verticalCenter
+            width: Math.max(46, Workspaces.dotsWidth - 8)
+            height: parent.height
+
+            IslandLabel {
+                anchors.centerIn: parent
+                text: Qt.formatDateTime(Clock.date, "HH:mm")
+                font.pixelSize: 12
+                font.weight: Font.Medium
+                color: Media.hasPlayer ? Theme.ink : Theme.muted
+
+                opacity: view.mostrandoEscritorios ? 0 : 1
+                Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+            }
+
+            RowLayout {
+                anchors.centerIn: parent
+                spacing: 4
+
+                opacity: view.mostrandoEscritorios ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
                 Repeater {
                     model: Workspaces.list
@@ -66,16 +136,6 @@ FadeIn {
             }
         }
 
-        // ── centro
-        IslandLabel {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.verticalCenter: parent.verticalCenter
-            text: Qt.formatDateTime(Clock.date, "HH:mm")
-            font.pixelSize: 12
-            font.weight: Font.Medium
-            color: Media.hasPlayer ? Theme.ink : Theme.muted
-        }
-
         // ── derecha
         //  Indicadores nada más: aquí no se puede pinchar, porque al acercar el
         //  ratón la island ya ha cambiado a la vista de reloj o de reproductor.
@@ -85,12 +145,6 @@ FadeIn {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
-
-            Visualizer {
-                Layout.alignment: Qt.AlignVCenter
-                Layout.preferredHeight: 12
-                visible: Media.isPlaying
-            }
 
             GrabacionPildora { Layout.alignment: Qt.AlignVCenter }
 

@@ -25,6 +25,7 @@ K4Plugin {
     // depende de la bandeja y del aviso del juego.
     readonly property int ladoDer: (Tray.count > 0
         ? Math.min(Tray.count, 5) * 24 + 8 : 0) + 48
+        + (Captura.grabando || Captura.estado === "cerrando" ? 60 : 0)
     readonly property int ladoAncho: Math.max(96, ladoDer)
 
     islandWidth: 92 + 2 * ladoAncho + 44

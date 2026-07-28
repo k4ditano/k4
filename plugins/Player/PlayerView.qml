@@ -75,6 +75,16 @@ FadeIn {
                 Layout.leftMargin: 4
             }
 
+            // Con música sonando, la island que se abre al pasar el ratón es
+            // esta y no la del reloj: si el contador de grabación no fuera
+            // pulsable aquí, no habría forma de pararla con el ratón.
+            GrabacionPildora {
+                interactive: true
+                Layout.leftMargin: 4
+                Layout.alignment: Qt.AlignVCenter
+                onParar: Captura.parar()
+            }
+
             JuegoPildora {
                 interactive: true
                 Layout.leftMargin: 2
