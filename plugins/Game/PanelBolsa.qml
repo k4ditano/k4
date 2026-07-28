@@ -231,7 +231,12 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            cellWidth: Math.floor(width / 10)
+            // 32 del sprite + 14 de aire para el borde y la insignia. Las
+            // columnas salen de ahí y el sobrante se reparte, así que la
+            // rejilla llena el ancho sin dejar el icono a escala rara.
+            readonly property int celda: 46
+            readonly property int columnas: Math.max(6, Math.floor(width / celda))
+            cellWidth: Math.floor(width / columnas)
             cellHeight: cellWidth
             model: Game.bolsa.length
             boundsBehavior: Flickable.StopAtBounds
@@ -244,7 +249,7 @@ Item {
 
                 CeldaObjeto {
                     anchors.fill: parent
-                    anchors.margins: 3
+                    anchors.margins: 2
                     objeto: Game.bolsa[hueco.index]
                     posicion: hueco.index
 

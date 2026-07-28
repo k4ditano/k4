@@ -55,16 +55,15 @@ Item {
 
         Image {
             anchors.centerIn: parent
-            // sube un poco: la insignia de rareza vive abajo a la izquierda y
-            // con el icono al doble de tamaño se le echaba encima
-            anchors.verticalCenterOffset: -5
+            // deja libre la banda de abajo, donde vive la insignia de rareza
+            anchors.verticalCenterOffset: -4
             opacity: celda.usable ? 1 : 0.35
 
-            // Múltiplo entero del sprite (32 px): a 1,4 aumentos unos píxeles
-            // salían dobles y otros no, y se veía sucio.
-            readonly property int lado: 32
-            width: lado * Math.max(1, Math.floor(parent.width * 0.92 / lado))
-            height: width
+            // Tamaño nativo del sprite: un píxel del dibujo, un píxel de
+            // pantalla. Es lo único que se ve exactamente como se dibujó;
+            // cualquier aumento, por limpio que sea, solo agranda los bloques.
+            width: 32
+            height: 32
             source: celda.objeto
                 ? "assets/objetos/i" + String(celda.objeto.icono).padStart(2, "0") + ".png"
                 : ""
@@ -75,21 +74,35 @@ Item {
         // candado: aún no tienes nivel para ponértelo
         IconGlyph {
             visible: celda.objeto !== null && !celda.usable
-            anchors.centerIn: parent
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 2
             text: Theme.ico.lock
             color: Theme.red
-            font.pixelSize: 14
+            font.pixelSize: 10
         }
 
-        // el grado, abajo a la izquierda
-        InsigniaRareza {
+        // El nivel, abajo a la izquierda. Solo el número: el nombre del grado
+        // no cabe en una celda de 46 y además es redundante, porque el borde
+        // de la celda ya va del color de la rareza.
+        Rectangle {
             visible: celda.objeto !== null
-            rareza: celda.objeto ? celda.objeto.rareza : 0
-            nivel: Items.nivelDe(celda.objeto)
-            compacta: true
             anchors.left: parent.left
             anchors.bottom: parent.bottom
-            anchors.margins: 3
+            anchors.margins: 2
+            width: nivelTexto.implicitWidth + 7
+            height: 12
+            radius: 6
+            color: "#cc000000"
+
+            IslandLabel {
+                id: nivelTexto
+                anchors.centerIn: parent
+                text: Items.nivelDe(celda.objeto)
+                color: celda.rareza ? celda.rareza.color : Theme.dim
+                font.pixelSize: 8
+                font.weight: Font.Bold
+            }
         }
 
         MouseArea {
