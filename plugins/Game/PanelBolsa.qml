@@ -23,6 +23,9 @@ Item {
     // dibujos repetidos. Va como interruptor porque agrupando no se puede
     // arrastrar para ordenar, y eso también se usa.
     property bool agrupado: true
+
+    // Modo fusión: la rejilla se aparta a la izquierda y entra el crisol.
+    property bool fundiendo: false
     property string avisoCombina: ""
     property color avisoColor: Theme.ink
 
@@ -239,6 +242,40 @@ Item {
             }
 
             Rectangle {
+                Layout.preferredWidth: fundirTexto.implicitWidth + 20
+                Layout.preferredHeight: 18
+                Layout.alignment: Qt.AlignVCenter
+                radius: 9
+                color: panel.fundiendo ? "#b8860b"
+                    : (fundirModoRaton.containsMouse ? Theme.surfaceHi : Theme.surface)
+
+                Behavior on color { ColorAnimation { duration: 120 } }
+
+                IslandLabel {
+                    id: fundirTexto
+                    anchors.centerIn: parent
+                    text: Idioma.t("Fusionar")
+                    color: panel.fundiendo ? Theme.ink : Theme.muted
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
+                }
+
+                MouseArea {
+                    id: fundirModoRaton
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        panel.fundiendo = !panel.fundiendo
+                        if (panel.fundiendo)
+                            panel.agrupado = false      // hay que arrastrar
+                        else
+                            crisolPieza.vaciar()
+                    }
+                }
+            }
+
+            Rectangle {
                 Layout.preferredWidth: agruparTexto.implicitWidth + 20
                 Layout.preferredHeight: 18
                 Layout.alignment: Qt.AlignVCenter
@@ -294,6 +331,11 @@ Item {
         }
 
         // ── la bolsa, en rejilla ──────────────────────────────────
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 8
+
         GridView {
             id: rejilla
             Layout.fillWidth: true
@@ -326,7 +368,6 @@ Item {
                     cuantos: hueco.grupo ? hueco.grupo.piezas.length : 0
                     arrastrable: !panel.agrupado
 
-                    onCombinar: if (hueco.grupo) panel.combinar(hueco.grupo.clave)
 
                     onPulsado: {
                         const it = Game.bolsa[hueco.index]
@@ -359,8 +400,19 @@ Item {
                 font.pixelSize: 11
             }
         }
-    }
+        Crisol {
+            id: crisolPieza
+            visible: panel.fundiendo
+            Layout.preferredWidth: visible ? 190 : 0
+            Layout.fillHeight: true
 
+            Behavior on Layout.preferredWidth {
+                NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
+            }
+        }
+        }
+
+    }
     // ── ficha flotante, fuera del layout ──────────────────────────
     Rectangle {
         id: emergente

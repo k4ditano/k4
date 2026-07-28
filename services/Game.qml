@@ -1226,6 +1226,54 @@ Singleton {
         combinado(r.cambio, r.objeto)
     }
 
+    // ── el crisol ─────────────────────────────────────────────────
+    //
+    //  Tres huecos de salida. El quinto y el cuarto los suelta el segundo
+    //  megajefe: es una mejora que cambia cómo juegas —fundir cinco da mejores
+    //  probabilidades— y por eso merece estar detrás de algo, no comprarse.
+    property bool crisolAmpliado: false
+    readonly property int huecosCrisol: crisolAmpliado ? 5 : 3
+
+    // Fundir de verdad: se van las piezas puestas y vuelve una.
+    function fundirPiezas(piezas) {
+        if (!piezas || piezas.length < 3)
+            return null
+
+        const r = Items.combinar(piezas)
+        if (!r)
+            return null
+
+        const fuera = piezas.map(function (o) { return o.id })
+        bolsa = bolsa.filter(function (o) {
+            return o && fuera.indexOf(o.id) === -1
+        })
+
+        contar("combinaciones")
+        guardar()
+        return r
+    }
+
+    // Lo que sale del crisol no está en ningún sitio hasta que decides.
+    function guardarFundido(objeto) {
+        if (!objeto)
+            return
+        if (bolsa.length >= topeBolsa) {
+            reliquias += Items.valorDesguace(objeto)
+        } else {
+            objeto.nuevo = true
+            bolsa = bolsa.concat([objeto])
+        }
+        guardar()
+    }
+
+    function tirarFundido(objeto) {
+        if (!objeto)
+            return
+        reliquias += Items.valorDesguace(objeto)
+        contar("desguaces")
+        guardar()
+    }
+
     function desguazarSobrantes() {
         let ganado = 0
         const quedan = []
@@ -2068,6 +2116,7 @@ Singleton {
             equipo: equipo, bolsa: bolsa, meta: meta,
             heroes: heroes, inicioElegido: inicioElegido,
             plantilla: plantilla, desbloqueados: desbloqueados, cuentas: cuentas,
+            crisolAmpliado: crisolAmpliado,
             logrosHechos: logrosHechos,
             mejorOleada: mejorOleada, partidas: partidas,
             oleadasDesdeCofre: oleadasDesdeCofre,

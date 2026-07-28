@@ -14,7 +14,6 @@ Item {
     property int posicion: -1
     property int cuantos: 0             // 0 = no está agrupada
     property bool arrastrable: true
-    signal combinar()
     property bool arrastrando: caja.Drag.active
 
     signal pulsado()
@@ -47,6 +46,8 @@ Item {
         z: celda.arrastrando ? 50 : 0
 
         property int origen: celda.posicion
+        // el crisol necesita la pieza en sí, no su posición
+        property var objetoRef: celda.objeto
 
         Behavior on color { ColorAnimation { duration: 110 } }
         Behavior on scale { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
@@ -128,39 +129,6 @@ Item {
                 color: Theme.ink
                 font.pixelSize: 8
                 font.weight: Font.Bold
-            }
-        }
-
-        // ── combinar tres
-        //  Solo aparece con tres o más y al pasar por encima: si estuviera
-        //  siempre, la rejilla se llenaría de botones.
-        Rectangle {
-            visible: celda.cuantos >= 3 && raton.containsMouse
-            z: 4
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 2
-            width: 30
-            height: 13
-            radius: 6
-            color: combinarRaton.containsMouse ? Theme.blue : "#cc1c1c22"
-            border.width: 1
-            border.color: Theme.blue
-
-            IslandLabel {
-                anchors.centerIn: parent
-                text: Idioma.t("unir")
-                color: Theme.ink
-                font.pixelSize: 8
-                font.weight: Font.Bold
-            }
-
-            MouseArea {
-                id: combinarRaton
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: celda.combinar()
             }
         }
 
