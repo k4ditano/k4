@@ -39,7 +39,12 @@ Item {
 
     Rectangle {
         id: caja
-        anchors.fill: parent
+        // Sin anchors, y no es un descuido: un elemento anclado NO se puede
+        // arrastrar. El ancla manda sobre x e y, así que drag.target movía la
+        // caja y el ancla la devolvía en el mismo fotograma. Por eso no
+        // funcionaba ni reordenar ni soltar en el crisol.
+        width: parent.width
+        height: parent.height
         radius: 9
         color: celda.arrastrando ? Theme.surfaceHi
             : (raton.containsMouse ? Theme.surfaceHi : Theme.surface)
@@ -199,6 +204,10 @@ Item {
             onReleased: {
                 if (caja.Drag.active)
                     caja.Drag.drop()
+                // vuelve a su sitio: sin ancla que la recoloque, hay que
+                // devolverla a mano tanto si soltó como si no
+                caja.x = 0
+                caja.y = 0
                 // vuelve a su hueco: la rejilla decide dónde va, no el ratón
                 caja.x = 0
                 caja.y = 0

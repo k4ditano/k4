@@ -23,6 +23,18 @@ Item {
     property string cambio: ""
 
     readonly property int huecos: Game.huecosCrisol
+
+    // Dónde caen los engastes del dibujo, medidos sobre el sprite de 128 px
+    // comparando el cuadro apagado con el cargado: son los únicos píxeles que
+    // cambian de verdad entre ambos. Ponerlos a ojo dejaba los huecos flotando
+    // por encima de la piedra.
+    readonly property int ladoArte: 128
+    readonly property int lado: 150
+    readonly property real escala: lado / ladoArte
+    readonly property real engasteY: 62 * escala
+    readonly property real engasteIzq: 41 * escala
+    readonly property real engasteDer: 86 * escala
+    readonly property int ladoHueco: 26
     readonly property bool lleno: puestas.length >= huecos
 
     // Todas del mismo grupo, que es lo que se puede fundir.
@@ -139,18 +151,23 @@ Item {
         // ── los huecos
         Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: 96
+            Layout.preferredHeight: crisol.lado
 
-            Image {
-                id: yunque
+            Item {
+                id: conjunto
                 anchors.centerIn: parent
-                width: 96
-                height: 96
-                source: "assets/crisol/c" + String(crisol.cuadro).padStart(2, "0") + ".png"
-                fillMode: Image.PreserveAspectFit
-                smooth: false
+                width: crisol.lado
+                height: crisol.lado
                 rotation: crisol.vuelta
-            }
+
+                Image {
+                    id: yunque
+                    anchors.fill: parent
+                    source: "assets/crisol/c"
+                        + String(crisol.cuadro).padStart(2, "0") + ".png"
+                    fillMode: Image.PreserveAspectFit
+                    smooth: false
+                }
 
             // Los huecos van encima del dibujo, repartidos en arco: así el
             // aparato sirve igual con tres que con cinco.
@@ -161,20 +178,24 @@ Item {
                     id: hueco
                     required property int index
 
-                    readonly property real angulo: Math.PI
-                        * (0.15 + 0.7 * (crisol.huecos === 1 ? 0.5
-                            : index / (crisol.huecos - 1)))
                     readonly property var pieza: index < crisol.puestas.length
                         ? crisol.puestas[index] : null
 
-                    width: 30
-                    height: 30
-                    radius: 8
-                    // Sobre los engastes del dibujo: el arco es estrecho
-                    // porque los huecos del sprite están en la cara de arriba,
-                    // no repartidos por todo el borde.
-                    x: parent.width / 2 - 15 - Math.cos(angulo) * 27
-                    y: parent.height / 2 - 15 - Math.sin(angulo) * 13 - 12
+                    // Con tres caen justo sobre los engastes. Con cinco —la
+                    // mejora del segundo megajefe— se reparten algo más
+                    // abiertos, porque el dibujo solo tiene tres.
+                    readonly property real reparto: crisol.huecos === 1 ? 0.5
+                        : index / (crisol.huecos - 1)
+                    readonly property real margen: crisol.huecos > 3 ? 14 : 0
+
+                    width: crisol.ladoHueco
+                    height: crisol.ladoHueco
+                    radius: crisol.ladoHueco / 2
+                    x: (crisol.engasteIzq - margen)
+                        + reparto * ((crisol.engasteDer + margen)
+                                     - (crisol.engasteIzq - margen))
+                        - crisol.ladoHueco / 2
+                    y: crisol.engasteY - crisol.ladoHueco / 2
                     color: pieza ? "#22ffffff" : "#66000000"
                     border.width: 1
                     border.color: pieza
@@ -185,8 +206,8 @@ Item {
 
                     Image {
                         anchors.centerIn: parent
-                        width: 24
-                        height: 24
+                        width: crisol.ladoHueco - 4
+                        height: crisol.ladoHueco - 4
                         visible: hueco.pieza !== null
                         source: hueco.pieza
                             ? "assets/objetos/i"
@@ -210,6 +231,7 @@ Item {
                         onClicked: crisol.sacar(hueco.index)
                     }
                 }
+            }
             }
 
             // ── lo que ha salido
@@ -355,6 +377,19 @@ Item {
         ScriptAction { script: { crisol.vuelta = 0; crisol.rematar() } }
     }
 
+    // un respingo del aparato al reventar
+    SequentialAnimation {
+        id: sacudida
+        NumberAnimation {
+            target: conjunto; property: "scale"
+            from: 1; to: 1.18; duration: 90; easing.type: Easing.OutQuad
+        }
+        NumberAnimation {
+            target: conjunto; property: "scale"
+            to: 1; duration: 220; easing.type: Easing.OutBack
+        }
+    }
+
     SequentialAnimation {
         id: estallido
 
@@ -362,6 +397,7 @@ Item {
             target: crisol; property: "brote"
             from: 0; to: 1.35; duration: 260; easing.type: Easing.OutBack
         }
+        ScriptAction { script: sacudida.restart() }
         NumberAnimation {
             target: crisol; property: "brote"
             to: 1; duration: 160
