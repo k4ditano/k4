@@ -17,9 +17,28 @@ FadeIn {
 
     focus: true
 
-    // La raíz de la island también quiere el foco; sin reclamarlo aquí las
-    // flechas y el Intro no llegan nunca.
-    Component.onCompleted: forceActiveFocus()
+    //  El foco se reparte según el modo, y hay que ser explícito porque las
+    //  dos mitades lo quieren para cosas distintas: en el menú lo necesita
+    //  esta raíz, que es quien lee las flechas y el Intro; en el ensayo lo
+    //  necesita el campo de la contraseña.
+    //
+    //  Reclamarlo aquí sin mirar el modo era peor que no reclamarlo: el panel
+    //  del ensayo se abría sin cursor y las teclas se quedaban en esta raíz,
+    //  que en ese modo no hace nada con ellas. Y no se ve venir, porque las
+    //  teclas no van a ninguna parte en vez de ir a otro sitio.
+    Component.onCompleted: view.repartirFoco()
+
+    Connections {
+        target: view.plugin
+        function onModoChanged() { view.repartirFoco() }
+    }
+
+    function repartirFoco() {
+        if (plugin.modo === "menu")
+            forceActiveFocus()
+        else
+            focoEnsayo.reclamar()
+    }
 
     Keys.onPressed: function (ev) {
         if (view.plugin.modo === "comprobar")
@@ -174,18 +193,34 @@ FadeIn {
 
     // ── el ensayo ─────────────────────────────────────────────────
     ColumnLayout {
+        id: ensayoCaja
+
         anchors.fill: parent
         anchors.margins: 16
         spacing: 10
         visible: view.plugin.modo === "comprobar"
 
-        // Se monta con el menú, así que el foco hay que pedirlo al cambiar de
-        // modo, no al crearse.
-        onVisibleChanged: if (visible) ensayo.forceActiveFocus()
+        //  El foco hace falta en dos momentos distintos: al cambiar de modo
+        //  desde el menú, y al crearse ya en modo ensayo —que es lo que pasa
+        //  llegando por IPC, y entonces `visible` nunca cambia porque nace
+        //  valiendo true—. Reclamar solo en uno de los dos deja el panel
+        //  abierto sin poder escribir.
+        FocoInicial { id: focoEnsayo; objetivo: ensayo }
+
+        // Al vaciar el campo desde aquí hay que avisar, porque el propio
+        // vaciado dispara onTextChanged y borraría el resultado que acabamos
+        // de dar: te quedarías sin saber si la contraseña valía.
+        property bool limpiando: false
 
         Autenticador {
             id: auth
-            onResuelto: function (correcto) { if (!correcto) ensayo.text = "" }
+            onResuelto: function (correcto) {
+                // Se borra acierte o falle: una contraseña no tiene por qué
+                // seguir ahí después de haber servido para lo que servía.
+                ensayoCaja.limpiando = true
+                ensayo.text = ""
+                ensayoCaja.limpiando = false
+            }
         }
 
         IslandLabel {
@@ -246,7 +281,10 @@ FadeIn {
                     clip: true
 
                     onAccepted: auth.comprobar(text)
-                    onTextChanged: if (auth.estado !== "verificando") auth.reiniciar()
+                    onTextChanged: {
+                        if (!ensayoCaja.limpiando && auth.estado !== "verificando")
+                            auth.reiniciar()
+                    }
 
                     Keys.onEscapePressed: function (ev) {
                         view.plugin.atras()
