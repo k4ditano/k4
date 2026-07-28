@@ -16,7 +16,47 @@ FadeIn {
 
     focus: true
 
+    // La raíz de la island también pide foco —es donde vive el ESC general—,
+    // así que hay que reclamarlo explícitamente o las teclas de aquí no
+    // llegan nunca. Era por lo que Intro no hacía nada.
+    Component.onCompleted: forceActiveFocus()
+
+    // ── cambio automático ─────────────────────────────────────────
+    //
+    //  Pasado un momento sobre la que has señalado, se va sola. Es como se
+    //  comporta un Alt+Tab de verdad: sueltas y ya estás allí. Cualquier
+    //  movimiento reinicia la cuenta, así que recorrer la lista no dispara
+    //  nada hasta que te paras.
+    property real cuenta: 0
+    readonly property int espera: 1600
+
+    Timer {
+        id: reloj
+        interval: 40
+        repeat: true
+        running: view.plugin.open && view.plugin.count > 0
+        onTriggered: {
+            view.cuenta += interval
+            if (view.cuenta >= view.espera) {
+                running = false
+                view.plugin.elegir()
+            }
+        }
+    }
+
+    function reiniciarCuenta() {
+        cuenta = 0
+        reloj.restart()
+    }
+
+    Connections {
+        target: view.plugin
+        function onIndexChanged() { view.reiniciarCuenta() }
+    }
+
     Keys.onPressed: function (ev) {
+        view.reiniciarCuenta()
+
         if (ev.key === Qt.Key_Tab || ev.key === Qt.Key_Right) {
             view.plugin.avanzar(); ev.accepted = true
         } else if (ev.key === Qt.Key_Backtab || ev.key === Qt.Key_Left) {
@@ -130,12 +170,39 @@ FadeIn {
                         }
                     }
 
+                    // Cuánto falta para que se vaya sola. Sin esto el salto
+                    // parece aleatorio; con ella, se ve venir y da tiempo a
+                    // seguir moviéndose.
+                    Rectangle {
+                        visible: tarjeta.elegida
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        anchors.margins: 4
+                        height: 3
+                        radius: 1.5
+                        color: Theme.track
+
+                        Rectangle {
+                            width: parent.width
+                                * Math.min(1, view.cuenta / view.espera)
+                            height: parent.height
+                            radius: parent.radius
+                            color: Theme.blue
+                        }
+                    }
+
                     MouseArea {
                         id: tarjetaRaton
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+
+                        onContainsMouseChanged: {
+                            if (containsMouse)
+                                view.plugin.index = tarjeta.index
+                        }
                         onClicked: function (raton) {
                             view.plugin.index = tarjeta.index
                             if (raton.button === Qt.MiddleButton)
@@ -174,7 +241,7 @@ FadeIn {
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
             visible: view.plugin.count > 0
-            text: Idioma.t("tab pasa · intro abre · supr cierra · esc cancela")
+            text: Idioma.t("tab pasa · se abre sola al parar · supr cierra · esc cancela")
             color: Theme.dim
             font.pixelSize: 9
         }
