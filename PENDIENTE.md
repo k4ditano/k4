@@ -8,7 +8,7 @@ no por lo que menos cuesta.
 
 ## Grande
 
-### Daño y defensa, físico y mágico
+### ~~Daño y defensa, físico y mágico~~ · HECHO
 
 Ahora mismo hay un solo `daño` y una sola `armadura`. Separarlos en físico y
 mágico da profundidad de verdad: el tanque aguanta espadas pero no hechizos, el
@@ -30,7 +30,7 @@ Los enemigos también deberían pegar de un tipo u otro, y ahí engancha con los
 rasgos: un espectro que pega mágico contra un grupo con toda la armadura física
 es una oleada que se juega distinto.
 
-### Megajefe al cambiar de bioma
+### ~~Megajefe al cambiar de bioma~~ · HECHO
 
 Cada 80 oleadas cambia el bioma y la temática de los sprites. Ese salto no está
 marcado con nada: es una oleada más. Debería ser un megajefe con mecánicas
@@ -48,21 +48,13 @@ haga falta, para no pagar dos veces el ir y venir.
 
 ## Módulos que faltan
 
-Quedan **14 atajos llamando a `noctalia`**, la barra anterior. Seis podrían
-apuntar a k4 hoy mismo, sin escribir código:
+Quedan **cinco atajos llamando a `noctalia`**, la barra anterior. Los ocho que
+podían migrarse ya lo hicieron, y el cambiador de ventanas tiene módulo propio.
 
-| Atajo | Ahora | Podría ser |
-|---|---|---|
-| `SUPER+X` | noctalia control-center | `k4 togglePanel` |
-| `SUPER+Z` | noctalia settings | `k4 settings` |
-| `SUPER+A` | noctalia notificaciones | `k4 toggleNotifications` |
-| `SUPER+SHIFT+W` | noctalia wallpaper | `k4 theme` |
-| Play/Next/Prev | noctalia media | `k4 togglePlay` |
+Los que quedan necesitan módulo nuevo o no aplican:
 
-Los otros ocho sí necesitan módulo nuevo:
 
-- **Cambiador de ventanas** (`SUPER+Tab`) — es lo más usado que aún posee
-  noctalia. Quickshell expone `ToplevelManagement`, así que sale nativo.
+
 - **Sesión y bloqueo** (`SUPER+L`, `SUPER+ALT+C`) — `WlSessionLock` permite una
   pantalla de bloqueo de verdad, no un apaño.
 - **Selector de emoji** (`SUPER+.`) — pequeño, y se lleva bien con el módulo de
@@ -80,9 +72,6 @@ Es trabajo de rellenar `traducciones/en.json`, sin tocar código.
 
 Dos huecos del sistema, aparte del contenido:
 
-- **`core/` no se traduce.** Dos cadenas, «Conectar» y «Desconectar». El
-  envoltorio automático les tocaba los imports y las rompió una vez, así que se
-  quedó fuera de su alcance; hay que hacerlo a mano.
 - **Los guiones de Python no pasan por el traductor.** Las etiquetas del
   portapapeles —«enlace», «color», «orden», «ruta», «código»— salen de
   `tools/portapapeles.py`, y encima se comparan como claves en el QML para
@@ -92,9 +81,6 @@ Dos huecos del sistema, aparte del contenido:
 
 ## Deudas pequeñas
 
-- **Aviso de QML al arrancar**: `widgets/JuegoPildora.qml:54` usa `anchors`
-  dentro de un layout. Funciona, pero Qt lo llama comportamiento indefinido y lo
-  avisa dos veces en cada arranque.
 - **Las doce clases nuevas están sin medir.** El banco (`tools/banco-balance.qml`)
   solo prueba la plantilla de salida —tanque, mago, clérigo—, así que de
   nigromante, licántropo o caballero negro no sabemos si están equilibrados.
@@ -114,7 +100,6 @@ Nada de esto está roto que se sepa; simplemente no se ha podido comprobar desde
 aquí, porque necesita ratón o teclado de verdad y el compositor no acepta
 pulsaciones sintéticas:
 
-- Arrastrar objetos en la rejilla del inventario para reordenarlos.
 - La ficha flotante al pasar el ratón por encima de un objeto.
 - Clic derecho sobre los iconos de la bandeja.
 - Que **ESC** cierre cada módulo, y que en los de foco bajo demanda llegue tras

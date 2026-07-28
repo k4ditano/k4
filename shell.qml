@@ -28,6 +28,7 @@ import "plugins/Clipboard"
 import "plugins/System"
 import "plugins/Files"
 import "plugins/Keys"
+import "plugins/Windows"
 
 Scope {
     id: root
@@ -52,6 +53,7 @@ Scope {
     SystemPlugin { id: systemPlugin; panel: panelPlugin }
     FilesPlugin { id: filesPlugin; panel: panelPlugin }
     KeysPlugin { id: keysPlugin; panel: panelPlugin }
+    WindowsPlugin { id: windowsPlugin; panel: panelPlugin }
 
     readonly property var plugins: [
         idlePlugin,
@@ -70,7 +72,8 @@ Scope {
         clipboardPlugin,
         systemPlugin,
         filesPlugin,
-        keysPlugin
+        keysPlugin,
+        windowsPlugin
     ]
 
     // ── quién se queda la island ──────────────────────────────────
@@ -123,6 +126,7 @@ Scope {
         void Settings.cargado
         void Tokens.cargado
         void Clipboard.cargado
+        void Ventanas.count
     }
 
     // ── IPC ───────────────────────────────────────────────────────
@@ -136,6 +140,7 @@ Scope {
         function system(): void { systemPlugin.toggle() }
         function files(): void { filesPlugin.toggle() }
         function keys(): void { keysPlugin.toggle() }
+        function windows(): void { windowsPlugin.toggle() }
         function install(query: string): void { launcherPlugin.openPackageSearch(query) }
         function search(query: string): void {
             if (!launcherPlugin.open)
