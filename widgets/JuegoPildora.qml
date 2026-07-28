@@ -51,9 +51,15 @@ RowLayout {
         }
     }
 
+    // Sin anchors: esta pieza vive dentro de un RowLayout y Qt avisa en cada
+    // arranque de que anclar algo gobernado por un layout es comportamiento
+    // indefinido. La zona pulsable sigue desbordando tres píxeles el dibujo,
+    // que era lo que se buscaba.
     MouseArea {
-        anchors.fill: parent
-        anchors.margins: -3
+        x: -3
+        y: -3
+        width: indicador.width + 6
+        height: indicador.height + 6
         enabled: indicador.interactive
         cursorShape: Qt.PointingHandCursor
         onClicked: indicador.abrir()

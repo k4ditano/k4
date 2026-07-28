@@ -109,6 +109,16 @@ Singleton {
         player.position = Math.max(0, Math.min(1, fraction)) * player.length
     }
 
+    function siguiente() {
+        if (activePlayer && activePlayer.canGoNext)
+            activePlayer.next()
+    }
+
+    function anterior() {
+        if (activePlayer && activePlayer.canGoPrevious)
+            activePlayer.previous()
+    }
+
     function togglePlaying() {
         if (hasPlayer)
             activePlayer.togglePlaying()

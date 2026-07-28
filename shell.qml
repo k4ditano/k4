@@ -167,6 +167,8 @@ Scope {
         function askScreen(): void { askPlugin.withScreenshot() }
         function askRegion(): void { askPlugin.withRegion() }
         function togglePlay(): void { Media.togglePlaying() }
+        function nextTrack(): void { Media.siguiente() }
+        function prevTrack(): void { Media.anterior() }
         function theme(): void { themePlugin.toggle() }
         function weather(): void { weatherPlugin.toggle() }
         function tray(): void { trayPlugin.toggle() }
