@@ -48,19 +48,38 @@ haga falta, para no pagar dos veces el ir y venir.
 
 ## Módulos que faltan
 
-Quedan **cinco atajos llamando a `noctalia`**, la barra anterior. Los ocho que
-podían migrarse ya lo hicieron, y el cambiador de ventanas tiene módulo propio.
+Quedan **tres atajos llamando a `noctalia`**, la barra anterior. Los diez que
+podían migrarse ya lo hicieron: el cambiador de ventanas y la sesión tienen
+módulo propio.
 
 Los que quedan necesitan módulo nuevo o no aplican:
 
-
-
-- **Sesión y bloqueo** (`SUPER+L`, `SUPER+ALT+C`) — `WlSessionLock` permite una
-  pantalla de bloqueo de verdad, no un apaño.
 - **Selector de emoji** (`SUPER+.`) — pequeño, y se lleva bien con el módulo de
   portapapeles que ya existe.
 - **Brillo** (teclas `XF86MonBrightness*`) — es un sobremesa sin
   retroiluminación, así que solo tendría sentido por DDC contra el monitor.
+
+### Cuidado con el bloqueo de sesión
+
+`ext-session-lock` no perdona. Si el cliente que tiene puesto el bloqueo muere
+sin soltarlo, el compositor se queda con un bloqueo huérfano y **toda petición
+de bloquear posterior es un error de protocolo que mata la conexión Wayland del
+cliente nuevo**, o sea la barra entera. No hay forma de arreglarlo sin cerrar
+sesión, y está comprobado en un Hyprland anidado: cliente que bloquea → se le
+mata → el siguiente muere al intentarlo.
+
+De ahí dos reglas que el código ya respeta y conviene no romper:
+
+- Al arrancar **nunca se escribe** en `locked`, solo se lee. Quien manda es el
+  compositor. Quickshell recarga solo en cuanto tocas un fichero, así que la
+  otra dirección —«el servicio dice que no estás bloqueado, suéltalo»— deja el
+  bloqueo a medias y rompe la sesión.
+- `unlock()` sale en la documentación pero **no está expuesto a QML**. Se abre
+  y se cierra escribiendo `locked`.
+
+Y por eso existe **«Probar contraseña»** en el menú: ensaya el mismo PAM que
+usa el bloqueo sin bloquear nada. Conviene pasar por ahí antes de fiarle la
+sesión a `SUPER+L`.
 
 ---
 
@@ -105,3 +124,10 @@ pulsaciones sintéticas:
 - Que **ESC** cierre cada módulo, y que en los de foco bajo demanda llegue tras
   interactuar con ellos.
 - Pulsar un héroe en el campo de batalla para ir a su ficha.
+- **Que PAM acepte la contraseña correcta.** Solo se ha probado con una
+  incorrecta —responde `Failed` limpio, o sea que la conversación funciona—,
+  porque probar con la buena exige escribirla. El montón de reglas es
+  `/etc/pam.d/login`, y `pam_shells` pasa porque `/bin/fish` está en
+  `/etc/shells`. Se comprueba desde «Probar contraseña».
+- Ojo con `pam_faillock`: **tres fallos seguidos bloquean la cuenta diez
+  minutos**, y el aviso de PAM se enseña tal cual en la pantalla de bloqueo.

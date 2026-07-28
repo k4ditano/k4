@@ -29,6 +29,7 @@ import "plugins/System"
 import "plugins/Files"
 import "plugins/Keys"
 import "plugins/Windows"
+import "plugins/Session"
 
 Scope {
     id: root
@@ -54,6 +55,7 @@ Scope {
     FilesPlugin { id: filesPlugin; panel: panelPlugin }
     KeysPlugin { id: keysPlugin; panel: panelPlugin }
     WindowsPlugin { id: windowsPlugin; panel: panelPlugin }
+    SessionPlugin { id: sessionPlugin; panel: panelPlugin }
 
     readonly property var plugins: [
         idlePlugin,
@@ -73,7 +75,8 @@ Scope {
         systemPlugin,
         filesPlugin,
         keysPlugin,
-        windowsPlugin
+        windowsPlugin,
+        sessionPlugin
     ]
 
     // ── quién se queda la island ──────────────────────────────────
@@ -179,6 +182,8 @@ Scope {
         function tray(): void { trayPlugin.toggle() }
         function game(): void { gamePlugin.toggle() }
         function settings(): void { settingsPlugin.toggle() }
+        function session(): void { sessionPlugin.toggle() }
+        function lock(): void { Sesion.bloquear() }
         function setMode(mode: string): void { Island.debugMode = mode }
     }
 
