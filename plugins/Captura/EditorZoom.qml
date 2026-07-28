@@ -1,17 +1,18 @@
-//  Los momentos de zoom que se han propuesto, para poder retocarlos.
+//  El editor del zoom: se ve el vídeo, con el zoom aplicado, mientras corre.
 //
-//  No es un editor de vídeo: es una lista de cuatro o cinco momentos con la
-//  posibilidad de quitar los que sobren, moverlos un poco y apretar o soltar el
-//  zoom. Eso cubre lo que falla en la práctica —«este de aquí no lo quiero» y
-//  «este entra un pelín tarde»— sin construir una línea de tiempo de verdad,
-//  que no cabe en una island de 520 px de alto ni haría falta.
+//  Lo que se reproduce es el fichero ORIGINAL, sin tocar. El zoom se aplica
+//  aquí, con una transformación sobre la imagen, siguiendo la trayectoria que
+//  ha calculado tools/zoom.py. Y son exactamente los mismos puntos que se
+//  convierten en la expresión de ffmpeg —entre ellos se interpola en recta,
+//  igual que hace el filtro—, así que lo que ves aquí es lo que va a salir en
+//  el fichero. Sin renderizar nada y sin dos implementaciones que se separen.
 //
-//  La previa es un fotograma renderizado con el mismo filtro que el vídeo
-//  final. Dentro de la island no hay forma de reproducir vídeo, así que enseñar
-//  el fotograma exacto del instante elegido es lo más cerca que se puede estar.
+//  De ahí que se pueda mover un momento y ver el efecto al instante: solo hay
+//  que rehacer la trayectoria, que es aritmética.
 
 import QtQuick
 import QtQuick.Layouts
+import QtMultimedia
 import Quickshell
 import Quickshell.Io
 import "../../core"
@@ -25,77 +26,81 @@ FadeIn {
     focus: true
 
     property int elegido: 0
-    property string previa: ""
-    property int serie: 0
 
     readonly property var momento: Captura.momentos.length > 0
         ? Captura.momentos[Math.min(elegido, Captura.momentos.length - 1)] : null
 
-    Component.onCompleted: {
-        forceActiveFocus()
-        pedirPrevia()
-    }
+    readonly property real segundos: reproductor.position / 1000
+    readonly property real total: Math.max(0.001, Captura.duracionVideo)
 
-    onMomentoChanged: pedirPrevia()
+    Component.onCompleted: forceActiveFocus()
 
-    //  El fotograma del centro del momento: es donde el zoom ya ha llegado y se
-    //  ve de verdad a qué está apuntando.
+    // ── dónde está la cámara ahora ────────────────────────────────
     //
-    //  Solo una a la vez. Al abrirse el editor se pide dos veces casi seguidas
-    //  —al crearse y al resolverse el binding del momento—, y la segunda
-    //  pisaba el destino de la primera: al terminar, la vista acababa
-    //  apuntando a un fichero que todavía no existía, y el Image se quedaba en
-    //  blanco para siempre porque no reintenta.
-    property bool repetir: false
-
-    function pedirPrevia() {
-        if (!momento || Captura.rutaPlan.length === 0)
-            return
-        if (previador.running) {
-            repetir = true
-            return
+    //  Búsqueda binaria sobre los puntos y recta entre los dos vecinos. Con
+    //  ciento y pico puntos daría igual recorrerlos, pero esto se evalúa en
+    //  cada fotograma y no cuesta nada hacerlo bien.
+    function camaraEn(t) {
+        const c = Captura.camara
+        if (!c || c.length === 0)
+            return [1, 0, 0]
+        if (t <= c[0][0])
+            return [c[0][1], c[0][2], c[0][3]]
+        if (t >= c[c.length - 1][0]) {
+            const u = c[c.length - 1]
+            return [u[1], u[2], u[3]]
         }
-        serie += 1
-        const destino = "/tmp/k4-captura/previa-" + serie + ".png"
-        previador.command = ["python3", Quickshell.shellPath("tools/zoom.py"),
-                             "previa", Captura.rutaVideo, Captura.rutaPlan,
-                             String((momento.t0 + momento.t1) / 2), destino]
-        previador.pedida = destino
-        previador.running = true
+        let lo = 0, hi = c.length - 1
+        while (hi - lo > 1) {
+            const m = (lo + hi) >> 1
+            if (c[m][0] <= t) lo = m; else hi = m
+        }
+        const a = c[lo], b = c[hi]
+        const d = b[0] - a[0]
+        const f = d > 0 ? (t - a[0]) / d : 0
+        return [a[1] + (b[1] - a[1]) * f,
+                a[2] + (b[2] - a[2]) * f,
+                a[3] + (b[3] - a[3]) * f]
     }
 
-    Process {
-        id: previador
-        property string pedida: ""
-        onExited: function (codigo) {
-            if (codigo === 0)
-                view.previa = pedida
-            if (view.repetir) {
-                view.repetir = false
-                view.pedirPrevia()
-            }
-        }
+    readonly property var estadoCamara: camaraEn(segundos)
+    readonly property bool conZoom: estadoCamara[0] > 1.001
+
+    function irA(t) {
+        reproductor.position = Math.max(0, Math.min(total, t)) * 1000
     }
 
     Keys.onPressed: function (ev) {
-        if (Captura.momentos.length === 0)
-            return
-
-        if (ev.key === Qt.Key_Down || ev.key === Qt.Key_Tab) {
-            view.elegido = (view.elegido + 1) % Captura.momentos.length
-        } else if (ev.key === Qt.Key_Up || ev.key === Qt.Key_Backtab) {
-            view.elegido = (view.elegido - 1 + Captura.momentos.length)
-                % Captura.momentos.length
+        if (ev.key === Qt.Key_Space) {
+            reproductor.playbackState === MediaPlayer.PlayingState
+                ? reproductor.pause() : reproductor.play()
         } else if (ev.key === Qt.Key_Left) {
-            Captura.moverMomento(view.momento.id, -0.2)
+            if ((ev.modifiers & Qt.ShiftModifier) && view.momento)
+                Captura.moverMomento(view.momento.id, -0.2)
+            else
+                view.irA(view.segundos - 1)
         } else if (ev.key === Qt.Key_Right) {
-            Captura.moverMomento(view.momento.id, 0.2)
+            if ((ev.modifiers & Qt.ShiftModifier) && view.momento)
+                Captura.moverMomento(view.momento.id, 0.2)
+            else
+                view.irA(view.segundos + 1)
+        } else if (ev.key === Qt.Key_Down || ev.key === Qt.Key_Tab) {
+            if (Captura.momentos.length > 0) {
+                view.elegido = (view.elegido + 1) % Captura.momentos.length
+                view.irA(view.momento.t0)
+            }
+        } else if (ev.key === Qt.Key_Up || ev.key === Qt.Key_Backtab) {
+            if (Captura.momentos.length > 0) {
+                view.elegido = (view.elegido - 1 + Captura.momentos.length)
+                    % Captura.momentos.length
+                view.irA(view.momento.t0)
+            }
         } else if (ev.key === Qt.Key_Plus || ev.key === Qt.Key_Equal) {
-            Captura.ajustarNivel(view.momento.id, 0.2)
+            if (view.momento) Captura.ajustarNivel(view.momento.id, 0.2)
         } else if (ev.key === Qt.Key_Minus) {
-            Captura.ajustarNivel(view.momento.id, -0.2)
+            if (view.momento) Captura.ajustarNivel(view.momento.id, -0.2)
         } else if (ev.key === Qt.Key_Delete || ev.key === Qt.Key_Backspace) {
-            Captura.quitarMomento(view.momento.id)
+            if (view.momento) Captura.quitarMomento(view.momento.id)
         } else if (ev.key === Qt.Key_Return || ev.key === Qt.Key_Enter) {
             Captura.renderizar()
         } else {
@@ -104,10 +109,26 @@ FadeIn {
         ev.accepted = true
     }
 
+    MediaPlayer {
+        id: reproductor
+        source: Captura.rutaVideo.length > 0 ? "file://" + Captura.rutaVideo : ""
+        videoOutput: salida
+        // Sin sonido: aquí se viene a mirar el encuadre, y que empiece a sonar
+        // solo, nada más terminar de grabar, asusta.
+        audioOutput: null
+        Component.onCompleted: play()
+        onMediaStatusChanged: {
+            if (mediaStatus === MediaPlayer.EndOfMedia) {
+                position = 0
+                play()
+            }
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 14
-        spacing: 10
+        spacing: 8
 
         // ── cabecera ──────────────────────────────────────────────
         RowLayout {
@@ -144,46 +165,77 @@ FadeIn {
             }
         }
 
-        // ── previa y ficha ────────────────────────────────────────
+        // ── el vídeo, con el zoom puesto ──────────────────────────
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 200
+            Layout.fillHeight: true
             spacing: 12
 
             Rectangle {
-                Layout.preferredWidth: 356
+                id: marco
+                Layout.preferredWidth: 640
                 Layout.fillHeight: true
                 radius: 8
-                color: Theme.surface
+                color: "black"
                 clip: true
 
-                Image {
+                //  La imagen llena el marco, y encima va la transformación que
+                //  hace el zoom. Escalar y desplazar sobre lo ya pintado es
+                //  justo lo que hace `zoompan` con su recorte, solo que aquí
+                //  sale gratis.
+                Item {
+                    id: lente
                     anchors.fill: parent
-                    anchors.margins: 1
-                    source: view.previa.length > 0 ? "file://" + view.previa : ""
-                    fillMode: Image.PreserveAspectFit
-                    asynchronous: true
-                    cache: false
+
+                    readonly property real escala: view.estadoCamara[0]
+                    // de píxeles del vídeo a píxeles de este marco
+                    readonly property real factor: marco.width / Math.max(1, Captura.anchoVideo)
+
+                    transformOrigin: Item.TopLeft
+                    scale: escala
+                    x: -view.estadoCamara[1] * factor * escala
+                    y: -view.estadoCamara[2] * factor * escala
+
+                    VideoOutput {
+                        id: salida
+                        anchors.fill: parent
+                        fillMode: VideoOutput.Stretch
+                    }
                 }
 
-                IslandLabel {
-                    anchors.centerIn: parent
-                    visible: view.previa.length === 0
-                    text: Idioma.t("preparando la previa…")
-                    color: Theme.dim
-                    font.pixelSize: 11
+                // Que lo que ves lleva zoom, para no confundirlo con el vídeo
+                // tal cual.
+                Rectangle {
+                    visible: view.conZoom
+                    anchors.top: parent.top
+                    anchors.right: parent.right
+                    anchors.margins: 6
+                    width: marcaZoom.implicitWidth + 12
+                    height: 18
+                    radius: 9
+                    color: "#cc0a84ff"
+
+                    IslandLabel {
+                        id: marcaZoom
+                        anchors.centerIn: parent
+                        text: "×" + view.estadoCamara[0].toFixed(2)
+                        color: Theme.ink
+                        font.pixelSize: 9
+                        font.weight: Font.DemiBold
+                    }
                 }
             }
 
+            // ── la ficha del momento ──────────────────────────────
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 spacing: 6
 
                 IslandLabel {
-                    visible: view.momento !== null
                     text: view.momento
-                        ? Idioma.t("Momento ") + view.momento.id : ""
+                        ? Idioma.t("Momento ") + view.momento.id
+                        : Idioma.t("Sin momentos")
                     color: Theme.ink
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
@@ -201,7 +253,6 @@ FadeIn {
 
                 Item { Layout.fillHeight: true }
 
-                // ── retoques ──────────────────────────────────────
                 GridLayout {
                     columns: 2
                     columnSpacing: 6
@@ -210,10 +261,10 @@ FadeIn {
 
                     Repeater {
                         model: [
-                            { texto: Idioma.t("Antes"),  icono: 0xF0141, accion: "antes" },
+                            { texto: Idioma.t("Antes"),   icono: 0xF0141, accion: "antes" },
                             { texto: Idioma.t("Después"), icono: 0xF0142, accion: "despues" },
-                            { texto: Idioma.t("Menos"),  icono: 0xF034A, accion: "menos" },
-                            { texto: Idioma.t("Más"),    icono: 0xF034B, accion: "mas" }
+                            { texto: Idioma.t("Menos"),   icono: 0xF034A, accion: "menos" },
+                            { texto: Idioma.t("Más"),     icono: 0xF034B, accion: "mas" }
                         ]
 
                         delegate: Rectangle {
@@ -224,6 +275,7 @@ FadeIn {
                             Layout.preferredHeight: 26
                             radius: 13
                             color: botonRaton.containsMouse ? Theme.surfaceHi : Theme.surface
+                            opacity: view.momento ? 1 : 0.4
 
                             RowLayout {
                                 anchors.centerIn: parent
@@ -253,7 +305,6 @@ FadeIn {
                                     else if (a === "despues") Captura.moverMomento(view.momento.id, 0.2)
                                     else if (a === "menos")   Captura.ajustarNivel(view.momento.id, -0.2)
                                     else if (a === "mas")     Captura.ajustarNivel(view.momento.id, 0.2)
-                                    view.pedirPrevia()
                                 }
                             }
                         }
@@ -267,19 +318,20 @@ FadeIn {
                     color: quitarRaton.containsMouse ? "#3a1416" : Theme.surface
                     border.width: 1
                     border.color: Qt.rgba(1, 0.27, 0.23, 0.3)
+                    opacity: view.momento ? 1 : 0.4
 
                     RowLayout {
                         anchors.centerIn: parent
                         spacing: 5
 
                         IconGlyph {
-                            text: String.fromCodePoint(0xF01B4)    // md-delete
+                            text: String.fromCodePoint(0xF01B4)     // md-delete
                             color: Theme.red
                             font.pixelSize: 12
                         }
 
                         IslandLabel {
-                            text: Idioma.t("Quitar este momento")
+                            text: Idioma.t("Quitar")
                             font.pixelSize: 10
                         }
                     }
@@ -297,13 +349,10 @@ FadeIn {
         }
 
         // ── la línea de tiempo ────────────────────────────────────
-        //
-        //  Toda la grabación en una barra, con los momentos encima. No se puede
-        //  arrastrar —para eso están los botones—, pero de un vistazo se ve si
-        //  el zoom está repartido o amontonado.
         Rectangle {
+            id: linea
             Layout.fillWidth: true
-            Layout.preferredHeight: 30
+            Layout.preferredHeight: 36
             radius: 6
             color: Theme.surface
 
@@ -314,24 +363,47 @@ FadeIn {
                     required property var modelData
                     required property int index
 
-                    readonly property bool esta: index === view.elegido
-                    readonly property real total: Math.max(0.001, Captura.duracionVideo)
-
-                    x: parent.width * (modelData.t0 / total)
-                    width: Math.max(3, parent.width * ((modelData.t1 - modelData.t0) / total))
-                    y: 4
-                    height: parent.height - 8
+                    x: linea.width * (modelData.t0 / view.total)
+                    width: Math.max(3, linea.width * ((modelData.t1 - modelData.t0) / view.total))
+                    y: 5
+                    height: linea.height - 10
                     radius: 4
-                    color: esta ? Theme.blue : Qt.rgba(10 / 255, 132 / 255, 1, 0.35)
+                    color: index === view.elegido
+                        ? Theme.blue : Qt.rgba(10 / 255, 132 / 255, 1, 0.35)
 
                     Behavior on color { ColorAnimation { duration: 140 } }
+                }
+            }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: view.elegido = parent.index
+            // dónde va la reproducción
+            Rectangle {
+                x: linea.width * (view.segundos / view.total) - 1
+                width: 2
+                height: linea.height
+                color: Theme.ink
+            }
+
+            //  Toda la barra salta al pulsarla: es lo que uno intenta sin
+            //  pensarlo en cuanto ve una línea de tiempo.
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+
+                function saltar(x) {
+                    view.irA(x / linea.width * view.total)
+                    // Si has pinchado dentro de un momento, además lo eliges.
+                    const t = x / linea.width * view.total
+                    for (let i = 0; i < Captura.momentos.length; ++i) {
+                        const m = Captura.momentos[i]
+                        if (t >= m.t0 && t <= m.t1) {
+                            view.elegido = i
+                            return
+                        }
                     }
                 }
+
+                onPressed: function (ev) { saltar(ev.x) }
+                onPositionChanged: function (ev) { if (pressed) view.irA(ev.x / linea.width * view.total) }
             }
         }
 
@@ -340,15 +412,29 @@ FadeIn {
             Layout.fillWidth: true
             spacing: 8
 
-            IslandLabel {
-                visible: Captura.estado !== "renderizando"
-                text: Idioma.t("↑↓ elige · ←→ mueve · +− nivel · supr quita · intro renderiza")
-                color: Theme.dim
-                font.pixelSize: 9
+            MediaButton {
+                glyph: reproductor.playbackState === MediaPlayer.PlayingState
+                    ? Theme.ico.pause : Theme.ico.play
+                glyphSize: 16
+                glyphColor: Theme.ink
+                onActivated: reproductor.playbackState === MediaPlayer.PlayingState
+                    ? reproductor.pause() : reproductor.play()
             }
 
-            // Mientras renderiza, la barra sustituye a la chuleta: es lo único
-            // que importa en ese momento.
+            IslandLabel {
+                text: view.segundos.toFixed(1) + " / " + view.total.toFixed(1) + " s"
+                color: Theme.muted
+                font.pixelSize: 10
+            }
+
+            IslandLabel {
+                visible: Captura.estado !== "renderizando"
+                text: Idioma.t("espacio reproduce · ←→ salta · ↑↓ momento · mayús+←→ lo mueve · +− nivel")
+                color: Theme.dim
+                font.pixelSize: 9
+                Layout.leftMargin: 6
+            }
+
             Rectangle {
                 visible: Captura.estado === "renderizando"
                 Layout.fillWidth: true

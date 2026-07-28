@@ -41,7 +41,12 @@ K4Plugin {
     // La carátula y las barras van juntas a la izquierda, así que el hueco de
     // las barras se reserva ahí y no enfrente.
     readonly property int ladoIzq: Media.isPlaying ? 53 : 0
+    // Lo mismo para las cápsulas de lo que has dejado a medias: cada una puede
+    // llegar a 116 px con su icono y su detalle recortado.
+    readonly property int minimizadosWidth: Modulos.count * 116
+
     readonly property int ladoDer: trayWidth + juegoWidth + grabacionWidth
+        + minimizadosWidth
     readonly property int ladoAncho: Math.max(ladoIzq, ladoDer)
 
     // El centro ya no es solo la hora: al cambiar de escritorio enseña los

@@ -433,6 +433,12 @@ Singleton {
 
     property var momentos: []
     property string rutaPlan: ""
+
+    //  La trayectoria de la cámara, para poder enseñar el zoom en vivo sin
+    //  renderizar. Son los MISMOS puntos que se convierten en la expresión de
+    //  ffmpeg, así que lo que se ve en el editor y lo que sale al fichero
+    //  coinciden por construcción.
+    property var camara: []
     property string rutaRenderizada: ""
     property real progreso: 0
 
@@ -482,6 +488,10 @@ Singleton {
     }
 
     property real duracionVideo: 0
+    // Tamaño del vídeo: hace falta para pasar de píxeles del fichero a píxeles
+    // del marco donde se previsualiza.
+    property int anchoVideo: 1920
+    property int altoVideo: 1080
 
     function guardarPlan() {
         escritorPlan.command = ["python3", "-c",
@@ -509,7 +519,44 @@ Singleton {
         estado = ""
     }
 
-    Process { id: escritorPlan }
+    //  Al editar hay que rehacer la trayectoria, pero no a cada tecla: si
+    //  mantienes pulsada una flecha se lanzarían veinte procesos. Un respiro
+    //  corto y solo se calcula la última.
+    Timer {
+        id: recalcular
+        interval: 180
+        onTriggered: {
+            if (captura.rutaPlan.length === 0)
+                return
+            camarero.command = ["python3", Quickshell.shellPath("tools/zoom.py"),
+                                "camara", captura.rutaPlan]
+            camarero.running = true
+        }
+    }
+
+    Process {
+        id: camarero
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const d = JSON.parse(this.text)
+                    if (d.ok) {
+                        captura.camara = d.camara || []
+                        captura.duracionVideo = d.duracion || captura.duracionVideo
+                        captura.anchoVideo = d.w || captura.anchoVideo
+                        captura.altoVideo = d.h || captura.altoVideo
+                    }
+                } catch (e) { }
+            }
+        }
+    }
+
+    Process {
+        id: escritorPlan
+        // La trayectoria depende del plan, así que se rehace cuando el plan ya
+        // está escrito en disco y no antes.
+        onExited: recalcular.restart()
+    }
 
     Process {
         id: proponedor
@@ -520,9 +567,12 @@ Singleton {
                 if (!d.ok)
                     return
                 captura.duracionVideo = d.duracion || 0
+                captura.anchoVideo = d.w || 1920
+                captura.altoVideo = d.h || 1080
                 captura.momentos = d.momentos || []
                 if (captura.momentos.length > 0) {
                     captura.estado = "editando"
+                    recalcular.restart()
                     captura.planListo()
                 }
             }

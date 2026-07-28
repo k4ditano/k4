@@ -104,11 +104,18 @@ class Raton:
 
     def ir_a(self, x, y):
         """A una posición de pantalla, corrigiendo con lo que diga Hyprland."""
-        # Primero a la esquina: el cursor se queda pegado al borde, así que da
-        # igual dónde estuviera.
-        self.paso(-6000, -6000)
-        time.sleep(0.08)
-        self.paso(x, y)
+        #  Si se sabe dónde está, se va en relativo desde ahí. Irse antes a la
+        #  esquina parece más seguro y es peor: saca el puntero de lo que
+        #  estuviera señalando, y cualquier cosa que reaccione al ratón —la
+        #  island se despliega al pasar por encima— se cierra por el camino.
+        #  Entonces no se puede pulsar nada que solo exista mientras señalas.
+        p = donde()
+        if p is not None:
+            self.paso(x - p[0], y - p[1])
+        else:
+            self.paso(-6000, -6000)
+            time.sleep(0.08)
+            self.paso(x, y)
         time.sleep(0.08)
 
         # Y se afina, porque la aceleración puede haber desviado la cuenta.
@@ -148,7 +155,25 @@ def main():
 
     r = Raton()
     try:
-        if orden == "mueve":
+        if orden == "guion":
+            #  Una secuencia con UN solo dispositivo. Hace falta porque crear
+            #  un ratón nuevo por cada paso pierde lo que estuvieras señalando,
+            #  y hay cosas —las cápsulas de la island, los menús— que solo
+            #  existen mientras señalas.
+            #
+            #      raton.py guion "mueve 900 17" "espera 1.5" "clic 1217 31"
+            for paso in sys.argv[2:]:
+                trozos = paso.split()
+                if trozos[0] == "mueve":
+                    r.ir_a(int(trozos[1]), int(trozos[2]))
+                elif trozos[0] == "espera":
+                    time.sleep(float(trozos[1]))
+                elif trozos[0] in BOTONES:
+                    if len(trozos) >= 3:
+                        r.ir_a(int(trozos[1]), int(trozos[2]))
+                    r.pulsar(BOTONES[trozos[0]])
+                print(trozos[0], donde(), flush=True)
+        elif orden == "mueve":
             r.ir_a(int(sys.argv[2]), int(sys.argv[3]))
         elif orden in BOTONES:
             if len(sys.argv) >= 4:

@@ -134,6 +134,7 @@ Scope {
         void Clipboard.cargado
         void Ventanas.count
         void Captura.carpetaFotos
+        void Modulos.count
     }
 
     // ── IPC ───────────────────────────────────────────────────────

@@ -146,6 +146,8 @@ FadeIn {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
 
+            Minimizados { Layout.alignment: Qt.AlignVCenter }
+
             GrabacionPildora { Layout.alignment: Qt.AlignVCenter }
 
             JuegoPildora { Layout.alignment: Qt.AlignVCenter }

@@ -54,9 +54,9 @@ K4Plugin {
     // La cuenta atrás se queda la island entera y sin nada más: es un número
     // gigante, y para eso no hace falta anchura.
     islandWidth: modo === "cuenta" ? 200
-        : (modo === "zoom" ? 760 : (modo === "hecha" ? 500 : 520))
+        : (modo === "zoom" ? 940 : (modo === "hecha" ? 500 : 520))
     islandHeight: modo === "cuenta" ? 150
-        : (modo === "zoom" ? 400 : (modo === "hecha" ? 132 : 208))
+        : (modo === "zoom" ? 610 : (modo === "hecha" ? 132 : 208))
 
     view: Component {
         Loader {
@@ -86,9 +86,13 @@ K4Plugin {
             return
         }
         if (modo === "zoom") {
-            // Cerrar el editor es descartar el zoom: el vídeo sin tocar ya está
-            // guardado, así que no se pierde nada.
-            Captura.descartarZoom()
+            //  Cerrar el editor lo aparta, no lo tira. Editar un vídeo lleva su
+            //  rato y no tiene sentido obligar a tenerlo delante hasta acabar:
+            //  se cierra, se sigue con lo que sea, y se retoma desde la
+            //  píldora por donde ibas.
+            Modulos.minimizar("captura-zoom", Idioma.t("Editor de zoom"),
+                              Captura.momentos.length + Idioma.t(" momentos"),
+                              0xF1276)
             modo = "menu"
         }
         open = false
@@ -147,7 +151,15 @@ K4Plugin {
             self.open = true
         }
 
+        function onMomentosChanged() {
+            // Si está apartado, que la cápsula diga la verdad.
+            if (Modulos.tiene("captura-zoom"))
+                Modulos.actualizar("captura-zoom",
+                    Captura.momentos.length + Idioma.t(" momentos"))
+        }
+
         function onRenderListo(ruta) {
+            Modulos.quitar("captura-zoom")
             self.modo = "menu"
             self.open = false
             Quickshell.execDetached(["notify-send", "-a", "k4",
@@ -221,6 +233,17 @@ K4Plugin {
         name: "clicDerecho"
         description: "Marca un clic derecho en el rastro de la grabación"
         onPressed: Captura.marcarClic(3)
+    }
+
+    Connections {
+        target: Modulos
+
+        function onRestaurado(id) {
+            if (id !== "captura-zoom")
+                return
+            self.modo = "zoom"
+            self.open = true
+        }
     }
 
     IpcHandler {

@@ -44,6 +44,9 @@ K4Plugin {
     islandHeight: messages.length > 0 ? 430 : 128
 
     function openAsk(attach) {
+        // Pedir una pregunta nueva empieza de cero, y por tanto ya no hay nada
+        // apartado que retomar.
+        Modulos.quitar("ask")
         newConversation()
         if (panel) panel.close()
         if (launcher) launcher.close()
@@ -113,10 +116,38 @@ K4Plugin {
         shotProcess.running = true
     }
 
+    //  Cerrar aparta la conversación, no la tira.
+    //
+    //  Antes `close()` llamaba a newConversation() y con eso se perdía todo: la
+    //  pregunta, la respuesta y el hilo de Codex. Eso obligaba a dejar la
+    //  island ocupada hasta terminar de leer, porque cerrarla costaba la
+    //  conversación entera.
     function close() {
+        if (messages.length > 0) {
+            Modulos.minimizar("ask", Idioma.t("Pregunta"),
+                              resumenConversacion(), Theme.ico.ask.codePointAt(0))
+        }
+        open = false
+    }
+
+    // Descartar de verdad: esto sí olvida.
+    function cerrarYOlvidar() {
+        Modulos.quitar("ask")
         newConversation()
         open = false
         image = ""
+    }
+
+    // Las primeras palabras de lo que preguntaste, para reconocerla en la
+    // píldora sin tener que abrirla.
+    function resumenConversacion() {
+        for (let i = 0; i < messages.length; ++i) {
+            if (messages[i].role === "user") {
+                const t = String(messages[i].text || "").trim()
+                return t.length > 26 ? t.substring(0, 26) + "…" : t
+            }
+        }
+        return ""
     }
 
     function send() {
@@ -282,6 +313,14 @@ K4Plugin {
                 self.status = "error"
                 self.updateLastMessage("error", "Codex no respondió en 2 minutos.")
             }
+        }
+    }
+
+    Connections {
+        target: Modulos
+        function onRestaurado(id) {
+            if (id === "ask")
+                self.open = true
         }
     }
 

@@ -25,7 +25,10 @@ Singleton {
     // Geometría de la island
     readonly property int wing: 16              // radio de la esquina invertida que funde con el borde
     readonly property int baseHeight: 34        // alto plegado, y franja reservada a las ventanas
-    readonly property int maxIslandHeight: 520  // techo de la superficie, ver PanelWindow
+    // Techo de la superficie, ver PanelWindow. Sube a 640 por el editor de
+    // zoom, que lleva vídeo dentro y con 520 se quedaba en una tira. Nada más
+    // se acerca: el segundo más alto es el juego, con 470.
+    readonly property int maxIslandHeight: 640
 
     // Iconos Material Design de la Nerd Font (plano suplementario → fromCodePoint)
     readonly property var ico: ({

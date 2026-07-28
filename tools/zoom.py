@@ -403,6 +403,23 @@ def orden_proponer(args):
     salir(ok=True, **plan)
 
 
+def orden_camara(args):
+    """La trayectoria de la cámara, para previsualizarla sin renderizar.
+
+    Sale la MISMA lista de puntos que se convierte en la expresión de ffmpeg, y
+    entre ellos se interpola en línea recta igual que hace el filtro. Por eso lo
+    que se ve en el editor y lo que acaba en el fichero coinciden por
+    construcción, sin dos implementaciones que se puedan ir separando.
+    """
+    plan = json.load(open(args.plan))
+    ancho, alto, fps, duracion, _ = sondear(plan["video"])
+    puntos = adelgazar(trayectoria(plan["momentos"], plan["rastro"],
+                                   ancho, alto, duracion, fps))
+    salir(ok=True, w=ancho, h=alto, duracion=round(duracion, 3),
+          camara=[[round(t, 3), round(z, 4), round(x, 1), round(y, 1)]
+                  for t, z, x, y in puntos])
+
+
 def orden_render(args):
     plan = json.load(open(args.plan))
     ancho, alto, fps, duracion, hay_audio = sondear(args.video)
@@ -469,6 +486,9 @@ def main():
     b.add_argument("salida")
     b.add_argument("--codec", default="h264")
 
+    d = sub.add_parser("camara")
+    d.add_argument("plan")
+
     c = sub.add_parser("previa")
     c.add_argument("video")
     c.add_argument("plan")
@@ -477,7 +497,7 @@ def main():
 
     args = ap.parse_args()
     {"proponer": orden_proponer, "render": orden_render,
-     "previa": orden_previa}[args.orden](args)
+     "previa": orden_previa, "camara": orden_camara}[args.orden](args)
 
 
 if __name__ == "__main__":
