@@ -267,9 +267,9 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         panel.fundiendo = !panel.fundiendo
-                        if (panel.fundiendo)
-                            panel.agrupado = false      // hay que arrastrar
-                        else
+                        // el agrupado se queda: es donde se ven los ×N y de
+                        // donde salen las piezas repetidas que vas a fundir
+                        if (!panel.fundiendo)
                             crisolPieza.vaciar()
                     }
                 }
@@ -366,7 +366,17 @@ Item {
                     objeto: hueco.grupo ? hueco.grupo.mejor : Game.bolsa[hueco.index]
                     posicion: hueco.index
                     cuantos: hueco.grupo ? hueco.grupo.piezas.length : 0
-                    arrastrable: !panel.agrupado
+                    grupoClave: hueco.grupo ? hueco.grupo.clave : ""
+                    modoFusion: panel.fundiendo
+                    // arrastrar vale siempre que no estemos reordenando
+                    arrastrable: !panel.agrupado || panel.fundiendo
+
+                    onAlCrisol: {
+                        if (hueco.grupo)
+                            crisolPieza.meterDelGrupo(hueco.grupo.clave)
+                        else
+                            crisolPieza.meter(Game.bolsa[hueco.index])
+                    }
 
 
                     onPulsado: {

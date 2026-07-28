@@ -41,14 +41,39 @@ Item {
 
     signal devuelto()
 
+    function yaPuesta(o) {
+        for (let i = 0; i < puestas.length; ++i) {
+            if (puestas[i].id === o.id)
+                return true
+        }
+        return false
+    }
+
     function meter(objeto) {
         if (!objeto || resultado !== null || puestas.length >= huecos)
             return
-        for (let i = 0; i < puestas.length; ++i) {
-            if (puestas[i].id === objeto.id)
-                return                      // ya está puesta
-        }
+        if (yaPuesta(objeto))
+            return
         puestas = puestas.concat([objeto])
+    }
+
+    // De un grupo entra la PEOR que quede libre: así al fundir te quedas con
+    // el mejor ejemplar y gastas los repetidos, que es lo que uno quiere.
+    function meterDelGrupo(clave) {
+        if (resultado !== null || puestas.length >= huecos)
+            return
+        const grupo = Game.grupos.filter(function (g) { return g.clave === clave })[0]
+        if (!grupo)
+            return
+
+        const libres = grupo.piezas.filter(function (o) { return !yaPuesta(o) })
+        if (libres.length === 0)
+            return
+
+        libres.sort(function (a, b) {
+            return Items.puntuacion(a) - Items.puntuacion(b)
+        })
+        meter(libres[0])
     }
 
     function sacar(i) {
@@ -81,6 +106,21 @@ Item {
         cambio = r.cambio
         puestas = []
         estallido.restart()
+    }
+
+    // Soltar vale en cualquier parte del crisol. Acertar en un hueco de 30
+    // píxeles arrastrando es pedir puntería que nadie tiene por qué tener.
+    DropArea {
+        anchors.fill: parent
+        z: -1
+        onDropped: function (caida) {
+            if (!caida.source)
+                return
+            if (caida.source.grupoClave)
+                crisol.meterDelGrupo(caida.source.grupoClave)
+            else if (caida.source.objetoRef)
+                crisol.meter(caida.source.objetoRef)
+        }
     }
 
     // ── el aparato ────────────────────────────────────────────────

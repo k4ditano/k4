@@ -14,6 +14,9 @@ Item {
     property int posicion: -1
     property int cuantos: 0             // 0 = no está agrupada
     property bool arrastrable: true
+    property string grupoClave: ""
+    property bool modoFusion: false
+    signal alCrisol()
     property bool arrastrando: caja.Drag.active
 
     signal pulsado()
@@ -48,6 +51,7 @@ Item {
         property int origen: celda.posicion
         // el crisol necesita la pieza en sí, no su posición
         property var objetoRef: celda.objeto
+        property string grupoClave: celda.grupoClave
 
         Behavior on color { ColorAnimation { duration: 110 } }
         Behavior on scale { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
@@ -179,6 +183,13 @@ Item {
             drag.axis: Drag.XAndYAxis
 
             onClicked: function (raton) {
+                // Con el crisol abierto, pulsar mete la pieza. Arrastrar
+                // también vale, pero obligar a arrastrar sesenta veces es
+                // castigar al que solo quiere fundir repetidos.
+                if (celda.modoFusion && raton.button !== Qt.RightButton) {
+                    celda.alCrisol()
+                    return
+                }
                 if (raton.button === Qt.RightButton)
                     celda.secundario()
                 else
