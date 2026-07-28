@@ -120,9 +120,12 @@ K4Plugin {
     //  Nada de atar `running` a una condición: `restart()` rompería el binding
     //  en cuanto llegara la segunda foto. Se rearma a mano, y si al vencer
     //  sigues con el ratón encima se da otra vuelta.
+    //  5 s, no 1,8: con menos no da tiempo a llevar el ratón hasta «Anotar»
+    //  desde donde estuvieras. Es lo que dura la miniatura de macOS, y por
+    //  algo será.
     Timer {
         id: marcharse
-        interval: 1800
+        interval: 5000
         onTriggered: {
             if (Island.hovered)
                 restart()
