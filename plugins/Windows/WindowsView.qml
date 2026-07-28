@@ -28,7 +28,10 @@ FadeIn {
     //  movimiento reinicia la cuenta, así que recorrer la lista no dispara
     //  nada hasta que te paras.
     property real cuenta: 0
-    readonly property int espera: 1600
+    // 900 ms: lo justo para que dé tiempo a seguir tabulando —cada pulsación
+    // reinicia la cuenta— sin que se haga esperar. Con 1,6 s se notaba la
+    // pausa y el cambiador dejaba de sentirse instantáneo.
+    readonly property int espera: 900
 
     Timer {
         id: reloj
