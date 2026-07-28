@@ -1,5 +1,7 @@
 # k4
 
+Lo que queda por hacer está en [PENDIENTE.md](PENDIENTE.md).
+
 Una barra para Hyprland escrita en [Quickshell](https://quickshell.org), con la
 forma y el comportamiento de la Dynamic Island de macOS. Inspirada en
 [Atoll](https://github.com/Ebullioscopic/Atoll).
