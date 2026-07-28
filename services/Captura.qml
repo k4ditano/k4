@@ -338,6 +338,24 @@ Singleton {
         }
     }
 
+    //  El rastro del cursor, que es la materia prima del zoom automático.
+    //
+    //  Va en su propio proceso y no aquí porque hay que muestrear a 30 Hz sin
+    //  competir con el hilo de dibujo de la barra. Se le hablan los clics por
+    //  la entrada estándar: Hyprland no los publica por su socket de eventos,
+    //  así que los recoge un atajo global y se los pasamos.
+    property string rutaRastro: ""
+
+    Process {
+        id: rastreador
+        stdinEnabled: true
+    }
+
+    function marcarClic(boton) {
+        if (grabando && rastreador.running)
+            rastreador.write("clic " + boton + "\n")
+    }
+
     Process {
         id: grabador
 
@@ -347,11 +365,24 @@ Singleton {
             captura.inicio = Date.now()
             captura.duracion = 0
             crono.start()
+
+            // El rastro se llama como el vídeo: así siguen emparejados aunque
+            // pasen semanas y se hayan movido de carpeta.
+            captura.rutaRastro = captura.rutaVideo.replace(/\.mp4$/, ".rastro.jsonl")
+            rastreador.command = ["python3", Quickshell.shellPath("tools/rastro.py"),
+                                  "--salida", captura.rutaRastro,
+                                  "--hz", "30",
+                                  "--region", captura.regionActual]
+            rastreador.running = true
         }
 
         onExited: function (codigo) {
             crono.stop()
             rescate.stop()
+            // Al rastreador también por las buenas: cierra el fichero al
+            // recibir el SIGINT, y matarlo dejaría la última línea a medias.
+            if (rastreador.running)
+                rastreador.signal(2)
             captura.grabando = false
             captura.estado = ""
 

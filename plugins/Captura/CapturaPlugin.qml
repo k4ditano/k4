@@ -11,6 +11,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import "../../core"
 import "../../services"
 
@@ -170,6 +171,30 @@ K4Plugin {
             else
                 self.close()
         }
+    }
+
+    //  Los clics para el zoom.
+    //
+    //  Hyprland no los publica por su socket de eventos —no hay ningún suceso
+    //  de ratón—, así que la única vía razonable es un atajo global. Va con
+    //  `non_consuming` en binds.lua para que el clic siga llegando a la
+    //  aplicación: si se lo comiera, el ratón dejaría de funcionar mientras
+    //  grabas, que sería un remedio bastante peor.
+    //
+    //  Si esto no llegara a funcionar no se pierde el zoom: tools/zoom.py sabe
+    //  deducir los momentos del propio rastro, por los reposos del cursor.
+    GlobalShortcut {
+        appid: "k4"
+        name: "clic"
+        description: "Marca un clic izquierdo en el rastro de la grabación"
+        onPressed: Captura.marcarClic(1)
+    }
+
+    GlobalShortcut {
+        appid: "k4"
+        name: "clicDerecho"
+        description: "Marca un clic derecho en el rastro de la grabación"
+        onPressed: Captura.marcarClic(3)
     }
 
     IpcHandler {
