@@ -14,4 +14,11 @@ Singleton {
 
     // fuerza un modo concreto; se usa desde IPC para depurar
     property string debugMode: ""
+
+    //  Aparta la island un instante, para que no salga en las capturas.
+    //
+    //  No se esconde la ventana: reserva 34 px de zona exclusiva y ocultarla
+    //  reajustaría todas las ventanas del escritorio, que es un parpadeo mucho
+    //  peor que el problema. Se deja mapeada y simplemente no se dibuja.
+    property bool escondida: false
 }

@@ -30,6 +30,7 @@ import "plugins/Files"
 import "plugins/Keys"
 import "plugins/Windows"
 import "plugins/Session"
+import "plugins/Captura"
 
 Scope {
     id: root
@@ -56,6 +57,7 @@ Scope {
     KeysPlugin { id: keysPlugin; panel: panelPlugin }
     WindowsPlugin { id: windowsPlugin; panel: panelPlugin }
     SessionPlugin { id: sessionPlugin; panel: panelPlugin }
+    CapturaPlugin { id: capturaPlugin; panel: panelPlugin }
 
     readonly property var plugins: [
         idlePlugin,
@@ -76,7 +78,8 @@ Scope {
         filesPlugin,
         keysPlugin,
         windowsPlugin,
-        sessionPlugin
+        sessionPlugin,
+        capturaPlugin
     ]
 
     // ── quién se queda la island ──────────────────────────────────
@@ -130,6 +133,7 @@ Scope {
         void Tokens.cargado
         void Clipboard.cargado
         void Ventanas.count
+        void Captura.carpetaFotos
     }
 
     // ── IPC ───────────────────────────────────────────────────────
@@ -246,6 +250,10 @@ Scope {
             Item {
                 id: island
                 anchors.top: parent.top
+
+                // Ver services/Island.qml: apartarse para las capturas.
+                opacity: Island.escondida ? 0 : 1
+
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: Math.min(parent.width, root.islandWidth + Theme.wing * 2)
                 height: root.islandHeight

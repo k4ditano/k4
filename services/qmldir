@@ -20,3 +20,4 @@ singleton Atajos 1.0 Atajos.qml
 singleton Idioma 1.0 Idioma.qml
 singleton Ventanas 1.0 Ventanas.qml
 singleton Sesion 1.0 Sesion.qml
+singleton Captura 1.0 Captura.qml
