@@ -14,6 +14,11 @@ FadeIn {
 
     required property var plugin
 
+    // Sin esto hay que hacer clic antes de poder escribir: la raíz de la
+    // island se queda el foco y la superficie tarda en recibirlo.
+    FocoInicial { id: foco; objetivo: entrada }
+    Component.onCompleted: foco.reclamar()
+
     ColumnLayout {
         anchors.fill: parent
         anchors.leftMargin: 14

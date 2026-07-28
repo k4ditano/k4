@@ -116,13 +116,19 @@ Dos huecos del sistema, aparte del contenido:
 ## Sin verificar
 
 Nada de esto está roto que se sepa; simplemente no se ha podido comprobar desde
-aquí, porque necesita ratón o teclado de verdad y el compositor no acepta
-pulsaciones sintéticas:
+aquí, porque necesita ratón de verdad.
+
+Para el teclado ya hay salida: **`tools/teclas.py`** monta un teclado virtual
+por uinput. El compositor no acepta pulsaciones sintéticas por Wayland, pero un
+dispositivo del kernel lo ve como cualquier teclado enchufado.
+
+    python3 tools/teclas.py escribe hola
+    python3 tools/teclas.py pulsa ESC ENTER TAB
+
+Queda por comprobar, y necesita ratón:
 
 - La ficha flotante al pasar el ratón por encima de un objeto.
 - Clic derecho sobre los iconos de la bandeja.
-- Que **ESC** cierre cada módulo, y que en los de foco bajo demanda llegue tras
-  interactuar con ellos.
 - Pulsar un héroe en el campo de batalla para ir a su ficha.
 - **Que PAM acepte la contraseña correcta.** Solo se ha probado con una
   incorrecta —responde `Failed` limpio, o sea que la conversación funciona—,

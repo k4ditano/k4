@@ -29,7 +29,7 @@ K4Plugin {
     property int index: 0
 
     islandWidth: 760
-    islandHeight: 440
+    islandHeight: 470
 
     readonly property var lista: Archivos.resultados
     readonly property int count: lista.length

@@ -30,7 +30,7 @@ K4Plugin {
     property int index: 0
 
     islandWidth: 720
-    islandHeight: 440
+    islandHeight: 470
 
     readonly property var lista: Clipboard.filtrar(query)
     readonly property int count: lista.length

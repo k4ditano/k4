@@ -4,6 +4,7 @@ K4Plugin 1.0 K4Plugin.qml
 IslandLabel 1.0 IslandLabel.qml
 IconGlyph 1.0 IconGlyph.qml
 FadeIn 1.0 FadeIn.qml
+FocoInicial 1.0 FocoInicial.qml
 IslandSwitch 1.0 IslandSwitch.qml
 IslandSlider 1.0 IslandSlider.qml
 IslandTile 1.0 IslandTile.qml

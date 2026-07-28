@@ -14,6 +14,11 @@ FadeIn {
 
     required property var plugin
 
+    // Sin esto hay que hacer clic antes de poder escribir: la raíz de la
+    // island se queda el foco y la superficie tarda en recibirlo.
+    FocoInicial { id: foco; objetivo: entrada }
+    Component.onCompleted: foco.reclamar()
+
     ColumnLayout {
         anchors.fill: parent
         anchors.leftMargin: 14
@@ -155,7 +160,7 @@ FadeIn {
                 readonly property bool esImagen: modelData.tipo === "imagen"
 
                 width: ListView.view.width
-                height: 44
+                height: 48
                 radius: 9
                 color: elegida ? Theme.surfaceHi
                     : (filaMouse.containsMouse ? Theme.surface : "transparent")
@@ -189,7 +194,7 @@ FadeIn {
                             : fila.modelData.etiqueta === "código" ? 0xF0169
                             : 0xF0219)
                         color: fila.elegida ? Theme.ink : Theme.muted
-                        font.pixelSize: 15
+                        font.pixelSize: 17
                         Layout.preferredWidth: 30
                         Layout.alignment: Qt.AlignVCenter
                         horizontalAlignment: Text.AlignHCenter
@@ -201,7 +206,7 @@ FadeIn {
 
                         IslandLabel {
                             text: Clipboard.titulo(fila.modelData)
-                            font.pixelSize: 12
+                            font.pixelSize: 14
                             elide: Text.ElideRight
                             Layout.fillWidth: true
                         }
@@ -213,7 +218,7 @@ FadeIn {
                                 visible: (fila.modelData.etiqueta || "").length > 0
                                 text: fila.modelData.etiqueta
                                 color: Theme.blue
-                                font.pixelSize: 9
+                                font.pixelSize: 11
                                 font.weight: Font.DemiBold
                             }
 
@@ -221,13 +226,13 @@ FadeIn {
                                 visible: fila.modelData.lineas > 1
                                 text: fila.modelData.lineas + Idioma.t(" líneas")
                                 color: Theme.dim
-                                font.pixelSize: 9
+                                font.pixelSize: 11
                             }
 
                             IslandLabel {
                                 text: Clipboard.tamaño(fila.modelData.bytes)
                                 color: Theme.dim
-                                font.pixelSize: 9
+                                font.pixelSize: 11
                             }
                         }
                     }
@@ -248,7 +253,7 @@ FadeIn {
                     IslandLabel {
                         text: Clipboard.hace(fila.modelData.cuando)
                         color: Theme.dim
-                        font.pixelSize: 9
+                        font.pixelSize: 11
                         Layout.alignment: Qt.AlignVCenter
                     }
 

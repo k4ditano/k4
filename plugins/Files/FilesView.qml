@@ -14,6 +14,11 @@ FadeIn {
 
     required property var plugin
 
+    // Sin esto hay que hacer clic antes de poder escribir: la raíz de la
+    // island se queda el foco y la superficie tarda en recibirlo.
+    FocoInicial { id: foco; objetivo: entrada }
+    Component.onCompleted: foco.reclamar()
+
     ColumnLayout {
         anchors.fill: parent
         anchors.leftMargin: 14
@@ -165,7 +170,7 @@ FadeIn {
                 readonly property bool elegida: index === view.plugin.index
 
                 width: ListView.view.width
-                height: 40
+                height: 48
                 radius: 9
                 color: elegida ? Theme.surfaceHi
                     : (filaRaton.containsMouse ? Theme.surface : "transparent")
@@ -181,7 +186,7 @@ FadeIn {
                     IconGlyph {
                         text: String.fromCodePoint(Archivos.glifo(fila.modelData))
                         color: Archivos.tono(fila.modelData)
-                        font.pixelSize: 16
+                        font.pixelSize: 18
                         Layout.preferredWidth: 22
                         Layout.alignment: Qt.AlignVCenter
                         horizontalAlignment: Text.AlignHCenter
@@ -193,7 +198,7 @@ FadeIn {
 
                         IslandLabel {
                             text: fila.modelData.nombre
-                            font.pixelSize: 12
+                            font.pixelSize: 14
                             font.weight: fila.elegida ? Font.DemiBold : Font.Normal
                             elide: Text.ElideMiddle
                             Layout.fillWidth: true
@@ -202,7 +207,7 @@ FadeIn {
                         IslandLabel {
                             text: Archivos.dondeEsta(fila.modelData.carpeta)
                             color: Theme.dim
-                            font.pixelSize: 9
+                            font.pixelSize: 11
                             elide: Text.ElideMiddle
                             Layout.fillWidth: true
                         }
@@ -212,16 +217,16 @@ FadeIn {
                         text: fila.modelData.esCarpeta
                             ? "carpeta" : Archivos.tamaño(fila.modelData.bytes)
                         color: Theme.muted
-                        font.pixelSize: 10
-                        Layout.preferredWidth: 62
+                        font.pixelSize: 11
+                        Layout.preferredWidth: 70
                         horizontalAlignment: Text.AlignRight
                     }
 
                     IslandLabel {
                         text: Archivos.hace(fila.modelData.cuando)
                         color: Theme.dim
-                        font.pixelSize: 9
-                        Layout.preferredWidth: 52
+                        font.pixelSize: 11
+                        Layout.preferredWidth: 60
                         horizontalAlignment: Text.AlignRight
                     }
                 }
