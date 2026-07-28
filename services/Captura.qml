@@ -46,6 +46,103 @@ Singleton {
     property string carpetaFotos: ""
     property string carpetaVideos: ""
 
+    // ── elegir una región ─────────────────────────────────────────
+    //
+    //  El selector no pregunta sobre el escritorio vivo sino sobre un
+    //  fotograma congelado, y eso arregla de raíz un problema que tiene
+    //  slurp: si lo que quieres recortar es un menú desplegado o algo que
+    //  cambia, se te mueve mientras lo encuadras.
+    property bool seleccionando: false
+    property string motivoSeleccion: "foto"   // foto · grabar
+
+    //  Destino de ESTA captura, si se pidió uno distinto del habitual. Hay que
+    //  guardarlo aparte porque entre pedir la región y confirmarla pasa un
+    //  rato largo —el que tardes en encuadrar— y la llamada original ya
+    //  terminó hace tiempo.
+    property string destinoPuntual: ""
+    property string congelado: ""
+    property int serieCongelado: 0
+
+    signal regionElegida(int x, int y, int w, int h)
+
+    function pedirRegion(motivo) {
+        if (ocupado || seleccionando)
+            return
+        motivoSeleccion = motivo || "foto"
+        estado = "capturando"
+        Island.escondida = true
+        congelar.restart()
+    }
+
+    function cancelarRegion() {
+        seleccionando = false
+        destinoPuntual = ""
+        estado = ""
+    }
+
+    function confirmarRegion(x, y, w, h) {
+        if (w < 1 || h < 1) {
+            seleccionando = false
+            estado = ""
+            return
+        }
+
+        regionElegida(x, y, w, h)
+
+        if (motivoSeleccion === "foto") {
+            // Se recorta del congelado, no se vuelve a capturar: lo que sale
+            // es exactamente lo que estabas viendo al encuadrar.
+            estado = "capturando"
+            pendienteOrden = ["python3", Quickshell.shellPath("tools/captura.py"),
+                              "foto", "--ambito", "region",
+                              "--destino", destinoPuntual.length > 0
+                                                ? destinoPuntual : destino,
+                              "--desde", congelado,
+                              "--geometria", x + "," + y + " " + w + "x" + h]
+            disparo.command = pendienteOrden
+            disparo.running = true
+        } else {
+            estado = ""
+        }
+        destinoPuntual = ""
+
+        // Lo último: bajar esta bandera destruye la ventana del selector, que
+        // es justo desde donde se ha llamado aquí.
+        seleccionando = false
+    }
+
+    Timer {
+        id: congelar
+        interval: 90
+        onTriggered: {
+            captura.serieCongelado += 1
+            // El número que sube no es un capricho: Qt cachea las imágenes por
+            // ruta, y reutilizar el mismo nombre devuelve el fotograma de la
+            // captura anterior.
+            const ruta = "/tmp/k4-captura/congelado-" + captura.serieCongelado + ".ppm"
+            congelador.command = ["grim", "-t", "ppm", ruta]
+            congelador.pendiente = ruta
+            congelador.running = true
+        }
+    }
+
+    Process {
+        id: congelador
+        property string pendiente: ""
+
+        onExited: function (codigo) {
+            Island.escondida = false
+            captura.estado = ""
+            if (codigo === 0) {
+                captura.congelado = pendiente
+                captura.seleccionando = true
+            } else {
+                captura.ultimoFallo = "fallo"
+                captura.fotoFallida("fallo")
+            }
+        }
+    }
+
     // ── hacer una foto ────────────────────────────────────────────
     //
     //  `ambito` es pantalla | region | ventana. La geometría se puede dar hecha

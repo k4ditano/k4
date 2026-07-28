@@ -76,7 +76,25 @@ K4Plugin {
     //  un frame antes de llamar a grim.
     function disparar(ambito, aDonde) {
         close()
-        Captura.foto(ambito, "", aDonde || "")
+        if (ambito === "region") {
+            // La región pasa por el selector propio, que congela la pantalla
+            // antes de dejarte encuadrar.
+            Captura.destinoPuntual = aDonde || ""
+            Captura.pedirRegion("foto")
+        } else {
+            Captura.foto(ambito, "", aDonde || "")
+        }
+    }
+
+    //  El selector vive colgado del plugin y no de la vista: la vista solo
+    //  existe mientras el módulo tiene la island, y encuadrar una región es
+    //  justamente cuando la island no está.
+    //
+    //  Ojo: la propiedad por defecto de LazyLoader es `component`, así que el
+    //  hijo suelto ES lo que se carga. Es lo que se quiere aquí.
+    LazyLoader {
+        active: Captura.seleccionando
+        SelectorRegion {}
     }
 
     // ── el asomo de después ───────────────────────────────────────

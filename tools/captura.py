@@ -92,6 +92,13 @@ def ventana_activa():
     return "%d,%d %dx%d" % (at[0], at[1], size[0], size[1])
 
 
+def recorte_magick(geometria):
+    """De "X,Y WxH" (lo que habla grim) a "WxH+X+Y" (lo que habla magick)."""
+    posicion, tamano = geometria.split(" ", 1)
+    x, y = posicion.split(",")
+    return "%s+%s+%s" % (tamano, x.strip(), y.strip())
+
+
 def hacer_foto(args):
     geometria = args.geometria
 
@@ -99,6 +106,9 @@ def hacer_foto(args):
         geometria = region_con_slurp()
         if not geometria:
             salir(ok=False, motivo="cancelado")
+
+    if args.desde and not geometria:
+        salir(ok=False, motivo="fallo", detalle="sin-geometria")
 
     if args.ambito == "ventana" and not geometria:
         geometria = ventana_activa()
@@ -108,14 +118,23 @@ def hacer_foto(args):
     ruta = args.ruta or nombre("foto")
     os.makedirs(os.path.dirname(ruta), exist_ok=True)
 
-    orden = ["grim"]
-    if args.cursor:
-        orden.append("-c")
-    if geometria:
-        orden += ["-g", geometria]
-    elif args.salida:
-        orden += ["-o", args.salida]
-    orden.append(ruta)
+    if args.desde:
+        # Recortar de un fotograma ya congelado, en vez de volver a capturar.
+        # Es lo que hace que lo que sale sea exactamente lo que veías al
+        # encuadrar, y no lo que hubiera en pantalla al soltar el ratón.
+        if not os.path.exists(args.desde):
+            salir(ok=False, motivo="fallo", detalle="congelado-perdido")
+        orden = ["magick", args.desde, "-crop", recorte_magick(geometria),
+                 "+repage", ruta]
+    else:
+        orden = ["grim"]
+        if args.cursor:
+            orden.append("-c")
+        if geometria:
+            orden += ["-g", geometria]
+        elif args.salida:
+            orden += ["-o", args.salida]
+        orden.append(ruta)
 
     p = subprocess.run(orden, capture_output=True, text=True)
     if p.returncode != 0:
@@ -178,6 +197,8 @@ def main():
     f.add_argument("--salida", default="")
     f.add_argument("--ruta", default="")
     f.add_argument("--cursor", action="store_true")
+    f.add_argument("--desde", default="",
+                   help="recortar de este fotograma en vez de capturar de nuevo")
     f.add_argument("--destino", default="ambos",
                    choices=["fichero", "portapapeles", "ambos", "anotar"])
 
