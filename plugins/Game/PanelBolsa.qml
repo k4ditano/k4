@@ -19,6 +19,13 @@ Item {
     property var plugin: null
     property var ultimo: null           // lo último que salió de un cofre
 
+    // Agrupar iguales: con sesenta casillas, ver «×4» dice más que cuatro
+    // dibujos repetidos. Va como interruptor porque agrupando no se puede
+    // arrastrar para ordenar, y eso también se usa.
+    property bool agrupado: true
+    property string avisoCombina: ""
+    property color avisoColor: Theme.ink
+
     // pieza bajo el ratón, para la ficha flotante
     property var mirando: null
     property real mirandoX: 0
@@ -50,6 +57,29 @@ Item {
             }
         }
         return mejor
+    }
+
+    function combinar(clave) {
+        Game.combinarGrupo(clave)
+    }
+
+    Connections {
+        target: Game
+
+        function onCombinado(cambio, objeto) {
+            panel.avisoCombina = cambio === "mejor" ? Idioma.t("¡Ha subido de grado!")
+                : cambio === "peor" ? Idioma.t("Ha bajado de grado")
+                : Idioma.t("Se ha quedado igual")
+            panel.avisoColor = cambio === "mejor" ? Theme.green
+                : cambio === "peor" ? Theme.red : Theme.muted
+            borrarAviso.restart()
+        }
+    }
+
+    Timer {
+        id: borrarAviso
+        interval: 2600
+        onTriggered: panel.avisoCombina = ""
     }
 
     ColumnLayout {
@@ -198,6 +228,44 @@ Item {
                 Layout.alignment: Qt.AlignVCenter
             }
 
+            // aviso de lo que ha salido al combinar
+            IslandLabel {
+                visible: panel.avisoCombina.length > 0
+                text: panel.avisoCombina
+                color: panel.avisoColor
+                font.pixelSize: 10
+                font.weight: Font.DemiBold
+                Layout.alignment: Qt.AlignVCenter
+            }
+
+            Rectangle {
+                Layout.preferredWidth: agruparTexto.implicitWidth + 20
+                Layout.preferredHeight: 18
+                Layout.alignment: Qt.AlignVCenter
+                radius: 9
+                color: panel.agrupado ? Theme.blue
+                    : (agruparMouse.containsMouse ? Theme.surfaceHi : Theme.surface)
+
+                Behavior on color { ColorAnimation { duration: 120 } }
+
+                IslandLabel {
+                    id: agruparTexto
+                    anchors.centerIn: parent
+                    text: Idioma.t("Agrupar")
+                    color: panel.agrupado ? Theme.ink : Theme.muted
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
+                }
+
+                MouseArea {
+                    id: agruparMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: panel.agrupado = !panel.agrupado
+                }
+            }
+
             Rectangle {
                 Layout.preferredWidth: limpiar.implicitWidth + 20
                 Layout.preferredHeight: 18
@@ -238,7 +306,7 @@ Item {
             readonly property int columnas: Math.max(6, Math.floor(width / celda))
             cellWidth: Math.floor(width / columnas)
             cellHeight: cellWidth
-            model: Game.bolsa.length
+            model: panel.agrupado ? Game.grupos.length : Game.bolsa.length
             boundsBehavior: Flickable.StopAtBounds
 
             delegate: Item {
@@ -247,11 +315,18 @@ Item {
                 width: rejilla.cellWidth
                 height: rejilla.cellHeight
 
+                readonly property var grupo: panel.agrupado
+                    ? Game.grupos[hueco.index] : null
+
                 CeldaObjeto {
                     anchors.fill: parent
                     anchors.margins: 2
-                    objeto: Game.bolsa[hueco.index]
+                    objeto: hueco.grupo ? hueco.grupo.mejor : Game.bolsa[hueco.index]
                     posicion: hueco.index
+                    cuantos: hueco.grupo ? hueco.grupo.piezas.length : 0
+                    arrastrable: !panel.agrupado
+
+                    onCombinar: if (hueco.grupo) panel.combinar(hueco.grupo.clave)
 
                     onPulsado: {
                         const it = Game.bolsa[hueco.index]

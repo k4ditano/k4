@@ -755,7 +755,8 @@ Singleton {
     // Las llevan los logros y los retos de desbloqueo.
     property var cuentas: ({
         muertes: 0, jefes: 0, cofres: 0, oleadas: 0,
-        partidas: 0, desguaces: 0, habilidades: 0, oroTotal: 0
+        partidas: 0, desguaces: 0, habilidades: 0, oroTotal: 0,
+        combinaciones: 0
     })
 
     function contar(clave, cuanto) {
@@ -1162,6 +1163,69 @@ Singleton {
 
     readonly property int sinVer: bolsa.filter(function (o) { return o && o.nuevo }).length
 
+    // ── grupos de la bolsa ────────────────────────────────────────
+    //
+    //  Dos piezas son «la misma» si comparten tipo, grado y nivel, aunque sus
+    //  cifras varíen algo por la tirada. Agrupar así hace legible una bolsa de
+    //  sesenta y es lo que da sentido a combinar.
+
+    function claveDe(objeto) {
+        if (!objeto)
+            return ""
+        return objeto.tipo + "|" + objeto.rareza + "|" + Items.nivelDe(objeto)
+            + "|" + (objeto.escuela || "acero")
+    }
+
+    readonly property var grupos: {
+        const mapa = ({})
+        const orden = []
+        for (let i = 0; i < bolsa.length; ++i) {
+            const o = bolsa[i]
+            if (!o) continue
+            const k = claveDe(o)
+            if (!mapa[k]) {
+                mapa[k] = { clave: k, piezas: [], mejor: o, nuevo: false }
+                orden.push(k)
+            }
+            mapa[k].piezas.push(o)
+            if (o.nuevo) mapa[k].nuevo = true
+            if (Items.puntuacion(o) > Items.puntuacion(mapa[k].mejor))
+                mapa[k].mejor = o
+        }
+        return orden.map(function (k) { return mapa[k] })
+    }
+
+    readonly property int combinables: grupos.filter(function (g) {
+        return g.piezas.length >= 3
+    }).length
+
+    signal combinado(string cambio, var objeto)
+
+    // Se van las tres peores del grupo y vuelve una. Nunca se toca lo
+    // equipado, que vive fuera de la bolsa.
+    function combinarGrupo(clave) {
+        const grupo = grupos.filter(function (g) { return g.clave === clave })[0]
+        if (!grupo || grupo.piezas.length < 3)
+            return
+
+        const ordenadas = grupo.piezas.slice().sort(function (a, b) {
+            return Items.puntuacion(a) - Items.puntuacion(b)
+        })
+        const gastadas = ordenadas.slice(0, 3)
+        const r = Items.combinar(gastadas)
+        if (!r)
+            return
+
+        const fuera = gastadas.map(function (o) { return o.id })
+        bolsa = bolsa.filter(function (o) {
+            return o && fuera.indexOf(o.id) === -1
+        }).concat([r.objeto])
+
+        contar("combinaciones")
+        guardar()
+        combinado(r.cambio, r.objeto)
+    }
+
     function desguazarSobrantes() {
         let ganado = 0
         const quedan = []
@@ -1285,7 +1349,8 @@ Singleton {
         logrosHechos = []
         cuentas = ({
             muertes: 0, jefes: 0, cofres: 0, oleadas: 0,
-            partidas: 0, desguaces: 0, habilidades: 0, oroTotal: 0
+            partidas: 0, desguaces: 0, habilidades: 0, oroTotal: 0,
+        combinaciones: 0
         })
 
         equipo = ({})

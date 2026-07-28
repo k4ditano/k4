@@ -238,6 +238,75 @@ Singleton {
         return objeto && objeto.escuela === "arcana" ? "#bf5af2" : "#c7c7cc"
     }
 
+    // ── combinar tres iguales ─────────────────────────────────────
+    //
+    //  Tres piezas del mismo tipo, grado y nivel salen una. Que sean TRES no
+    //  es un capricho: cada grado vale el triple que el anterior, así que con
+    //  3 -> 1 el mejor caso posible —subir siempre— es empatar en valor, y
+    //  nunca imprimir. Con 2 -> 1 el sistema se rompe solo.
+    //
+    //  Aun así la probabilidad de subir baja con el grado, para que la cola
+    //  alta se gane jugando y no moliendo lo que sobra.
+
+    function probMejora(rareza) {
+        return 0.5 * Math.pow(0.72, rareza)
+    }
+
+    function probEmpeora(rareza) {
+        return Math.min(0.3, 0.08 + 0.035 * rareza)
+    }
+
+    // Qué sale de combinar. `piezas` son tres del mismo grupo.
+    function combinar(piezas) {
+        if (!piezas || piezas.length < 3)
+            return null
+
+        const base = piezas[0]
+        const r = base.rareza
+        const tirada = Math.random()
+        const sube = probMejora(r)
+        const baja = probEmpeora(r)
+
+        let nuevaRareza = r
+        let cambio = "igual"
+        if (tirada < sube && r < rarezas.length - 1) {
+            nuevaRareza = r + 1
+            cambio = "mejor"
+        } else if (tirada > 1 - baja && r > 0) {
+            nuevaRareza = r - 1
+            cambio = "peor"
+        }
+
+        // El nivel se conserva: si no, combinar sería una forma de perderlo y
+        // nadie lo usaría con piezas altas.
+        const nivel = Math.max.apply(null, piezas.map(function (o) {
+            return nivelDe(o)
+        }))
+
+        // Se genera de cero con el grado que haya salido, a la altura que
+        // corresponde a ese nivel, y se le calza el mismo hueco y dibujo para
+        // que se reconozca como pariente de lo que echaste.
+        const salida = generar(0, Math.round(nivel / 0.6), 0)
+        salida.rareza = nuevaRareza
+        salida.nivel = nivel
+        salida.hueco = base.hueco
+        salida.tipo = base.tipo
+        salida.icono = base.icono
+        salida.nombre = base.tipo + " " + salida.nombre.split(" ").slice(1).join(" ")
+
+        // las estadísticas se rehacen al grado nuevo
+        const factor = rarezaDe(nuevaRareza).mult / rarezaDe(r).mult
+        const st = ({})
+        for (const k in base.stats)
+            st[k] = k === "recorte" ? base.stats[k]
+                : Math.max(1, Math.round(base.stats[k] * factor * (0.9 + Math.random() * 0.25)))
+        salida.stats = st
+        salida.escuela = base.escuela
+        salida.nuevo = true
+
+        return { objeto: salida, cambio: cambio }
+    }
+
     function puntuacion(objeto) {
         if (!objeto)
             return 0

@@ -12,6 +12,9 @@ Item {
 
     property var objeto: null
     property int posicion: -1
+    property int cuantos: 0             // 0 = no está agrupada
+    property bool arrastrable: true
+    signal combinar()
     property bool arrastrando: caja.Drag.active
 
     signal pulsado()
@@ -48,7 +51,7 @@ Item {
         Behavior on color { ColorAnimation { duration: 110 } }
         Behavior on scale { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
 
-        Drag.active: raton.drag.active
+        Drag.active: celda.arrastrable && raton.drag.active
         Drag.source: caja
         Drag.hotSpot.x: width / 2
         Drag.hotSpot.y: height / 2
@@ -107,6 +110,60 @@ Item {
             }
         }
 
+        // ── cuántas iguales hay
+        Rectangle {
+            visible: celda.cuantos > 1
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.margins: 2
+            width: cuantasTexto.implicitWidth + 8
+            height: 12
+            radius: 6
+            color: "#cc000000"
+
+            IslandLabel {
+                id: cuantasTexto
+                anchors.centerIn: parent
+                text: "×" + celda.cuantos
+                color: Theme.ink
+                font.pixelSize: 8
+                font.weight: Font.Bold
+            }
+        }
+
+        // ── combinar tres
+        //  Solo aparece con tres o más y al pasar por encima: si estuviera
+        //  siempre, la rejilla se llenaría de botones.
+        Rectangle {
+            visible: celda.cuantos >= 3 && raton.containsMouse
+            z: 4
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 2
+            width: 30
+            height: 13
+            radius: 6
+            color: combinarRaton.containsMouse ? Theme.blue : "#cc1c1c22"
+            border.width: 1
+            border.color: Theme.blue
+
+            IslandLabel {
+                anchors.centerIn: parent
+                text: Idioma.t("unir")
+                color: Theme.ink
+                font.pixelSize: 8
+                font.weight: Font.Bold
+            }
+
+            MouseArea {
+                id: combinarRaton
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: celda.combinar()
+            }
+        }
+
         // ── recién salido de un cofre
         Rectangle {
             visible: celda.objeto !== null && celda.objeto.nuevo === true
@@ -150,7 +207,7 @@ Item {
             cursorShape: Qt.PointingHandCursor
             acceptedButtons: Qt.LeftButton | Qt.RightButton
 
-            drag.target: caja
+            drag.target: celda.arrastrable ? caja : null
             drag.axis: Drag.XAndYAxis
 
             onClicked: function (raton) {
