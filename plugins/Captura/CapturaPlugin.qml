@@ -24,7 +24,7 @@ K4Plugin {
     viewLoaded: open
     //  También durante la cuenta atrás, o el ESC que la cancela no llega a
     //  ninguna parte. Son tres segundos en los que nadie está escribiendo.
-    grabKeyboard: open && (modo === "menu" || modo === "cuenta")
+    grabKeyboard: open && (modo === "menu" || modo === "cuenta" || modo === "zoom")
 
     //  La cuenta atrás manda sobre todo lo demás mientras dura: si te tapa el
     //  reloj tres segundos no pasa nada, pero perderte el 3-2-1 sí importa.
@@ -33,7 +33,7 @@ K4Plugin {
     property var panel: null
 
     property bool open: false
-    property string modo: "menu"            // menu · cuenta · hecha
+    property string modo: "menu"            // menu · cuenta · hecha · zoom
     property int index: 0
 
     readonly property var ambitos: [
@@ -54,13 +54,20 @@ K4Plugin {
     // La cuenta atrás se queda la island entera y sin nada más: es un número
     // gigante, y para eso no hace falta anchura.
     islandWidth: modo === "cuenta" ? 200
-        : (modo === "hecha" ? 500 : 520)
+        : (modo === "zoom" ? 760 : (modo === "hecha" ? 500 : 520))
     islandHeight: modo === "cuenta" ? 150
-        : (modo === "hecha" ? 132 : 208)
+        : (modo === "zoom" ? 400 : (modo === "hecha" ? 132 : 208))
 
     view: Component {
-        CapturaView { plugin: self }
+        Loader {
+            // El editor es otra vista entera, no un modo más de la de captura:
+            // comparten plugin pero no se parecen en nada.
+            sourceComponent: self.modo === "zoom" ? editor : normal
+        }
     }
+
+    property Component normal: Component { CapturaView { plugin: self } }
+    property Component editor: Component { EditorZoom { plugin: self } }
 
     // ── el menú ───────────────────────────────────────────────────
     function abrir() {
@@ -77,6 +84,12 @@ K4Plugin {
         if (modo === "cuenta") {
             Captura.parar()
             return
+        }
+        if (modo === "zoom") {
+            // Cerrar el editor es descartar el zoom: el vídeo sin tocar ya está
+            // guardado, así que no se pierde nada.
+            Captura.descartarZoom()
+            modo = "menu"
         }
         open = false
     }
@@ -127,6 +140,19 @@ K4Plugin {
                 self.modo = "menu"
                 self.open = false
             }
+        }
+
+        function onPlanListo() {
+            self.modo = "zoom"
+            self.open = true
+        }
+
+        function onRenderListo(ruta) {
+            self.modo = "menu"
+            self.open = false
+            Quickshell.execDetached(["notify-send", "-a", "k4",
+                                     Idioma.t("Vídeo con zoom listo"),
+                                     ruta.split("/").pop()])
         }
 
         function onVideoListo(ruta) {
@@ -216,5 +242,8 @@ K4Plugin {
         function grabarRegion(): void { self.close(); Captura.grabarRegion() }
         function parar(): void { Captura.parar() }
         function grabarAlternar(): void { self.close(); Captura.alternarGrabacion() }
+
+        // Reabrir el editor del último vídeo, por si se cerró sin querer.
+        function zoom(): void { Captura.proponerZoom() }
     }
 }

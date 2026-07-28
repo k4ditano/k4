@@ -388,11 +388,23 @@ Singleton {
 
             // wf-recorder sale con 0 al recibir el SIGINT que le mandamos: eso
             // es una parada limpia, no un fallo.
-            if (captura.rutaVideo.length > 0)
+            if (captura.rutaVideo.length > 0) {
                 captura.videoListo(captura.rutaVideo)
-            else
+                if (captura.zoomAuto) {
+                    // Un respiro: el rastreador acaba de recibir su SIGINT y
+                    // todavía está cerrando el fichero.
+                    proponerLuego.restart()
+                }
+            } else {
                 captura.videoFallido("fallo")
+            }
         }
+    }
+
+    Timer {
+        id: proponerLuego
+        interval: 700
+        onTriggered: captura.proponerZoom()
     }
 
     Timer {
@@ -408,6 +420,134 @@ Singleton {
         id: rescate
         interval: 5000
         onTriggered: if (captura.grabando) grabador.signal(15)
+    }
+
+    // ── el zoom, después de grabar ────────────────────────────────
+    //
+    //  El plan se guarda junto al vídeo, así que se puede reeditar mañana. Lo
+    //  que se renderiza es un fichero nuevo: el original no se toca, porque
+    //  equivocarse con el zoom y haberse cargado la grabación sería mucho peor
+    //  que tener dos ficheros.
+    property bool zoomAuto: true
+    property real zoomNivel: 2.5
+
+    property var momentos: []
+    property string rutaPlan: ""
+    property string rutaRenderizada: ""
+    property real progreso: 0
+
+    signal planListo()
+    signal renderListo(string ruta)
+
+    function proponerZoom() {
+        if (rutaVideo.length === 0 || rutaRastro.length === 0)
+            return
+        rutaPlan = rutaVideo.replace(/\.mp4$/, ".zoom.json")
+        proponedor.command = ["python3", Quickshell.shellPath("tools/zoom.py"),
+                              "proponer", rutaRastro,
+                              "--video", rutaVideo,
+                              "--guardar", rutaPlan,
+                              "--nivel", String(zoomNivel)]
+        proponedor.running = true
+    }
+
+    function quitarMomento(id) {
+        momentos = momentos.filter(function (m) { return m.id !== id })
+        guardarPlan()
+    }
+
+    function moverMomento(id, delta) {
+        // Reasignar el array entero y no tocarlo dentro: QML no se entera de
+        // los cambios en su sitio y la vista se quedaría como estaba.
+        momentos = momentos.map(function (m) {
+            if (m.id !== id)
+                return m
+            const d = Object.assign({}, m)
+            d.t0 = Math.max(0, d.t0 + delta)
+            d.t1 = Math.min(duracionVideo, d.t1 + delta)
+            return d
+        })
+        guardarPlan()
+    }
+
+    function ajustarNivel(id, delta) {
+        momentos = momentos.map(function (m) {
+            if (m.id !== id)
+                return m
+            const d = Object.assign({}, m)
+            d.z = Math.max(1.1, Math.min(4, Math.round((d.z + delta) * 100) / 100))
+            return d
+        })
+        guardarPlan()
+    }
+
+    property real duracionVideo: 0
+
+    function guardarPlan() {
+        escritorPlan.command = ["python3", "-c",
+            "import json,sys; p=json.load(open(sys.argv[1])); " +
+            "p['momentos']=json.loads(sys.argv[2]); " +
+            "json.dump(p, open(sys.argv[1],'w'), ensure_ascii=False, indent=1)",
+            rutaPlan, JSON.stringify(momentos)]
+        escritorPlan.running = true
+    }
+
+    function renderizar() {
+        if (rutaPlan.length === 0 || momentos.length === 0)
+            return
+        rutaRenderizada = rutaVideo.replace(/\.mp4$/, "-zoom.mp4")
+        progreso = 0
+        estado = "renderizando"
+        renderizador.command = ["python3", Quickshell.shellPath("tools/zoom.py"),
+                                "render", rutaVideo, rutaPlan, rutaRenderizada,
+                                "--codec", codec]
+        renderizador.running = true
+    }
+
+    function descartarZoom() {
+        momentos = []
+        estado = ""
+    }
+
+    Process { id: escritorPlan }
+
+    Process {
+        id: proponedor
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let d = null
+                try { d = JSON.parse(this.text) } catch (e) { return }
+                if (!d.ok)
+                    return
+                captura.duracionVideo = d.duracion || 0
+                captura.momentos = d.momentos || []
+                if (captura.momentos.length > 0) {
+                    captura.estado = "editando"
+                    captura.planListo()
+                }
+            }
+        }
+    }
+
+    Process {
+        id: renderizador
+        stdout: SplitParser {
+            onRead: function (linea) {
+                let d = null
+                try { d = JSON.parse(linea) } catch (e) { return }
+                if (d.progreso !== undefined)
+                    captura.progreso = d.progreso
+                if (d.estado === "fin" && d.ruta) {
+                    captura.estado = ""
+                    captura.rutaRenderizada = d.ruta
+                    captura.renderListo(d.ruta)
+                }
+                if (d.ok === false) {
+                    captura.estado = ""
+                    captura.videoFallido(d.motivo || "fallo")
+                }
+            }
+        }
     }
 
     // El monitor donde está el ratón. Con una sola pantalla da igual, pero en
