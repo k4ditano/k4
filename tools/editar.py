@@ -731,9 +731,18 @@ def pistas_de(plan):
 
 # ── órdenes ───────────────────────────────────────────────────────
 def orden_abrir(args):
-    """Un plan para un vídeo cualquiera, se haya grabado aquí o no."""
+    """Un plan para un vídeo cualquiera, se haya grabado aquí o no.
+
+    Si ya había uno guardado se abre ese. Es lo que hace que «se puede reeditar
+    mañana» sea verdad: sin esto, volver a abrir el mismo vídeo rehacía el plan
+    de cero y se llevaba por delante los cortes y los zooms de la última vez, sin
+    avisar y sin forma de recuperarlos.
+    """
     if not os.path.exists(args.video):
         salir(ok=False, motivo="sin-video")
+    if args.guardar and os.path.exists(args.guardar):
+        plan = cargar(args.guardar)
+        salir(ok=True, **plan)
     plan = plan_nuevo(args.video, args.rastro)
     if args.guardar:
         guardar(plan, args.guardar)
@@ -764,14 +773,7 @@ def orden_camara(args):
     duracion = tramos[-1][1] if tramos else 0.0
     puntos = adelgazar(trayectoria(plan))
     salir(ok=True, w=plan["w"], h=plan["h"], duracion=round(duracion, 3),
-          audio=pistas_de(plan), fuentes=plan["fuentes"],
-          #  El mapa, ya resuelto, para que el reproductor sepa qué fichero
-          #  poner y en qué segundo. Es una tabla que se consulta, no una
-          #  fórmula que el QML tenga que repetir por su cuenta.
-          tramos=[{"clip": c["id"], "fuente": f["id"], "ruta": f["ruta"],
-                   "inicio": round(a, 3), "fin": round(b, 3),
-                   "desde": round(c["desde"], 3), "hasta": round(c["hasta"], 3)}
-                  for a, b, c, f in tramos],
+          audio=pistas_de(plan), fuentes=plan["fuentes"], clips=plan["clips"],
           camara=[[round(t, 3), round(z, 4), round(x, 1), round(y, 1)]
                   for t, z, x, y in puntos])
 

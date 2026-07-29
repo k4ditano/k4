@@ -46,6 +46,178 @@ Singleton {
     property string rutaRenderizada: ""
     property real progreso: 0
 
+    // ── la pista base ─────────────────────────────────────────────
+    //
+    //  Los trozos, en el orden en que se ven. Cada uno dice de qué fichero sale
+    //  y qué parte de él.
+    property var clips: []
+    property var fuentes: []
+
+    function rutaDe(idFuente) {
+        for (let i = 0; i < fuentes.length; ++i)
+            if (fuentes[i].id === idFuente)
+                return fuentes[i].ruta
+        return fuentes.length > 0 ? fuentes[0].ruta : ""
+    }
+
+    //  Dónde cae cada trozo en la línea.
+    //
+    //  Es la misma cuenta que hace `mapa()` en tools/editar.py, y sí, están las
+    //  dos. La alternativa era esperar a que python contestara para poder
+    //  dibujar, y arrastrar el borde de un clip a cinco fotogramas por segundo
+    //  no es editar. Esta cuenta es la DEFINICIÓN del modelo —los trozos van en
+    //  orden y la línea es su suma—, no un algoritmo con parámetros que puedan
+    //  separarse: para que discrepen habría que cambiar la definición en un
+    //  sitio y no en el otro. La easing de la cámara, que sí podría irse, sigue
+    //  calculándose en un solo lado.
+    readonly property var tramos: {
+        let t = 0
+        const r = []
+        for (let i = 0; i < clips.length; ++i) {
+            const c = clips[i]
+            const d = Math.max(0, c.hasta - c.desde)
+            if (d <= 0)
+                continue
+            r.push({ clip: c.id, fuente: c.fuente, ruta: rutaDe(c.fuente),
+                     inicio: t, fin: t + d, desde: c.desde, hasta: c.hasta,
+                     indice: i })
+            t += d
+        }
+        return r
+    }
+
+    readonly property real duracionLinea: tramos.length > 0
+        ? tramos[tramos.length - 1].fin : 0
+
+    function tramoEn(t) {
+        for (let i = 0; i < tramos.length; ++i)
+            if (t >= tramos[i].inicio && t < tramos[i].fin)
+                return tramos[i]
+        return null
+    }
+
+    // Qué puesto ocupa un clip en la línea, saltándose los vacíos.
+    function tramoDe(id) {
+        for (let i = 0; i < tramos.length; ++i)
+            if (tramos[i].clip === id)
+                return i
+        return 0
+    }
+
+    function indiceDeClip(id) {
+        for (let i = 0; i < clips.length; ++i)
+            if (clips[i].id === id)
+                return i
+        return -1
+    }
+
+    function nuevoIdClip() {
+        let mayor = 0
+        for (let i = 0; i < clips.length; ++i)
+            mayor = Math.max(mayor, clips[i].id)
+        return mayor + 1
+    }
+
+    //  Partir en dos el trozo que haya bajo el cabezal.
+    //
+    //  No hace nada si el corte cae en un borde: partir un clip en «todo» y
+    //  «nada» deja un trozo de duración cero, que ni se ve ni sirve para nada.
+    function cortar(t) {
+        const tr = tramoEn(t)
+        if (!tr)
+            return false
+        const enFuente = tr.desde + (t - tr.inicio)
+        if (enFuente - tr.desde < 0.1 || tr.hasta - enFuente < 0.1)
+            return false
+
+        const izq = Object.assign({}, clips[tr.indice], { hasta: enFuente })
+        const der = Object.assign({}, clips[tr.indice],
+                                  { id: nuevoIdClip(), desde: enFuente })
+        const nuevos = clips.slice()
+        nuevos.splice(tr.indice, 1, izq, der)
+        clips = nuevos
+        persistir()
+        seleccionar("clip", der.id)
+        return true
+    }
+
+    //  Llevar un trozo a otro sitio del orden.
+    //
+    //  Los momentos de zoom NO se mueven con él, y es a propósito: el zoom se
+    //  coloca mirando la línea, igual que un rótulo. Arrastrarlo con el clip
+    //  significaría que reordenar te descoloca todo lo que hubiera después.
+    function moverClip(id, destino) {
+        const desde = indiceDeClip(id)
+        if (desde < 0)
+            return
+        const n = Math.max(0, Math.min(clips.length - 1, destino))
+        if (n === desde)
+            return
+        const nuevos = clips.slice()
+        nuevos.splice(n, 0, nuevos.splice(desde, 1)[0])
+        clips = nuevos
+        persistir()
+    }
+
+    //  Cambiar por dónde entra y por dónde sale un trozo, en tiempo de FUENTE.
+    function recortarClip(id, desde, hasta) {
+        const i = indiceDeClip(id)
+        if (i < 0)
+            return
+        const tope = duracionDeFuente(clips[i].fuente)
+        const a = Math.max(0, Math.min(tope - 0.1, desde))
+        const b = Math.max(a + 0.1, Math.min(tope, hasta))
+        clips = clips.map(function (c, j) {
+            return j === i ? Object.assign({}, c, { desde: a, hasta: b }) : c
+        })
+        persistir()
+    }
+
+    function duracionDeFuente(idFuente) {
+        for (let i = 0; i < fuentes.length; ++i)
+            if (fuentes[i].id === idFuente)
+                return fuentes[i].dur
+        return 0
+    }
+
+    //  Quitar un trozo. El hueco se cierra solo: la línea es la suma de lo que
+    //  quede, así que no hay nada que recolocar.
+    function quitarClip(id) {
+        // El último no se puede quitar: una línea sin trozos no es una línea
+        // vacía, es un editor sin nada que enseñar y sin forma de volver.
+        if (clips.length <= 1)
+            return
+        clips = clips.filter(function (c) { return c.id !== id })
+        persistir()
+        seleccionar("", 0)
+    }
+
+    // ── qué está seleccionado ─────────────────────────────────────
+    //
+    //  Un solo sitio para toda la línea, y no un índice por pista: con varias
+    //  pistas «el elegido» tiene que decir también de qué es.
+    property string tipoSel: ""             // "" · clip · momento
+    property int idSel: 0
+
+    function seleccionar(tipo, id) {
+        tipoSel = tipo
+        idSel = id
+    }
+
+    readonly property var momentoSel: {
+        for (let i = 0; i < momentos.length; ++i)
+            if (tipoSel === "momento" && momentos[i].id === idSel)
+                return momentos[i]
+        return null
+    }
+
+    readonly property var clipSel: {
+        for (let i = 0; i < clips.length; ++i)
+            if (tipoSel === "clip" && clips[i].id === idSel)
+                return clips[i]
+        return null
+    }
+
     property var momentos: []
 
     //  La trayectoria de la cámara, para poder enseñar el zoom en vivo sin
@@ -58,8 +230,7 @@ Singleton {
     //  [{ i, titulo, volumen, mudo }]
     property var pistasAudio: []
 
-    property real duracionVideo: 0
-    // Tamaño del vídeo: hace falta para pasar de píxeles del fichero a píxeles
+    // Tamaño del lienzo: hace falta para pasar de píxeles del vídeo a píxeles
     // del marco donde se previsualiza.
     property int anchoVideo: 1920
     property int altoVideo: 1080
@@ -121,11 +292,10 @@ Singleton {
     }
 
     function recibirPlan(d) {
-        duracionVideo = d.duracion !== undefined ? d.duracion
-            : (d.clips && d.clips.length > 0
-               ? d.clips[0].hasta - d.clips[0].desde : 0)
         anchoVideo = d.w || 1920
         altoVideo = d.h || 1080
+        fuentes = d.fuentes || []
+        clips = d.clips || []
         pistasAudio = (d.fuentes && d.fuentes.length > 0
                        ? d.fuentes[0].pistas : d.audio) || []
         momentos = d.momentos || []
@@ -205,7 +375,7 @@ Singleton {
         const nuevo = {
             id: mayor + 1,
             t0: Math.max(0, Math.min(t0, t1)),
-            t1: Math.min(duracionVideo, Math.max(t0, t1)),
+            t1: Math.min(duracionLinea, Math.max(t0, t1)),
             cx: Math.round(anchoVideo / 2),
             cy: Math.round(altoVideo / 2),
             z: zoomNivel,
@@ -233,7 +403,7 @@ Singleton {
                 return m
             const d = Object.assign({}, m)
             d.t0 = Math.max(0, d.t0 + delta)
-            d.t1 = Math.min(duracionVideo, d.t1 + delta)
+            d.t1 = Math.min(duracionLinea, d.t1 + delta)
             return d
         })
         persistir()
@@ -291,14 +461,17 @@ Singleton {
             "import json,sys; p=json.load(open(sys.argv[1])); " +
             "d=json.loads(sys.argv[2]); " +
             "p['momentos']=d['momentos']; " +
-            //  Una lista de pistas vacía significa «el plan aún no ha
-            //  terminado de cargarse», no «quítale el audio»: no hay forma de
-            //  borrar una pista, solo de silenciarla. Sin este `or`, un guardado
-            //  que llegara antes que la carga dejaba el vídeo mudo para siempre.
+            //  Una lista vacía significa «el plan aún no ha terminado de
+            //  cargarse», no «quítale el audio» ni «quítale los trozos»: no hay
+            //  forma de borrar una pista, solo de silenciarla, ni de dejar la
+            //  línea sin ningún clip. Sin estos `or`, un guardado que llegara
+            //  antes que la carga dejaba el plan vacío para siempre.
             "p['fuentes'][0]['pistas']=d['pistas'] or p['fuentes'][0]['pistas']; " +
+            "p['clips']=d['clips'] or p['clips']; " +
             "json.dump(p, open(sys.argv[1],'w'), ensure_ascii=False, indent=1)",
             rutaPlan,
-            JSON.stringify({ momentos: momentos, pistas: pistasAudio })]
+            JSON.stringify({ momentos: momentos, pistas: pistasAudio,
+                             clips: clips })]
         escritorPlan.running = true
     }
 
@@ -331,9 +504,10 @@ Singleton {
                     const d = JSON.parse(this.text)
                     if (d.ok) {
                         editor.camara = d.camara || []
-                        editor.duracionVideo = d.duracion || editor.duracionVideo
                         editor.anchoVideo = d.w || editor.anchoVideo
                         editor.altoVideo = d.h || editor.altoVideo
+                        if (d.fuentes && d.fuentes.length > 0)
+                            editor.fuentes = d.fuentes
                         if (d.audio && editor.pistasAudio.length === 0)
                             editor.pistasAudio = d.audio
                     }

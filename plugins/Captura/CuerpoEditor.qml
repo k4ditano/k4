@@ -12,7 +12,6 @@
 
 import QtQuick
 import QtQuick.Layouts
-import QtMultimedia
 import "../../core"
 import "../../services"
 
@@ -29,13 +28,10 @@ Item {
 
     focus: true
 
-    property int elegido: 0
+    readonly property var momento: Editor.momentoSel
 
-    readonly property var momento: Editor.momentos.length > 0
-        ? Editor.momentos[Math.min(elegido, Editor.momentos.length - 1)] : null
-
-    readonly property real segundos: reproductor.position / 1000
-    readonly property real total: Math.max(0.001, Editor.duracionVideo)
+    readonly property real segundos: reproductor.cabezal
+    readonly property real total: Math.max(0.001, Editor.duracionLinea)
 
     Component.onCompleted: forceActiveFocus()
 
@@ -86,14 +82,30 @@ Item {
         ? camaraForzada : camaraEn(segundos)
     readonly property bool conZoom: estadoCamara[0] > 1.001
 
-    function irA(t) {
-        reproductor.position = Math.max(0, Math.min(total, t)) * 1000
+    function irA(t) { reproductor.irA(t) }
+
+    //  Elegir el momento anterior o el siguiente, sea cual sea la selección de
+    //  ahora. Con las flechas se recorre la lista, que es lo que se espera.
+    function saltarMomento(d) {
+        const n = Editor.momentos.length
+        if (n === 0)
+            return
+        let i = 0
+        for (let k = 0; k < n; ++k)
+            if (Editor.momentos[k].id === Editor.idSel)
+                i = k
+        const j = ((i + d) % n + n) % n
+        Editor.seleccionar("momento", Editor.momentos[j].id)
+        view.irA(Editor.momentos[j].t0)
     }
 
     Keys.onPressed: function (ev) {
         if (ev.key === Qt.Key_Space) {
-            reproductor.playbackState === MediaPlayer.PlayingState
-                ? reproductor.pause() : reproductor.play()
+            reproductor.alternar()
+        } else if (ev.key === Qt.Key_S) {
+            //  Cortar por donde vaya el cabezal. Es la tecla de cortar en
+            //  cualquier editor de vídeo, y aquí no había otra cosa usándola.
+            Editor.cortar(view.segundos)
         } else if (ev.key === Qt.Key_Left) {
             if ((ev.modifiers & Qt.ShiftModifier) && view.momento)
                 Editor.moverMomento(view.momento.id, -0.2)
@@ -105,22 +117,20 @@ Item {
             else
                 view.irA(view.segundos + 1)
         } else if (ev.key === Qt.Key_Down || ev.key === Qt.Key_Tab) {
-            if (Editor.momentos.length > 0) {
-                view.elegido = (view.elegido + 1) % Editor.momentos.length
-                view.irA(view.momento.t0)
-            }
+            view.saltarMomento(1)
         } else if (ev.key === Qt.Key_Up || ev.key === Qt.Key_Backtab) {
-            if (Editor.momentos.length > 0) {
-                view.elegido = (view.elegido - 1 + Editor.momentos.length)
-                    % Editor.momentos.length
-                view.irA(view.momento.t0)
-            }
+            view.saltarMomento(-1)
         } else if (ev.key === Qt.Key_Plus || ev.key === Qt.Key_Equal) {
             if (view.momento) Editor.ajustarNivel(view.momento.id, 0.2)
+        } else if (ev.key === Qt.Key_Delete || ev.key === Qt.Key_Backspace) {
+            //  Borra lo que esté elegido, sea de la pista que sea. Con dos
+            //  pistas, «quitar» ya no puede querer decir solo «quitar el zoom».
+            if (Editor.tipoSel === "clip")
+                Editor.quitarClip(Editor.idSel)
+            else if (view.momento)
+                Editor.quitarMomento(view.momento.id)
         } else if (ev.key === Qt.Key_Minus) {
             if (view.momento) Editor.ajustarNivel(view.momento.id, -0.2)
-        } else if (ev.key === Qt.Key_Delete || ev.key === Qt.Key_Backspace) {
-            if (view.momento) Editor.quitarMomento(view.momento.id)
         } else if (ev.key === Qt.Key_Return || ev.key === Qt.Key_Enter) {
             Editor.renderizar()
         } else {
@@ -129,50 +139,7 @@ Item {
         ev.accepted = true
     }
 
-    //  Con sonido.
-    //
-    //  Estaba en `audioOutput: null` «para no asustar», y el efecto real era
-    //  peor: grabas, se abre el editor, no oyes nada y concluyes que la
-    //  grabación salió muda. Revisar un vídeo es también oírlo. El botón de
-    //  silencio está en el pie para quien no lo quiera.
-    property AudioOutput altavoz: AudioOutput {
-        muted: view.silenciado
-    }
-
     property bool silenciado: false
-
-    MediaPlayer {
-        id: reproductor
-        source: Editor.rutaVideo.length > 0 ? "file://" + Editor.rutaVideo : ""
-        videoOutput: salida
-        audioOutput: altavoz
-        Component.onCompleted: play()
-
-        //  Se retoma por donde iba: es lo que hace que cambiar de tamaño no te
-        //  devuelva al principio del vídeo.
-        //
-        //  El instante se apunta según se reproduce y no al destruirse: en la
-        //  destrucción el reproductor ya ha soltado el medio y `position` vale
-        //  cero. Y se restaura cuando el medio está CARGADO, no al crearse:
-        //  antes de eso, escribir `position` no hace nada.
-        property bool retomado: false
-
-        onPositionChanged: if (playbackState !== MediaPlayer.StoppedState)
-                               Editor.posicionEditor = position / 1000
-
-        onMediaStatusChanged: {
-            if (mediaStatus === MediaPlayer.EndOfMedia) {
-                position = 0
-                play()
-            } else if (!retomado
-                       && (mediaStatus === MediaPlayer.LoadedMedia
-                           || mediaStatus === MediaPlayer.BufferedMedia)) {
-                retomado = true
-                if (Editor.posicionEditor > 0.2)
-                    position = Editor.posicionEditor * 1000
-            }
-        }
-    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -240,7 +207,7 @@ Item {
             spacing: 12
 
             Rectangle {
-                id: marco
+                id: celda
                 //  Se estira: en la island son unos 600 px y en la ventana
                 //  grande casi el doble, y el mismo cuerpo sirve para las dos.
                 Layout.fillWidth: true
@@ -249,116 +216,137 @@ Item {
                 color: "black"
                 clip: true
 
-                //  La imagen llena el marco, y encima va la transformación que
-                //  hace el zoom. Escalar y desplazar sobre lo ya pintado es
-                //  justo lo que hace `zoompan` con su recorte, solo que aquí
-                //  sale gratis.
+                //  El lienzo, con la proporción del vídeo que va a salir.
+                //
+                //  Antes el vídeo se estiraba para llenar la celda, y como la
+                //  celda tiene la forma que le deje el reparto, la previa salía
+                //  aplastada. Con el zoom solo era feo; en cuanto haya capas
+                //  encima deja de ser lo mismo que se va a renderizar, que es la
+                //  única promesa que hace esta vista.
                 Item {
-                    id: lente
+                    id: marco
+                    anchors.centerIn: parent
 
-                    //  Sin `anchors.fill`, y no es un capricho: **un elemento
-                    //  anclado no se puede mover con x e y**. El ancla manda, y
-                    //  con ella puestas el `scale` sí se aplicaba pero el
-                    //  desplazamiento no, así que el zoom salía siempre pegado
-                    //  a la esquina superior izquierda pasara lo que pasara con
-                    //  el encuadre.
+                    readonly property real aspecto:
+                        Editor.anchoVideo / Math.max(1, Editor.altoVideo)
+
+                    width: Math.min(celda.width, celda.height * aspecto)
+                    height: width / Math.max(0.001, aspecto)
+                    clip: true
+
+                    //  La imagen llena el marco, y encima va la transformación que
+                    //  hace el zoom. Escalar y desplazar sobre lo ya pintado es
+                    //  justo lo que hace `zoompan` con su recorte, solo que aquí
+                    //  sale gratis.
+                    Item {
+                        id: lente
+
+                        //  Sin `anchors.fill`, y no es un capricho: **un elemento
+                        //  anclado no se puede mover con x e y**. El ancla manda, y
+                        //  con ella puestas el `scale` sí se aplicaba pero el
+                        //  desplazamiento no, así que el zoom salía siempre pegado
+                        //  a la esquina superior izquierda pasara lo que pasara con
+                        //  el encuadre.
+                        //
+                        //  Es exactamente la misma trampa que costó el arrastre de
+                        //  la mazmorra, documentada en CeldaObjeto.qml. Volver a
+                        //  caer en ella dice bastante de lo bien que se esconde.
+                        width: marco.width
+                        height: marco.height
+
+                        readonly property real escala: view.estadoCamara[0]
+                        // de píxeles del vídeo a píxeles de este marco
+                        readonly property real factor: marco.width / Math.max(1, Editor.anchoVideo)
+
+                        transformOrigin: Item.TopLeft
+                        scale: escala
+                        x: -view.estadoCamara[1] * factor * escala
+                        y: -view.estadoCamara[2] * factor * escala
+
+                        //  El reproductor sabe qué trozo de qué fichero toca en
+                        //  cada instante de la línea; aquí solo se le da sitio.
+                        Reproductor {
+                            id: reproductor
+                            anchors.fill: parent
+                            silenciado: view.silenciado
+                        }
+                    }
+
+                    //  Arrastrar el encuadre.
                     //
-                    //  Es exactamente la misma trampa que costó el arrastre de
-                    //  la mazmorra, documentada en CeldaObjeto.qml. Volver a
-                    //  caer en ella dice bastante de lo bien que se esconde.
-                    width: marco.width
-                    height: marco.height
-
-                    readonly property real escala: view.estadoCamara[0]
-                    // de píxeles del vídeo a píxeles de este marco
-                    readonly property real factor: marco.width / Math.max(1, Editor.anchoVideo)
-
-                    transformOrigin: Item.TopLeft
-                    scale: escala
-                    x: -view.estadoCamara[1] * factor * escala
-                    y: -view.estadoCamara[2] * factor * escala
-
-                    VideoOutput {
-                        id: salida
+                    //  Va POR ENCIMA de `lente` y no dentro, porque dentro la
+                    //  escala del zoom se aplicaría también a las coordenadas del
+                    //  ratón y el encuadre se movería más deprisa cuanto más
+                    //  ampliado estuviera.
+                    //
+                    //  Se agarra el contenido, no la cámara: llevas la imagen
+                    //  hacia donde quieres mirar, que es como funciona un mapa.
+                    MouseArea {
                         anchors.fill: parent
-                        fillMode: VideoOutput.Stretch
-                    }
-                }
+                        enabled: view.momento !== null
+                            && view.segundos >= view.momento.t0
+                            && view.segundos <= view.momento.t1
+                        cursorShape: enabled
+                            ? (pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
+                            : Qt.ArrowCursor
 
-                //  Arrastrar el encuadre.
-                //
-                //  Va POR ENCIMA de `lente` y no dentro, porque dentro la
-                //  escala del zoom se aplicaría también a las coordenadas del
-                //  ratón y el encuadre se movería más deprisa cuanto más
-                //  ampliado estuviera.
-                //
-                //  Se agarra el contenido, no la cámara: llevas la imagen
-                //  hacia donde quieres mirar, que es como funciona un mapa.
-                MouseArea {
-                    anchors.fill: parent
-                    enabled: view.momento !== null
-                        && view.segundos >= view.momento.t0
-                        && view.segundos <= view.momento.t1
-                    cursorShape: enabled
-                        ? (pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
-                        : Qt.ArrowCursor
+                        property real xIni: 0
+                        property real yIni: 0
+                        property real cxIni: 0
+                        property real cyIni: 0
 
-                    property real xIni: 0
-                    property real yIni: 0
-                    property real cxIni: 0
-                    property real cyIni: 0
+                        onPressed: function (ev) {
+                            xIni = ev.x; yIni = ev.y
+                            cxIni = view.momento.cx
+                            cyIni = view.momento.cy
+                        }
 
-                    onPressed: function (ev) {
-                        xIni = ev.x; yIni = ev.y
-                        cxIni = view.momento.cx
-                        cyIni = view.momento.cy
-                    }
+                        onPositionChanged: function (ev) {
+                            if (!pressed || !view.momento)
+                                return
+                            const f = lente.factor * lente.escala
+                            const cx = cxIni - (ev.x - xIni) / f
+                            const cy = cyIni - (ev.y - yIni) / f
+                            // Se pinta ya, sin esperar a que python rehaga la
+                            // trayectoria: si no, el arrastre se sentiría a cuatro
+                            // fotogramas por segundo.
+                            view.camaraForzada = view.encuadreEn(cx, cy)
+                            Editor.moverCentro(view.momento.id, cx, cy)
+                        }
 
-                    onPositionChanged: function (ev) {
-                        if (!pressed || !view.momento)
-                            return
-                        const f = lente.factor * lente.escala
-                        const cx = cxIni - (ev.x - xIni) / f
-                        const cy = cyIni - (ev.y - yIni) / f
-                        // Se pinta ya, sin esperar a que python rehaga la
-                        // trayectoria: si no, el arrastre se sentiría a cuatro
-                        // fotogramas por segundo.
-                        view.camaraForzada = view.encuadreEn(cx, cy)
-                        Editor.moverCentro(view.momento.id, cx, cy)
+                        onReleased: view.camaraForzada = null
+
+                        //  La rueda cambia el nivel del momento que esté sonando.
+                        //  En el propio MouseArea: un WheelHandler hijo no recibe
+                        //  el evento, se lo queda el área.
+                        onWheel: function (ev) {
+                            if (view.momento)
+                                Editor.ajustarNivel(view.momento.id,
+                                                     ev.angleDelta.y > 0 ? 0.1 : -0.1)
+                            ev.accepted = true
+                        }
                     }
 
-                    onReleased: view.camaraForzada = null
+                    // Que lo que ves lleva zoom, para no confundirlo con el vídeo
+                    // tal cual.
+                    Rectangle {
+                        visible: view.conZoom
+                        anchors.top: parent.top
+                        anchors.right: parent.right
+                        anchors.margins: 6
+                        width: marcaZoom.implicitWidth + 12
+                        height: 18
+                        radius: 9
+                        color: "#cc0a84ff"
 
-                    //  La rueda cambia el nivel del momento que esté sonando.
-                    //  En el propio MouseArea: un WheelHandler hijo no recibe
-                    //  el evento, se lo queda el área.
-                    onWheel: function (ev) {
-                        if (view.momento)
-                            Editor.ajustarNivel(view.momento.id,
-                                                 ev.angleDelta.y > 0 ? 0.1 : -0.1)
-                        ev.accepted = true
-                    }
-                }
-
-                // Que lo que ves lleva zoom, para no confundirlo con el vídeo
-                // tal cual.
-                Rectangle {
-                    visible: view.conZoom
-                    anchors.top: parent.top
-                    anchors.right: parent.right
-                    anchors.margins: 6
-                    width: marcaZoom.implicitWidth + 12
-                    height: 18
-                    radius: 9
-                    color: "#cc0a84ff"
-
-                    IslandLabel {
-                        id: marcaZoom
-                        anchors.centerIn: parent
-                        text: "×" + view.estadoCamara[0].toFixed(2)
-                        color: Theme.ink
-                        font.pixelSize: 9
-                        font.weight: Font.DemiBold
+                        IslandLabel {
+                            id: marcaZoom
+                            anchors.centerIn: parent
+                            text: "×" + view.estadoCamara[0].toFixed(2)
+                            color: Theme.ink
+                            font.pixelSize: 9
+                            font.weight: Font.DemiBold
+                        }
                     }
                 }
             }
@@ -375,28 +363,103 @@ Item {
                 Layout.fillHeight: true
                 spacing: 6
 
+                //  Qué hay elegido.
+                //
+                //  Con dos pistas la ficha ya no puede ser siempre la del zoom:
+                //  si acabas de pinchar un trozo, lo que quieres saber es de
+                //  dónde sale y qué le puedes hacer.
                 IslandLabel {
-                    text: view.momento
-                        ? Idioma.t("Momento ") + view.momento.id
-                        : Idioma.t("Sin momentos")
+                    text: Editor.clipSel
+                        ? Idioma.t("Trozo ") + (Editor.tramoDe(Editor.idSel) + 1)
+                          + "/" + Editor.tramos.length
+                        : (view.momento ? Idioma.t("Momento ") + view.momento.id
+                                        : Idioma.t("Sin selección"))
                     color: Theme.ink
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
                 }
 
                 IslandLabel {
-                    visible: view.momento !== null
-                    text: view.momento
-                        ? view.momento.t0.toFixed(1) + " – " + view.momento.t1.toFixed(1) + " s"
-                          + "   ·   ×" + view.momento.z.toFixed(1)
-                        : ""
+                    visible: text.length > 0
+                    text: Editor.clipSel
+                        ? Editor.clipSel.desde.toFixed(1) + " → "
+                          + Editor.clipSel.hasta.toFixed(1) + " s "
+                          + Idioma.t("del original")
+                        : (view.momento
+                           ? view.momento.t0.toFixed(1) + " – "
+                             + view.momento.t1.toFixed(1) + " s"
+                             + "   ·   ×" + view.momento.z.toFixed(1)
+                           : "")
                     color: Theme.muted
                     font.pixelSize: 11
+                }
+
+                // ── lo que se le hace a un trozo ──────────────────
+                ColumnLayout {
+                    visible: Editor.clipSel !== null
+                    Layout.fillWidth: true
+                    Layout.topMargin: 6
+                    spacing: 6
+
+                    Repeater {
+                        model: [
+                            { texto: Idioma.t("Cortar aquí"), icono: 0xF0190,             // md-content_cut
+                              accion: "cortar" },
+                            { texto: Idioma.t("Quitar el trozo"), icono: 0xF01B4,
+                              accion: "quitar" }
+                        ]
+
+                        delegate: Rectangle {
+                            id: botonClip
+                            required property var modelData
+
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 26
+                            radius: 13
+                            color: clipRaton.containsMouse ? Theme.surfaceHi
+                                                           : Theme.surface
+                            // Quitar el último trozo dejaría la línea vacía.
+                            opacity: botonClip.modelData.accion === "quitar"
+                                     && Editor.tramos.length <= 1 ? 0.4 : 1
+
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: 5
+
+                                IconGlyph {
+                                    text: String.fromCodePoint(botonClip.modelData.icono)
+                                    color: botonClip.modelData.accion === "quitar"
+                                        ? Theme.red : Theme.muted
+                                    font.pixelSize: 12
+                                }
+
+                                IslandLabel {
+                                    text: botonClip.modelData.texto
+                                    font.pixelSize: 10
+                                }
+                            }
+
+                            MouseArea {
+                                id: clipRaton
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (botonClip.modelData.accion === "cortar")
+                                        Editor.cortar(view.segundos)
+                                    else
+                                        Editor.quitarClip(Editor.idSel)
+                                }
+                            }
+                        }
+                    }
                 }
 
                 Item { Layout.fillHeight: true }
 
                 GridLayout {
+                    // Los botones del zoom no pintan nada con un trozo elegido.
+                    visible: Editor.clipSel === null
                     columns: 2
                     columnSpacing: 6
                     rowSpacing: 6
@@ -502,7 +565,7 @@ Item {
                                 text: filaPista.modelData.titulo.length > 0
                                     ? filaPista.modelData.titulo
                                     : Idioma.t("Pista ") + (filaPista.modelData.i + 1)
-                                color: reproductor.activeAudioTrack === filaPista.modelData.i
+                                color: reproductor.pistaAudio === filaPista.modelData.i
                                     ? Theme.ink : Theme.muted
                                 font.pixelSize: 10
                                 elide: Text.ElideRight
@@ -510,7 +573,7 @@ Item {
                                 MouseArea {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: reproductor.activeAudioTrack = filaPista.modelData.i
+                                    onClicked: reproductor.fijarPistaAudio(filaPista.modelData.i)
                                 }
                             }
 
@@ -562,6 +625,8 @@ Item {
                 }
 
                 Rectangle {
+                    // El trozo tiene su propio «quitar» arriba.
+                    visible: Editor.clipSel === null
                     Layout.fillWidth: true
                     Layout.preferredHeight: 26
                     radius: 13
@@ -599,27 +664,13 @@ Item {
         }
 
         // ── la línea de tiempo ────────────────────────────────────
-        Pista {
+        LineaTiempo {
             Layout.fillWidth: true
-            Layout.preferredHeight: 36
 
-            modelo: Editor.momentos
             total: view.total
             cabezal: view.segundos
-            elegido: view.elegido
 
             onSaltar: function (t) { view.irA(t) }
-            onElegir: function (i) { view.elegido = i }
-            onEditar: function (id, a, b) {
-                Editor.fijarMomento(id, { t0: a, t1: b })
-            }
-            onCrear: function (a, b) {
-                view.elegido = Editor.momentos.length
-                Editor.crearMomento(a, b)
-            }
-            onNivel: function (id, d) {
-                Editor.ajustarNivel(id, d > 0 ? 0.1 : -0.1)
-            }
         }
 
         // ── pie ───────────────────────────────────────────────────
@@ -628,12 +679,10 @@ Item {
             spacing: 8
 
             MediaButton {
-                glyph: reproductor.playbackState === MediaPlayer.PlayingState
-                    ? Theme.ico.pause : Theme.ico.play
+                glyph: reproductor.reproduciendo ? Theme.ico.pause : Theme.ico.play
                 glyphSize: 16
                 glyphColor: Theme.ink
-                onActivated: reproductor.playbackState === MediaPlayer.PlayingState
-                    ? reproductor.pause() : reproductor.play()
+                onActivated: reproductor.alternar()
             }
 
             //  Crear un zoom donde esté el cabezal.
@@ -677,8 +726,7 @@ Item {
                         // estás cerca del final.
                         const a = Math.min(view.segundos, Math.max(0, view.total - 2))
                         const b = Math.min(view.total, a + 2)
-                        Editor.crearMomento(a, b)
-                        view.elegido = Editor.momentos.length - 1
+                        Editor.seleccionar("momento", Editor.crearMomento(a, b))
                     }
                 }
             }

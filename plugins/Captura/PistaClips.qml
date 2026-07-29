@@ -1,0 +1,268 @@
+//  La pista base: los trozos de vídeo, en el orden en que se ven.
+//
+//  No reusa `Pista`/`BloqueTiempo` aunque se parezcan, y no es por pereza: allí
+//  un bloque tiene un t0 y un t1 propios y puede estar donde quiera, y aquí los
+//  trozos van pegados y sin huecos. Arrastrar no significa «ponlo en el segundo
+//  siete» sino «ponlo el tercero», y las asas no mueven el bloque en la línea
+//  sino que cambian por dónde entra y por dónde sale del FICHERO. Es otro gesto
+//  con la misma pinta, y mezclarlos habría salido caro.
+//
+//  Como en los bloques de zoom, el gesto se edita en local y el modelo se
+//  escribe al soltar: escribir `clips` reasigna el array, el Repeater destruye
+//  los delegados y con ellos el MouseArea que tenía el agarre.
+
+import QtQuick
+import "../../core"
+import "../../services"
+
+Rectangle {
+    id: pista
+
+    property real total: 1
+    property real cabezal: 0
+
+    signal saltar(real t)
+
+    radius: 6
+    color: Theme.surface
+    clip: true
+
+    function t2px(t) { return width * (t / Math.max(0.001, total)) }
+    function px2t(px) { return px / Math.max(1, width) * total }
+
+    // ── el fondo: saltar a un instante ────────────────────────────
+    //
+    //  Declarado primero a propósito: en QML gana el último, así que los trozos
+    //  quedan por encima y se llevan el gesto cuando toca.
+    MouseArea {
+        anchors.fill: parent
+        cursorShape: Qt.PointingHandCursor
+        onPressed: function (ev) { pista.saltar(pista.px2t(ev.x)) }
+        onPositionChanged: function (ev) {
+            if (pressed) pista.saltar(pista.px2t(ev.x))
+        }
+    }
+
+    Repeater {
+        model: Editor.tramos
+
+        delegate: Rectangle {
+            id: trozo
+            required property var modelData
+            required property int index
+
+            readonly property bool elegido: Editor.tipoSel === "clip"
+                && Editor.idSel === modelData.clip
+
+            // ── el gesto en curso, en local ───────────────────────
+            property bool arrastrando: false
+            property real deltaX: 0
+            property bool recortando: false
+            property real vDesde: 0
+            property real vHasta: 0
+
+            readonly property real dur: recortando
+                ? Math.max(0.1, vHasta - vDesde)
+                : modelData.fin - modelData.inicio
+
+            x: pista.t2px(modelData.inicio) + deltaX
+            width: Math.max(6, pista.t2px(dur))
+            y: 3
+            height: pista.height - 6
+            radius: 5
+
+            //  El que se arrastra va por encima de los demás y con sombra: sin
+            //  eso, al pasar sobre el vecino desaparecía debajo y parecía que se
+            //  había soltado.
+            z: arrastrando ? 10 : 0
+
+            color: elegido ? Theme.blue
+                : (raton.containsMouse ? Qt.rgba(0.35, 0.45, 0.6, 0.85)
+                                       : Qt.rgba(0.28, 0.34, 0.45, 0.8))
+            opacity: arrastrando ? 0.85 : 1
+
+            Behavior on color { ColorAnimation { duration: 110 } }
+            Behavior on x {
+                enabled: !trozo.arrastrando
+                NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
+            }
+
+            border.width: elegido ? 0 : 1
+            border.color: Qt.rgba(1, 1, 1, 0.08)
+
+            // ── qué trozo es ──────────────────────────────────────
+            Column {
+                anchors.left: parent.left
+                anchors.leftMargin: 7
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 1
+                visible: trozo.width > 54
+
+                IslandLabel {
+                    text: trozo.dur.toFixed(1) + " s"
+                    color: Theme.ink
+                    font.pixelSize: 10
+                    font.weight: Font.DemiBold
+                }
+
+                // De dónde sale, en tiempo del fichero. Es lo que distingue dos
+                // trozos del mismo vídeo, que si no son idénticos por fuera.
+                IslandLabel {
+                    visible: trozo.width > 92
+                    text: (trozo.recortando ? trozo.vDesde : trozo.modelData.desde)
+                          .toFixed(1) + " → "
+                          + (trozo.recortando ? trozo.vHasta : trozo.modelData.hasta)
+                          .toFixed(1)
+                    color: trozo.elegido ? Qt.rgba(1, 1, 1, 0.75) : Theme.muted
+                    font.pixelSize: 9
+                }
+            }
+
+            // ── mover: cambia el ORDEN, no el instante ────────────
+            MouseArea {
+                id: raton
+                anchors.fill: parent
+                anchors.leftMargin: 9
+                anchors.rightMargin: 9
+                hoverEnabled: true
+                preventStealing: true
+                cursorShape: Qt.SizeAllCursor
+
+                property real xIni: 0
+                property bool movido: false
+
+                //  En coordenadas de la PISTA, no del trozo.
+                //
+                //  Es la trampa que ya costó el arrastre de los bloques de zoom
+                //  y la de la mazmorra antes: `ev.x` va en coordenadas del
+                //  elemento, y este elemento se recoloca en cuanto cambia
+                //  `deltaX`. El puntero se quedaba siempre en el mismo punto
+                //  relativo y el desplazamiento se anulaba a sí mismo. La
+                //  posición absoluta es la única que no se mueve bajo los pies.
+                function enPista(ev) { return mapToItem(pista, ev.x, 0).x }
+
+                onPressed: function (ev) {
+                    Editor.seleccionar("clip", trozo.modelData.clip)
+                    xIni = enPista(ev)
+                    movido = false
+                }
+
+                onPositionChanged: function (ev) {
+                    if (!pressed)
+                        return
+                    const d = enPista(ev) - xIni
+                    if (!movido && Math.abs(d) < 6)
+                        return
+                    movido = true
+                    trozo.arrastrando = true
+                    trozo.deltaX = d
+                }
+
+                onReleased: {
+                    if (!movido) {
+                        // Un clic sin arrastre lleva el cabezal al principio del
+                        // trozo, que es lo que uno espera al pinchar en él.
+                        pista.saltar(trozo.modelData.inicio)
+                        return
+                    }
+                    // A qué hueco ha ido a parar el centro del trozo.
+                    const centro = trozo.x + trozo.width / 2
+                    Editor.moverClip(trozo.modelData.clip,
+                                     pista.huecoEn(centro, trozo.index))
+                    trozo.arrastrando = false
+                    trozo.deltaX = 0
+                }
+            }
+
+            // ── recortar: cambia por dónde entra y sale del fichero ─
+            Component {
+                id: asa
+
+                MouseArea {
+                    property bool esIzquierda: true
+
+                    // Nueve píxeles y no cuatro: acertar en una franja de cuatro
+                    // arrastrando es pedir una puntería que nadie tiene.
+                    width: 9
+                    height: trozo.height
+                    x: esIzquierda ? 0 : trozo.width - 9
+                    preventStealing: true
+                    hoverEnabled: true
+                    cursorShape: Qt.SizeHorCursor
+
+                    property real xIni: 0
+
+                    // En coordenadas de la pista, por lo mismo que el cuerpo:
+                    // el asa va pegada a un borde que este gesto mueve.
+                    function enPista(ev) { return mapToItem(pista, ev.x, 0).x }
+
+                    onPressed: function (ev) {
+                        Editor.seleccionar("clip", trozo.modelData.clip)
+                        trozo.vDesde = trozo.modelData.desde
+                        trozo.vHasta = trozo.modelData.hasta
+                        trozo.recortando = true
+                        xIni = enPista(ev)
+                    }
+
+                    onPositionChanged: function (ev) {
+                        if (!pressed)
+                            return
+                        // Lo arrastrado, en segundos. Del fichero y de la línea
+                        // a la vez: el trozo no cambia de velocidad.
+                        const d = pista.px2t(enPista(ev) - xIni)
+                        if (esIzquierda)
+                            trozo.vDesde = Math.min(trozo.modelData.desde + d,
+                                                    trozo.vHasta - 0.1)
+                        else
+                            trozo.vHasta = Math.max(trozo.modelData.hasta + d,
+                                                    trozo.vDesde + 0.1)
+                    }
+
+                    onReleased: {
+                        Editor.recortarClip(trozo.modelData.clip,
+                                            trozo.vDesde, trozo.vHasta)
+                        trozo.recortando = false
+                    }
+
+                    Rectangle {
+                        visible: trozo.elegido || parent.containsMouse
+                        anchors.centerIn: parent
+                        width: 2
+                        height: parent.height * 0.45
+                        radius: 1
+                        color: Theme.ink
+                        opacity: parent.containsMouse ? 1 : 0.5
+                    }
+                }
+            }
+
+            Loader { sourceComponent: asa; onLoaded: item.esIzquierda = true }
+            Loader { sourceComponent: asa; onLoaded: item.esIzquierda = false }
+        }
+    }
+
+    //  En qué posición del orden cae una x dada.
+    //
+    //  Se cuenta cuántos trozos tienen su centro a la izquierda, saltándose el
+    //  que se está moviendo: contarlo a sí mismo haría que quedarse quieto
+    //  contara como avanzar un puesto.
+    function huecoEn(x, propio) {
+        let n = 0
+        for (let i = 0; i < Editor.tramos.length; ++i) {
+            if (i === propio)
+                continue
+            const t = Editor.tramos[i]
+            if (t2px((t.inicio + t.fin) / 2) < x)
+                ++n
+        }
+        return n
+    }
+
+    // ── dónde va la reproducción ──────────────────────────────────
+    Rectangle {
+        x: pista.t2px(pista.cabezal) - 1
+        width: 2
+        height: pista.height
+        color: Theme.ink
+    }
+}

@@ -6,3 +6,6 @@
 
 # capturas de trabajo que no forman parte del proyecto
 /scratch/
+
+# Los .pyc de tools/, que aparecen al importar editar.py desde las pruebas.
+tools/__pycache__/
