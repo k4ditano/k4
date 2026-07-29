@@ -514,9 +514,16 @@ Singleton {
         renderizador.running = true
     }
 
+    //  Descartar es tirarlo todo: los momentos, el estado y la cápsula de
+    //  «pendiente» de la píldora. Antes solo vaciaba los momentos, así que la
+    //  cápsula se quedaba ahí diciendo «0 momentos» para siempre y no había
+    //  forma de librarse de ella.
+    //
+    //  El vídeo sin tocar sigue guardado; lo que se tira es el plan de zoom.
     function descartarZoom() {
         momentos = []
         estado = ""
+        Modulos.quitar("captura-zoom")
     }
 
     //  Al editar hay que rehacer la trayectoria, pero no a cada tecla: si

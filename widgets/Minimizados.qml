@@ -24,7 +24,10 @@ RowLayout {
             id: capsula
             required property var modelData
 
-            Layout.preferredWidth: contenido.implicitWidth + (fila.interactive ? 16 : 10)
+            // El hueco de la aspa se reserva siempre, aunque solo se dibuje al
+            // pasar por encima: si no, la cápsula pega un salto de ancho justo
+            // cuando vas a pulsarla y el aspa se te escapa.
+            Layout.preferredWidth: contenido.implicitWidth + (fila.interactive ? 38 : 10)
             Layout.preferredHeight: fila.interactive ? 22 : 17
             Layout.alignment: Qt.AlignVCenter
             radius: height / 2
@@ -35,7 +38,9 @@ RowLayout {
 
             RowLayout {
                 id: contenido
-                anchors.centerIn: parent
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.left: parent.left
+                anchors.leftMargin: fila.interactive ? 8 : 5
                 spacing: 4
 
                 IconGlyph {
@@ -67,12 +72,41 @@ RowLayout {
                 cursorShape: Qt.PointingHandCursor
                 acceptedButtons: Qt.LeftButton | Qt.MiddleButton
                 onClicked: function (ev) {
-                    // Con el botón de en medio se descarta sin abrirlo, que es
-                    // lo que uno quiere cuando ya no le interesa.
                     if (ev.button === Qt.MiddleButton)
                         Modulos.quitar(capsula.modelData.id)
                     else
                         Modulos.restaurar(capsula.modelData.id)
+                }
+            }
+
+            //  La aspa para descartar, al pasar por encima.
+            //
+            //  El botón de en medio también vale, pero eso no lo adivina nadie:
+            //  sin algo que se vea, lo que dejaste a medias se queda ahí para
+            //  siempre y no hay forma obvia de quitarlo.
+            Rectangle {
+                visible: fila.interactive && (raton.containsMouse || aspaRaton.containsMouse)
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.right: parent.right
+                anchors.rightMargin: 2
+                width: 16
+                height: 16
+                radius: 8
+                color: aspaRaton.containsMouse ? Theme.red : Theme.surfaceHi
+
+                IconGlyph {
+                    anchors.centerIn: parent
+                    text: Theme.ico.close
+                    color: Theme.ink
+                    font.pixelSize: 10
+                }
+
+                MouseArea {
+                    id: aspaRaton
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Modulos.quitar(capsula.modelData.id)
                 }
             }
         }

@@ -157,11 +157,20 @@ FadeIn {
                 Layout.fillWidth: true
             }
 
+            // Apartar: sigue ahí, en la píldora, para retomarlo luego.
+            MediaButton {
+                glyph: String.fromCodePoint(0xF0374)     // md-minus
+                glyphSize: 13
+                glyphColor: Theme.muted
+                onActivated: view.plugin.close()
+            }
+
+            // Descartar: se tira el plan. El vídeo sin tocar sigue guardado.
             MediaButton {
                 glyph: Theme.ico.close
                 glyphSize: 13
                 glyphColor: Theme.muted
-                onActivated: Captura.descartarZoom()
+                onActivated: view.plugin.descartar()
             }
         }
 

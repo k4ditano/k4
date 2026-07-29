@@ -99,6 +99,15 @@ K4Plugin {
     }
     function toggle() { open && modo === "menu" ? close() : abrir() }
 
+    //  Apartar y descartar son cosas distintas y la cabecera del editor tiene
+    //  un botón para cada una. `close()` aparta —es lo que hace también ESC—;
+    //  esto tira el plan y se olvida.
+    function descartar() {
+        Captura.descartarZoom()
+        modo = "menu"
+        open = false
+    }
+
     function avanzar()    { index = (index + 1) % ambitos.length }
     function retroceder() { index = (index - 1 + ambitos.length) % ambitos.length }
 
