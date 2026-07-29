@@ -348,6 +348,58 @@ def prueba_capa_sin_fichero():
     igual("pero el vídeo sale igual", "[zoom]format=yuv420p[v]" in texto, True)
 
 
+# ── el audio añadido ──────────────────────────────────────────────
+def pista_audio(**campos):
+    d = {"id": 1, "tipo": "audio", "banda": 1, "ruta": fichero("musica.mp3"),
+         "t0": 3.0, "t1": 8.0, "dur": 6.0, "volumen": 0.6}
+    d.update(campos)
+    return d
+
+
+def prueba_audio_entra_con_retardo_y_volumen():
+    texto, _ = editar.grafo(con_capas([pista_audio()]), carpeta=BORRADOR)
+    igual("su volumen", "volume=0.600" in texto, True)
+    #  `all=1` y no `delays=N|N`: con un valor por canal hay que saber cuántos
+    #  canales trae el fichero, y un mp3 mono y un wav estéreo no traen los mismos.
+    igual("retardo en milisegundos y a todos los canales",
+          "adelay=delays=3000:all=1" in texto, True)
+    #  Sin `apad` la pista más corta manda en el amix y el vídeo se queda sin
+    #  sonido a partir de donde se acabe la música.
+    igual("con relleno al final", "apad" in texto, True)
+
+
+def prueba_audio_se_suma_sin_bajar_lo_de_debajo():
+    texto, _ = editar.grafo(con_capas([pista_audio()]), carpeta=BORRADOR)
+    igual("se mezcla con el audio de la base",
+          "[mez][ax0]amix=inputs=2" in texto, True)
+    #  `normalize=0`: sin esto amix reparte el volumen entre las entradas y añadir
+    #  música bajaría la voz sin que nadie lo pida. `duration=first`: sin esto el
+    #  `apad` alargaría el vídeo hasta el infinito.
+    igual("sin normalizar y con la duración del vídeo",
+          "normalize=0:duration=first" in texto, True)
+
+
+def prueba_audio_sin_retardo_no_pone_adelay():
+    texto, _ = editar.grafo(con_capas([pista_audio(t0=0)]), carpeta=BORRADOR)
+    igual("empezando en cero no hace falta retrasar",
+          "adelay" in texto, False)
+
+
+def prueba_audio_en_una_previa_no_entra():
+    """Un fotograma suelto no lleva sonido, así que ni se abre el fichero."""
+    texto, _ = editar.grafo(con_capas([pista_audio()]), sin_audio=True,
+                            carpeta=BORRADOR)
+    igual("nada de amix", "amix" in texto, False)
+    igual("y el audio de la base a un sumidero",
+          "[mez]anullsink" in texto, True)
+
+
+def prueba_audio_no_pinta_nada():
+    """Una capa de audio no es una capa de imagen: no lleva overlay."""
+    texto, _ = editar.grafo(con_capas([pista_audio()]), carpeta=BORRADOR)
+    igual("sin overlay", "overlay=" in texto, False)
+
+
 # ── los rótulos ───────────────────────────────────────────────────
 def rotulo(**campos):
     d = {"id": 1, "tipo": "texto", "banda": 1, "t0": 1.0, "t1": 4.0,

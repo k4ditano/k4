@@ -52,7 +52,7 @@ Item {
             //  faena.
             readonly property bool dentro: lienzo.segundos >= modelData.t0
                 && lienzo.segundos <= modelData.t1
-            visible: dentro || moviendo || escalando
+            visible: visual && (dentro || moviendo || escalando)
 
             // ── el gesto en curso, en local ───────────────────────
             property bool moviendo: false
@@ -66,6 +66,10 @@ Item {
             readonly property real eEscala: escalando ? vEscala : modelData.escala
 
             readonly property bool esTexto: modelData.tipo === "texto"
+            //  El audio no se pinta: no tiene sitio en el fotograma. Su bloque
+            //  vive en la línea de tiempo y su volumen en la ficha.
+            readonly property bool visual: modelData.tipo === "texto"
+                                        || modelData.tipo === "imagen"
 
             //  La proporción de la imagen la trae la propia imagen. ffmpeg
             //  escala con `-1` de alto, o sea conservándola, así que aquí hay

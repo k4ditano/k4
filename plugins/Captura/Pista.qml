@@ -110,7 +110,11 @@ Rectangle {
             t1: modelData.t1
             total: pista.total
             elegido: index === pista.elegido
-            tono: pista.tono
+            //  El audio se pinta en amarillo aunque comparta banda con una
+            //  imagen: en la línea de tiempo lo que se busca es «dónde suena la
+            //  música», y el color lo dice sin leer nada. Los momentos de zoom no
+            //  tienen `tipo`, así que se quedan con el tono de la pista.
+            tono: modelData.tipo === "audio" ? Theme.yellow : pista.tono
 
             y: 5
             height: pista.height - 10

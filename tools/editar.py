@@ -720,9 +720,55 @@ def grafo(plan, sin_audio=False, carpeta=None):
         lineas += nuevas
 
     lineas.append("[%s]format=yuv420p[v]" % entra)
-    lineas.append("[mez]anullsink" if sin_audio else "[mez]anull[a]")
+
+    # ── 5. el audio añadido, encima de lo que ya suena
+    lineas += ramas_audio_extra(plan, idx_capa, sin_audio)
 
     return ";\n".join(lineas), len(puntos)
+
+
+def ramas_audio_extra(plan, idx_capa, sin_audio):
+    """Las capas de audio, mezcladas con el sonido del vídeo.
+
+    Cada una entra con su volumen y a partir de su instante, y todas se suman al
+    audio de la base. Si el fotograma que se pide es suelto —una previa— no hay
+    audio que mapear y todo va a un sumidero: en un `filter_complex` una etiqueta
+    que se produce y no se consume no es «se ignora», es un error que tumba la
+    orden entera.
+    """
+    extras = [c for c in capas_de(plan, "audio")
+              if c.get("ruta") and os.path.exists(c["ruta"])]
+
+    if sin_audio:
+        # Ni se molestan en entrar: nadie va a escucharlas.
+        return ["[mez]anullsink"]
+    if not extras:
+        return ["[mez]anull[a]"]
+
+    lineas, etiquetas = [], ["[mez]"]
+    for k, capa in enumerate(extras):
+        et = "ax%d" % k
+        retardo = max(0, int(round(float(capa.get("t0", 0)) * 1000)))
+        partes = ["[%d:a]volume=%.3f"
+                  % (idx_capa[capa["id"]], float(capa.get("volumen", 1.0)))]
+        if retardo > 0:
+            #  `all=1` y no `delays=N|N`: con un valor por canal hay que saber
+            #  cuántos canales trae el fichero, y un mp3 mono y un wav estéreo no
+            #  traen los mismos. Con `all` se retrasan todos y da igual.
+            partes.append("adelay=delays=%d:all=1" % retardo)
+        #  `apad`: sin esto, la pista más corta manda en el `amix` y el vídeo se
+        #  quedaría sin sonido a partir de donde se acabe la música.
+        partes.append("apad")
+        partes.append(NORMA_AUDIO)
+        lineas.append(",".join(partes) + "[%s]" % et)
+        etiquetas.append("[%s]" % et)
+
+    #  `normalize=0` y `duration=first`: sin el primero, `amix` reparte el volumen
+    #  entre las entradas y añadir música bajaría la voz sin que nadie lo pida; sin
+    #  el segundo, el `apad` de arriba alargaría el vídeo hasta el infinito.
+    lineas.append("%samix=inputs=%d:normalize=0:duration=first[a]"
+                  % ("".join(etiquetas), len(etiquetas)))
+    return lineas
 
 
 # ── datos del vídeo ───────────────────────────────────────────────
@@ -941,6 +987,24 @@ def orden_proponer(args):
     salir(ok=True, **plan)
 
 
+def orden_medir(args):
+    """Cuánto dura un fichero de audio.
+
+    Hace falta para que la capa sepa qué tramo ocupa en la línea antes de que
+    nadie la haya escuchado: un bloque de duración inventada se arrastra mal y
+    engaña sobre cuándo se acaba la música.
+    """
+    if not os.path.exists(args.fichero):
+        salir(ok=False, motivo="no-existe")
+    p = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "csv=p=0", args.fichero], capture_output=True, text=True)
+    try:
+        salir(ok=True, dur=round(float(p.stdout.strip()), 3))
+    except ValueError:
+        salir(ok=False, motivo="ilegible")
+
+
 def orden_camara(args):
     """La trayectoria de la cámara, para previsualizarla sin renderizar.
 
@@ -1067,6 +1131,9 @@ def main():
     d = sub.add_parser("camara")
     d.add_argument("plan")
 
+    m = sub.add_parser("medir")
+    m.add_argument("fichero")
+
     c = sub.add_parser("previa")
     c.add_argument("plan")
     c.add_argument("t", type=float)
@@ -1074,7 +1141,8 @@ def main():
 
     args = ap.parse_args()
     {"abrir": orden_abrir, "proponer": orden_proponer, "render": orden_render,
-     "previa": orden_previa, "camara": orden_camara}[args.orden](args)
+     "previa": orden_previa, "camara": orden_camara,
+     "medir": orden_medir}[args.orden](args)
 
 
 if __name__ == "__main__":

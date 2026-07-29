@@ -323,6 +323,63 @@ Singleton {
         return nueva.id
     }
 
+    //  Una pista de audio añadida: música, una voz, lo que sea.
+    //
+    //  Antes de crearla hay que saber cuánto dura, y eso hay que preguntárselo al
+    //  fichero: un bloque de duración inventada se arrastra mal y engaña sobre
+    //  cuándo se acaba la música. Así que primero se mide y luego se crea.
+    property string audioPendiente: ""
+    property real audioPendienteEn: 0
+
+    function crearAudio(ruta, t0) {
+        if (!ruta || ruta.length === 0)
+            return
+        audioPendiente = ruta
+        audioPendienteEn = Math.max(0, Math.min(t0, duracionLinea))
+        medidor.command = ["python3", guion, "medir", ruta]
+        medidor.running = true
+    }
+
+    Process {
+        id: medidor
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let d = null
+                try { d = JSON.parse(this.text) } catch (e) { }
+                if (!d || !d.ok || editor.audioPendiente.length === 0) {
+                    editor.fallo(d && d.motivo ? d.motivo : "audio-ilegible")
+                    editor.audioPendiente = ""
+                    return
+                }
+                editor.anadirAudio(editor.audioPendiente,
+                                   editor.audioPendienteEn, d.dur)
+                editor.audioPendiente = ""
+            }
+        }
+    }
+
+    function anadirAudio(ruta, t0, dur) {
+        const a = Math.max(0, Math.min(t0, Math.max(0, duracionLinea - 0.5)))
+        //  El bloque acaba donde acabe la música o donde acabe el vídeo, lo que
+        //  llegue antes: la parte que se sale no se va a oír, así que enseñarla
+        //  en la línea de tiempo sería mentir.
+        const b = Math.min(duracionLinea, a + dur)
+        const nueva = {
+            id: nuevoIdCapa(),
+            tipo: "audio",
+            ruta: ruta,
+            t0: a,
+            t1: b,
+            dur: dur,
+            banda: proximaEnBandaNueva ? cuantasBandas + 1 : bandaLibre(a, b),
+            volumen: 0.8
+        }
+        capas = capas.concat([nueva])
+        proximaEnBandaNueva = false
+        persistir()
+        seleccionar("capa", nueva.id)
+    }
+
     //  Un rótulo.
     //
     //  Nace con texto de relleno y no vacío: una capa invisible en un sitio que
@@ -365,6 +422,17 @@ Singleton {
             return t.length > 0 ? t : Idioma.t("Rótulo")
         }
         return String(c.ruta || "").split("/").pop()
+    }
+
+    // El icono que le toca a una capa según de qué sea.
+    function glifoCapa(c) {
+        if (!c)
+            return 0x000F02E9                  // md-image
+        if (c.tipo === "texto")
+            return 0x000F0284                  // md-format_text
+        if (c.tipo === "audio")
+            return 0x000F075A                  // md-music
+        return 0x000F02E9
     }
 
     function fijarCapa(id, campos) {

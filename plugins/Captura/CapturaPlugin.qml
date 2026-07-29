@@ -54,8 +54,10 @@ K4Plugin {
     // salía «Copiar» por el borde derecho.
     // La cuenta atrás se queda la island entera y sin nada más: es un número
     // gigante, y para eso no hace falta anchura.
+    //  1000 y no 940 desde que el pie lleva cuatro botones de añadir: con 940 el
+    //  de renderizar se salía por la derecha.
     islandWidth: modo === "cuenta" ? 200
-        : (modo === "editor" ? 940 : (modo === "abrir" ? 640
+        : (modo === "editor" ? 1000 : (modo === "abrir" ? 640
         : (modo === "hecha" ? 500 : 520)))
     //  El editor crece con las capas.
     //
@@ -170,6 +172,31 @@ K4Plugin {
             // Vacío es que le has dado a cancelar, que no es un fallo.
             if (ruta.length > 0)
                 Editor.crearImagen(ruta, self.dondeVaLaImagen)
+        }
+    }
+
+    //  Traer una pista de audio.
+    //
+    //  Por el diálogo del sistema, igual que la imagen: un fichero de música se
+    //  reconoce por el nombre y por la carpeta donde lo guardaste, y zenity ya
+    //  sabe navegar.
+    property real dondeVaElAudio: 0
+
+    function pedirAudio(t) {
+        dondeVaElAudio = t
+        selectorAudio.running = true
+    }
+
+    K4.Process {
+        id: selectorAudio
+        command: ["zenity", "--file-selection",
+                  "--title=" + Idioma.t("Elegir audio"),
+                  "--file-filter=" + Idioma.t("Audio")
+                  + " | *.mp3 *.m4a *.aac *.wav *.flac *.ogg *.opus"]
+        onSalida: function (texto) {
+            const ruta = String(texto).trim()
+            if (ruta.length > 0)
+                Editor.crearAudio(ruta, self.dondeVaElAudio)
         }
     }
 

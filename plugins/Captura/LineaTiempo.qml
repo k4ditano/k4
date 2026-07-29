@@ -180,8 +180,7 @@ RowLayout {
                                   String(modelData.capas.length)))
                 //  El icono dice de qué es la banda cuando lleva una sola cosa.
                 glifo: modelData.capas.length === 1
-                       && modelData.capas[0].tipo === "texto"
-                    ? 0x000F0284      // md-format_text
+                    ? Editor.glifoCapa(modelData.capas[0])
                     : 0x000F02E9      // md-image
                 tono: Theme.green
                 elegida: Editor.capaSel !== null

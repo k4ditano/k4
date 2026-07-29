@@ -153,12 +153,28 @@ Item {
         if (Editor.clipSel)
             return Idioma.t("Trozo ") + (Editor.tramoDe(Editor.idSel) + 1)
                    + "/" + Editor.tramos.length
-        if (Editor.capaSel)
-            return Editor.capaSel.tipo === "texto" ? Idioma.t("Rótulo")
-                                                   : Idioma.t("Imagen")
+        if (Editor.capaSel) {
+            if (Editor.capaSel.tipo === "texto")  return Idioma.t("Rótulo")
+            if (Editor.capaSel.tipo === "audio")  return Idioma.t("Audio")
+            return Idioma.t("Imagen")
+        }
         if (momento)
             return Idioma.t("Momento ") + momento.id
         return Idioma.t("Sin selección")
+    }
+
+    //  La barra de la ficha vale para tres cosas y cada una tiene su tope: la
+    //  opacidad y el fondo llegan a 1 y el volumen a 2, porque subir la música al
+    //  doble es lo que hace falta cuando viene baja.
+    readonly property real topeBarra: Editor.capaSel
+        && Editor.capaSel.tipo === "audio" ? 2 : 1
+
+    readonly property real valorBarra: {
+        const c = Editor.capaSel
+        if (!c) return 1
+        if (c.tipo === "texto") return c.fondo !== undefined ? c.fondo : 0.5
+        if (c.tipo === "audio") return c.volumen !== undefined ? c.volumen : 0.8
+        return c.opacidad !== undefined ? c.opacidad : 1
     }
 
     readonly property string detalleSel: {
@@ -171,6 +187,8 @@ Item {
                 ? Editor.capaSel.t0.toFixed(1) + " – "
                   + Editor.capaSel.t1.toFixed(1) + " s"
                 : Editor.capaSel.ruta.split("/").pop()
+                  + (Editor.capaSel.tipo === "audio"
+                     ? "   ·   " + Editor.capaSel.t0.toFixed(1) + " s" : "")
         if (momento)
             return momento.t0.toFixed(1) + " – " + momento.t1.toFixed(1) + " s"
                    + "   ·   ×" + momento.z.toFixed(1)
@@ -498,8 +516,12 @@ Item {
                     }
 
                     IslandLabel {
-                        text: Editor.capaSel && Editor.capaSel.tipo === "texto"
-                            ? Idioma.t("Fondo") : Idioma.t("Opacidad")
+                        text: {
+                            if (!Editor.capaSel) return Idioma.t("Opacidad")
+                            if (Editor.capaSel.tipo === "texto") return Idioma.t("Fondo")
+                            if (Editor.capaSel.tipo === "audio") return Idioma.t("Volumen")
+                            return Idioma.t("Opacidad")
+                        }
                         color: Theme.dim
                         font.pixelSize: 9
                         font.capitalization: Font.AllUppercase
@@ -517,10 +539,12 @@ Item {
                             color: Theme.track
 
                             Rectangle {
-                                width: parent.width * (Editor.capaSel
-                                    ? (Editor.capaSel.tipo === "texto"
-                                       ? Editor.capaSel.fondo
-                                       : Editor.capaSel.opacidad) : 1)
+                                //  El volumen llega a 2 y las opacidades a 1, así
+                                //  que la barra se normaliza por su tope: subir el
+                                //  doble es lo que hace falta cuando la música
+                                //  viene baja.
+                                width: parent.width * Math.min(1,
+                                    view.valorBarra / view.topeBarra)
                                 height: parent.height
                                 radius: parent.radius
                                 color: Theme.green
@@ -533,17 +557,20 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
 
                                 function poner(x) {
-                                    const v = Math.max(0, Math.min(1,
-                                        x / Math.max(1, width)))
+                                    const v = Math.max(0, Math.min(view.topeBarra,
+                                        x / Math.max(1, width) * view.topeBarra))
                                     const q = Math.round(v * 20) / 20
                                     //  En un rótulo lo que se gradúa es la caja
                                     //  de detrás: el texto en sí translúcido no
                                     //  se lee, y bajarle la opacidad es lo que
                                     //  uno quiere para que no tape el vídeo.
-                                    Editor.fijarCapa(Editor.idSel,
-                                        Editor.capaSel
-                                        && Editor.capaSel.tipo === "texto"
-                                            ? { fondo: q } : { opacidad: q })
+                                    if (!Editor.capaSel) return
+                                    if (Editor.capaSel.tipo === "texto")
+                                        Editor.fijarCapa(Editor.idSel, { fondo: q })
+                                    else if (Editor.capaSel.tipo === "audio")
+                                        Editor.fijarCapa(Editor.idSel, { volumen: q })
+                                    else
+                                        Editor.fijarCapa(Editor.idSel, { opacidad: q })
                                 }
                                 onPressed: function (ev) { poner(ev.x) }
                                 onPositionChanged: function (ev) {
@@ -555,10 +582,7 @@ Item {
                         IslandLabel {
                             Layout.preferredWidth: 34
                             horizontalAlignment: Text.AlignRight
-                            text: Math.round((Editor.capaSel
-                                ? (Editor.capaSel.tipo === "texto"
-                                   ? Editor.capaSel.fondo
-                                   : Editor.capaSel.opacidad) : 1) * 100) + "%"
+                            text: Math.round(view.valorBarra * 100) + "%"
                             color: Theme.dim
                             font.pixelSize: 9
                         }
@@ -608,10 +632,14 @@ Item {
                             }
 
                             IslandLabel {
-                                text: Editor.capaSel
-                                      && Editor.capaSel.tipo === "texto"
-                                    ? Idioma.t("Quitar el rótulo")
-                                    : Idioma.t("Quitar la imagen")
+                                text: {
+                                    if (!Editor.capaSel) return Idioma.t("Quitar")
+                                    if (Editor.capaSel.tipo === "texto")
+                                        return Idioma.t("Quitar el rótulo")
+                                    if (Editor.capaSel.tipo === "audio")
+                                        return Idioma.t("Quitar el audio")
+                                    return Idioma.t("Quitar la imagen")
+                                }
                                 font.pixelSize: 10
                             }
                         }
@@ -1047,6 +1075,42 @@ Item {
                 }
             }
 
+            //  Música o una voz encima de lo que ya suena.
+            Rectangle {
+                Layout.preferredWidth: audioTexto.implicitWidth + 26
+                Layout.preferredHeight: 26
+                radius: 13
+                color: audioRaton.containsMouse ? Theme.surfaceHi : Theme.surface
+                border.width: 1
+                border.color: Qt.rgba(1, 0.8, 0.2, 0.3)
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 5
+
+                    IconGlyph {
+                        text: String.fromCodePoint(0xF075A)   // md-music
+                        color: Theme.yellow
+                        font.pixelSize: 13
+                    }
+
+                    IslandLabel {
+                        id: audioTexto
+                        text: Idioma.t("Añadir audio")
+                        font.pixelSize: 10
+                        font.weight: Font.DemiBold
+                    }
+                }
+
+                MouseArea {
+                    id: audioRaton
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: view.plugin.pedirAudio(view.segundos)
+                }
+            }
+
             MediaButton {
                 glyph: String.fromCodePoint(view.silenciado ? 0xF0581 : 0xF057E)
                 glyphSize: 15
@@ -1094,8 +1158,15 @@ Item {
                 onActivated: linea.acercar(1.6, linea.width / 2)
             }
 
+            //  La chuleta de teclas, solo en la ventana grande.
+            //
+            //  En la island no cabe: con los botones de añadir zoom, imagen,
+            //  texto y audio, el pie se pasaba del ancho y «Renderizar» se salía
+            //  por el borde. Y de las dos cosas, la que hace falta es el botón.
             IslandLabel {
-                visible: Editor.estado !== "renderizando"
+                visible: view.enVentana && Editor.estado !== "renderizando"
+                Layout.fillWidth: true
+                elide: Text.ElideRight
                 text: Idioma.t("espacio reproduce · ←→ salta · ↑↓ momento · mayús+←→ lo mueve · +− nivel")
                 color: Theme.dim
                 font.pixelSize: 9

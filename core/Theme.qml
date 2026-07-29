@@ -21,6 +21,9 @@ Singleton {
     readonly property color green: "#30d158"
     readonly property color red: "#ff453a"
     readonly property color blue: "#0a84ff"
+    // Para el audio añadido. Es el amarillo del sistema en su versión oscura,
+    // de la misma familia que el verde y el rojo de arriba.
+    readonly property color yellow: "#ffd60a"
 
     // Geometría de la island
     readonly property int wing: 16              // radio de la esquina invertida que funde con el borde
