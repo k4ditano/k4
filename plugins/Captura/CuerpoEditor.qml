@@ -127,6 +127,8 @@ Item {
             //  pistas, «quitar» ya no puede querer decir solo «quitar el zoom».
             if (Editor.tipoSel === "clip")
                 Editor.quitarClip(Editor.idSel)
+            else if (Editor.tipoSel === "capa")
+                Editor.quitarCapa(Editor.idSel)
             else if (view.momento)
                 Editor.quitarMomento(view.momento.id)
         } else if (ev.key === Qt.Key_Minus) {
@@ -140,6 +142,36 @@ Item {
     }
 
     property bool silenciado: false
+
+    //  Qué dice la ficha de la derecha.
+    //
+    //  Con tres cosas que se pueden elegir —un trozo, un zoom, una capa— el
+    //  encadenado de ternarios dentro del `text` dejaba de leerse. Aquí cada
+    //  caso ocupa su línea y se ve de un vistazo lo que falta cuando llegue el
+    //  cuarto.
+    readonly property string tituloSel: {
+        if (Editor.clipSel)
+            return Idioma.t("Trozo ") + (Editor.tramoDe(Editor.idSel) + 1)
+                   + "/" + Editor.tramos.length
+        if (Editor.capaSel)
+            return Idioma.t("Imagen")
+        if (momento)
+            return Idioma.t("Momento ") + momento.id
+        return Idioma.t("Sin selección")
+    }
+
+    readonly property string detalleSel: {
+        if (Editor.clipSel)
+            return Editor.clipSel.desde.toFixed(1) + " → "
+                   + Editor.clipSel.hasta.toFixed(1) + " s "
+                   + Idioma.t("del original")
+        if (Editor.capaSel)
+            return Editor.capaSel.ruta.split("/").pop()
+        if (momento)
+            return momento.t0.toFixed(1) + " – " + momento.t1.toFixed(1) + " s"
+                   + "   ·   ×" + momento.z.toFixed(1)
+        return ""
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -327,6 +359,18 @@ Item {
                         }
                     }
 
+                    //  Las capas: fuera de `lente`, que es donde las pone
+                    //  también el grafo de ffmpeg —después del zoom—, y por eso
+                    //  la previa coincide con el render por construcción.
+                    //
+                    //  Declaradas DESPUÉS del área de arrastrar el encuadre: en
+                    //  QML manda el último, y pinchar encima de una capa tiene
+                    //  que agarrar la capa y no mover la cámara.
+                    CapasLienzo {
+                        anchors.fill: parent
+                        segundos: view.segundos
+                    }
+
                     // Que lo que ves lleva zoom, para no confundirlo con el vídeo
                     // tal cual.
                     Rectangle {
@@ -369,11 +413,7 @@ Item {
                 //  si acabas de pinchar un trozo, lo que quieres saber es de
                 //  dónde sale y qué le puedes hacer.
                 IslandLabel {
-                    text: Editor.clipSel
-                        ? Idioma.t("Trozo ") + (Editor.tramoDe(Editor.idSel) + 1)
-                          + "/" + Editor.tramos.length
-                        : (view.momento ? Idioma.t("Momento ") + view.momento.id
-                                        : Idioma.t("Sin selección"))
+                    text: view.tituloSel
                     color: Theme.ink
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
@@ -381,17 +421,113 @@ Item {
 
                 IslandLabel {
                     visible: text.length > 0
-                    text: Editor.clipSel
-                        ? Editor.clipSel.desde.toFixed(1) + " → "
-                          + Editor.clipSel.hasta.toFixed(1) + " s "
-                          + Idioma.t("del original")
-                        : (view.momento
-                           ? view.momento.t0.toFixed(1) + " – "
-                             + view.momento.t1.toFixed(1) + " s"
-                             + "   ·   ×" + view.momento.z.toFixed(1)
-                           : "")
+                    text: view.detalleSel
                     color: Theme.muted
                     font.pixelSize: 11
+                    elide: Text.ElideMiddle
+                    Layout.fillWidth: true
+                }
+
+                // ── lo que se le hace a una capa ──────────────────
+                //
+                //  Mover y escalar se hacen encima del vídeo con el ratón, y su
+                //  tramo se estira en la línea de tiempo. Aquí queda lo que no
+                //  tiene un gesto natural.
+                ColumnLayout {
+                    visible: Editor.capaSel !== null
+                    Layout.fillWidth: true
+                    Layout.topMargin: 6
+                    spacing: 4
+
+                    IslandLabel {
+                        text: Idioma.t("Opacidad")
+                        color: Theme.dim
+                        font.pixelSize: 9
+                        font.capitalization: Font.AllUppercase
+                        font.weight: Font.DemiBold
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 4
+                            radius: 2
+                            color: Theme.track
+
+                            Rectangle {
+                                width: parent.width * (Editor.capaSel
+                                    ? Editor.capaSel.opacidad : 1)
+                                height: parent.height
+                                radius: parent.radius
+                                color: Theme.green
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                anchors.topMargin: -8
+                                anchors.bottomMargin: -8
+                                cursorShape: Qt.PointingHandCursor
+
+                                function poner(x) {
+                                    const v = Math.max(0, Math.min(1,
+                                        x / Math.max(1, width)))
+                                    Editor.fijarCapa(Editor.idSel,
+                                        { opacidad: Math.round(v * 20) / 20 })
+                                }
+                                onPressed: function (ev) { poner(ev.x) }
+                                onPositionChanged: function (ev) {
+                                    if (pressed) poner(ev.x)
+                                }
+                            }
+                        }
+
+                        IslandLabel {
+                            Layout.preferredWidth: 34
+                            horizontalAlignment: Text.AlignRight
+                            text: Math.round((Editor.capaSel
+                                ? Editor.capaSel.opacidad : 1) * 100) + "%"
+                            color: Theme.dim
+                            font.pixelSize: 9
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 4
+                        Layout.preferredHeight: 26
+                        radius: 13
+                        color: quitarCapaRaton.containsMouse ? "#3a1416"
+                                                             : Theme.surface
+                        border.width: 1
+                        border.color: Qt.rgba(1, 0.27, 0.23, 0.3)
+
+                        RowLayout {
+                            anchors.centerIn: parent
+                            spacing: 5
+
+                            IconGlyph {
+                                text: String.fromCodePoint(0xF01B4)  // md-delete
+                                color: Theme.red
+                                font.pixelSize: 12
+                            }
+
+                            IslandLabel {
+                                text: Idioma.t("Quitar la imagen")
+                                font.pixelSize: 10
+                            }
+                        }
+
+                        MouseArea {
+                            id: quitarCapaRaton
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Editor.quitarCapa(Editor.idSel)
+                        }
+                    }
                 }
 
                 // ── lo que se le hace a un trozo ──────────────────
@@ -458,8 +594,8 @@ Item {
                 Item { Layout.fillHeight: true }
 
                 GridLayout {
-                    // Los botones del zoom no pintan nada con un trozo elegido.
-                    visible: Editor.clipSel === null
+                    // Los botones del zoom solo pintan algo con un zoom elegido.
+                    visible: Editor.clipSel === null && Editor.capaSel === null
                     columns: 2
                     columnSpacing: 6
                     rowSpacing: 6
@@ -625,8 +761,8 @@ Item {
                 }
 
                 Rectangle {
-                    // El trozo tiene su propio «quitar» arriba.
-                    visible: Editor.clipSel === null
+                    // El trozo y la capa tienen su propio «quitar» arriba.
+                    visible: Editor.clipSel === null && Editor.capaSel === null
                     Layout.fillWidth: true
                     Layout.preferredHeight: 26
                     radius: 13
@@ -728,6 +864,47 @@ Item {
                         const b = Math.min(view.total, a + 2)
                         Editor.seleccionar("momento", Editor.crearMomento(a, b))
                     }
+                }
+            }
+
+            //  Traer una imagen de fuera.
+            //
+            //  Por zenity y no por un selector propio: una imagen se busca
+            //  mirándola, no escribiendo su nombre, y el diálogo del sistema
+            //  trae vista previa. Debajo habla con el portal, así que es el
+            //  mismo que sale en cualquier otra aplicación.
+            Rectangle {
+                Layout.preferredWidth: imagenTexto.implicitWidth + 26
+                Layout.preferredHeight: 26
+                radius: 13
+                color: imagenRaton.containsMouse ? Theme.surfaceHi : Theme.surface
+                border.width: 1
+                border.color: Qt.rgba(52 / 255, 199 / 255, 89 / 255, 0.35)
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 5
+
+                    IconGlyph {
+                        text: String.fromCodePoint(0xF087C)   // md-image_plus
+                        color: Theme.green
+                        font.pixelSize: 13
+                    }
+
+                    IslandLabel {
+                        id: imagenTexto
+                        text: Idioma.t("Añadir imagen")
+                        font.pixelSize: 10
+                        font.weight: Font.DemiBold
+                    }
+                }
+
+                MouseArea {
+                    id: imagenRaton
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: view.plugin.pedirImagen(view.segundos)
                 }
             }
 

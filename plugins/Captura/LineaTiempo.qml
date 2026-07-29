@@ -113,4 +113,42 @@ ColumnLayout {
         }
         onNivel: function (id, d) { Editor.ajustarNivel(id, d > 0 ? 0.1 : -0.1) }
     }
+
+    // ── las capas ─────────────────────────────────────────────────
+    //
+    //  Solo sale si hay alguna: una banda vacía en cada vídeo sería ruido, y en
+    //  la island el sitio es lo que más escasea.
+    Pista {
+        Layout.fillWidth: true
+        Layout.preferredHeight: 26
+        visible: Editor.capas.length > 0
+
+        modelo: Editor.capas
+        total: linea.total
+        cabezal: linea.cabezal
+        tono: Theme.green
+        // Aquí no se dibujan capas arrastrando: una capa necesita un fichero
+        // detrás, y eso se elige, no se dibuja.
+        creable: false
+        elegido: {
+            for (let i = 0; i < Editor.capas.length; ++i)
+                if (Editor.tipoSel === "capa" && Editor.capas[i].id === Editor.idSel)
+                    return i
+            return -1
+        }
+
+        onSaltar: function (t) { linea.saltar(t) }
+        onElegir: function (i) {
+            if (i < 0 || i >= Editor.capas.length)
+                return
+            const c = Editor.capas[i]
+            Editor.seleccionar("capa", c.id)
+            //  Y si el cabezal está fuera de su tramo, llevarlo dentro: una capa
+            //  solo se puede mover y escalar mientras se ve, así que elegirla
+            //  sin poder tocarla no sirve de nada.
+            if (linea.cabezal < c.t0 || linea.cabezal > c.t1)
+                linea.saltar(c.t0 + Math.min(0.3, (c.t1 - c.t0) / 2))
+        }
+        onEditar: function (id, a, b) { Editor.fijarCapa(id, { t0: a, t1: b }) }
+    }
 }

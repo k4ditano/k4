@@ -9,13 +9,28 @@ de los que no se ven mirando: un rótulo tres segundos corrido, un zoom que
 apunta al trozo de al lado. Un render tarda un minuto y encima tapa el
 problema; esto tarda cero.
 """
-import sys, os
+import sys, os, tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import editar
 
 
 fallos = []
+
+#  Ficheros de mentira para las capas.
+#
+#  `grafo()` comprueba que el fichero de una capa exista antes de meterla, así
+#  que las pruebas necesitan que existan. Se los crea ella y en su propio sitio:
+#  depender de que haya un PNG en /tmp haría que pasaran aquí y fallaran en
+#  cualquier otra máquina, que es la peor clase de prueba.
+BORRADOR = tempfile.mkdtemp(prefix="k4-prueba-")
+
+
+def fichero(nombre):
+    ruta = os.path.join(BORRADOR, nombre)
+    if not os.path.exists(ruta):
+        open(ruta, "wb").close()
+    return ruta
 
 
 def igual(que, es, deberia):
@@ -138,7 +153,7 @@ def prueba_a_lienzo():
 def prueba_grafo_una_entrada_por_fichero():
     p = plan([{"id": 1, "fuente": 1, "desde": 0,  "hasta": 5},
               {"id": 2, "fuente": 1, "desde": 12, "hasta": 14}])
-    rutas, idx = editar.entradas(p)
+    rutas, idx, _ = editar.entradas(p)
     igual("el mismo fichero se abre una vez", rutas, ["/tmp/a.mp4"])
     igual("y todos los clips apuntan a esa entrada", idx[1], 0)
 
@@ -203,6 +218,93 @@ def prueba_grafo_volumen():
     igual("cada pista con su volumen", "volume=0.400" in texto
           and "volume=1.600" in texto, True)
     igual("y se mezclan sin normalizar", "amix=inputs=2:normalize=0" in texto, True)
+
+
+# ── las capas ─────────────────────────────────────────────────────
+def capa(**campos):
+    d = {"id": 1, "tipo": "imagen", "ruta": fichero("logo.png"), "t0": 2.0,
+         "t1": 4.0, "x": 0.5, "y": 0.5, "escala": 0.25, "opacidad": 1.0, "z": 1}
+    d.update(campos)
+    return d
+
+
+def con_capas(capas):
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8}])
+    p["capas"] = capas
+    return p
+
+
+def prueba_capas_van_despues_del_zoom():
+    """Si fueran antes, el zoom ampliaría también el logo y se lo comería."""
+    p = con_capas([capa()])
+    texto, _ = editar.grafo(p)
+    igual("hay overlay", "overlay=" in texto, True)
+    igual("y va después del zoompan",
+          texto.index("zoompan=") < texto.index("overlay="), True)
+
+
+def prueba_capas_por_z():
+    p = con_capas([capa(id=1, z=5, ruta=fichero("arriba.png")),
+                   capa(id=2, z=1, ruta=fichero("abajo.png"))])
+    texto, _ = editar.grafo(p)
+    #  La de z menor entra primero en la cadena, así que la otra le queda
+    #  encima. Si el orden se invirtiera, subir el z hundiría la capa.
+    igual("la de abajo se encadena primero",
+          texto.index("ov0") < texto.index("ov1"), True)
+    rutas, _, de_capa = editar.entradas(p)
+    igual("y la de abajo es la primera entrada nueva",
+          rutas[de_capa[2]], fichero("abajo.png"))
+
+
+def prueba_capa_centro_y_tamano():
+    p = con_capas([capa(x=0.8, y=0.1, escala=0.25)])
+    texto, _ = editar.grafo(p)
+    # 0,25 de 1920 son 480 px de ancho.
+    igual("se escala en píxeles del lienzo", "scale=480:-1" in texto, True)
+    # x/y son el CENTRO, así que overlay resta medio ancho.
+    igual("y se coloca por el centro",
+          "overlay=x=0.8000*W-w/2:y=0.1000*H-h/2" in texto, True)
+
+
+def prueba_capa_ventana_de_tiempo():
+    p = con_capas([capa(t0=2.5, t1=4.25)])
+    texto, _ = editar.grafo(p)
+    igual("solo se ve en su tramo",
+          "enable='between(t,2.5000,4.2500)'" in texto, True)
+    #  Nada de `eof_action`: una imagen es un flujo de un fotograma, y con
+    #  `pass` el overlay deja pasar el vídeo en cuanto se acaba —o sea desde el
+    #  principio— y la capa no se ve nunca. Medido.
+    igual("sin eof_action, que es lo que la deja verse",
+          "eof_action" in texto, False)
+
+
+def prueba_capa_opacidad():
+    igual("opaca: no se toca el alfa",
+          "colorchannelmixer" in editar.grafo(con_capas([capa()]))[0], False)
+    texto, _ = editar.grafo(con_capas([capa(opacidad=0.5)]))
+    igual("translúcida: primero rgba y luego el alfa",
+          "format=rgba,colorchannelmixer=aa=0.500" in texto, True)
+
+
+def prueba_grafo_sin_audio_no_deja_nada_colgando():
+    """Un fotograma suelto no mapea el audio, y eso no es «se ignora».
+
+    En un filter_complex toda etiqueta que se produce hay que consumirla: dejar
+    `[a]` sin conectar tumba la orden entera con «has output 1 unconnected». Es
+    lo que tenía rota la previa desde que existe el grafo.
+    """
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 4}])
+    texto, _ = editar.grafo(p, sin_audio=True)
+    igual("el audio va a un sumidero", "[mez]anullsink" in texto, True)
+    igual("y no queda etiqueta [a] suelta", texto.endswith("[a]"), False)
+
+
+def prueba_capa_sin_fichero():
+    """Borrar el PNG meses después no puede impedirte reexportar el vídeo."""
+    p = con_capas([capa(ruta=os.path.join(BORRADOR, "esto-no-existe.png"))])
+    texto, _ = editar.grafo(p)
+    igual("la capa se salta", "overlay=" in texto, False)
+    igual("pero el vídeo sale igual", "[zoom]format=yuv420p[v]" in texto, True)
 
 
 # ── el zoom, en tiempo de línea ───────────────────────────────────

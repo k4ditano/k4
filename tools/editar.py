@@ -451,18 +451,37 @@ def norma_video(ancho, alto, fps):
             % (ancho, alto, ancho, alto, fps))
 
 
+def capas_de(plan, tipo=None):
+    """Las capas del plan, de abajo arriba.
+
+    El orden de la lista es el orden en que se pintan, y ese es el orden en que
+    se encadenan los `overlay`: la última queda encima de todas.
+    """
+    capas = [c for c in plan.get("capas", [])
+             if tipo is None or c.get("tipo") == tipo]
+    return sorted(capas, key=lambda c: c.get("z", 0))
+
+
 def entradas(plan):
     """Los ficheros que hay que abrir, y en qué orden se los pasamos a ffmpeg.
 
-    Un fichero se abre UNA vez aunque aparezca en seis clips: referenciar
-    `[0:v]` varias veces es legal y ffmpeg mete el `split` por su cuenta.
+    Un fichero se abre UNA vez aunque aparezca en seis clips o en tres capas:
+    referenciar `[0:v]` varias veces es legal y ffmpeg mete el `split` por su
+    cuenta. Devuelve las rutas y, para cada fuente y cada capa, qué entrada le
+    toca.
     """
     rutas, indice = [], {}
-    for f in plan["fuentes"]:
-        if f["ruta"] not in indice:
-            indice[f["ruta"]] = len(rutas)
-            rutas.append(f["ruta"])
-    return rutas, {f["id"]: indice[f["ruta"]] for f in plan["fuentes"]}
+
+    def apuntar(ruta):
+        if ruta not in indice:
+            indice[ruta] = len(rutas)
+            rutas.append(ruta)
+        return indice[ruta]
+
+    de_fuente = {f["id"]: apuntar(f["ruta"]) for f in plan["fuentes"]}
+    de_capa = {c["id"]: apuntar(c["ruta"])
+               for c in capas_de(plan) if c.get("ruta")}
+    return rutas, de_fuente, de_capa
 
 
 def rama_audio(i, idx, clip, fuente, dur):
@@ -504,11 +523,63 @@ def rama_audio(i, idx, clip, fuente, dur):
     return lineas
 
 
-def grafo(plan):
-    """El filter_complex entero. Devuelve (texto, nodos de la cámara)."""
+def rama_capa(n, idx, capa, ancho, alto, entra):
+    """Una capa encima del vídeo. Devuelve (líneas, etiqueta de salida).
+
+    Todo en espacio de SALIDA: la capa va después del `zoompan`, así que no se
+    amplía con él. Es lo que se quiere de un logo o un rótulo, y es lo que hace
+    que la previa del editor —donde las capas también se pintan fuera de la
+    lente— coincida por construcción.
+
+    Las coordenadas del plan son fracciones del fotograma y apuntan al CENTRO de
+    la capa: así el plan no depende de la resolución y arrastrar es una regla de
+    tres. `overlay` quiere la esquina, de ahí el medio ancho de resta.
+    """
+    lineas = []
+    et = "cap%d" % n
+    ancho_capa = max(2, int(round(ancho * float(capa.get("escala", 0.25)))))
+
+    filtros = ["scale=%d:-1" % ancho_capa]
+    opacidad = float(capa.get("opacidad", 1.0))
+    if opacidad < 0.999:
+        #  El alfa hay que tenerlo antes de poder tocarlo: un JPEG llega sin
+        #  canal alfa y `colorchannelmixer=aa=` no haría nada, sin quejarse.
+        filtros.append("format=rgba,colorchannelmixer=aa=%.3f" % opacidad)
+
+    lineas.append("[%d:v]%s[%s]" % (idx, ",".join(filtros), et))
+
+    #  Sin `eof_action`, o sea con el `repeat` de fábrica.
+    #
+    #  Una imagen es un flujo de UN fotograma, así que se acaba en el instante
+    #  cero. Con `eof_action=pass` el overlay deja pasar el vídeo tal cual en
+    #  cuanto eso ocurre y la capa no llega a verse nunca; con `endall` corta la
+    #  salida a un fotograma. Medido con las cuatro opciones sobre el mismo
+    #  fichero: por defecto y con `repeat` la capa sale y el vídeo conserva sus
+    #  8 s; con `pass` no sale; con `endall` el vídeo se queda en 0,03 s.
+    #
+    #  Y no hace falta protegerse de que la salida se trunque, porque `shortest`
+    #  es 0 de fábrica: manda la duración de la entrada principal.
+    sale = "ov%d" % n
+    lineas.append(
+        "[%s][%s]overlay=x=%.4f*W-w/2:y=%.4f*H-h/2:"
+        "enable='between(t,%.4f,%.4f)'[%s]"
+        % (entra, et, float(capa.get("x", 0.5)), float(capa.get("y", 0.5)),
+           float(capa.get("t0", 0.0)), float(capa.get("t1", 0.0)), sale))
+    return lineas, sale
+
+
+def grafo(plan, sin_audio=False):
+    """El filter_complex entero. Devuelve (texto, nodos de la cámara).
+
+    `sin_audio` es para sacar un fotograma suelto: en un grafo TODA etiqueta que
+    se produce hay que consumirla, así que dejar `[a]` colgando sin mapearla no
+    es «se ignora el audio» sino un error que tumba la orden entera. Es lo que
+    tenía rota la previa desde que el grafo existe, sin que se notara porque
+    todavía no la llama nadie.
+    """
     ancho, alto, fps = plan["w"], plan["h"], plan["fps"]
     tramos = mapa(plan)
-    _, idx_de = entradas(plan)
+    _, idx_de, idx_capa = entradas(plan)
     norma = norma_video(ancho, alto, fps)
 
     lineas = []
@@ -537,9 +608,20 @@ def grafo(plan):
         % (expresion(puntos, 1), expresion(puntos, 2), expresion(puntos, 3),
            ancho, alto, fps))
 
-    # ── 4. las capas irán aquí, después del zoom para que no se amplíen
-    lineas.append("[zoom]format=yuv420p[v]")
-    lineas.append("[mez]anull[a]")
+    # ── 4. las capas, después del zoom para que no se amplíen con él
+    entra = "zoom"
+    for n, capa in enumerate(capas_de(plan, "imagen")):
+        if not capa.get("ruta") or not os.path.exists(capa["ruta"]):
+            #  Una capa cuyo fichero ya no está no puede tumbar el render: se
+            #  salta y el resto sale. Borrar un PNG del escritorio meses después
+            #  no debería impedirte volver a exportar el vídeo.
+            continue
+        nuevas, entra = rama_capa(n, idx_capa[capa["id"]], capa,
+                                  ancho, alto, entra)
+        lineas += nuevas
+
+    lineas.append("[%s]format=yuv420p[v]" % entra)
+    lineas.append("[mez]anullsink" if sin_audio else "[mez]anull[a]")
 
     return ";\n".join(lineas), len(puntos)
 
@@ -778,7 +860,7 @@ def orden_camara(args):
                   for t, z, x, y in puntos])
 
 
-def escribir_grafo(plan, ruta_plan):
+def escribir_grafo(plan, ruta_plan, sin_audio=False, nombre="grafo.txt"):
     """El grafo a un fichero, y la ruta del fichero.
 
     `-filter_complex_script` y no `-filter_complex` a secas: el límite no es
@@ -789,13 +871,13 @@ def escribir_grafo(plan, ruta_plan):
     De regalo, el grafo se queda en disco: cuando un render falle, ahí está lo
     que se le pidió a ffmpeg, tal cual.
     """
-    texto, nodos = grafo(plan)
+    texto, nodos = grafo(plan, sin_audio)
     #  El plan es `<vídeo>.k4.json` y su carpeta adjunta es `<vídeo>.k4/`, así
     #  que solo hay que quitarle el `.json`. Con `splitext` + ".k4" salía
     #  `<vídeo>.k4.k4`, que funcionaba pero era un sitio que nadie esperaba.
     carpeta = ruta_plan[:-5] if ruta_plan.endswith(".json") else ruta_plan + ".k4"
     os.makedirs(carpeta, exist_ok=True)
-    ruta = os.path.join(carpeta, "grafo.txt")
+    ruta = os.path.join(carpeta, nombre)
     with open(ruta, "w") as f:
         f.write(texto)
     return ruta, nodos
@@ -804,7 +886,7 @@ def escribir_grafo(plan, ruta_plan):
 def orden_render(args):
     plan = cargar(args.plan)
     duracion = duracion_linea(plan)
-    rutas, _ = entradas(plan)
+    rutas, _, _ = entradas(plan)
     ruta_grafo, nodos = escribir_grafo(plan, args.plan)
 
     orden = ["ffmpeg", "-v", "error", "-y"]
@@ -840,8 +922,9 @@ def orden_render(args):
 
 def orden_previa(args):
     plan = cargar(args.plan)
-    rutas, _ = entradas(plan)
-    ruta_grafo, _ = escribir_grafo(plan, args.plan)
+    rutas, _, _ = entradas(plan)
+    ruta_grafo, _ = escribir_grafo(plan, args.plan, sin_audio=True,
+                                   nombre="grafo-previa.txt")
 
     orden = ["ffmpeg", "-v", "error", "-y"]
     for r in rutas:

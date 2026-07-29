@@ -192,6 +192,61 @@ Singleton {
         seleccionar("", 0)
     }
 
+    // ── las capas ─────────────────────────────────────────────────
+    //
+    //  Lo que va ENCIMA del vídeo: por ahora imágenes, y después texto, audio y
+    //  vídeo dentro de vídeo. Un solo modelo con un `tipo` que los distinga, y
+    //  no una lista por cada cosa: es lo que hace que esto sea un editor y no
+    //  una colección de funciones que no se hablan entre ellas.
+    //
+    //  `x`, `y` y `escala` van en fracción del fotograma, y `x`/`y` apuntan al
+    //  CENTRO. Así el plan no depende de la resolución.
+    property var capas: []
+
+    function nuevoIdCapa() {
+        let mayor = 0
+        for (let i = 0; i < capas.length; ++i)
+            mayor = Math.max(mayor, capas[i].id)
+        return mayor + 1
+    }
+
+    function crearImagen(ruta, t0) {
+        if (!ruta || ruta.length === 0)
+            return 0
+        // Tres segundos desde donde estés, o lo que quepa si estás al final.
+        const a = Math.max(0, Math.min(t0, Math.max(0, duracionLinea - 1)))
+        const nueva = {
+            id: nuevoIdCapa(),
+            tipo: "imagen",
+            ruta: ruta,
+            t0: a,
+            t1: Math.min(duracionLinea, a + 3),
+            // Arriba a la derecha y a un cuarto de ancho: es donde va un logo, y
+            // desde ahí se mueve con el ratón en un gesto.
+            x: 0.8, y: 0.15, escala: 0.25, opacidad: 1.0,
+            z: capas.length + 1
+        }
+        capas = capas.concat([nueva])
+        persistir()
+        seleccionar("capa", nueva.id)
+        return nueva.id
+    }
+
+    function fijarCapa(id, campos) {
+        capas = capas.map(function (c) {
+            if (c.id !== id)
+                return c
+            return Object.assign({}, c, campos)
+        })
+        persistir()
+    }
+
+    function quitarCapa(id) {
+        capas = capas.filter(function (c) { return c.id !== id })
+        persistir()
+        seleccionar("", 0)
+    }
+
     // ── qué está seleccionado ─────────────────────────────────────
     //
     //  Un solo sitio para toda la línea, y no un índice por pista: con varias
@@ -215,6 +270,13 @@ Singleton {
         for (let i = 0; i < clips.length; ++i)
             if (tipoSel === "clip" && clips[i].id === idSel)
                 return clips[i]
+        return null
+    }
+
+    readonly property var capaSel: {
+        for (let i = 0; i < capas.length; ++i)
+            if (tipoSel === "capa" && capas[i].id === idSel)
+                return capas[i]
         return null
     }
 
@@ -296,6 +358,7 @@ Singleton {
         altoVideo = d.h || 1080
         fuentes = d.fuentes || []
         clips = d.clips || []
+        capas = d.capas || []
         pistasAudio = (d.fuentes && d.fuentes.length > 0
                        ? d.fuentes[0].pistas : d.audio) || []
         momentos = d.momentos || []
@@ -468,10 +531,14 @@ Singleton {
             //  antes que la carga dejaba el plan vacío para siempre.
             "p['fuentes'][0]['pistas']=d['pistas'] or p['fuentes'][0]['pistas']; " +
             "p['clips']=d['clips'] or p['clips']; " +
+            //  Las capas SÍ se escriben aunque estén vacías, al revés que las
+            //  otras: no tener ninguna es un estado legítimo, y con el `or` no
+            //  habría forma de quitar la última.
+            "p['capas']=d['capas']; " +
             "json.dump(p, open(sys.argv[1],'w'), ensure_ascii=False, indent=1)",
             rutaPlan,
             JSON.stringify({ momentos: momentos, pistas: pistasAudio,
-                             clips: clips })]
+                             clips: clips, capas: capas })]
         escritorPlan.running = true
     }
 

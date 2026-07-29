@@ -138,6 +138,33 @@ K4Plugin {
         Editor.abrir(ruta, "")
     }
 
+    //  Traer una imagen para ponerla encima del vídeo.
+    //
+    //  Por el diálogo del sistema y no por un buscador propio: una imagen se
+    //  reconoce mirándola, y zenity trae vista previa. Cuelga del plugin y no de
+    //  la vista porque elegir el fichero lleva su rato y la island puede
+    //  cambiar de dueño mientras tanto.
+    property real dondeVaLaImagen: 0
+
+    function pedirImagen(t) {
+        dondeVaLaImagen = t
+        selectorImagen.running = true
+    }
+
+    K4.Process {
+        id: selectorImagen
+        command: ["zenity", "--file-selection",
+                  "--title=" + Idioma.t("Elegir imagen"),
+                  "--file-filter=" + Idioma.t("Imagen")
+                  + " | *.png *.jpg *.jpeg *.webp *.gif *.bmp"]
+        onSalida: function (texto) {
+            const ruta = String(texto).trim()
+            // Vacío es que le has dado a cancelar, que no es un fallo.
+            if (ruta.length > 0)
+                Editor.crearImagen(ruta, self.dondeVaLaImagen)
+        }
+    }
+
     function avanzar()    { index = (index + 1) % ambitos.length }
     function retroceder() { index = (index - 1 + ambitos.length) % ambitos.length }
 
