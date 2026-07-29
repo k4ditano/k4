@@ -22,7 +22,10 @@ K4Plugin {
     viewLoaded: open
     //  También durante la cuenta atrás, o el ESC que la cancela no llega a
     //  ninguna parte. Son tres segundos en los que nadie está escribiendo.
-    grabKeyboard: open && (modo === "menu" || modo === "cuenta" || modo === "zoom")
+    //  En «hecha» no: es un asomo de cinco segundos con la miniatura, y
+    //  robarle el teclado al escritorio por eso sería un incordio. En «abrir»
+    //  sí, y en exclusiva: ahí se escribe para buscar el vídeo.
+    grabKeyboard: open && modo !== "hecha"
 
     //  La cuenta atrás manda sobre todo lo demás mientras dura: si te tapa el
     //  reloj tres segundos no pasa nada, pero perderte el 3-2-1 sí importa.
@@ -31,7 +34,7 @@ K4Plugin {
     property var panel: null
 
     property bool open: false
-    property string modo: "menu"            // menu · cuenta · hecha · zoom
+    property string modo: "menu"      // menu · cuenta · hecha · editor · abrir
     property int index: 0
 
     readonly property var ambitos: [
@@ -52,20 +55,24 @@ K4Plugin {
     // La cuenta atrás se queda la island entera y sin nada más: es un número
     // gigante, y para eso no hace falta anchura.
     islandWidth: modo === "cuenta" ? 200
-        : (modo === "zoom" ? 940 : (modo === "hecha" ? 500 : 520))
+        : (modo === "editor" ? 940 : (modo === "abrir" ? 640
+        : (modo === "hecha" ? 500 : 520)))
     islandHeight: modo === "cuenta" ? 150
-        : (modo === "zoom" ? 610 : (modo === "hecha" ? 132 : 208))
+        : (modo === "editor" ? 610 : (modo === "abrir" ? 440
+        : (modo === "hecha" ? 132 : 208)))
 
     view: Component {
         Loader {
             // El editor es otra vista entera, no un modo más de la de captura:
             // comparten plugin pero no se parecen en nada.
-            sourceComponent: self.modo === "zoom" ? editor : normal
+            sourceComponent: self.modo === "editor" ? editor
+                : (self.modo === "abrir" ? selector : normal)
         }
     }
 
     property Component normal: Component { CapturaView { plugin: self } }
     property Component editor: Component { EditorZoom { plugin: self } }
+    property Component selector: Component { SelectorVideo { plugin: self } }
 
     // ── el menú ───────────────────────────────────────────────────
     function abrir() {
@@ -87,19 +94,19 @@ K4Plugin {
             //  Apartar desde la ventana: se cierra y queda en la píldora, igual
             //  que desde la island.
             grande = false
-            Modulos.minimizar("captura-zoom", Idioma.t("Editor de zoom"),
-                              Captura.momentos.length + Idioma.t(" momentos"),
-                              0xF1276)
+            Modulos.minimizar("editor", Idioma.t("Editor"),
+                              Editor.rutaVideo.split("/").pop(),
+                              0xF1122)         // md-movie_edit
             return
         }
-        if (modo === "zoom") {
+        if (modo === "editor") {
             //  Cerrar el editor lo aparta, no lo tira. Editar un vídeo lleva su
             //  rato y no tiene sentido obligar a tenerlo delante hasta acabar:
             //  se cierra, se sigue con lo que sea, y se retoma desde la
             //  píldora por donde ibas.
-            Modulos.minimizar("captura-zoom", Idioma.t("Editor de zoom"),
-                              Captura.momentos.length + Idioma.t(" momentos"),
-                              0xF1276)
+            Modulos.minimizar("editor", Idioma.t("Editor"),
+                              Editor.rutaVideo.split("/").pop(),
+                              0xF1122)         // md-movie_edit
             modo = "menu"
         }
         open = false
@@ -110,10 +117,25 @@ K4Plugin {
     //  un botón para cada una. `close()` aparta —es lo que hace también ESC—;
     //  esto tira el plan y se olvida.
     function descartar() {
-        Captura.descartarZoom()
+        Editor.descartar()
         grande = false
         modo = "menu"
         open = false
+    }
+
+    // ── abrir un vídeo del disco ──────────────────────────────────
+    //
+    //  Editar dejó de ser «lo que pasa después de grabar». Se puede traer un
+    //  vídeo de cualquier sitio, y por eso el selector no cuelga del grabador.
+    function pedirVideo() {
+        modo = "abrir"
+        open = true
+    }
+
+    function abrirVideo(ruta) {
+        modo = "menu"
+        open = false
+        Editor.abrir(ruta, "")
     }
 
     function avanzar()    { index = (index + 1) % ambitos.length }
@@ -169,8 +191,11 @@ K4Plugin {
 
     function cerrarGrande() {
         grande = false
-        if (Captura.momentos.length > 0) {
-            modo = "zoom"
+        //  Se mira si hay algo abierto, no si hay momentos. Un vídeo sin zoom
+        //  también se edita, y con la condición vieja encoger la ventana lo
+        //  hacía desaparecer sin dejar ni la cápsula para volver.
+        if (Editor.abierto) {
+            modo = "editor"
             open = true
         }
     }
@@ -187,27 +212,6 @@ K4Plugin {
                 self.modo = "menu"
                 self.open = false
             }
-        }
-
-        function onPlanListo() {
-            self.modo = "zoom"
-            self.open = true
-        }
-
-        function onMomentosChanged() {
-            // Si está apartado, que la cápsula diga la verdad.
-            if (Modulos.tiene("captura-zoom"))
-                Modulos.actualizar("captura-zoom",
-                    Captura.momentos.length + Idioma.t(" momentos"))
-        }
-
-        function onRenderListo(ruta) {
-            Modulos.quitar("captura-zoom")
-            self.modo = "menu"
-            self.open = false
-            K4.Sistema.lanzar(["notify-send", "-a", "k4",
-                                     Idioma.t("Vídeo con zoom listo"),
-                                     ruta.split("/").pop()])
         }
 
         function onVideoListo(ruta) {
@@ -232,6 +236,36 @@ K4Plugin {
             // la island cerrada y sin nadie mirando la barra.
             K4.Sistema.lanzar(["notify-send", "-a", "k4", "-u", "critical",
                                      Idioma.t("No se pudo capturar"), motivo])
+        }
+    }
+
+    // ── el editor ─────────────────────────────────────────────────
+    Connections {
+        target: Editor
+
+        function onPlanListo() {
+            //  Si estaba abierto en grande, se queda en grande: acabas de
+            //  abrir otro vídeo desde ahí y encogerte la ventana por eso sería
+            //  desconcertante.
+            if (self.grande)
+                return
+            self.modo = "editor"
+            self.open = true
+        }
+
+        function onRenderListo(ruta) {
+            Modulos.quitar("editor")
+            self.grande = false
+            self.modo = "menu"
+            self.open = false
+            K4.Sistema.lanzar(["notify-send", "-a", "k4",
+                                     Idioma.t("Vídeo listo"),
+                                     ruta.split("/").pop()])
+        }
+
+        function onFallo(motivo) {
+            K4.Sistema.lanzar(["notify-send", "-a", "k4", "-u", "critical",
+                                     Idioma.t("No se pudo editar"), motivo])
         }
     }
 
@@ -262,7 +296,7 @@ K4Plugin {
     //  aplicación: si se lo comiera, el ratón dejaría de funcionar mientras
     //  grabas, que sería un remedio bastante peor.
     //
-    //  Si esto no llegara a funcionar no se pierde el zoom: tools/zoom.py sabe
+    //  Si esto no llegara a funcionar no se pierde el zoom: tools/editar.py sabe
     //  deducir los momentos del propio rastro, por los reposos del cursor.
     K4.Atajo {
         name: "clic"
@@ -280,9 +314,9 @@ K4Plugin {
         target: Modulos
 
         function onRestaurado(id) {
-            if (id !== "captura-zoom")
+            if (id !== "editor")
                 return
-            self.modo = "zoom"
+            self.modo = "editor"
             self.open = true
         }
     }
@@ -309,8 +343,33 @@ K4Plugin {
 
         function grande(): void { self.abrirGrande() }
         function encoger(): void { self.cerrarGrande() }
+    }
 
-        // Reabrir el editor del último vídeo, por si se cerró sin querer.
-        function zoom(): void { Captura.proponerZoom() }
+    //  El editor tiene su propio canal.
+    //
+    //  No es cosmético: llegar al editor ya no pasa por haber grabado, y
+    //  colgarlo de `k4.captura` diría lo contrario a quien lea los atajos.
+    K4.Ipc {
+        target: "k4.editor"
+
+        // Elegir un vídeo del disco y editarlo.
+        function abrir(): void { self.pedirVideo() }
+
+        // Editar un vídeo concreto, sin pasar por el selector.
+        function editar(ruta: string): void { self.abrirVideo(ruta) }
+
+        // Volver a lo que estuviera abierto, por si se cerró sin querer.
+        function retomar(): void {
+            if (!Editor.abierto)
+                return
+            self.modo = "editor"
+            self.open = true
+        }
+
+        function grande(): void { self.abrirGrande() }
+        function encoger(): void { self.cerrarGrande() }
+
+        // Apartarlo a la píldora, que es lo mismo que hace ESC.
+        function apartar(): void { self.close() }
     }
 }

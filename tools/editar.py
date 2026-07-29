@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
-"""Zoom automático estilo Screen Studio, en posproceso.
+"""El motor del editor de vídeo de k4.
 
-    zoom.py proponer <rastro.jsonl> --video <v.mp4>   -> plan JSON por stdout
-    zoom.py render   <v.mp4> <plan.json> <salida.mp4>
-    zoom.py previa   <v.mp4> <plan.json> <t> <salida.png>
+    editar.py abrir    <v.mp4> [--guardar plan.json]   -> plan JSON por stdout
+    editar.py proponer <rastro.jsonl> --video <v.mp4>  -> plan JSON con zoom
+    editar.py camara   <plan.json>
+    editar.py render   <v.mp4> <plan.json> <salida.mp4>
+    editar.py previa   <v.mp4> <plan.json> <t> <salida.png>
 
-Por qué en posproceso y no grabando ya recortado: la región de wf-recorder se
-fija al arrancar y no se puede mover. Además, decidir el zoom cuando ya sabes lo
-que pasó después sale mucho mejor que decidirlo en directo.
+Se llamaba zoom.py, y el nombre se le quedó pequeño: esto ya no va del zoom sino
+de una composición —trozos de vídeo, capas encima, audio— de la que el zoom es
+una parte más.
+
+Todo en posproceso y no grabando ya recortado: la región de wf-recorder se fija
+al arrancar y no se puede mover. Además, decidir el zoom cuando ya sabes lo que
+pasó después sale mucho mejor que decidirlo en directo.
 
 Se usa `zoompan` y no `crop`: en ffmpeg n8.1.2 `crop` ya no tiene la opción
 `eval`, así que sus `w`/`h` se evalúan una sola vez y no se pueden animar.
@@ -45,7 +51,15 @@ def salir(**d):
 
 # ── leer el rastro ────────────────────────────────────────────────
 def leer_rastro(ruta):
+    #  Sin rastro también se edita.
+    #
+    #  El rastro del cursor solo existe si el vídeo lo grabó k4. Un vídeo
+    #  abierto del disco no lo tiene, y antes esto reventaba con un
+    #  FileNotFoundError que se llevaba por delante `camara` y `render`: el
+    #  editor se quedaba en blanco sin decir por qué.
     meta, muestras, clics = {}, [], []
+    if not ruta or not os.path.exists(ruta):
+        return meta, muestras, clics
     with open(ruta) as f:
         for linea in f:
             linea = linea.strip()
@@ -424,23 +438,127 @@ def sondear(video):
             float(num) / float(den), float(d["format"]["duration"]), hay_audio)
 
 
+# ── el plan ───────────────────────────────────────────────────────
+#
+#  Un plan es la composición entera: de qué ficheros sale, qué trozos de cada
+#  uno y en qué orden, y qué se le hace encima.
+#
+#  Hay DOS ejes de tiempo y conviene no confundirlos nunca. El *tiempo de línea*
+#  es el del vídeo que va a salir; el *tiempo de fuente*, el de dentro de cada
+#  fichero. `momentos` y `capas` van siempre en tiempo de línea. Quien traduce
+#  entre los dos ejes es este fichero y nadie más: el QML nunca sabe en qué
+#  segundo de qué fichero está mirando, y así no puede equivocarse.
+VERSION = 2
+
+
+def describir_fuente(ruta, rastro="", ident=1):
+    ancho, alto, fps, dur, _ = sondear(ruta)
+    # Rutas absolutas siempre: el plan se guarda y se reabre desde otro sitio,
+    # y una ruta relativa dentro de él apunta a donde estuviera quien lo hizo.
+    ruta = os.path.abspath(ruta)
+    rastro = os.path.abspath(rastro) if rastro else ""
+    return {"id": ident, "ruta": ruta, "rastro": rastro,
+            "w": ancho, "h": alto, "fps": fps, "dur": round(dur, 3),
+            # Una entrada por pista de audio, a volumen normal y sin silenciar.
+            # Cuelgan de la fuente y no del plan porque cada fichero trae las
+            # suyas y no tienen por qué coincidir.
+            "pistas": [{"i": p["i"], "titulo": p["titulo"],
+                        "volumen": 1.0, "mudo": False}
+                       for p in pistas_audio(ruta)]}
+
+
+def plan_nuevo(video, rastro="", momentos=None):
+    f = describir_fuente(video, rastro)
+    return {"version": VERSION,
+            "w": f["w"], "h": f["h"], "fps": f["fps"],
+            "fuentes": [f],
+            # Un solo trozo, el vídeo entero. Trocearlo es cosa del editor.
+            "clips": [{"id": 1, "fuente": 1, "desde": 0.0, "hasta": f["dur"]}],
+            "momentos": momentos or [],
+            "capas": []}
+
+
+def migrar(plan):
+    """Un plan de los de antes —un vídeo y sus momentos— al modelo de ahora."""
+    if plan.get("version", 1) >= VERSION:
+        return plan
+    nuevo = plan_nuevo(plan["video"], plan.get("rastro", ""),
+                       plan.get("momentos", []))
+    #  Los volúmenes que ya se hubieran tocado se conservan: eran del vídeo y
+    #  ahora son de la fuente, que es el mismo fichero llamado de otra forma.
+    ajustes = {a["i"]: a for a in plan.get("audio", [])}
+    for p in nuevo["fuentes"][0]["pistas"]:
+        if p["i"] in ajustes:
+            p["volumen"] = ajustes[p["i"]].get("volumen", 1.0)
+            p["mudo"] = ajustes[p["i"]].get("mudo", False)
+    return nuevo
+
+
+def cargar(ruta):
+    """El plan de un fichero, ya en el modelo de ahora.
+
+    Si venía en el viejo se reescribe al vuelo: migrar cuesta dos ffprobe y no
+    tiene ninguna gracia pagarlos en cada arrastre del ratón.
+    """
+    plan = json.load(open(ruta))
+    if plan.get("version", 1) < VERSION:
+        plan = migrar(plan)
+        guardar(plan, ruta)
+    return plan
+
+
+def guardar(plan, ruta):
+    with open(ruta, "w") as f:
+        json.dump(plan, f, ensure_ascii=False, indent=1)
+
+
+def fuente_de(plan, ident):
+    for f in plan["fuentes"]:
+        if f["id"] == ident:
+            return f
+    return plan["fuentes"][0]
+
+
+def duracion_linea(plan):
+    return sum(max(0.0, c["hasta"] - c["desde"]) for c in plan["clips"])
+
+
+#  El rastro que manda ahora mismo.
+#
+#  Mientras la pista base sea un solo trozo, tiempo de línea y tiempo de fuente
+#  son el mismo y basta con el rastro de esa fuente. En cuanto se pueda cortar y
+#  reordenar habrá que preguntar por instante, y eso es lo que hará `mapa()`.
+def rastro_de(plan):
+    if not plan["clips"]:
+        return ""
+    return fuente_de(plan, plan["clips"][0]["fuente"]).get("rastro", "")
+
+
+def pistas_de(plan):
+    if not plan["clips"]:
+        return []
+    return fuente_de(plan, plan["clips"][0]["fuente"]).get("pistas", [])
+
+
 # ── órdenes ───────────────────────────────────────────────────────
+def orden_abrir(args):
+    """Un plan para un vídeo cualquiera, se haya grabado aquí o no."""
+    if not os.path.exists(args.video):
+        salir(ok=False, motivo="sin-video")
+    plan = plan_nuevo(args.video, args.rastro)
+    if args.guardar:
+        guardar(plan, args.guardar)
+    salir(ok=True, **plan)
+
+
 def orden_proponer(args):
     if not os.path.exists(args.rastro):
         salir(ok=False, motivo="sin-rastro")
     ancho, alto, fps, duracion, _ = sondear(args.video)
     momentos = proponer(args.rastro, ancho, alto, duracion, args.nivel)
-    pistas = pistas_audio(args.video)
-    plan = {"video": args.video, "rastro": args.rastro,
-            "w": ancho, "h": alto, "fps": fps, "duracion": round(duracion, 3),
-            "momentos": momentos,
-            # Una entrada por pista, a volumen normal y sin silenciar. Es lo
-            # que el editor deja tocar.
-            "audio": [{"i": p["i"], "titulo": p["titulo"],
-                       "volumen": 1.0, "mudo": False} for p in pistas]}
+    plan = plan_nuevo(args.video, args.rastro, momentos)
     if args.guardar:
-        with open(args.guardar, "w") as f:
-            json.dump(plan, f, ensure_ascii=False, indent=1)
+        guardar(plan, args.guardar)
     salir(ok=True, **plan)
 
 
@@ -452,12 +570,12 @@ def orden_camara(args):
     que se ve en el editor y lo que acaba en el fichero coinciden por
     construcción, sin dos implementaciones que se puedan ir separando.
     """
-    plan = json.load(open(args.plan))
-    ancho, alto, fps, duracion, _ = sondear(plan["video"])
-    puntos = adelgazar(trayectoria(plan["momentos"], plan["rastro"],
-                                   ancho, alto, duracion, fps))
-    salir(ok=True, w=ancho, h=alto, duracion=round(duracion, 3),
-          audio=plan.get("audio", []),
+    plan = cargar(args.plan)
+    duracion = duracion_linea(plan)
+    puntos = adelgazar(trayectoria(plan["momentos"], rastro_de(plan),
+                                   plan["w"], plan["h"], duracion, plan["fps"]))
+    salir(ok=True, w=plan["w"], h=plan["h"], duracion=round(duracion, 3),
+          audio=pistas_de(plan), clips=plan["clips"], fuentes=plan["fuentes"],
           camara=[[round(t, 3), round(z, 4), round(x, 1), round(y, 1)]
                   for t, z, x, y in puntos])
 
@@ -471,7 +589,7 @@ def mezcla_audio(plan, cuantas):
     if cuantas == 0:
         return [], False
 
-    ajustes = {a["i"]: a for a in plan.get("audio", [])}
+    ajustes = {a["i"]: a for a in pistas_de(plan)}
     vivas = []
     for i in range(cuantas):
         a = ajustes.get(i, {})
@@ -498,15 +616,16 @@ def mezcla_audio(plan, cuantas):
 
 
 def orden_render(args):
-    plan = json.load(open(args.plan))
-    ancho, alto, fps, duracion, hay_audio = sondear(args.video)
-    cadena, nodos = filtro(plan["momentos"], plan["rastro"],
+    plan = cargar(args.plan)
+    video = fuente_de(plan, plan["clips"][0]["fuente"])["ruta"]
+    ancho, alto, fps = plan["w"], plan["h"], plan["fps"]
+    duracion = duracion_linea(plan)
+    cadena, nodos = filtro(plan["momentos"], rastro_de(plan),
                            ancho, alto, duracion, fps)
 
-    pistas = pistas_audio(args.video)
-    argumentos_audio, _ = mezcla_audio(plan, len(pistas))
+    argumentos_audio, _ = mezcla_audio(plan, len(pistas_de(plan)))
 
-    orden = ["ffmpeg", "-v", "error", "-y", "-i", args.video,
+    orden = ["ffmpeg", "-v", "error", "-y", "-i", video,
              "-vf", cadena, "-map", "0:v",
              "-c:v", "hevc_nvenc" if args.codec == "hevc" else "h264_nvenc",
              "-preset", "p5", "-rc", "vbr", "-cq", "21", "-b:v", "0"]
@@ -533,15 +652,15 @@ def orden_render(args):
 
 
 def orden_previa(args):
-    plan = json.load(open(args.plan))
-    ancho, alto, fps, duracion, _ = sondear(args.video)
-    cadena, _ = filtro(plan["momentos"], plan["rastro"],
-                       ancho, alto, duracion, fps)
+    plan = cargar(args.plan)
+    video = fuente_de(plan, plan["clips"][0]["fuente"])["ruta"]
+    cadena, _ = filtro(plan["momentos"], rastro_de(plan),
+                       plan["w"], plan["h"], duracion_linea(plan), plan["fps"])
     # `-ss` DESPUÉS de `-i`: buscando por la entrada, ffmpeg pone los tiempos a
     # cero y las expresiones, que van en tiempo absoluto, apuntarían al sitio
     # equivocado.
     p = subprocess.run(
-        ["ffmpeg", "-v", "error", "-y", "-i", args.video, "-ss", str(args.t),
+        ["ffmpeg", "-v", "error", "-y", "-i", video, "-ss", str(args.t),
          "-vf", cadena, "-frames:v", "1", args.salida],
         capture_output=True, text=True)
     if p.returncode != 0:
@@ -553,14 +672,22 @@ def main():
     ap = argparse.ArgumentParser(add_help=False)
     sub = ap.add_subparsers(dest="orden", required=True)
 
+    e = sub.add_parser("abrir")
+    e.add_argument("video")
+    e.add_argument("--rastro", default="")
+    e.add_argument("--guardar", default="")
+
     a = sub.add_parser("proponer")
     a.add_argument("rastro")
     a.add_argument("--video", required=True)
     a.add_argument("--guardar", default="")
     a.add_argument("--nivel", type=float, default=Z_MAX)
 
+    #  El vídeo ya no va suelto: sale del plan.
+    #
+    #  Pasarlo por separado permitía renderizar un plan sobre un vídeo que no
+    #  era el suyo, y con varias fuentes deja directamente de tener sentido.
     b = sub.add_parser("render")
-    b.add_argument("video")
     b.add_argument("plan")
     b.add_argument("salida")
     b.add_argument("--codec", default="h264")
@@ -569,13 +696,12 @@ def main():
     d.add_argument("plan")
 
     c = sub.add_parser("previa")
-    c.add_argument("video")
     c.add_argument("plan")
     c.add_argument("t", type=float)
     c.add_argument("salida")
 
     args = ap.parse_args()
-    {"proponer": orden_proponer, "render": orden_render,
+    {"abrir": orden_abrir, "proponer": orden_proponer, "render": orden_render,
      "previa": orden_previa, "camara": orden_camara}[args.orden](args)
 
 

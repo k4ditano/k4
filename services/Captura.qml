@@ -26,7 +26,10 @@ Singleton {
     property bool conCursor: false
 
     // ── estado ────────────────────────────────────────────────────
-    //  "" · capturando · cuenta · grabando · cerrando · editando · renderizando
+    //  "" · capturando · cuenta · grabando · cerrando
+    //
+    //  Editar tiene su propio estado, en services/Editor.qml: se puede estar
+    //  renderizando un vídeo de hace un rato y grabando otro a la vez.
     property string estado: ""
 
     property string ultimaRuta: ""
@@ -468,10 +471,18 @@ Singleton {
         }
     }
 
+    //  Un respiro antes de abrir el editor: el fichero acaba de cerrarse y
+    //  ffprobe sobre un MP4 al que todavía le están escribiendo el índice
+    //  contesta cualquier cosa.
     Timer {
-        id: proponerLuego
+        id: abrirEnEditor
         interval: 700
-        onTriggered: captura.proponerZoom()
+        onTriggered: {
+            if (Editor.zoomAuto)
+                Editor.proponer(captura.rutaVideo, captura.rutaRastro)
+            else
+                Editor.abrir(captura.rutaVideo, captura.rutaRastro)
+        }
     }
 
     //  Juntar el micro con el vídeo, como pista aparte.
@@ -528,13 +539,16 @@ Singleton {
     }
 
     //  El final de una grabación, una vez el fichero ya está como debe.
+    //
+    //  Aquí acaba el trabajo del grabador y empieza el del editor. Se le entrega
+    //  el vídeo y el rastro, y a partir de ese punto esto ya no sabe nada: el
+    //  editor abre también vídeos que no ha grabado nadie de aquí.
     function rematarGrabacion() {
         grabando = false
         estado = ""
         if (rutaVideo.length > 0) {
             videoListo(rutaVideo)
-            if (zoomAuto)
-                proponerLuego.restart()
+            abrirEnEditor.restart()
         } else {
             videoFallido("fallo")
         }
@@ -553,293 +567,6 @@ Singleton {
         id: rescate
         interval: 5000
         onTriggered: if (captura.grabando) grabador.signal(15)
-    }
-
-    // ── el zoom, después de grabar ────────────────────────────────
-    //
-    //  El plan se guarda junto al vídeo, así que se puede reeditar mañana. Lo
-    //  que se renderiza es un fichero nuevo: el original no se toca, porque
-    //  equivocarse con el zoom y haberse cargado la grabación sería mucho peor
-    //  que tener dos ficheros.
-    property bool zoomAuto: true
-    property real zoomNivel: 2.5
-
-    property var momentos: []
-    property string rutaPlan: ""
-
-    //  La trayectoria de la cámara, para poder enseñar el zoom en vivo sin
-    //  renderizar. Son los MISMOS puntos que se convierten en la expresión de
-    //  ffmpeg, así que lo que se ve en el editor y lo que sale al fichero
-    //  coinciden por construcción.
-    property var camara: []
-
-    //  Las pistas de audio del vídeo, con su volumen y su silencio.
-    //  [{ i, titulo, volumen, mudo }]
-    property var pistasAudio: []
-
-    //  Por dónde iba la reproducción.
-    //
-    //  Cada vista del editor tiene su propio reproductor —nunca hay dos a la
-    //  vez, porque al abrir una se destruye la otra—, así que en vez de
-    //  compartir el sumidero de vídeo entre ventanas, que es delicado, basta
-    //  con apuntar el instante y volver a él. Se paga un reabrir de medio
-    //  segundo al cambiar de tamaño, y a cambio no hay nada que sincronizar.
-    property real posicionEditor: 0
-
-    function fijarPista(i, campos) {
-        pistasAudio = pistasAudio.map(function (p) {
-            if (p.i !== i)
-                return p
-            return Object.assign({}, p, campos)
-        })
-        persistir()
-    }
-    property string rutaRenderizada: ""
-    property real progreso: 0
-
-    signal planListo()
-    signal renderListo(string ruta)
-
-    function proponerZoom() {
-        if (rutaVideo.length === 0 || rutaRastro.length === 0)
-            return
-        rutaPlan = rutaVideo.replace(/\.mp4$/, ".zoom.json")
-        proponedor.command = ["python3", Quickshell.shellPath("tools/zoom.py"),
-                              "proponer", rutaRastro,
-                              "--video", rutaVideo,
-                              "--guardar", rutaPlan,
-                              "--nivel", String(zoomNivel)]
-        proponedor.running = true
-    }
-
-    function quitarMomento(id) {
-        momentos = momentos.filter(function (m) { return m.id !== id })
-        persistir()
-    }
-
-    //  Cambiar campos sueltos de un momento.
-    //
-    //  Se reasigna el array entero y se copia el objeto: mutar en su sitio no
-    //  emite el cambio y la vista se quedaría como estaba. Es la misma trampa
-    //  de siempre en QML y sigue costando lo mismo encontrarla.
-    function fijarMomento(id, campos) {
-        momentos = momentos.map(function (m) {
-            if (m.id !== id)
-                return m
-            return Object.assign({}, m, campos)
-        })
-        persistir()
-    }
-
-    //  Un momento nuevo, dibujado a mano en un hueco de la línea de tiempo.
-    //
-    //  Nace con `seguir: false`: si lo has puesto tú, el encuadre es una
-    //  decisión tuya y no tiene sentido que la cámara se vaya detrás del cursor.
-    function crearMomento(t0, t1) {
-        let mayor = 0
-        for (let i = 0; i < momentos.length; ++i)
-            mayor = Math.max(mayor, momentos[i].id)
-
-        const nuevo = {
-            id: mayor + 1,
-            t0: Math.max(0, Math.min(t0, t1)),
-            t1: Math.min(duracionVideo, Math.max(t0, t1)),
-            cx: Math.round(anchoVideo / 2),
-            cy: Math.round(altoVideo / 2),
-            z: zoomNivel,
-            seguir: false
-        }
-        momentos = momentos.concat([nuevo]).sort(function (a, b) {
-            return a.t0 - b.t0
-        })
-        persistir()
-        return nuevo.id
-    }
-
-    // Mover el encuadre a mano deja de seguir al cursor, por lo mismo.
-    function moverCentro(id, cx, cy) {
-        fijarMomento(id, {
-            cx: Math.round(Math.max(0, Math.min(anchoVideo, cx))),
-            cy: Math.round(Math.max(0, Math.min(altoVideo, cy))),
-            seguir: false
-        })
-    }
-
-    function moverMomento(id, delta) {
-        // Reasignar el array entero y no tocarlo dentro: QML no se entera de
-        // los cambios en su sitio y la vista se quedaría como estaba.
-        momentos = momentos.map(function (m) {
-            if (m.id !== id)
-                return m
-            const d = Object.assign({}, m)
-            d.t0 = Math.max(0, d.t0 + delta)
-            d.t1 = Math.min(duracionVideo, d.t1 + delta)
-            return d
-        })
-        persistir()
-    }
-
-    function ajustarNivel(id, delta) {
-        momentos = momentos.map(function (m) {
-            if (m.id !== id)
-                return m
-            const d = Object.assign({}, m)
-            d.z = Math.max(1.1, Math.min(4, Math.round((d.z + delta) * 100) / 100))
-            return d
-        })
-        persistir()
-    }
-
-    property real duracionVideo: 0
-    // Tamaño del vídeo: hace falta para pasar de píxeles del fichero a píxeles
-    // del marco donde se previsualiza.
-    property int anchoVideo: 1920
-    property int altoVideo: 1080
-
-    //  Guardar con rebote.
-    //
-    //  Arrastrar un bloque son sesenta eventos por segundo, y cada uno lanzaba
-    //  un `python3`. Con esto son cinco por segundo como mucho, y solo se
-    //  escribe el último estado, que es el único que importa.
-    function persistir() { persistidor.restart() }
-
-    Timer {
-        id: persistidor
-        interval: 200
-        onTriggered: {
-            // Si el anterior sigue escribiendo, se espera: dos procesos sobre
-            // el mismo fichero acaban con uno pisando al otro.
-            if (escritorPlan.running)
-                restart()
-            else
-                captura.guardarPlan()
-        }
-    }
-
-    function guardarPlan() {
-        escritorPlan.command = ["python3", "-c",
-            //  Se parchean las claves que conocemos y se deja el resto como
-            //  esté: así lo que añada una fase futura no se pierde por pasar
-            //  por aquí.
-            "import json,sys; p=json.load(open(sys.argv[1])); " +
-            "p.update(json.loads(sys.argv[2])); " +
-            "json.dump(p, open(sys.argv[1],'w'), ensure_ascii=False, indent=1)",
-            rutaPlan, JSON.stringify({ momentos: momentos, audio: pistasAudio })]
-        escritorPlan.running = true
-    }
-
-    function renderizar() {
-        if (rutaPlan.length === 0)
-            return
-        rutaRenderizada = rutaVideo.replace(/\.mp4$/, "-zoom.mp4")
-        progreso = 0
-        estado = "renderizando"
-        renderizador.command = ["python3", Quickshell.shellPath("tools/zoom.py"),
-                                "render", rutaVideo, rutaPlan, rutaRenderizada,
-                                "--codec", codec]
-        renderizador.running = true
-    }
-
-    //  Descartar es tirarlo todo: los momentos, el estado y la cápsula de
-    //  «pendiente» de la píldora. Antes solo vaciaba los momentos, así que la
-    //  cápsula se quedaba ahí diciendo «0 momentos» para siempre y no había
-    //  forma de librarse de ella.
-    //
-    //  El vídeo sin tocar sigue guardado; lo que se tira es el plan de zoom.
-    function descartarZoom() {
-        momentos = []
-        pistasAudio = []
-        estado = ""
-        Modulos.quitar("captura-zoom")
-    }
-
-    //  Al editar hay que rehacer la trayectoria, pero no a cada tecla: si
-    //  mantienes pulsada una flecha se lanzarían veinte procesos. Un respiro
-    //  corto y solo se calcula la última.
-    Timer {
-        id: recalcular
-        interval: 180
-        onTriggered: {
-            if (captura.rutaPlan.length === 0)
-                return
-            camarero.command = ["python3", Quickshell.shellPath("tools/zoom.py"),
-                                "camara", captura.rutaPlan]
-            camarero.running = true
-        }
-    }
-
-    Process {
-        id: camarero
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    const d = JSON.parse(this.text)
-                    if (d.ok) {
-                        captura.camara = d.camara || []
-                        captura.duracionVideo = d.duracion || captura.duracionVideo
-                        captura.anchoVideo = d.w || captura.anchoVideo
-                        captura.altoVideo = d.h || captura.altoVideo
-                        if (d.audio && captura.pistasAudio.length === 0)
-                            captura.pistasAudio = d.audio
-                    }
-                } catch (e) { }
-            }
-        }
-    }
-
-    Process {
-        id: escritorPlan
-        // La trayectoria depende del plan, así que se rehace cuando el plan ya
-        // está escrito en disco y no antes.
-        onExited: recalcular.restart()
-    }
-
-    Process {
-        id: proponedor
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let d = null
-                try { d = JSON.parse(this.text) } catch (e) { return }
-                if (!d.ok)
-                    return
-                captura.duracionVideo = d.duracion || 0
-                captura.anchoVideo = d.w || 1920
-                captura.altoVideo = d.h || 1080
-                captura.pistasAudio = d.audio || []
-                captura.momentos = d.momentos || []
-                //  El editor se abre SIEMPRE, haya momentos o no.
-                //
-                //  Antes solo se abría si el rastro del cursor había propuesto
-                //  alguno, así que una grabación sin clics —enseñar algo sin
-                //  tocar nada, que es media razón para grabar— no se podía ni
-                //  abrir. El zoom es una cosa que se le hace a un vídeo, no el
-                //  motivo de que exista el editor.
-                captura.estado = "editando"
-                recalcular.restart()
-                captura.planListo()
-            }
-        }
-    }
-
-    Process {
-        id: renderizador
-        stdout: SplitParser {
-            onRead: function (linea) {
-                let d = null
-                try { d = JSON.parse(linea) } catch (e) { return }
-                if (d.progreso !== undefined)
-                    captura.progreso = d.progreso
-                if (d.estado === "fin" && d.ruta) {
-                    captura.estado = ""
-                    captura.rutaRenderizada = d.ruta
-                    captura.renderListo(d.ruta)
-                }
-                if (d.ok === false) {
-                    captura.estado = ""
-                    captura.videoFallido(d.motivo || "fallo")
-                }
-            }
-        }
     }
 
     // El monitor donde está el ratón. Con una sola pantalla da igual, pero en

@@ -36,7 +36,7 @@ EXCLUIR = [
 CARPETAS_SISTEMA = ["/usr", "/etc", "/opt", "/srv", "/var/log"]
 
 
-def ejecutar(consulta, ambito, tope, solo):
+def ejecutar(consulta, ambito, tope, solo, extensiones):
     orden = ["fd", "--hidden", "--no-ignore", "--absolute-path",
              "--max-results", str(tope * 4), "--ignore-case"]
 
@@ -47,6 +47,14 @@ def ejecutar(consulta, ambito, tope, solo):
         orden += ["--type", "directory"]
     elif solo == "archivo":
         orden += ["--type", "file"]
+
+    #  El filtro por extensión se lo hace fd, no nosotros.
+    #
+    #  Filtrarlo después parecería lo mismo y no lo es: `--max-results` corta
+    #  antes de que nadie filtre, así que un tope de sesenta se gastaría en
+    #  ficheros que se van a tirar y quedarían tres vídeos en la lista.
+    for ext in extensiones:
+        orden += ["--extension", ext]
 
     orden.append(consulta)
 
@@ -113,6 +121,7 @@ def main():
     ambito = "home"
     tope = TOPE
     solo = ""
+    extensiones = []
 
     i = 0
     while i < len(args):
@@ -123,6 +132,10 @@ def main():
             tope = int(args[i + 1]); i += 2
         elif a == "--solo" and i + 1 < len(args):
             solo = args[i + 1]; i += 2
+        elif a == "--ext" and i + 1 < len(args):
+            extensiones = [e.strip().lstrip(".")
+                           for e in args[i + 1].split(",") if e.strip()]
+            i += 2
         else:
             consulta = a; i += 1
 
@@ -131,7 +144,7 @@ def main():
         return
 
     inicio = time.time()
-    rutas = ejecutar(consulta, ambito, tope, solo)
+    rutas = ejecutar(consulta, ambito, tope, solo, extensiones)
 
     salida = []
     for r in rutas:

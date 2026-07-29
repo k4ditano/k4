@@ -1,8 +1,8 @@
-//  El editor del zoom: se ve el vídeo, con el zoom aplicado, mientras corre.
+//  El editor: se ve el vídeo, con el zoom aplicado, mientras corre.
 //
 //  Lo que se reproduce es el fichero ORIGINAL, sin tocar. El zoom se aplica
 //  aquí, con una transformación sobre la imagen, siguiendo la trayectoria que
-//  ha calculado tools/zoom.py. Y son exactamente los mismos puntos que se
+//  ha calculado tools/editar.py. Y son exactamente los mismos puntos que se
 //  convierten en la expresión de ffmpeg —entre ellos se interpola en recta,
 //  igual que hace el filtro—, así que lo que ves aquí es lo que va a salir en
 //  el fichero. Sin renderizar nada y sin dos implementaciones que se separen.
@@ -31,11 +31,11 @@ Item {
 
     property int elegido: 0
 
-    readonly property var momento: Captura.momentos.length > 0
-        ? Captura.momentos[Math.min(elegido, Captura.momentos.length - 1)] : null
+    readonly property var momento: Editor.momentos.length > 0
+        ? Editor.momentos[Math.min(elegido, Editor.momentos.length - 1)] : null
 
     readonly property real segundos: reproductor.position / 1000
-    readonly property real total: Math.max(0.001, Captura.duracionVideo)
+    readonly property real total: Math.max(0.001, Editor.duracionVideo)
 
     Component.onCompleted: forceActiveFocus()
 
@@ -45,7 +45,7 @@ Item {
     //  ciento y pico puntos daría igual recorrerlos, pero esto se evalúa en
     //  cada fotograma y no cuesta nada hacerlo bien.
     function camaraEn(t) {
-        const c = Captura.camara
+        const c = Editor.camara
         if (!c || c.length === 0)
             return [1, 0, 0]
         if (t <= c[0][0])
@@ -75,11 +75,11 @@ Item {
     // El recorte que corresponde a un centro dado, con el zoom de ahora.
     function encuadreEn(cx, cy) {
         const z = estadoCamara ? estadoCamara[0] : 1
-        const w = Captura.anchoVideo / z
-        const h = Captura.altoVideo / z
+        const w = Editor.anchoVideo / z
+        const h = Editor.altoVideo / z
         return [z,
-                Math.max(0, Math.min(Captura.anchoVideo - w, cx - w / 2)),
-                Math.max(0, Math.min(Captura.altoVideo - h, cy - h / 2))]
+                Math.max(0, Math.min(Editor.anchoVideo - w, cx - w / 2)),
+                Math.max(0, Math.min(Editor.altoVideo - h, cy - h / 2))]
     }
 
     readonly property var estadoCamara: camaraForzada
@@ -96,33 +96,33 @@ Item {
                 ? reproductor.pause() : reproductor.play()
         } else if (ev.key === Qt.Key_Left) {
             if ((ev.modifiers & Qt.ShiftModifier) && view.momento)
-                Captura.moverMomento(view.momento.id, -0.2)
+                Editor.moverMomento(view.momento.id, -0.2)
             else
                 view.irA(view.segundos - 1)
         } else if (ev.key === Qt.Key_Right) {
             if ((ev.modifiers & Qt.ShiftModifier) && view.momento)
-                Captura.moverMomento(view.momento.id, 0.2)
+                Editor.moverMomento(view.momento.id, 0.2)
             else
                 view.irA(view.segundos + 1)
         } else if (ev.key === Qt.Key_Down || ev.key === Qt.Key_Tab) {
-            if (Captura.momentos.length > 0) {
-                view.elegido = (view.elegido + 1) % Captura.momentos.length
+            if (Editor.momentos.length > 0) {
+                view.elegido = (view.elegido + 1) % Editor.momentos.length
                 view.irA(view.momento.t0)
             }
         } else if (ev.key === Qt.Key_Up || ev.key === Qt.Key_Backtab) {
-            if (Captura.momentos.length > 0) {
-                view.elegido = (view.elegido - 1 + Captura.momentos.length)
-                    % Captura.momentos.length
+            if (Editor.momentos.length > 0) {
+                view.elegido = (view.elegido - 1 + Editor.momentos.length)
+                    % Editor.momentos.length
                 view.irA(view.momento.t0)
             }
         } else if (ev.key === Qt.Key_Plus || ev.key === Qt.Key_Equal) {
-            if (view.momento) Captura.ajustarNivel(view.momento.id, 0.2)
+            if (view.momento) Editor.ajustarNivel(view.momento.id, 0.2)
         } else if (ev.key === Qt.Key_Minus) {
-            if (view.momento) Captura.ajustarNivel(view.momento.id, -0.2)
+            if (view.momento) Editor.ajustarNivel(view.momento.id, -0.2)
         } else if (ev.key === Qt.Key_Delete || ev.key === Qt.Key_Backspace) {
-            if (view.momento) Captura.quitarMomento(view.momento.id)
+            if (view.momento) Editor.quitarMomento(view.momento.id)
         } else if (ev.key === Qt.Key_Return || ev.key === Qt.Key_Enter) {
-            Captura.renderizar()
+            Editor.renderizar()
         } else {
             return
         }
@@ -143,7 +143,7 @@ Item {
 
     MediaPlayer {
         id: reproductor
-        source: Captura.rutaVideo.length > 0 ? "file://" + Captura.rutaVideo : ""
+        source: Editor.rutaVideo.length > 0 ? "file://" + Editor.rutaVideo : ""
         videoOutput: salida
         audioOutput: altavoz
         Component.onCompleted: play()
@@ -158,7 +158,7 @@ Item {
         property bool retomado: false
 
         onPositionChanged: if (playbackState !== MediaPlayer.StoppedState)
-                               Captura.posicionEditor = position / 1000
+                               Editor.posicionEditor = position / 1000
 
         onMediaStatusChanged: {
             if (mediaStatus === MediaPlayer.EndOfMedia) {
@@ -168,8 +168,8 @@ Item {
                        && (mediaStatus === MediaPlayer.LoadedMedia
                            || mediaStatus === MediaPlayer.BufferedMedia)) {
                 retomado = true
-                if (Captura.posicionEditor > 0.2)
-                    position = Captura.posicionEditor * 1000
+                if (Editor.posicionEditor > 0.2)
+                    position = Editor.posicionEditor * 1000
             }
         }
     }
@@ -191,17 +191,17 @@ Item {
             }
 
             IslandLabel {
-                text: Captura.momentos.length === 0
+                text: Editor.momentos.length === 0
                     ? Idioma.t("Editor")
                     : Idioma.f(Idioma.t("%1 momentos de zoom"),
-                               String(Captura.momentos.length))
+                               String(Editor.momentos.length))
                 color: Theme.ink
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
             }
 
             IslandLabel {
-                text: Captura.rutaVideo.split("/").pop()
+                text: Editor.rutaVideo.split("/").pop()
                 color: Theme.dim
                 font.pixelSize: 10
                 elide: Text.ElideMiddle
@@ -271,7 +271,7 @@ Item {
 
                     readonly property real escala: view.estadoCamara[0]
                     // de píxeles del vídeo a píxeles de este marco
-                    readonly property real factor: marco.width / Math.max(1, Captura.anchoVideo)
+                    readonly property real factor: marco.width / Math.max(1, Editor.anchoVideo)
 
                     transformOrigin: Item.TopLeft
                     scale: escala
@@ -324,7 +324,7 @@ Item {
                         // trayectoria: si no, el arrastre se sentiría a cuatro
                         // fotogramas por segundo.
                         view.camaraForzada = view.encuadreEn(cx, cy)
-                        Captura.moverCentro(view.momento.id, cx, cy)
+                        Editor.moverCentro(view.momento.id, cx, cy)
                     }
 
                     onReleased: view.camaraForzada = null
@@ -334,7 +334,7 @@ Item {
                     //  el evento, se lo queda el área.
                     onWheel: function (ev) {
                         if (view.momento)
-                            Captura.ajustarNivel(view.momento.id,
+                            Editor.ajustarNivel(view.momento.id,
                                                  ev.angleDelta.y > 0 ? 0.1 : -0.1)
                         ev.accepted = true
                     }
@@ -444,10 +444,10 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     const a = boton.modelData.accion
-                                    if (a === "antes")        Captura.moverMomento(view.momento.id, -0.2)
-                                    else if (a === "despues") Captura.moverMomento(view.momento.id, 0.2)
-                                    else if (a === "menos")   Captura.ajustarNivel(view.momento.id, -0.2)
-                                    else if (a === "mas")     Captura.ajustarNivel(view.momento.id, 0.2)
+                                    if (a === "antes")        Editor.moverMomento(view.momento.id, -0.2)
+                                    else if (a === "despues") Editor.moverMomento(view.momento.id, 0.2)
+                                    else if (a === "menos")   Editor.ajustarNivel(view.momento.id, -0.2)
+                                    else if (a === "mas")     Editor.ajustarNivel(view.momento.id, 0.2)
                                 }
                             }
                         }
@@ -463,7 +463,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.bottomMargin: 4
                     spacing: 3
-                    visible: Captura.pistasAudio.length > 0
+                    visible: Editor.pistasAudio.length > 0
 
                     IslandLabel {
                         text: Idioma.t("Audio")
@@ -474,7 +474,7 @@ Item {
                     }
 
                     Repeater {
-                        model: Captura.pistasAudio
+                        model: Editor.pistasAudio
 
                         delegate: RowLayout {
                             id: filaPista
@@ -492,7 +492,7 @@ Item {
                                 glyphSize: 13
                                 glyphColor: filaPista.modelData.mudo
                                     ? Theme.dim : Theme.ink
-                                onActivated: Captura.fijarPista(
+                                onActivated: Editor.fijarPista(
                                     filaPista.modelData.i,
                                     { mudo: !filaPista.modelData.mudo })
                             }
@@ -540,7 +540,7 @@ Item {
                                     function poner(x) {
                                         const v = Math.max(0, Math.min(2,
                                             x / Math.max(1, width) * 2))
-                                        Captura.fijarPista(filaPista.modelData.i,
+                                        Editor.fijarPista(filaPista.modelData.i,
                                                            { volumen: Math.round(v * 20) / 20 })
                                     }
                                     onPressed: function (ev) { poner(ev.x) }
@@ -592,7 +592,7 @@ Item {
                         hoverEnabled: true
                         enabled: view.momento !== null
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: Captura.quitarMomento(view.momento.id)
+                        onClicked: Editor.quitarMomento(view.momento.id)
                     }
                 }
             }
@@ -603,7 +603,7 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 36
 
-            modelo: Captura.momentos
+            modelo: Editor.momentos
             total: view.total
             cabezal: view.segundos
             elegido: view.elegido
@@ -611,14 +611,14 @@ Item {
             onSaltar: function (t) { view.irA(t) }
             onElegir: function (i) { view.elegido = i }
             onEditar: function (id, a, b) {
-                Captura.fijarMomento(id, { t0: a, t1: b })
+                Editor.fijarMomento(id, { t0: a, t1: b })
             }
             onCrear: function (a, b) {
-                view.elegido = Captura.momentos.length
-                Captura.crearMomento(a, b)
+                view.elegido = Editor.momentos.length
+                Editor.crearMomento(a, b)
             }
             onNivel: function (id, d) {
-                Captura.ajustarNivel(id, d > 0 ? 0.1 : -0.1)
+                Editor.ajustarNivel(id, d > 0 ? 0.1 : -0.1)
             }
         }
 
@@ -677,8 +677,8 @@ Item {
                         // estás cerca del final.
                         const a = Math.min(view.segundos, Math.max(0, view.total - 2))
                         const b = Math.min(view.total, a + 2)
-                        Captura.crearMomento(a, b)
-                        view.elegido = Captura.momentos.length - 1
+                        Editor.crearMomento(a, b)
+                        view.elegido = Editor.momentos.length - 1
                     }
                 }
             }
@@ -697,7 +697,7 @@ Item {
             }
 
             IslandLabel {
-                visible: Captura.estado !== "renderizando"
+                visible: Editor.estado !== "renderizando"
                 text: Idioma.t("espacio reproduce · ←→ salta · ↑↓ momento · mayús+←→ lo mueve · +− nivel")
                 color: Theme.dim
                 font.pixelSize: 9
@@ -705,14 +705,14 @@ Item {
             }
 
             Rectangle {
-                visible: Captura.estado === "renderizando"
+                visible: Editor.estado === "renderizando"
                 Layout.fillWidth: true
                 Layout.preferredHeight: 6
                 radius: 3
                 color: Theme.track
 
                 Rectangle {
-                    width: parent.width * Captura.progreso
+                    width: parent.width * Editor.progreso
                     height: parent.height
                     radius: parent.radius
                     color: Theme.blue
@@ -721,16 +721,16 @@ Item {
             }
 
             IslandLabel {
-                visible: Captura.estado === "renderizando"
-                text: Math.round(Captura.progreso * 100) + " %"
+                visible: Editor.estado === "renderizando"
+                text: Math.round(Editor.progreso * 100) + " %"
                 color: Theme.muted
                 font.pixelSize: 10
             }
 
-            Item { Layout.fillWidth: true; visible: Captura.estado !== "renderizando" }
+            Item { Layout.fillWidth: true; visible: Editor.estado !== "renderizando" }
 
             Rectangle {
-                visible: Captura.estado !== "renderizando"
+                visible: Editor.estado !== "renderizando"
                 Layout.preferredWidth: renderTexto.implicitWidth + 24
                 Layout.preferredHeight: 26
                 radius: 13
@@ -751,7 +751,7 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: Captura.renderizar()
+                    onClicked: Editor.renderizar()
                 }
             }
         }
