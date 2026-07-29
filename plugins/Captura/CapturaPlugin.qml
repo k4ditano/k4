@@ -200,6 +200,28 @@ K4Plugin {
         }
     }
 
+    //  Un vídeo dentro del vídeo. El mismo selector que para abrir uno, pero lo
+    //  que sale es una capa y no un proyecto nuevo.
+    property real dondeVaElPip: 0
+
+    function pedirPip(t) {
+        dondeVaElPip = t
+        selectorPip.running = true
+    }
+
+    K4.Process {
+        id: selectorPip
+        command: ["zenity", "--file-selection",
+                  "--title=" + Idioma.t("Elegir vídeo para encima"),
+                  "--file-filter=" + Idioma.t("Vídeo")
+                  + " | *.mp4 *.mkv *.mov *.webm *.avi *.m4v"]
+        onSalida: function (texto) {
+            const ruta = String(texto).trim()
+            if (ruta.length > 0)
+                Editor.crearPip(ruta, self.dondeVaElPip)
+        }
+    }
+
     function avanzar()    { index = (index + 1) % ambitos.length }
     function retroceder() { index = (index - 1 + ambitos.length) % ambitos.length }
 

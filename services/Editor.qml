@@ -330,12 +330,24 @@ Singleton {
     //  cuándo se acaba la música. Así que primero se mide y luego se crea.
     property string audioPendiente: ""
     property real audioPendienteEn: 0
+    // "audio" o "video": las dos cosas hay que medirlas antes de crearlas.
+    property string tipoPendiente: "audio"
 
-    function crearAudio(ruta, t0) {
+    function crearAudio(ruta, t0) { medirYCrear(ruta, t0, "audio") }
+
+    //  Un vídeo dentro del vídeo.
+    //
+    //  Se mide igual que el audio y por lo mismo, más una razón extra: hace falta
+    //  su tamaño para dibujar el recuadro con la proporción que va a tener al
+    //  renderizar.
+    function crearPip(ruta, t0) { medirYCrear(ruta, t0, "video") }
+
+    function medirYCrear(ruta, t0, tipo) {
         if (!ruta || ruta.length === 0)
             return
         audioPendiente = ruta
         audioPendienteEn = Math.max(0, Math.min(t0, duracionLinea))
+        tipoPendiente = tipo
         medidor.command = ["python3", guion, "medir", ruta]
         medidor.running = true
     }
@@ -347,32 +359,53 @@ Singleton {
                 let d = null
                 try { d = JSON.parse(this.text) } catch (e) { }
                 if (!d || !d.ok || editor.audioPendiente.length === 0) {
-                    editor.fallo(d && d.motivo ? d.motivo : "audio-ilegible")
+                    editor.fallo(d && d.motivo ? d.motivo : "no-se-puede-medir")
                     editor.audioPendiente = ""
                     return
                 }
-                editor.anadirAudio(editor.audioPendiente,
-                                   editor.audioPendienteEn, d.dur)
+                if (editor.tipoPendiente === "video" && !d.w) {
+                    // Sin flujo de vídeo no es un vídeo, diga lo que diga el nombre.
+                    editor.fallo("sin-video")
+                    editor.audioPendiente = ""
+                    return
+                }
+                editor.anadirMedio(editor.audioPendiente,
+                                   editor.audioPendienteEn, d,
+                                   editor.tipoPendiente)
                 editor.audioPendiente = ""
             }
         }
     }
 
-    function anadirAudio(ruta, t0, dur) {
+    function anadirMedio(ruta, t0, medida, tipo) {
         const a = Math.max(0, Math.min(t0, Math.max(0, duracionLinea - 0.5)))
-        //  El bloque acaba donde acabe la música o donde acabe el vídeo, lo que
-        //  llegue antes: la parte que se sale no se va a oír, así que enseñarla
-        //  en la línea de tiempo sería mentir.
-        const b = Math.min(duracionLinea, a + dur)
+        //  El bloque acaba donde acabe el fichero o donde acabe el vídeo, lo que
+        //  llegue antes: la parte que se sale no se va a ver ni oír, así que
+        //  enseñarla en la línea de tiempo sería mentir.
+        const b = Math.min(duracionLinea, a + medida.dur)
         const nueva = {
             id: nuevoIdCapa(),
-            tipo: "audio",
+            tipo: tipo,
             ruta: ruta,
             t0: a,
             t1: b,
-            dur: dur,
-            banda: proximaEnBandaNueva ? cuantasBandas + 1 : bandaLibre(a, b),
-            volumen: 0.8
+            dur: medida.dur,
+            banda: proximaEnBandaNueva ? cuantasBandas + 1 : bandaLibre(a, b)
+        }
+        if (tipo === "audio") {
+            nueva.volumen = 0.8
+        } else {
+            // Abajo a la derecha y a un tercio: donde va una cámara.
+            nueva.x = 0.76
+            nueva.y = 0.74
+            nueva.escala = 0.3
+            nueva.opacidad = 1.0
+            nueva.w = medida.w
+            nueva.h = medida.h
+            //  De qué parte del fichero se coge. Empieza siendo todo, y se
+            //  recorta estirando el bloque: `t1 - t0` es lo que se ve, así que el
+            //  recorte se deduce de ahí.
+            nueva.recorte = [0, medida.dur]
         }
         capas = capas.concat([nueva])
         proximaEnBandaNueva = false
@@ -432,6 +465,8 @@ Singleton {
             return 0x000F0284                  // md-format_text
         if (c.tipo === "audio")
             return 0x000F075A                  // md-music
+        if (c.tipo === "video")
+            return 0x000F0E57                  // md-picture_in_picture_bottom_right
         return 0x000F02E9
     }
 

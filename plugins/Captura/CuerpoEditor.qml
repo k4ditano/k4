@@ -156,6 +156,7 @@ Item {
         if (Editor.capaSel) {
             if (Editor.capaSel.tipo === "texto")  return Idioma.t("Rótulo")
             if (Editor.capaSel.tipo === "audio")  return Idioma.t("Audio")
+            if (Editor.capaSel.tipo === "video")  return Idioma.t("Vídeo encima")
             return Idioma.t("Imagen")
         }
         if (momento)
@@ -391,6 +392,7 @@ Item {
                     CapasLienzo {
                         anchors.fill: parent
                         segundos: view.segundos
+                        sonando: reproductor.reproduciendo
                     }
 
                     // Que lo que ves lleva zoom, para no confundirlo con el vídeo
@@ -638,6 +640,8 @@ Item {
                                         return Idioma.t("Quitar el rótulo")
                                     if (Editor.capaSel.tipo === "audio")
                                         return Idioma.t("Quitar el audio")
+                                    if (Editor.capaSel.tipo === "video")
+                                        return Idioma.t("Quitar el vídeo")
                                     return Idioma.t("Quitar la imagen")
                                 }
                                 font.pixelSize: 10
@@ -1109,6 +1113,19 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: view.plugin.pedirAudio(view.segundos)
                 }
+            }
+
+            //  Un vídeo dentro del vídeo.
+            //
+            //  Sin etiqueta: cinco botones con texto no caben, y de los cinco
+            //  este es el que menos falta hace explicar —el icono de un recuadro
+            //  dentro de otro se entiende—. Los cuatro frecuentes conservan su
+            //  nombre.
+            MediaButton {
+                glyph: String.fromCodePoint(0xF0E57)   // md-picture_in_picture
+                glyphSize: 15
+                glyphColor: Theme.ink
+                onActivated: view.plugin.pedirPip(view.segundos)
             }
 
             MediaButton {

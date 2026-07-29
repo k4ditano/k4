@@ -11,6 +11,7 @@
 //  el marco tiene la proporción del vídeo de salida, la regla de tres vale.
 
 import QtQuick
+import QtMultimedia
 import "../../core"
 import "../../services"
 
@@ -19,6 +20,8 @@ Item {
 
     // El instante de la línea, para saber qué capas tocan ahora.
     property real segundos: 0
+    // Si la reproducción va en marcha, para que los vídeos de dentro la sigan.
+    property bool sonando: false
 
     //  La tipografía de los rótulos, del mismo fichero que usa ffmpeg.
     //
@@ -66,16 +69,23 @@ Item {
             readonly property real eEscala: escalando ? vEscala : modelData.escala
 
             readonly property bool esTexto: modelData.tipo === "texto"
+            readonly property bool esPip: modelData.tipo === "video"
             //  El audio no se pinta: no tiene sitio en el fotograma. Su bloque
             //  vive en la línea de tiempo y su volumen en la ficha.
             readonly property bool visual: modelData.tipo === "texto"
                                         || modelData.tipo === "imagen"
+                                        || modelData.tipo === "video"
 
             //  La proporción de la imagen la trae la propia imagen. ffmpeg
             //  escala con `-1` de alto, o sea conservándola, así que aquí hay
             //  que hacer lo mismo o la previa mentiría.
-            readonly property real relacion: imagen.implicitWidth > 0
-                ? imagen.implicitHeight / imagen.implicitWidth : 0.5625
+            //  Un pip trae su tamaño en el plan, medido al añadirlo: `scale=…:-1`
+            //  conserva la proporción al renderizar, y si la previa la inventara
+            //  enseñaría un recuadro que no es el que va a salir.
+            readonly property real relacion: esPip
+                ? (modelData.w > 0 ? modelData.h / modelData.w : 0.5625)
+                : (imagen.implicitWidth > 0
+                   ? imagen.implicitHeight / imagen.implicitWidth : 0.5625)
 
             //  Un rótulo mide lo que mida el texto; una imagen, lo que se le diga.
             //
@@ -101,11 +111,53 @@ Item {
 
             opacity: modelData.opacidad !== undefined ? modelData.opacidad : 1
 
+            //  El vídeo de dentro, reproduciéndose.
+            //
+            //  Se coloca al entrar en su tramo y no en cada fotograma: pedirle un
+            //  `seek` treinta veces por segundo es no dejarle reproducir nada. Es
+            //  el mismo trato que a las pistas de audio añadidas, y con el mismo
+            //  precio: al cabo de minutos habrá décimas de desfase. Lo que sale
+            //  del render lo compone ffmpeg al fotograma.
+            Item {
+                anchors.fill: parent
+                visible: capa.esPip
+
+                readonly property bool debeSonar: capa.dentro && lienzo.sonando
+
+                onDebeSonarChanged: {
+                    if (debeSonar) {
+                        const dentroDelClip = capa.modelData.recorte
+                            ? capa.modelData.recorte[0] : 0
+                        mp.position = Math.max(0, dentroDelClip
+                            + lienzo.segundos - capa.modelData.t0) * 1000
+                        mp.play()
+                    } else {
+                        mp.pause()
+                    }
+                }
+
+                MediaPlayer {
+                    id: mp
+                    source: capa.esPip && capa.modelData.ruta
+                        ? "file://" + capa.modelData.ruta : ""
+                    videoOutput: salidaPip
+                    //  Sin sonido: el audio de un pip no entra en el render —eso
+                    //  lo hace una capa de audio— así que oírlo aquí engañaría.
+                    audioOutput: AudioOutput { muted: true }
+                }
+
+                VideoOutput {
+                    id: salidaPip
+                    anchors.fill: parent
+                    fillMode: VideoOutput.Stretch
+                }
+            }
+
             Image {
                 id: imagen
                 anchors.fill: parent
-                visible: !capa.esTexto
-                source: !capa.esTexto && capa.modelData.ruta
+                visible: !capa.esTexto && !capa.esPip
+                source: !capa.esTexto && !capa.esPip && capa.modelData.ruta
                     ? "file://" + capa.modelData.ruta : ""
                 fillMode: Image.Stretch
                 // El PNG llega a menudo mucho más grande que el hueco; sin esto

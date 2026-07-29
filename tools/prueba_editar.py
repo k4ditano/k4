@@ -348,6 +348,56 @@ def prueba_capa_sin_fichero():
     igual("pero el vídeo sale igual", "[zoom]format=yuv420p[v]" in texto, True)
 
 
+# ── vídeo dentro de vídeo ─────────────────────────────────────────
+def pip(**campos):
+    d = {"id": 1, "tipo": "video", "banda": 1, "ruta": fichero("camara.mp4"),
+         "t0": 2.0, "t1": 5.0, "dur": 6.0, "recorte": [1.0, 4.0],
+         "x": 0.76, "y": 0.74, "escala": 0.3, "opacidad": 1.0,
+         "w": 1280, "h": 720}
+    d.update(campos)
+    return d
+
+
+def prueba_pip_se_coloca_en_su_instante():
+    """`setpts` es lo que lo pone donde toca; sin él saldría congelado.
+
+    Sin el desplazamiento, el clip empieza en el segundo cero del vídeo grande y
+    lo único que hace el `enable` es taparlo hasta su tramo: cuando aparece, ya
+    ha pasado y se queda en su último fotograma.
+    """
+    texto, _ = editar.grafo(con_capas([pip()]), carpeta=BORRADOR)
+    igual("recorta el trozo del fichero",
+          "trim=start=1.0000:end=4.0000" in texto, True)
+    igual("y lo empuja hasta su instante de la línea",
+          "setpts=PTS-STARTPTS+2.0000/TB" in texto, True)
+
+
+def prueba_pip_no_trunca_el_video():
+    """Un clip se acaba antes que el vídeo, y eso no puede cortar la salida.
+
+    Medido con las cuatro opciones de `eof_action`: con `endall` el vídeo entero
+    se queda en 0,03 s.
+    """
+    texto, _ = editar.grafo(con_capas([pip()]), carpeta=BORRADOR)
+    igual("eof_action=pass", "eof_action=pass" in texto, True)
+
+
+def prueba_pip_escala_y_centro():
+    texto, _ = editar.grafo(con_capas([pip(escala=0.4, x=0.3, y=0.6)]),
+                            carpeta=BORRADOR)
+    # 0,4 de 1920 son 768
+    igual("escala en píxeles del lienzo", "scale=768:-1" in texto, True)
+    igual("y centrado como las demás capas",
+          "x=0.3000*W-w/2:y=0.6000*H-h/2" in texto, True)
+
+
+def prueba_pip_no_trae_su_audio():
+    """Meterlo sería otra decisión —a qué volumen, mezclado con qué—, y para eso
+    ya está una capa de audio."""
+    texto, _ = editar.grafo(con_capas([pip()]), carpeta=BORRADOR)
+    igual("no toca el audio de la capa", ":a]" in texto.split("[pip0]")[0], False)
+
+
 # ── el audio añadido ──────────────────────────────────────────────
 def pista_audio(**campos):
     d = {"id": 1, "tipo": "audio", "banda": 1, "ruta": fichero("musica.mp3"),

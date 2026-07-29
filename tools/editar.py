@@ -607,6 +607,51 @@ def rama_texto(n, capa, ancho, alto, carpeta, entra):
     return ["[%s]%s[%s]" % (entra, ":".join(partes), sale)], sale
 
 
+def rama_pip(n, idx, capa, ancho, alto, entra):
+    """Un vídeo dentro del vídeo. Devuelve (líneas, etiqueta de salida).
+
+    Tres cosas que lo separan de una imagen:
+
+    - `trim` para quedarse con el trozo que interesa del fichero de la capa, y
+      `setpts` para colocarlo en el instante de la LÍNEA en que se quiere ver. Sin
+      el `setpts` el clip empieza en el segundo cero del vídeo grande y lo único
+      que hace el `enable` es taparlo hasta su tramo: se vería congelado.
+    - `eof_action=pass`. Un clip se acaba antes que el vídeo, y sin esto la salida
+      se trunca a la longitud de la capa. Medido: con `endall` el vídeo entero se
+      queda en 0,03 s.
+    - Su audio se tira. Meterlo sería otra rama y otra decisión —¿a qué volumen?,
+      ¿mezclado con qué?—, y una capa de audio ya hace eso mejor.
+    """
+    lineas = []
+    et = "pip%d" % n
+    ancho_capa = max(2, int(round(ancho * float(capa.get("escala", 0.3)))))
+
+    recorte = capa.get("recorte") or [0, 0]
+    filtros = []
+    if float(recorte[1]) > float(recorte[0]):
+        filtros.append("trim=start=%.4f:end=%.4f"
+                       % (float(recorte[0]), float(recorte[1])))
+    #  `setpts` SIEMPRE, aunque no haya recorte: pone los tiempos del clip a cero
+    #  y luego lo empuja hasta su instante.
+    filtros.append("setpts=PTS-STARTPTS+%.4f/TB" % float(capa.get("t0", 0)))
+    filtros.append("scale=%d:-1" % ancho_capa)
+    filtros.append("setsar=1")
+
+    opacidad = float(capa.get("opacidad", 1.0))
+    if opacidad < 0.999:
+        filtros.append("format=rgba,colorchannelmixer=aa=%.3f" % opacidad)
+
+    lineas.append("[%d:v]%s[%s]" % (idx, ",".join(filtros), et))
+
+    sale = "ov%d" % n
+    lineas.append(
+        "[%s][%s]overlay=x=%.4f*W-w/2:y=%.4f*H-h/2:"
+        "enable='between(t,%.4f,%.4f)':eof_action=pass[%s]"
+        % (entra, et, float(capa.get("x", 0.75)), float(capa.get("y", 0.75)),
+           float(capa.get("t0", 0)), float(capa.get("t1", 0)), sale))
+    return lineas, sale
+
+
 def rama_capa(n, idx, capa, ancho, alto, entra):
     """Una capa encima del vídeo. Devuelve (líneas, etiqueta de salida).
 
@@ -707,16 +752,17 @@ def grafo(plan, sin_audio=False, carpeta=None):
             nuevas, entra = rama_texto(n, capa, ancho, alto, carpeta, entra)
             lineas += nuevas
             continue
-        if tipo != "imagen":
-            # El audio y el vídeo dentro de vídeo van por su cuenta.
+        if tipo not in ("imagen", "video"):
+            # El audio va por su cuenta, al final.
             continue
         if not capa.get("ruta") or not os.path.exists(capa["ruta"]):
             #  Una capa cuyo fichero ya no está no puede tumbar el render: se
             #  salta y el resto sale. Borrar un PNG del escritorio meses después
             #  no debería impedirte volver a exportar el vídeo.
             continue
-        nuevas, entra = rama_capa(n, idx_capa[capa["id"]], capa,
-                                  ancho, alto, entra)
+        constructor = rama_pip if tipo == "video" else rama_capa
+        nuevas, entra = constructor(n, idx_capa[capa["id"]], capa,
+                                    ancho, alto, entra)
         lineas += nuevas
 
     lineas.append("[%s]format=yuv420p[v]" % entra)
@@ -1000,9 +1046,21 @@ def orden_medir(args):
         ["ffprobe", "-v", "error", "-show_entries", "format=duration",
          "-of", "csv=p=0", args.fichero], capture_output=True, text=True)
     try:
-        salir(ok=True, dur=round(float(p.stdout.strip()), 3))
+        dur = round(float(p.stdout.strip()), 3)
     except ValueError:
         salir(ok=False, motivo="ilegible")
+
+    #  Y el tamaño, si lleva vídeo. Lo necesita el editor para dibujar la capa con
+    #  su proporción: `scale=…:-1` la conserva al renderizar, y si la previa la
+    #  inventara enseñaría un recuadro que no es el que va a salir.
+    q = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v:0",
+         "-show_entries", "stream=width,height", "-of", "csv=p=0",
+         args.fichero], capture_output=True, text=True)
+    partes = q.stdout.strip().split(",")
+    if len(partes) == 2 and partes[0].isdigit():
+        salir(ok=True, dur=dur, w=int(partes[0]), h=int(partes[1]))
+    salir(ok=True, dur=dur)
 
 
 def orden_camara(args):
