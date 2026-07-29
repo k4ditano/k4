@@ -6,6 +6,9 @@
     raton.py clic 960 540       # mover y pulsar
     raton.py derecho 960 540
     raton.py donde              # dónde está ahora
+    raton.py rueda 3            # tres muescas arriba (negativo, abajo)
+    raton.py arrastra 100 200 400 200      # arrastre de verdad, en tramos
+    raton.py guion "mueve 900 17" "espera 1" "arrastra 900 300 1100 300"
 
 Compañero de teclas.py: el compositor no acepta eventos sintéticos por Wayland,
 pero un dispositivo del kernel lo ve como cualquier ratón enchufado.
@@ -37,7 +40,7 @@ UI_SET_KEYBIT = _iow(101, 4)
 UI_SET_RELBIT = _iow(102, 4)
 
 EV_KEY, EV_REL, EV_SYN = 0x01, 0x02, 0x00
-REL_X, REL_Y = 0x00, 0x01
+REL_X, REL_Y, REL_WHEEL = 0x00, 0x01, 0x08
 BTN_LEFT, BTN_RIGHT, BTN_MIDDLE = 0x110, 0x111, 0x112
 SYN_REPORT = 0
 
@@ -70,7 +73,7 @@ class Raton:
         for b in (BTN_LEFT, BTN_RIGHT, BTN_MIDDLE):
             fcntl.ioctl(self.fd, UI_SET_KEYBIT, b)
         fcntl.ioctl(self.fd, UI_SET_EVBIT, EV_REL)
-        for r in (REL_X, REL_Y):
+        for r in (REL_X, REL_Y, REL_WHEEL):
             fcntl.ioctl(self.fd, UI_SET_RELBIT, r)
 
         nombre = b"k4-raton-de-pruebas"
@@ -129,13 +132,52 @@ class Raton:
             self.paso(dx, dy)
             time.sleep(0.06)
 
-    def pulsar(self, boton):
+    def abajo(self, boton=BTN_LEFT):
         self.evento(EV_KEY, boton, 1)
         self.sync()
         time.sleep(0.04)
+
+    def arriba(self, boton=BTN_LEFT):
         self.evento(EV_KEY, boton, 0)
         self.sync()
         time.sleep(0.05)
+
+    def pulsar(self, boton):
+        self.abajo(boton)
+        self.arriba(boton)
+
+    def rueda(self, muescas):
+        self.evento(EV_REL, REL_WHEEL, muescas)
+        self.sync()
+        time.sleep(0.05)
+
+    def arrastrar(self, x0, y0, x1, y1, tramos=12):
+        """Un arrastre de verdad, en tramos.
+
+        Los tramos no son por realismo: un salto único no genera posiciones
+        intermedias, y la mitad de los gestos de QML —que reaccionan a
+        onPositionChanged— no llegan a dispararse. Con doce tramos y una pausa
+        corta entre ellos, cualquier interfaz se entera.
+        """
+        self.ir_a(x0, y0)
+        self.abajo()
+        for i in range(1, tramos + 1):
+            objetivo_x = round(x0 + (x1 - x0) * i / tramos)
+            objetivo_y = round(y0 + (y1 - y0) * i / tramos)
+            # Se mira dónde está de verdad en cada tramo: la aceleración de
+            # puntero desvía la cuenta, y en un arrastre el desvío se acumula
+            # hasta soltar en otro sitio. Preguntarlo cuesta 0,02 ms.
+            p = donde()
+            if p is None:
+                break
+            self.paso(objetivo_x - p[0], objetivo_y - p[1])
+            time.sleep(0.02)
+
+        p = donde()
+        if p is not None:
+            self.paso(x1 - p[0], y1 - p[1])
+        time.sleep(0.05)
+        self.arriba()
 
     def cerrar(self):
         fcntl.ioctl(self.fd, UI_DEV_DESTROY)
@@ -168,6 +210,20 @@ def main():
                     r.ir_a(int(trozos[1]), int(trozos[2]))
                 elif trozos[0] == "espera":
                     time.sleep(float(trozos[1]))
+                elif trozos[0] == "abajo":
+                    if len(trozos) >= 3:
+                        r.ir_a(int(trozos[1]), int(trozos[2]))
+                    r.abajo()
+                elif trozos[0] == "arriba":
+                    if len(trozos) >= 3:
+                        r.ir_a(int(trozos[1]), int(trozos[2]))
+                    r.arriba()
+                elif trozos[0] == "rueda":
+                    r.rueda(int(trozos[1]))
+                elif trozos[0] == "arrastra":
+                    r.arrastrar(int(trozos[1]), int(trozos[2]),
+                                int(trozos[3]), int(trozos[4]),
+                                int(trozos[5]) if len(trozos) > 5 else 12)
                 elif trozos[0] in BOTONES:
                     if len(trozos) >= 3:
                         r.ir_a(int(trozos[1]), int(trozos[2]))
@@ -175,6 +231,12 @@ def main():
                 print(trozos[0], donde(), flush=True)
         elif orden == "mueve":
             r.ir_a(int(sys.argv[2]), int(sys.argv[3]))
+        elif orden == "rueda":
+            r.rueda(int(sys.argv[2]))
+        elif orden == "arrastra":
+            r.arrastrar(int(sys.argv[2]), int(sys.argv[3]),
+                        int(sys.argv[4]), int(sys.argv[5]),
+                        int(sys.argv[6]) if len(sys.argv) > 6 else 12)
         elif orden in BOTONES:
             if len(sys.argv) >= 4:
                 r.ir_a(int(sys.argv[2]), int(sys.argv[3]))
