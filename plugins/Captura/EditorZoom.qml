@@ -13,8 +13,6 @@
 import QtQuick
 import QtQuick.Layouts
 import QtMultimedia
-import Quickshell
-import Quickshell.Io
 import "../../core"
 import "../../services"
 

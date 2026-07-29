@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
+import K4 as K4
 import "../../core"
 import "../../services"
 
@@ -12,7 +12,7 @@ FadeIn {
     readonly property var selected: plugin.selected
 
     // Abre el menú DBus de la aplicación seleccionada y expone sus entradas.
-    QsMenuOpener {
+    K4.MenuBandeja {
         id: opener
         menu: view.selected && view.selected.hasMenu ? view.selected.menu : null
     }

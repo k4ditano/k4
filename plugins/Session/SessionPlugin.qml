@@ -13,9 +13,7 @@
 //  sin bloquear nada, y así se puede verificar antes de fiarse.
 
 import QtQuick
-import Quickshell
-import Quickshell.Io
-import Quickshell.Wayland
+import K4 as K4
 import "../../core"
 import "../../services"
 
@@ -136,7 +134,7 @@ K4Plugin {
     onCountChanged: if (index >= count) index = Math.max(0, count - 1)
 
     // ── la pantalla de bloqueo ────────────────────────────────────
-    WlSessionLock {
+    K4.BloqueoSesion {
         id: cerradura
         surface: BloqueoSurface {}
     }
@@ -178,7 +176,7 @@ K4Plugin {
         }
     }
 
-    IpcHandler {
+    K4.Ipc {
         target: "k4.session"
 
         function toggle(): void { self.toggle() }

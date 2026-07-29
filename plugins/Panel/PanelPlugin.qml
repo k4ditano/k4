@@ -2,7 +2,7 @@
 //  notificaciones. Cuatro pestañas dentro de la misma vista.
 
 import QtQuick
-import Quickshell.Io
+import K4 as K4
 import "../../core"
 import "../../services"
 
@@ -87,7 +87,7 @@ K4Plugin {
             open = false
     }
 
-    IpcHandler {
+    K4.Ipc {
         target: "k4.panel"
         function toggle(): void { self.toggle("controls") }
         function notifications(): void { self.toggle("notifications") }

@@ -7,6 +7,7 @@
 
 import QtQuick
 import QtQuick.Layouts
+import K4 as K4
 import "../../core"
 import "../../services"
 
@@ -212,7 +213,7 @@ FadeIn {
         // de dar: te quedarías sin saber si la contraseña valía.
         property bool limpiando: false
 
-        Autenticador {
+        K4.Autenticacion {
             id: auth
             onResuelto: function (correcto) {
                 // Se borra acierte o falle: una contraseña no tiene por qué
@@ -305,7 +306,11 @@ FadeIn {
         IslandLabel {
             Layout.fillWidth: true
             text: auth.estado === "correcto" ? Idioma.t("Correcta: el bloqueo va a funcionar.")
-                : (auth.ocupado ? Idioma.t("Comprobando…") : auth.mensaje)
+                : (auth.ocupado ? Idioma.t("Comprobando…")
+                   : (auth.mensaje.length > 0 ? auth.mensaje
+                      : (auth.motivo === "demasiados-intentos" ? Idioma.t("Demasiados intentos")
+                         : auth.motivo === "sin-pam" ? Idioma.t("No se pudo hablar con PAM")
+                         : auth.motivo.length > 0 ? Idioma.t("Contraseña incorrecta") : "")))
             color: auth.estado === "correcto" ? Theme.green
                 : (auth.estado === "fallo" ? Theme.red : Theme.muted)
             font.pixelSize: 11

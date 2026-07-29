@@ -14,6 +14,13 @@ import "../core"
 Singleton {
     id: wifi
 
+    //  El interruptor de la radio.
+    //
+    //  Vive aquí y no en la vista porque `Networking` es de Quickshell, y un
+    //  plugin no debe importarlo: los servicios son implementación y sí pueden,
+    //  la superficie pública no.
+    property alias activada: interruptorWifi.encendida
+
     property string name: "Buscando Wi‑Fi…"
     property var pskTarget: null        // red esperando contraseña
     property string pskInput: ""
@@ -187,5 +194,12 @@ Singleton {
     Connections {
         target: Networking
         function onWifiEnabledChanged() { wifi.refresh() }
+    }
+
+    QtObject {
+        id: interruptorWifi
+        property bool encendida: Networking.wifiEnabled
+        onEncendidaChanged: if (Networking.wifiEnabled !== encendida)
+                                Networking.wifiEnabled = encendida
     }
 }

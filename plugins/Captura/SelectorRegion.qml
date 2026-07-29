@@ -16,34 +16,21 @@
 //  Con un solo monitor es lo mismo y no se nota, con dos importa.
 
 import QtQuick
-import Quickshell
-import Quickshell.Wayland
-import Quickshell.Hyprland
+import K4 as K4
 import "../../core"
 import "../../services"
 
-Variants {
-    model: Quickshell.screens
-
-    delegate: PanelWindow {
+K4.PorPantalla {
+    delegate: K4.Ventana {
         id: lienzo
 
         required property var modelData
         screen: modelData
 
-        anchors.top: true
-        anchors.left: true
-        anchors.right: true
-        anchors.bottom: true
-
-        color: "transparent"
-        exclusionMode: ExclusionMode.Ignore
-
         // Por encima de todo, la island incluida: mientras encuadras no debe
-        // haber nada que puedas pulsar sin querer.
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-        WlrLayershell.namespace: "k4-selector"
+        // haber nada que puedas pulsar sin querer, y el teclado es nuestro.
+        nombre: "k4-selector"
+        conTeclado: true
 
         readonly property int origenX: screen ? screen.x : 0
         readonly property int origenY: screen ? screen.y : 0
@@ -83,7 +70,7 @@ Variants {
             //  engancharse a ella sería recortar el vacío.
             readonly property var ventanas: {
                 const salida = []
-                const todas = Hyprland.toplevels.values
+                const todas = Ventanas.lista
                 for (let i = 0; i < todas.length; ++i) {
                     const d = todas[i].lastIpcObject
                     if (!d || !d.at || !d.size)

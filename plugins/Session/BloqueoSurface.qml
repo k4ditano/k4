@@ -10,17 +10,16 @@
 //  quien pase por delante.
 
 import QtQuick
-import Quickshell
-import Quickshell.Wayland
+import K4 as K4
 import "../../core"
 import "../../services"
 
-WlSessionLockSurface {
+K4.SuperficieBloqueo {
     id: pantalla
 
     color: "black"
 
-    Autenticador {
+    K4.Autenticacion {
         id: auth
         onResuelto: function (correcto) {
             if (correcto) {
@@ -191,7 +190,10 @@ WlSessionLockSurface {
                 width: 340
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
-                text: auth.mensaje
+                text: auth.mensaje.length > 0 ? auth.mensaje
+                    : (auth.motivo === "demasiados-intentos" ? Idioma.t("Demasiados intentos")
+                       : auth.motivo === "sin-pam" ? Idioma.t("No se pudo hablar con PAM")
+                       : auth.motivo.length > 0 ? Idioma.t("Contraseña incorrecta") : "")
                 color: Theme.red
                 font.pixelSize: 12
                 opacity: auth.mensaje.length > 0 ? 1 : 0

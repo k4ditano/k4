@@ -9,9 +9,7 @@
 //  mientras es el módulo activo, y grabar dura minutos con la island cerrada.
 
 import QtQuick
-import Quickshell
-import Quickshell.Io
-import Quickshell.Hyprland
+import K4 as K4
 import "../../core"
 import "../../services"
 
@@ -134,9 +132,9 @@ K4Plugin {
     //  existe mientras el módulo tiene la island, y encuadrar una región es
     //  justamente cuando la island no está.
     //
-    //  Ojo: la propiedad por defecto de LazyLoader es `component`, así que el
+    //  Ojo: la propiedad por defecto de K4.Cargador es `component`, así que el
     //  hijo suelto ES lo que se carga. Es lo que se quiere aquí.
-    LazyLoader {
+    K4.Cargador {
         active: Captura.seleccionando
         SelectorRegion {}
     }
@@ -171,19 +169,19 @@ K4Plugin {
             Modulos.quitar("captura-zoom")
             self.modo = "menu"
             self.open = false
-            Quickshell.execDetached(["notify-send", "-a", "k4",
+            K4.Sistema.lanzar(["notify-send", "-a", "k4",
                                      Idioma.t("Vídeo con zoom listo"),
                                      ruta.split("/").pop()])
         }
 
         function onVideoListo(ruta) {
-            Quickshell.execDetached(["notify-send", "-a", "k4",
+            K4.Sistema.lanzar(["notify-send", "-a", "k4",
                                      Idioma.t("Grabación guardada"),
                                      ruta.split("/").pop()])
         }
 
         function onVideoFallido(motivo) {
-            Quickshell.execDetached(["notify-send", "-a", "k4", "-u", "critical",
+            K4.Sistema.lanzar(["notify-send", "-a", "k4", "-u", "critical",
                                      Idioma.t("No se pudo grabar"), motivo])
         }
 
@@ -196,7 +194,7 @@ K4Plugin {
         function onFotoFallida(motivo) {
             // Un fallo de verdad sí merece aviso del sistema: puede pasar con
             // la island cerrada y sin nadie mirando la barra.
-            Quickshell.execDetached(["notify-send", "-a", "k4", "-u", "critical",
+            K4.Sistema.lanzar(["notify-send", "-a", "k4", "-u", "critical",
                                      Idioma.t("No se pudo capturar"), motivo])
         }
     }
@@ -230,15 +228,13 @@ K4Plugin {
     //
     //  Si esto no llegara a funcionar no se pierde el zoom: tools/zoom.py sabe
     //  deducir los momentos del propio rastro, por los reposos del cursor.
-    GlobalShortcut {
-        appid: "k4"
+    K4.Atajo {
         name: "clic"
         description: "Marca un clic izquierdo en el rastro de la grabación"
         onPressed: Captura.marcarClic(1)
     }
 
-    GlobalShortcut {
-        appid: "k4"
+    K4.Atajo {
         name: "clicDerecho"
         description: "Marca un clic derecho en el rastro de la grabación"
         onPressed: Captura.marcarClic(3)
@@ -255,7 +251,7 @@ K4Plugin {
         }
     }
 
-    IpcHandler {
+    K4.Ipc {
         target: "k4.captura"
 
         function menu(): void { self.toggle() }

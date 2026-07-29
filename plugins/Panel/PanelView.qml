@@ -1,8 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
-import Quickshell.Networking
-import Quickshell.Bluetooth
 import "../../core"
 import "../../services"
 import "../../widgets"
@@ -182,20 +179,20 @@ FadeIn {
                             Layout.preferredWidth: 30
                             Layout.preferredHeight: 30
                             radius: 15
-                            color: Networking.wifiEnabled ? Theme.blue : Theme.surfaceHi
+                            color: Wifi.activada ? Theme.blue : Theme.surfaceHi
 
                             Behavior on color { ColorAnimation { duration: 180 } }
 
                             IconGlyph {
                                 anchors.centerIn: parent
-                                text: Networking.wifiEnabled ? Theme.ico.wifi : Theme.ico.wifiOff
+                                text: Wifi.activada ? Theme.ico.wifi : Theme.ico.wifiOff
                                 font.pixelSize: 15
                             }
 
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: Networking.wifiEnabled = !Networking.wifiEnabled
+                                onClicked: Wifi.activada = !Wifi.activada
                             }
                         }
 
@@ -206,7 +203,7 @@ FadeIn {
 
                             IslandLabel { text: Idioma.t("Wi‑Fi"); font.pixelSize: 12; font.weight: Font.DemiBold }
                             IslandLabel {
-                                text: Networking.wifiEnabled ? Wifi.name : Idioma.t("Desactivado")
+                                text: Wifi.activada ? Wifi.name : Idioma.t("Desactivado")
                                 color: Theme.muted
                                 font.pixelSize: 10
                                 elide: Text.ElideRight
@@ -708,7 +705,7 @@ FadeIn {
                     spacing: 10
 
                     IslandLabel {
-                        text: Networking.wifiEnabled
+                        text: Wifi.activada
                             ? (Wifi.device && Wifi.device.scannerEnabled ? Idioma.t("Buscando redes…") : Idioma.t("Redes"))
                             : Idioma.t("Wi‑Fi desactivado")
                         color: Theme.muted
@@ -719,8 +716,8 @@ FadeIn {
                     Item { Layout.fillWidth: true }
 
                     IslandSwitch {
-                        checked: Networking.wifiEnabled
-                        onToggled: Networking.wifiEnabled = !Networking.wifiEnabled
+                        checked: Wifi.activada
+                        onToggled: Wifi.activada = !Wifi.activada
                         Layout.alignment: Qt.AlignVCenter
                     }
                 }
@@ -750,7 +747,7 @@ FadeIn {
                     IslandLabel {
                         anchors.centerIn: parent
                         visible: Wifi.networks.length === 0
-                        text: Networking.wifiEnabled ? Idioma.t("Buscando redes…") : Idioma.t("Activa el Wi‑Fi para ver redes")
+                        text: Wifi.activada ? Idioma.t("Buscando redes…") : Idioma.t("Activa el Wi‑Fi para ver redes")
                         color: Theme.muted
                         font.pixelSize: 12
                     }

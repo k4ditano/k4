@@ -16,3 +16,11 @@ singleton Sistema 1.0 Sistema.qml
 singleton Apps 1.0 Apps.qml
 Fichero 1.0 Fichero.qml
 Icono 1.0 Icono.qml
+MenuBandeja 1.0 MenuBandeja.qml
+Ventana 1.0 Ventana.qml
+PorPantalla 1.0 PorPantalla.qml
+Atajo 1.0 Atajo.qml
+Cargador 1.0 Cargador.qml
+BloqueoSesion 1.0 BloqueoSesion.qml
+SuperficieBloqueo 1.0 SuperficieBloqueo.qml
+Autenticacion 1.0 Autenticacion.qml

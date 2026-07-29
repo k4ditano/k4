@@ -98,6 +98,29 @@ Dos huecos del sistema, aparte del contenido:
 
 ---
 
+## API de plugins
+
+Hecho el grueso: existe el módulo `K4` en `api/`, los 24 ficheros de `plugins/`
+están migrados y `tools/api.py` comprueba que nadie se la salta. La guía está en
+`api/LEEME.md`.
+
+Lo que queda, por orden de lo que más cambia la experiencia:
+
+- **`K4.Pildora`.** Hoy el indicador del juego y el de grabación se inyectan a
+  mano en las vistas del reloj y del reproductor. Un plugin de fuera no puede
+  hacer eso, y es justo lo que hace que se sienta vivo sin estar abierto.
+- **`K4.Widgets`.** Publicar `IslandTile`, `IslandSlider`, `IconGlyph` y
+  compañía, que ya existen en `core/` y son puros. Sin esto cada plugin de la
+  comunidad traerá su propia estética.
+- **Ajustes de plugin**: que un plugin declare sus opciones y salgan en el
+  módulo de Ajustes.
+- **Permisos**: hoy cualquier plugin puede lanzar cualquier proceso. Decidirlo
+  antes de que exista un directorio público, porque después no se puede
+  retrofitear.
+- **Descubrimiento dinámico** desde `~/.config/k4/plugins/`, con recarga en
+  caliente en modo desarrollo. Ojo: los plugins de fuera del árbol no llegan a
+  los imports relativos (`"../../core"`), así que eso hay que resolverlo antes.
+
 ## Deudas pequeñas
 
 - **Las doce clases nuevas están sin medir.** El banco (`tools/banco-balance.qml`)

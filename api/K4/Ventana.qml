@@ -1,0 +1,52 @@
+//  Una ventana propia, aparte de la island.
+//
+//  Es lo que necesita un módulo que se queda pequeño dentro de la barra: un
+//  selector a pantalla completa, un editor, una vista a la que quieras dedicar
+//  media pantalla.
+//
+//  Por debajo es una superficie de capa (`wlr-layer-shell`), que es lo que
+//  permite ponerse por encima de todo sin ser una ventana normal que el
+//  compositor coloque, mueva y meta en el Alt+Tab. El día que exista un host de
+//  Windows o Mac esto será otra cosa, y el plugin no se enterará.
+//
+//  De fábrica viene a pantalla completa y transparente, que es el caso de uso
+//  habitual: pintar tú lo que quieras encima de lo que haya.
+//
+//      K4.Ventana {
+//          nombre: "mi-selector"
+//          conTeclado: true
+//          Item { anchors.fill: parent; ... }
+//      }
+
+import Quickshell
+import Quickshell.Wayland
+
+PanelWindow {
+    id: ventana
+
+    // Sale en `hyprctl layers` y sirve para darle reglas en el compositor.
+    property string nombre: "k4"
+
+    //  Si se queda el teclado en exclusiva. Solo para lo que de verdad lo
+    //  necesita mientras está delante: mientras lo tenga, ninguna otra ventana
+    //  recibe una tecla.
+    property bool conTeclado: false
+
+    // Por encima de todo, la island incluida.
+    property bool encima: true
+
+    anchors.top: true
+    anchors.left: true
+    anchors.right: true
+    anchors.bottom: true
+
+    color: "transparent"
+
+    // No reserva sitio: las ventanas de debajo no se recolocan por su culpa.
+    exclusionMode: ExclusionMode.Ignore
+
+    WlrLayershell.namespace: ventana.nombre
+    WlrLayershell.layer: ventana.encima ? WlrLayer.Overlay : WlrLayer.Top
+    WlrLayershell.keyboardFocus: ventana.conTeclado
+        ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+}
