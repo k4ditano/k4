@@ -898,7 +898,10 @@ def plan_nuevo(video, rastro="", momentos=None):
             # Un solo trozo, el vídeo entero. Trocearlo es cosa del editor.
             "clips": [{"id": 1, "fuente": 1, "desde": 0.0, "hasta": f["dur"]}],
             "momentos": momentos or [],
-            "capas": []}
+            "capas": [],
+            # Lo que se dice en el vídeo, cuando alguien lo pida. Va en el plan
+            # para no tener que volver a transcribir al reabrir, que es lo caro.
+            "transcripcion": []}
 
 
 def migrar(plan):

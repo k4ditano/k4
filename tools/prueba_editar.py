@@ -557,6 +557,41 @@ def prueba_zoom_en_tiempo_de_linea():
     cerca("y después se ha ido", zoom_en(b, 9.5), 1.0, 0.05)
 
 
+# ── la transcripción ──────────────────────────────────────────────
+def prueba_srt_se_parsea():
+    """El SRT de whisper, a segmentos con números.
+
+    Se parsea en python y no en el QML porque el formato es un detalle de
+    whisper: así el editor recibe tiempos y texto, y si algún día cambia el
+    formato solo cambia un fichero.
+    """
+    import transcribir
+    ruta = os.path.join(BORRADOR, "t.srt")
+    open(ruta, "w").write(
+        "1\n00:00:00,000 --> 00:00:02,480\n Hola, esto es una prueba.\n\n"
+        "2\n00:00:02,480 --> 00:00:05,120\n Con acentos: ñ, ú\n"
+        " y sigue en la siguiente.\n\n"
+        "3\n00:01:05,120 --> 00:01:07,000\n Y 50% de descuento.\n")
+    segs = transcribir.leer_srt(ruta)
+
+    igual("tres segmentos", len(segs), 3)
+    cerca("los milisegundos cuentan", segs[0]["t1"], 2.480)
+    igual("las líneas continuadas se juntan",
+          segs[1]["texto"], "Con acentos: ñ, ú y sigue en la siguiente.")
+    cerca("los minutos también", segs[2]["t0"], 65.120)
+    igual("el número de orden no es texto",
+          segs[0]["texto"], "Hola, esto es una prueba.")
+    igual("y el porcentaje no se toca",
+          "50%" in segs[2]["texto"], True)
+
+
+def prueba_srt_que_no_existe():
+    """No transcribir todavía no es un error: es no haber transcrito."""
+    import transcribir
+    igual("sin fichero, sin segmentos",
+          transcribir.leer_srt(os.path.join(BORRADOR, "no-hay.srt")), [])
+
+
 def main():
     pruebas = [v for k, v in sorted(globals().items()) if k.startswith("prueba_")]
     for p in pruebas:

@@ -579,6 +579,103 @@ Singleton {
     //  ENCIMA de lo que ya hay sin tener que colocarlo después.
     property bool proximaEnBandaNueva: false
 
+    // ── la transcripción ──────────────────────────────────────────
+    //
+    //  Lo que se dice en el vídeo, en segmentos con sus tiempos. Sirve para
+    //  subtitular y —más útil de lo que parece— para sacar rótulos de lo que ya
+    //  dijiste en voz alta: un botón por segmento y ya está escrito.
+    //
+    //  Los segmentos van al plan, así que al reabrir mañana están ahí sin tener
+    //  que volver a transcribir, que es lo caro.
+    property var transcripcion: []
+    property string estadoTranscripcion: ""   // "" · comprobando · extrayendo
+                                              // transcribiendo · falta · fallo
+    //  Qué falta para poder transcribir, y el mandato exacto para tenerlo.
+    //  whisper.cpp son 1,4 GB entre binario y modelo: no se instala solo.
+    property string faltaTranscripcion: ""    // binario · modelo
+    property string comoInstalar: ""
+
+    readonly property string guionTranscribir:
+        Quickshell.shellPath("tools/transcribir.py")
+
+    function transcribir() {
+        if (rutaVideo.length === 0 || estadoTranscripcion === "transcribiendo")
+            return
+        estadoTranscripcion = "comprobando"
+        comprobador.running = true
+    }
+
+    Process {
+        id: comprobador
+        command: ["python3", editor.guionTranscribir, "comprobar"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let d = null
+                try { d = JSON.parse(this.text) } catch (e) { }
+                if (!d) {
+                    editor.estadoTranscripcion = "fallo"
+                    return
+                }
+                editor.comoInstalar = d.como || ""
+                if (d.falta && d.falta.length > 0) {
+                    editor.faltaTranscripcion = d.falta
+                    editor.estadoTranscripcion = "falta"
+                    return
+                }
+                editor.faltaTranscripcion = ""
+                editor.estadoTranscripcion = "extrayendo"
+                transcriptor.command = ["python3", editor.guionTranscribir,
+                                        "hacer", editor.rutaVideo,
+                                        "--idioma", Idioma.codigo || "es",
+                                        "--salida", editor.carpetaAdjunta]
+                transcriptor.running = true
+            }
+        }
+    }
+
+    //  La carpeta que acompaña al plan, donde van los ficheros que hace falta
+    //  tener en disco: el texto de los rótulos, el SRT, el grafo.
+    readonly property string carpetaAdjunta:
+        rutaPlan.length > 5 ? rutaPlan.substring(0, rutaPlan.length - 5) : ""
+
+    Process {
+        id: transcriptor
+        stdout: SplitParser {
+            onRead: function (linea) {
+                let d = null
+                try { d = JSON.parse(linea) } catch (e) { return }
+                if (d.estado && d.estado !== "fin") {
+                    editor.estadoTranscripcion = d.estado
+                    return
+                }
+                if (d.ok === false) {
+                    editor.estadoTranscripcion = d.motivo === "sin-whisper"
+                        || d.motivo === "sin-modelo" ? "falta" : "fallo"
+                    if (d.como)
+                        editor.comoInstalar = d.como
+                    return
+                }
+                if (d.estado === "fin") {
+                    editor.transcripcion = d.segmentos || []
+                    editor.estadoTranscripcion = ""
+                    editor.persistir()
+                }
+            }
+        }
+    }
+
+    //  Un segmento en un rótulo, con sus mismos tiempos.
+    //
+    //  Es el puente que hace que la transcripción sirva para algo más que
+    //  subtitular: lo dijiste, ya está escrito, y ahora se ve.
+    function rotuloDesde(seg) {
+        const id = crearTexto(seg.t0)
+        fijarCapa(id, { texto: seg.texto,
+                        t0: seg.t0,
+                        t1: Math.max(seg.t0 + 0.4, seg.t1) })
+        return id
+    }
+
     // ── qué está seleccionado ─────────────────────────────────────
     //
     //  Un solo sitio para toda la línea, y no un índice por pista: con varias
@@ -691,6 +788,8 @@ Singleton {
         fuentes = d.fuentes || []
         clips = d.clips || []
         capas = d.capas || []
+        transcripcion = d.transcripcion || []
+        estadoTranscripcion = ""
         pistasAudio = (d.fuentes && d.fuentes.length > 0
                        ? d.fuentes[0].pistas : d.audio) || []
         momentos = d.momentos || []
@@ -867,10 +966,12 @@ Singleton {
             //  otras: no tener ninguna es un estado legítimo, y con el `or` no
             //  habría forma de quitar la última.
             "p['capas']=d['capas']; " +
+            "p['transcripcion']=d['transcripcion']; " +
             "json.dump(p, open(sys.argv[1],'w'), ensure_ascii=False, indent=1)",
             rutaPlan,
             JSON.stringify({ momentos: momentos, pistas: pistasAudio,
-                             clips: clips, capas: capas })]
+                             clips: clips, capas: capas,
+                             transcripcion: transcripcion })]
         escritorPlan.running = true
     }
 
