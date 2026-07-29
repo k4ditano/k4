@@ -572,6 +572,19 @@ Singleton {
     //  ffmpeg, así que lo que se ve en el editor y lo que sale al fichero
     //  coinciden por construcción.
     property var camara: []
+
+    //  Las pistas de audio del vídeo, con su volumen y su silencio.
+    //  [{ i, titulo, volumen, mudo }]
+    property var pistasAudio: []
+
+    function fijarPista(i, campos) {
+        pistasAudio = pistasAudio.map(function (p) {
+            if (p.i !== i)
+                return p
+            return Object.assign({}, p, campos)
+        })
+        persistir()
+    }
     property string rutaRenderizada: ""
     property real progreso: 0
 
@@ -696,10 +709,13 @@ Singleton {
 
     function guardarPlan() {
         escritorPlan.command = ["python3", "-c",
+            //  Se parchean las claves que conocemos y se deja el resto como
+            //  esté: así lo que añada una fase futura no se pierde por pasar
+            //  por aquí.
             "import json,sys; p=json.load(open(sys.argv[1])); " +
-            "p['momentos']=json.loads(sys.argv[2]); " +
+            "p.update(json.loads(sys.argv[2])); " +
             "json.dump(p, open(sys.argv[1],'w'), ensure_ascii=False, indent=1)",
-            rutaPlan, JSON.stringify(momentos)]
+            rutaPlan, JSON.stringify({ momentos: momentos, audio: pistasAudio })]
         escritorPlan.running = true
     }
 
@@ -723,6 +739,7 @@ Singleton {
     //  El vídeo sin tocar sigue guardado; lo que se tira es el plan de zoom.
     function descartarZoom() {
         momentos = []
+        pistasAudio = []
         estado = ""
         Modulos.quitar("captura-zoom")
     }
@@ -753,6 +770,8 @@ Singleton {
                         captura.duracionVideo = d.duracion || captura.duracionVideo
                         captura.anchoVideo = d.w || captura.anchoVideo
                         captura.altoVideo = d.h || captura.altoVideo
+                        if (d.audio && captura.pistasAudio.length === 0)
+                            captura.pistasAudio = d.audio
                     }
                 } catch (e) { }
             }
@@ -777,6 +796,7 @@ Singleton {
                 captura.duracionVideo = d.duracion || 0
                 captura.anchoVideo = d.w || 1920
                 captura.altoVideo = d.h || 1080
+                captura.pistasAudio = d.audio || []
                 captura.momentos = d.momentos || []
                 if (captura.momentos.length > 0) {
                     captura.estado = "editando"

@@ -381,6 +381,32 @@ def filtro(momentos, rastro, ancho, alto, duracion, fps):
 
 
 # ── datos del vídeo ───────────────────────────────────────────────
+def pistas_audio(video):
+    """Las pistas de audio del vídeo, con su título si lo lleva.
+
+    El título lo pone quien graba (`Sistema`, `Micrófono`), y sirve para que el
+    editor no tenga que enseñar «pista 0» y «pista 1».
+    """
+    #  `stream_tags` entero y no solo `title`: el muxor de MP4 guarda lo que
+    #  se le pasa como `title` bajo la clave `name`, así que pidiendo solo
+    #  `title` no vuelve nada y las pistas salían sin nombre.
+    p = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "a",
+         "-show_entries", "stream=index:stream_tags",
+         "-of", "json", video],
+        capture_output=True, text=True)
+    try:
+        flujos = json.loads(p.stdout).get("streams", [])
+    except json.JSONDecodeError:
+        return []
+    salida = []
+    for i, f in enumerate(flujos):
+        etiquetas = f.get("tags") or {}
+        titulo = etiquetas.get("title") or etiquetas.get("name") or ""
+        salida.append({"i": i, "titulo": titulo})
+    return salida
+
+
 def sondear(video):
     p = subprocess.run(
         ["ffprobe", "-v", "error", "-select_streams", "v:0",
@@ -404,9 +430,14 @@ def orden_proponer(args):
         salir(ok=False, motivo="sin-rastro")
     ancho, alto, fps, duracion, _ = sondear(args.video)
     momentos = proponer(args.rastro, ancho, alto, duracion, args.nivel)
+    pistas = pistas_audio(args.video)
     plan = {"video": args.video, "rastro": args.rastro,
             "w": ancho, "h": alto, "fps": fps, "duracion": round(duracion, 3),
-            "momentos": momentos}
+            "momentos": momentos,
+            # Una entrada por pista, a volumen normal y sin silenciar. Es lo
+            # que el editor deja tocar.
+            "audio": [{"i": p["i"], "titulo": p["titulo"],
+                       "volumen": 1.0, "mudo": False} for p in pistas]}
     if args.guardar:
         with open(args.guardar, "w") as f:
             json.dump(plan, f, ensure_ascii=False, indent=1)
@@ -426,8 +457,44 @@ def orden_camara(args):
     puntos = adelgazar(trayectoria(plan["momentos"], plan["rastro"],
                                    ancho, alto, duracion, fps))
     salir(ok=True, w=ancho, h=alto, duracion=round(duracion, 3),
+          audio=plan.get("audio", []),
           camara=[[round(t, 3), round(z, 4), round(x, 1), round(y, 1)]
                   for t, z, x, y in puntos])
+
+
+def mezcla_audio(plan, cuantas):
+    """Cómo se mezclan las pistas, según los volúmenes del plan.
+
+    Devuelve (argumentos, hay_audio). Las pistas mudas no entran en la mezcla;
+    si no queda ninguna, el vídeo sale sin sonido.
+    """
+    if cuantas == 0:
+        return [], False
+
+    ajustes = {a["i"]: a for a in plan.get("audio", [])}
+    vivas = []
+    for i in range(cuantas):
+        a = ajustes.get(i, {})
+        if a.get("mudo"):
+            continue
+        vivas.append((i, float(a.get("volumen", 1.0))))
+
+    if not vivas:
+        return ["-an"], False
+
+    # Una sola pista y a volumen normal: se copia tal cual, sin recodificar.
+    if len(vivas) == 1 and abs(vivas[0][1] - 1.0) < 0.001:
+        return ["-map", "0:a:%d" % vivas[0][0], "-c:a", "copy"], True
+
+    partes = []
+    for i, v in vivas:
+        partes.append("[0:a:%d]volume=%.3f[k%d]" % (i, v, i))
+    entradas = "".join("[k%d]" % i for i, _ in vivas)
+    # `normalize=0`: sin esto amix baja el volumen de todas al sumarlas, y
+    # subir una acabaría bajando la otra sin que nadie lo haya pedido.
+    partes.append("%samix=inputs=%d:normalize=0[mez]" % (entradas, len(vivas)))
+    return (["-filter_complex", ";".join(partes),
+             "-map", "[mez]", "-c:a", "aac", "-b:a", "192k"], True)
 
 
 def orden_render(args):
@@ -436,12 +503,14 @@ def orden_render(args):
     cadena, nodos = filtro(plan["momentos"], plan["rastro"],
                            ancho, alto, duracion, fps)
 
+    pistas = pistas_audio(args.video)
+    argumentos_audio, _ = mezcla_audio(plan, len(pistas))
+
     orden = ["ffmpeg", "-v", "error", "-y", "-i", args.video,
-             "-vf", cadena,
+             "-vf", cadena, "-map", "0:v",
              "-c:v", "hevc_nvenc" if args.codec == "hevc" else "h264_nvenc",
              "-preset", "p5", "-rc", "vbr", "-cq", "21", "-b:v", "0"]
-    if hay_audio:
-        orden += ["-c:a", "copy"]
+    orden += argumentos_audio
     orden += ["-progress", "pipe:1", "-nostats", args.salida]
 
     print(json.dumps({"ok": True, "estado": "renderizando", "nodos": nodos}),

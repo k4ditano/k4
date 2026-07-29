@@ -411,6 +411,113 @@ FadeIn {
                     }
                 }
 
+                //  Las pistas de audio.
+                //
+                //  Se graban por separado —sistema y micro— para poder
+                //  equilibrarlas después: mezclarlas al grabar sería
+                //  irreversible. Lo que se toque aquí se aplica al renderizar.
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.bottomMargin: 4
+                    spacing: 3
+                    visible: Captura.pistasAudio.length > 0
+
+                    IslandLabel {
+                        text: Idioma.t("Audio")
+                        color: Theme.dim
+                        font.pixelSize: 9
+                        font.capitalization: Font.AllUppercase
+                        font.weight: Font.DemiBold
+                    }
+
+                    Repeater {
+                        model: Captura.pistasAudio
+
+                        delegate: RowLayout {
+                            id: filaPista
+                            required property var modelData
+
+                            Layout.fillWidth: true
+                            spacing: 6
+
+                            //  Silenciar, y de paso decir cuál estás oyendo:
+                            //  el reproductor solo puede sacar una pista a la
+                            //  vez, así que pulsar el nombre cambia de monitor.
+                            MediaButton {
+                                glyph: String.fromCodePoint(
+                                    filaPista.modelData.mudo ? 0xF0581 : 0xF057E)
+                                glyphSize: 13
+                                glyphColor: filaPista.modelData.mudo
+                                    ? Theme.dim : Theme.ink
+                                onActivated: Captura.fijarPista(
+                                    filaPista.modelData.i,
+                                    { mudo: !filaPista.modelData.mudo })
+                            }
+
+                            IslandLabel {
+                                Layout.preferredWidth: 62
+                                text: filaPista.modelData.titulo.length > 0
+                                    ? filaPista.modelData.titulo
+                                    : Idioma.t("Pista ") + (filaPista.modelData.i + 1)
+                                color: reproductor.activeAudioTrack === filaPista.modelData.i
+                                    ? Theme.ink : Theme.muted
+                                font.pixelSize: 10
+                                elide: Text.ElideRight
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: reproductor.activeAudioTrack = filaPista.modelData.i
+                                }
+                            }
+
+                            // El volumen, de 0 a 2: subir el doble es lo que
+                            // hace falta cuando el micro quedó bajo.
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 4
+                                radius: 2
+                                color: Theme.track
+                                opacity: filaPista.modelData.mudo ? 0.4 : 1
+
+                                Rectangle {
+                                    width: parent.width
+                                        * Math.min(1, filaPista.modelData.volumen / 2)
+                                    height: parent.height
+                                    radius: parent.radius
+                                    color: Theme.blue
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    anchors.topMargin: -8
+                                    anchors.bottomMargin: -8
+                                    cursorShape: Qt.PointingHandCursor
+
+                                    function poner(x) {
+                                        const v = Math.max(0, Math.min(2,
+                                            x / Math.max(1, width) * 2))
+                                        Captura.fijarPista(filaPista.modelData.i,
+                                                           { volumen: Math.round(v * 20) / 20 })
+                                    }
+                                    onPressed: function (ev) { poner(ev.x) }
+                                    onPositionChanged: function (ev) {
+                                        if (pressed) poner(ev.x)
+                                    }
+                                }
+                            }
+
+                            IslandLabel {
+                                Layout.preferredWidth: 30
+                                horizontalAlignment: Text.AlignRight
+                                text: Math.round(filaPista.modelData.volumen * 100) + "%"
+                                color: Theme.dim
+                                font.pixelSize: 9
+                            }
+                        }
+                    }
+                }
+
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 26
@@ -484,6 +591,53 @@ FadeIn {
                 glyphColor: Theme.ink
                 onActivated: reproductor.playbackState === MediaPlayer.PlayingState
                     ? reproductor.pause() : reproductor.play()
+            }
+
+            //  Crear un zoom donde esté el cabezal.
+            //
+            //  Se podía crear arrastrando en un hueco de la línea de tiempo,
+            //  pero eso no lo adivina nadie: sin un botón, la única forma de
+            //  añadir un momento era que lo propusiera el rastro del cursor.
+            Rectangle {
+                Layout.preferredWidth: nuevoTexto.implicitWidth + 26
+                Layout.preferredHeight: 26
+                radius: 13
+                color: nuevoRaton.containsMouse ? Theme.surfaceHi : Theme.surface
+                border.width: 1
+                border.color: Qt.rgba(10 / 255, 132 / 255, 1, 0.35)
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 5
+
+                    IconGlyph {
+                        text: String.fromCodePoint(0xF1276)   // md-magnify_scan
+                        color: Theme.blue
+                        font.pixelSize: 13
+                    }
+
+                    IslandLabel {
+                        id: nuevoTexto
+                        text: Idioma.t("Añadir zoom")
+                        font.pixelSize: 10
+                        font.weight: Font.DemiBold
+                    }
+                }
+
+                MouseArea {
+                    id: nuevoRaton
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        // Dos segundos desde donde estés, o lo que quepa si
+                        // estás cerca del final.
+                        const a = Math.min(view.segundos, Math.max(0, view.total - 2))
+                        const b = Math.min(view.total, a + 2)
+                        Captura.crearMomento(a, b)
+                        view.elegido = Captura.momentos.length - 1
+                    }
+                }
             }
 
             MediaButton {
