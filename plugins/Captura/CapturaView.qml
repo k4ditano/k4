@@ -171,7 +171,8 @@ FadeIn {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: Captura.destino = chip.modelData.clave
+                        onClicked: Settings.poner("capturaDestino",
+                                                  chip.modelData.clave)
                     }
                 }
             }

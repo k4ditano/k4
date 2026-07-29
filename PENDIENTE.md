@@ -130,9 +130,19 @@ Lo que queda, por orden de lo que más cambia la experiencia:
 - **Los iconos de objeto son de 32×32**, la mitad que héroes y monstruos. Ahora
   se dibujan a tamaño nativo y se ven nítidos, así que no corre prisa, pero
   regenerarlos a 48 daría más detalle sin cambiar nada del código.
-- **Selector de idioma y de plantilla comparten patrón** (`tipo: "eleccion"` en
-  `Settings.definicion`). Si aparece un tercer ajuste de varias respuestas,
-  merece la pena sacarlo a un componente.
+- ~~**Selector de idioma y de plantilla comparten patrón**~~ · HECHO. Aparecieron
+  seis ajustes más de varias respuestas —captura, grabación, editor—, así que el
+  dominio salió a `Settings.opcionesDe(de)`: la vista tenía `de === "idiomas"` a
+  fuego y cualquier otra cosa devolvía una lista vacía. Añadir una elección es
+  ahora una entrada más en ese `switch`.
+- **La onda del audio añadido** no está. Un bloque amarillo dice cuándo suena la
+  música pero no qué hay dentro, y recortarla a oído es peor que mirarla. Sale
+  con `ffmpeg -i x.mp3 -filter_complex showwavespic=s=1200x40 onda.png` y de
+  fondo del bloque; es una orden y un `Image`.
+- **Los rótulos no se editan encima del vídeo.** Se escriben en la ficha de la
+  derecha, que funciona y se ve bien, pero el gesto natural es doble clic sobre
+  el rótulo. Requiere un `TextInput` dentro del lienzo con la misma tipografía y
+  el mismo cuerpo, que es justo lo que ya calcula `CapasLienzo`.
 
 ---
 
@@ -151,6 +161,15 @@ dispositivo del kernel lo ve como cualquier teclado enchufado.
 Queda por comprobar, y necesita ratón:
 
 - La ficha flotante al pasar el ratón por encima de un objeto.
+- **Rascar la línea de tiempo del editor.** Pinchar en la regla lleva el cabezal
+  y al soltar sigue reproduciendo; medido exacto en pausa —ocho clics, todos al
+  decimal donde dice la regla—, pero con el ratón sintético de las pruebas unos
+  clics entran y otros no y no he podido separar si eso es la aplicación o el
+  aparejo: uinput se planta en una esquina antes de cada clic.
+- **La transcripción.** `whisper-cpp` no está instalado y no se puede instalar
+  desde aquí. Lo que sí está comprobado: que se detecta la falta, que el panel
+  enseña el mandato y que pulsarlo lo copia. Queda cronometrar cuánto tarda y
+  confirmar en la traza de `ggml` que usa Vulkan y no la CPU.
 - Clic derecho sobre los iconos de la bandeja.
 - Pulsar un héroe en el campo de batalla para ir a su ficha.
 - **Que PAM acepte la contraseña correcta.** Solo se ha probado con una

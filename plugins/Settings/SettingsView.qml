@@ -149,9 +149,10 @@ FadeIn {
                             }
 
                             // ── opciones de varias respuestas
-                            //  Las alternativas salen de Idioma.disponibles, no
-                            //  de una lista repetida aquí: añadir un idioma es
-                            //  tocar un sitio, no dos.
+                            //  Las alternativas las da el servicio. Aquí estaba
+                            //  `de === "idiomas"` a fuego y cualquier otra cosa
+                            //  devolvía una lista vacía, así que añadir una
+                            //  elección obligaba a tocar esta pantalla.
                             RowLayout {
                                 visible: opcion.modelData.tipo === "eleccion"
                                 Layout.fillWidth: false
@@ -159,10 +160,7 @@ FadeIn {
                                 spacing: 5
 
                                 Repeater {
-                                    model: opcion.modelData.de === "idiomas"
-                                        ? [{ codigo: "auto", nombre: Idioma.t("Automático") }]
-                                            .concat(Idioma.disponibles)
-                                        : []
+                                    model: Settings.opcionesDe(opcion.modelData.de)
 
                                     delegate: Rectangle {
                                         id: eleccion
@@ -202,16 +200,24 @@ FadeIn {
                             }
                         }
 
-                        // toda la fila conmuta, no solo el interruptor: son
-                        // objetivos de 40 px de alto, sería absurdo obligar a
-                        // apuntar al de 24
+                        //  Toda la fila conmuta, no solo el interruptor: son
+                        //  objetivos de 40 px de alto, sería absurdo obligar a
+                        //  apuntar al de 24.
+                        //
+                        //  Pero solo en las filas de interruptor. En las de varias
+                        //  respuestas esta área va POR ENCIMA de los chips —se
+                        //  declara después— y les comía el clic: el margen de 54
+                        //  px por la derecha deja pasar el último y nada más, así
+                        //  que en el selector de idioma solo se podía elegir
+                        //  «English». Llevaba ahí desde que existe la pantalla.
                         MouseArea {
                             id: filaMouse
+                            enabled: opcion.modelData.tipo !== "eleccion"
                             anchors.fill: parent
                             anchors.rightMargin: 54     // deja pasar el interruptor
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: if (opcion.disponible && opcion.modelData.tipo !== "eleccion")
+                            onClicked: if (opcion.disponible)
                                     Settings.alternar(opcion.modelData.id)
                         }
                     }

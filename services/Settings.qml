@@ -31,6 +31,21 @@ Singleton {
     // services/Game.qml: el combate solo avanza con tokens de IA gastados
     property bool juegoPorTokens: false
 
+    // ── captura y grabación ───────────────────────────────────────
+    // services/Captura.qml los lee. Estaban a fuego ahí, con un comentario que
+    // decía «en la fase 6 los lee de Settings»: esta es la fase 6.
+    property string capturaDestino: "ambos"     // fichero · portapapeles · ambos · anotar
+    property bool capturaCursor: false          // ¿sale el puntero en la foto?
+    property string grabarAudio: "ambos"        // ninguno · sistema · micro · ambos
+    property string grabarCodec: "h264"         // h264 · hevc
+    property int grabarFps: 60
+
+    // ── editor ────────────────────────────────────────────────────
+    // services/Editor.qml los lee.
+    property bool zoomAuto: true                // ¿propone momentos al grabar?
+    property real zoomNivel: 2.5                // cuánto amplía como máximo
+    property string editorCodec: "h264"         // con qué se renderiza
+
     // ── barra ─────────────────────────────────────────────────────
     // widgets/TrayRow.qml: iconos de bandeja en la píldora
     // Apagada de fábrica: en la píldora los iconos de bandeja son ruido casi
@@ -70,6 +85,52 @@ Singleton {
             ]
         },
         {
+            grupo: Idioma.t("Captura"),
+            opciones: [
+                { id: "capturaDestino", tipo: "eleccion", de: "destinos",
+                  nombre: Idioma.t("Qué hacer con la foto"),
+                  desc: Idioma.t("Lo que pasa al capturar sin decir nada más"),
+                  glifo: 0xF0E51 },
+                { id: "capturaCursor", nombre: Idioma.t("Incluir el puntero"),
+                  desc: Idioma.t("Sale el ratón donde estuviera al disparar"),
+                  glifo: 0xF037D }
+            ]
+        },
+        {
+            grupo: Idioma.t("Grabación"),
+            opciones: [
+                { id: "grabarAudio", tipo: "eleccion", de: "audios",
+                  nombre: Idioma.t("Qué sonido se graba"),
+                  desc: Idioma.t("En pistas separadas, para equilibrarlas después"),
+                  glifo: 0xF057E },
+                { id: "grabarFps", tipo: "eleccion", de: "fps",
+                  nombre: Idioma.t("Fotogramas por segundo"),
+                  desc: Idioma.t("60 va más suave y ocupa el doble"),
+                  glifo: 0xF0567 },
+                { id: "grabarCodec", tipo: "eleccion", de: "codecs",
+                  nombre: Idioma.t("Códec de la grabación"),
+                  desc: Idioma.t("HEVC ocupa menos y tarda más en abrirse"),
+                  glifo: 0xF0381 }
+            ]
+        },
+        {
+            grupo: Idioma.t("Editor"),
+            opciones: [
+                { id: "zoomAuto", nombre: Idioma.t("Proponer zoom al grabar"),
+                  desc: Idioma.t("Del rastro del cursor y de los clics"),
+                  glifo: 0xF1276 },
+                { requiere: "zoomAuto", id: "zoomNivel", tipo: "eleccion",
+                  de: "niveles",
+                  nombre: Idioma.t("Cuánto amplía"),
+                  desc: Idioma.t("El máximo de los momentos que propone"),
+                  glifo: 0xF034B },
+                { id: "editorCodec", tipo: "eleccion", de: "codecs",
+                  nombre: Idioma.t("Códec al renderizar"),
+                  desc: Idioma.t("El del vídeo que sale del editor"),
+                  glifo: 0xF0381 }
+            ]
+        },
+        {
             grupo: Idioma.t("Island"),
             opciones: [
                 { id: "bandejaEnPildora", nombre: Idioma.t("Bandeja en la píldora"),
@@ -80,6 +141,41 @@ Singleton {
         }
     ]
 
+    //  Las alternativas de cada opción de varias respuestas.
+    //
+    //  Aquí y no en la vista: la vista tenía `de === "idiomas"` a fuego y todo lo
+    //  demás devolvía una lista vacía, así que añadir una elección no era añadir
+    //  una opción sino tocar el QML de la pantalla. Ahora es una entrada más en
+    //  este `switch`.
+    function opcionesDe(de) {
+        if (de === "idiomas")
+            return [{ codigo: "auto", nombre: Idioma.t("Automático") }]
+                .concat(Idioma.disponibles)
+        if (de === "destinos")
+            return [{ codigo: "fichero",      nombre: Idioma.t("Guardar") },
+                    { codigo: "portapapeles", nombre: Idioma.t("Copiar") },
+                    { codigo: "ambos",        nombre: Idioma.t("Las dos") },
+                    { codigo: "anotar",       nombre: Idioma.t("Anotar") }]
+        if (de === "audios")
+            return [{ codigo: "ninguno", nombre: Idioma.t("Nada") },
+                    { codigo: "sistema", nombre: Idioma.t("Sistema") },
+                    { codigo: "micro",   nombre: Idioma.t("Micro") },
+                    { codigo: "ambos",   nombre: Idioma.t("Los dos") }]
+        if (de === "codecs")
+            return [{ codigo: "h264", nombre: "H.264" },
+                    { codigo: "hevc", nombre: "HEVC" }]
+        if (de === "fps")
+            return [{ codigo: 30, nombre: "30" },
+                    { codigo: 60, nombre: "60" }]
+        if (de === "niveles")
+            //  Etiquetas y no números: «2,5» no le dice nada a nadie, y lo que se
+            //  quiere elegir es cuánto se nota.
+            return [{ codigo: 1.8, nombre: Idioma.t("Suave") },
+                    { codigo: 2.5, nombre: Idioma.t("Medio") },
+                    { codigo: 3.2, nombre: Idioma.t("Fuerte") }]
+        return []
+    }
+
     function alternar(id) {
         ajustes[id] = !ajustes[id]
         guardar()
@@ -88,19 +184,27 @@ Singleton {
     function valor(id) { return ajustes[id] }
 
     // ── persistencia ──────────────────────────────────────────────
+    //
+    //  Las claves, en una lista. Antes eran una línea por clave al guardar y otra
+    //  al cargar, y con quince preferencias eso son treinta sitios donde
+    //  olvidarse de una. Y una lista y no un recorrido del objeto entero porque
+    //  un singleton tiene decenas de propiedades internas que no son ajustes.
+    readonly property var claves: [
+        "idioma",
+        "juegoActivo", "juegoContinuar", "juegoEnPildora", "juegoPorTokens",
+        "capturaDestino", "capturaCursor",
+        "grabarAudio", "grabarCodec", "grabarFps",
+        "zoomAuto", "zoomNivel", "editorCodec",
+        "bandejaEnPildora", "notificacionesAlPasar"
+    ]
+
     function guardar() {
         if (!cargado)
             return
-
-        vista.setText(JSON.stringify({
-            idioma: idioma,
-            juegoActivo: juegoActivo,
-            juegoContinuar: juegoContinuar,
-            juegoEnPildora: juegoEnPildora,
-            juegoPorTokens: juegoPorTokens,
-            bandejaEnPildora: bandejaEnPildora,
-            notificacionesAlPasar: notificacionesAlPasar
-        }, null, 1))
+        const d = {}
+        for (let i = 0; i < claves.length; ++i)
+            d[claves[i]] = ajustes[claves[i]]
+        vista.setText(JSON.stringify(d, null, 1))
     }
 
     property bool cargado: false
@@ -119,14 +223,9 @@ Singleton {
         if (bruto.length > 0) {
             try {
                 const s = JSON.parse(bruto)
-                if (s.idioma !== undefined) idioma = s.idioma
-                if (s.juegoActivo !== undefined) juegoActivo = s.juegoActivo
-                if (s.juegoContinuar !== undefined) juegoContinuar = s.juegoContinuar
-                if (s.juegoEnPildora !== undefined) juegoEnPildora = s.juegoEnPildora
-                if (s.juegoPorTokens !== undefined) juegoPorTokens = s.juegoPorTokens
-                if (s.bandejaEnPildora !== undefined) bandejaEnPildora = s.bandejaEnPildora
-                if (s.notificacionesAlPasar !== undefined)
-                    notificacionesAlPasar = s.notificacionesAlPasar
+                for (let i = 0; i < claves.length; ++i)
+                    if (s[claves[i]] !== undefined)
+                        ajustes[claves[i]] = s[claves[i]]
             } catch (e) {
                 // preferencias ilegibles: se quedan las de fábrica
             }

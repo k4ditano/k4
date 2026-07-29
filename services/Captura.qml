@@ -21,9 +21,19 @@ Singleton {
     id: captura
 
     // ── ajustes ───────────────────────────────────────────────────
-    // De momento con valores de fábrica; en la fase 6 los lee de Settings.
-    property string destino: "ambos"        // fichero · portapapeles · ambos · anotar
-    property bool conCursor: false
+    //
+    //  Vienen de Settings, que es donde se tocan. Aquí eran valores a fuego con
+    //  un comentario prometiendo que algún día los leerían de ahí.
+    //
+    //  Solo de lectura, y el menú de la island escribe la PREFERENCIA.
+    //
+    //  Antes el menú escribía aquí directamente, y eso tenía dos problemas a la
+    //  vez: rompía el binding —así que dejar de seguir a Settings para siempre—
+    //  y la elección no sobrevivía a reiniciar la barra. Elegir «Copiar» en el
+    //  menú quiere decir «esta y las siguientes», o sea exactamente cambiar la
+    //  preferencia.
+    readonly property string destino: Settings.capturaDestino
+    readonly property bool conCursor: Settings.capturaCursor
 
     // ── estado ────────────────────────────────────────────────────
     //  "" · capturando · cuenta · grabando · cerrando
@@ -212,9 +222,10 @@ Singleton {
     property string rutaVideo: ""
     property string regionActual: ""          // "" = pantalla entera
 
-    property string audio: "ambos"          // ninguno · sistema · micro
-    property string codec: "h264"             // h264 · hevc
-    property int fps: 60
+    // De Settings, igual que los de arriba. Ver el comentario de los ajustes.
+    readonly property string audio: Settings.grabarAudio
+    readonly property string codec: Settings.grabarCodec
+    readonly property int fps: Settings.grabarFps
 
     property int cuentaAtras: 0
 

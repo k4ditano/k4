@@ -25,10 +25,10 @@ Singleton {
     id: editor
 
     // ── ajustes ───────────────────────────────────────────────────
-    // De momento con valores de fábrica; en E8 los lee de Settings.
-    property string codec: "h264"             // h264 · hevc
-    property bool zoomAuto: true
-    property real zoomNivel: 2.5
+    // Vienen de Settings, que es donde se tocan.
+    readonly property string codec: Settings.editorCodec
+    readonly property bool zoomAuto: Settings.zoomAuto
+    readonly property real zoomNivel: Settings.zoomNivel
 
     // ── estado ────────────────────────────────────────────────────
     //  "" · editando · renderizando
