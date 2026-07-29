@@ -252,10 +252,25 @@ def suave_salida(u):
     return 0.5 - 0.5 * math.cos(math.pi * u)  # easeInOutSine
 
 
-def trayectoria(momentos, rastro, ancho, alto, duracion, fps=30.0):
-    """z(t), x(t), y(t) muestreadas, ya con zona muerta y límite de paneo."""
-    _, muestras, _ = leer_rastro(rastro)
-    muestras = suavizar(muestras)
+def trayectoria(plan, fps=None):
+    """z(t), x(t), y(t) muestreadas, ya con zona muerta y límite de paneo.
+
+    Todo en tiempo de línea. Para seguir al cursor hay que preguntarle al mapa
+    en qué fichero y en qué segundo de ese fichero cae cada instante, porque el
+    rastro va en tiempo de fuente y no sabe nada de cortes ni de reordenaciones.
+    """
+    momentos = plan["momentos"]
+    ancho, alto = plan["w"], plan["h"]
+    fps = fps or plan["fps"]
+
+    tramos = mapa(plan)
+    duracion = tramos[-1][1] if tramos else 0.0
+
+    #  Un rastro por fuente, leído una sola vez. Con cortes y reordenaciones el
+    #  mismo fichero aparece varias veces en la línea, y releerlo en cada tramo
+    #  sería recorrer un jsonl de miles de líneas por trozo.
+    rastros = {f["id"]: suavizar(leer_rastro(f.get("rastro", ""))[1])
+               for f in plan["fuentes"]}
 
     pasos = int(duracion * fps) + 1
     cx, cy = ancho / 2.0, alto / 2.0
@@ -316,7 +331,12 @@ def trayectoria(momentos, rastro, ancho, alto, duracion, fps=30.0):
                 #  Ya dentro: se sigue al cursor, y AQUÍ sí manda el límite de
                 #  paneo junto con la zona muerta. Es lo que separa un
                 #  seguimiento tranquilo de un temblor perpetuo.
-                p = posicion_en(muestras, t)
+                fuente, ts = donde(tramos, t)
+                p = None
+                if fuente is not None:
+                    p = posicion_en(rastros.get(fuente["id"], []), ts)
+                    if p:
+                        p = a_lienzo(fuente, p[0], p[1], ancho, alto)
                 objetivo = p if p else (activo["cx"], activo["cy"])
                 if (abs(objetivo[0] - cx) > visible_w * ZONA_MUERTA / 2
                         or abs(objetivo[1] - cy) > visible_h * ZONA_MUERTA / 2):
@@ -339,9 +359,30 @@ def trayectoria(momentos, rastro, ancho, alto, duracion, fps=30.0):
 
 
 def adelgazar(puntos, tol_z=0.002, tol_p=0.6):
-    """Quita los puntos que una recta ya predice: menos nodos, misma curva."""
+    """Quita los puntos que una recta ya predice: menos nodos, misma curva.
+
+    Con una excepción que no es negociable: **donde no hay zoom, no se toca el
+    fotograma**. El último punto de una rampa de salida vale 1,0034 y el
+    siguiente que sobrevivía era el final del vídeo, así que entre medias se
+    interpolaba y quedaba un 1,0005 arrastrándose segundos. Dentro de la
+    tolerancia, sí, pero `zoompan` remuestrea igual y el texto de una grabación
+    sale ligeramente borroso sin que nada lo explique.
+
+    Los instantes en los que z vale exactamente 1 y su vecino no se marcan como
+    intocables: cuesta un puñado de nodos y a cambio el vídeo sin zoom sale
+    idéntico al original.
+    """
     if len(puntos) < 3:
         return puntos
+
+    def plano(i):
+        return abs(puntos[i][1] - 1.0) < 1e-9
+
+    intocables = set()
+    for i in range(1, len(puntos) - 1):
+        if plano(i) != plano(i - 1) or plano(i) != plano(i + 1):
+            intocables.add(i)
+
     salida = [puntos[0]]
     ancla = 0
     for i in range(1, len(puntos) - 1):
@@ -351,7 +392,8 @@ def adelgazar(puntos, tol_z=0.002, tol_p=0.6):
         if t2 == t0:
             continue
         u = (t1 - t0) / (t2 - t0)
-        if (abs(z0 + (z2 - z0) * u - z1) > tol_z
+        if (i in intocables
+                or abs(z0 + (z2 - z0) * u - z1) > tol_z
                 or abs(x0 + (x2 - x0) * u - x1) > tol_p
                 or abs(y0 + (y2 - y0) * u - y1) > tol_p):
             salida.append(puntos[i])
@@ -387,11 +429,119 @@ def expresion(puntos, indice):
     return construir(0, len(puntos) - 1)
 
 
-def filtro(momentos, rastro, ancho, alto, duracion, fps):
-    puntos = adelgazar(trayectoria(momentos, rastro, ancho, alto, duracion, fps))
-    return ("zoompan=z='%s':x='%s':y='%s':d=1:s=%dx%d:fps=%g,format=yuv420p"
-            % (expresion(puntos, 1), expresion(puntos, 2), expresion(puntos, 3),
-               ancho, alto, fps)), len(puntos)
+# ── el grafo de filtros ───────────────────────────────────────────
+#
+#  Un solo `filter_complex` con el vídeo y el audio dentro, montado en cuatro
+#  pisos: cada clip se recorta y se normaliza, se pegan con `concat`, encima va
+#  el `zoompan` y al final las capas.
+#
+#  La normalización no es opcional: `concat` exige que todos los trozos tengan
+#  el mismo tamaño, la misma relación de píxel y el mismo ritmo. Sin ella,
+#  juntar una grabación de 1080p con un vídeo de 720p falla, y falla tarde.
+NORMA_AUDIO = "aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo"
+
+
+def norma_video(ancho, alto, fps):
+    #  `decrease` + `pad` y no `scale` a secas: un vídeo de otra proporción hay
+    #  que meterlo entero con banda negra, no estirarlo. Es lo mismo que hace
+    #  `a_lienzo()` con el rastro del cursor, y tiene que serlo o el zoom
+    #  apuntaría a otro sitio.
+    return ("scale=%d:%d:force_original_aspect_ratio=decrease,"
+            "pad=%d:%d:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=%g,format=yuv420p"
+            % (ancho, alto, ancho, alto, fps))
+
+
+def entradas(plan):
+    """Los ficheros que hay que abrir, y en qué orden se los pasamos a ffmpeg.
+
+    Un fichero se abre UNA vez aunque aparezca en seis clips: referenciar
+    `[0:v]` varias veces es legal y ffmpeg mete el `split` por su cuenta.
+    """
+    rutas, indice = [], {}
+    for f in plan["fuentes"]:
+        if f["ruta"] not in indice:
+            indice[f["ruta"]] = len(rutas)
+            rutas.append(f["ruta"])
+    return rutas, {f["id"]: indice[f["ruta"]] for f in plan["fuentes"]}
+
+
+def rama_audio(i, idx, clip, fuente, dur):
+    """La rama de audio de un clip, ya mezclada y a volumen.
+
+    Devuelve las líneas del grafo. Las pistas mudas no entran; si no queda
+    ninguna —o la fuente no tiene audio— se rellena con silencio, porque a
+    `concat` hay que darle todas las ramas o no arranca.
+    """
+    vivas = [p for p in fuente.get("pistas", []) if not p.get("mudo")]
+
+    if not vivas:
+        #  Silencio del mismo largo que el trozo. Sin esto, un clip sacado de un
+        #  vídeo mudo tumba el `concat` entero, y con él todo el render.
+        return ["anullsrc=r=48000:cl=stereo,atrim=0:%.4f,asetpts=PTS-STARTPTS[a%d]"
+                % (dur, i)]
+
+    # Con una sola pista no hay nada que mezclar, así que su rama ya es la
+    # salida del clip y se etiqueta directamente como tal.
+    una = len(vivas) == 1
+
+    lineas, etiquetas = [], []
+    for p in vivas:
+        et = "a%d" % i if una else "c%dp%d" % (i, p["i"])
+        lineas.append(
+            "[%d:a:%d]atrim=start=%.4f:end=%.4f,asetpts=PTS-STARTPTS,"
+            "volume=%.3f,%s[%s]"
+            % (idx, p["i"], clip["desde"], clip["hasta"],
+               float(p.get("volumen", 1.0)), NORMA_AUDIO, et))
+        etiquetas.append("[%s]" % et)
+
+    if una:
+        return lineas
+
+    #  `normalize=0`: sin esto amix baja el volumen de todas al sumarlas, y
+    #  subir una acabaría bajando la otra sin que nadie lo haya pedido.
+    lineas.append("%samix=inputs=%d:normalize=0[a%d]"
+                  % ("".join(etiquetas), len(etiquetas), i))
+    return lineas
+
+
+def grafo(plan):
+    """El filter_complex entero. Devuelve (texto, nodos de la cámara)."""
+    ancho, alto, fps = plan["w"], plan["h"], plan["fps"]
+    tramos = mapa(plan)
+    _, idx_de = entradas(plan)
+    norma = norma_video(ancho, alto, fps)
+
+    lineas = []
+
+    # ── 1. cada trozo, recortado y normalizado
+    for i, (a, b, clip, fuente) in enumerate(tramos):
+        idx = idx_de[fuente["id"]]
+        lineas.append(
+            "[%d:v]trim=start=%.4f:end=%.4f,setpts=PTS-STARTPTS,%s[v%d]"
+            % (idx, clip["desde"], clip["hasta"], norma, i))
+        lineas += rama_audio(i, idx, clip, fuente, b - a)
+
+    # ── 2. pegarlos
+    if len(tramos) == 1:
+        lineas.append("[v0]null[base]")
+        lineas.append("[a0]anull[mez]")
+    else:
+        pares = "".join("[v%d][a%d]" % (i, i) for i in range(len(tramos)))
+        lineas.append("%sconcat=n=%d:v=1:a=1[base][mez]"
+                      % (pares, len(tramos)))
+
+    # ── 3. el zoom, encima de lo ya pegado y en tiempo de línea
+    puntos = adelgazar(trayectoria(plan, fps))
+    lineas.append(
+        "[base]zoompan=z='%s':x='%s':y='%s':d=1:s=%dx%d:fps=%g[zoom]"
+        % (expresion(puntos, 1), expresion(puntos, 2), expresion(puntos, 3),
+           ancho, alto, fps))
+
+    # ── 4. las capas irán aquí, después del zoom para que no se amplíen
+    lineas.append("[zoom]format=yuv420p[v]")
+    lineas.append("[mez]anull[a]")
+
+    return ";\n".join(lineas), len(puntos)
 
 
 # ── datos del vídeo ───────────────────────────────────────────────
@@ -519,19 +669,58 @@ def fuente_de(plan, ident):
     return plan["fuentes"][0]
 
 
-def duracion_linea(plan):
-    return sum(max(0.0, c["hasta"] - c["desde"]) for c in plan["clips"])
-
-
-#  El rastro que manda ahora mismo.
+#  El mapa entre los dos ejes de tiempo. **La única traducción que hay.**
 #
-#  Mientras la pista base sea un solo trozo, tiempo de línea y tiempo de fuente
-#  son el mismo y basta con el rastro de esa fuente. En cuanto se pueda cortar y
-#  reordenar habrá que preguntar por instante, y eso es lo que hará `mapa()`.
-def rastro_de(plan):
-    if not plan["clips"]:
-        return ""
-    return fuente_de(plan, plan["clips"][0]["fuente"]).get("rastro", "")
+#  Los clips van en orden y pegados unos a otros: la línea es su suma, sin
+#  huecos. Cada tramo dice desde qué segundo hasta qué segundo de la LÍNEA se
+#  está viendo qué trozo de qué FICHERO.
+#
+#  Todo lo que necesite saber «qué se ve en el segundo 12» pasa por aquí, y por
+#  eso no hay dos sitios que puedan discrepar sobre dónde cae un rótulo.
+def mapa(plan):
+    """[(inicio, fin, clip, fuente)] en tiempo de línea."""
+    t = 0.0
+    tramos = []
+    for c in plan.get("clips", []):
+        d = max(0.0, c["hasta"] - c["desde"])
+        # Un clip de duración cero no es un clip, es el resto de un corte mal
+        # hecho. Ni sale en la línea ni entra en el grafo, donde `trim` con
+        # start == end deja una rama vacía que tumba el concat.
+        if d <= 0:
+            continue
+        tramos.append((t, t + d, c, fuente_de(plan, c["fuente"])))
+        t += d
+    return tramos
+
+
+def donde(tramos, t):
+    """(fuente, segundo de esa fuente) en el instante t de la línea."""
+    for a, b, c, f in tramos:
+        if a <= t < b:
+            return f, c["desde"] + (t - a)
+    if tramos:
+        a, b, c, f = tramos[-1]
+        return f, c["hasta"]
+    return None, 0.0
+
+
+def a_lienzo(fuente, x, y, ancho, alto):
+    """De píxeles de un fichero a píxeles del lienzo de salida.
+
+    Cada clip entra en el lienzo escalado sin deformar y con banda negra
+    alrededor, que es lo que hace la normalización antes del `concat`. El rastro
+    del cursor va en píxeles de SU fichero, así que hay que llevarlo por el
+    mismo camino: sin esto, el zoom de un clip de otra resolución apuntaría a
+    un sitio que no es.
+    """
+    w, h = float(fuente["w"]), float(fuente["h"])
+    e = min(ancho / w, alto / h)
+    return (ancho - w * e) / 2 + x * e, (alto - h * e) / 2 + y * e
+
+
+def duracion_linea(plan):
+    tramos = mapa(plan)
+    return tramos[-1][1] if tramos else 0.0
 
 
 def pistas_de(plan):
@@ -571,66 +760,62 @@ def orden_camara(args):
     construcción, sin dos implementaciones que se puedan ir separando.
     """
     plan = cargar(args.plan)
-    duracion = duracion_linea(plan)
-    puntos = adelgazar(trayectoria(plan["momentos"], rastro_de(plan),
-                                   plan["w"], plan["h"], duracion, plan["fps"]))
+    tramos = mapa(plan)
+    duracion = tramos[-1][1] if tramos else 0.0
+    puntos = adelgazar(trayectoria(plan))
     salir(ok=True, w=plan["w"], h=plan["h"], duracion=round(duracion, 3),
-          audio=pistas_de(plan), clips=plan["clips"], fuentes=plan["fuentes"],
+          audio=pistas_de(plan), fuentes=plan["fuentes"],
+          #  El mapa, ya resuelto, para que el reproductor sepa qué fichero
+          #  poner y en qué segundo. Es una tabla que se consulta, no una
+          #  fórmula que el QML tenga que repetir por su cuenta.
+          tramos=[{"clip": c["id"], "fuente": f["id"], "ruta": f["ruta"],
+                   "inicio": round(a, 3), "fin": round(b, 3),
+                   "desde": round(c["desde"], 3), "hasta": round(c["hasta"], 3)}
+                  for a, b, c, f in tramos],
           camara=[[round(t, 3), round(z, 4), round(x, 1), round(y, 1)]
                   for t, z, x, y in puntos])
 
 
-def mezcla_audio(plan, cuantas):
-    """Cómo se mezclan las pistas, según los volúmenes del plan.
+def escribir_grafo(plan, ruta_plan):
+    """El grafo a un fichero, y la ruta del fichero.
 
-    Devuelve (argumentos, hay_audio). Las pistas mudas no entran en la mezcla;
-    si no queda ninguna, el vídeo sale sin sonido.
+    `-filter_complex_script` y no `-filter_complex` a secas: el límite no es
+    `ARG_MAX` sino `MAX_ARG_STRLEN`, **128 KB por argumento suelto**, y con unos
+    cientos de tramos en la expresión de la cámara eso se alcanza. Falla con un
+    «Argument list too long» que no dice nada de lo que pasa de verdad.
+
+    De regalo, el grafo se queda en disco: cuando un render falle, ahí está lo
+    que se le pidió a ffmpeg, tal cual.
     """
-    if cuantas == 0:
-        return [], False
-
-    ajustes = {a["i"]: a for a in pistas_de(plan)}
-    vivas = []
-    for i in range(cuantas):
-        a = ajustes.get(i, {})
-        if a.get("mudo"):
-            continue
-        vivas.append((i, float(a.get("volumen", 1.0))))
-
-    if not vivas:
-        return ["-an"], False
-
-    # Una sola pista y a volumen normal: se copia tal cual, sin recodificar.
-    if len(vivas) == 1 and abs(vivas[0][1] - 1.0) < 0.001:
-        return ["-map", "0:a:%d" % vivas[0][0], "-c:a", "copy"], True
-
-    partes = []
-    for i, v in vivas:
-        partes.append("[0:a:%d]volume=%.3f[k%d]" % (i, v, i))
-    entradas = "".join("[k%d]" % i for i, _ in vivas)
-    # `normalize=0`: sin esto amix baja el volumen de todas al sumarlas, y
-    # subir una acabaría bajando la otra sin que nadie lo haya pedido.
-    partes.append("%samix=inputs=%d:normalize=0[mez]" % (entradas, len(vivas)))
-    return (["-filter_complex", ";".join(partes),
-             "-map", "[mez]", "-c:a", "aac", "-b:a", "192k"], True)
+    texto, nodos = grafo(plan)
+    #  El plan es `<vídeo>.k4.json` y su carpeta adjunta es `<vídeo>.k4/`, así
+    #  que solo hay que quitarle el `.json`. Con `splitext` + ".k4" salía
+    #  `<vídeo>.k4.k4`, que funcionaba pero era un sitio que nadie esperaba.
+    carpeta = ruta_plan[:-5] if ruta_plan.endswith(".json") else ruta_plan + ".k4"
+    os.makedirs(carpeta, exist_ok=True)
+    ruta = os.path.join(carpeta, "grafo.txt")
+    with open(ruta, "w") as f:
+        f.write(texto)
+    return ruta, nodos
 
 
 def orden_render(args):
     plan = cargar(args.plan)
-    video = fuente_de(plan, plan["clips"][0]["fuente"])["ruta"]
-    ancho, alto, fps = plan["w"], plan["h"], plan["fps"]
     duracion = duracion_linea(plan)
-    cadena, nodos = filtro(plan["momentos"], rastro_de(plan),
-                           ancho, alto, duracion, fps)
+    rutas, _ = entradas(plan)
+    ruta_grafo, nodos = escribir_grafo(plan, args.plan)
 
-    argumentos_audio, _ = mezcla_audio(plan, len(pistas_de(plan)))
-
-    orden = ["ffmpeg", "-v", "error", "-y", "-i", video,
-             "-vf", cadena, "-map", "0:v",
-             "-c:v", "hevc_nvenc" if args.codec == "hevc" else "h264_nvenc",
-             "-preset", "p5", "-rc", "vbr", "-cq", "21", "-b:v", "0"]
-    orden += argumentos_audio
-    orden += ["-progress", "pipe:1", "-nostats", args.salida]
+    orden = ["ffmpeg", "-v", "error", "-y"]
+    for r in rutas:
+        orden += ["-i", r]
+    orden += ["-filter_complex_script", ruta_grafo,
+              "-map", "[v]", "-map", "[a]",
+              "-c:v", "hevc_nvenc" if args.codec == "hevc" else "h264_nvenc",
+              "-preset", "p5", "-rc", "vbr", "-cq", "21", "-b:v", "0",
+              #  Ya no hay atajo de `-c:a copy`: con varios trozos el audio
+              #  pasa por el grafo sí o sí, porque hay que recortarlo y pegarlo.
+              "-c:a", "aac", "-b:a", "192k",
+              "-progress", "pipe:1", "-nostats", args.salida]
 
     print(json.dumps({"ok": True, "estado": "renderizando", "nodos": nodos}),
           flush=True)
@@ -653,16 +838,19 @@ def orden_render(args):
 
 def orden_previa(args):
     plan = cargar(args.plan)
-    video = fuente_de(plan, plan["clips"][0]["fuente"])["ruta"]
-    cadena, _ = filtro(plan["momentos"], rastro_de(plan),
-                       plan["w"], plan["h"], duracion_linea(plan), plan["fps"])
-    # `-ss` DESPUÉS de `-i`: buscando por la entrada, ffmpeg pone los tiempos a
-    # cero y las expresiones, que van en tiempo absoluto, apuntarían al sitio
-    # equivocado.
-    p = subprocess.run(
-        ["ffmpeg", "-v", "error", "-y", "-i", video, "-ss", str(args.t),
-         "-vf", cadena, "-frames:v", "1", args.salida],
-        capture_output=True, text=True)
+    rutas, _ = entradas(plan)
+    ruta_grafo, _ = escribir_grafo(plan, args.plan)
+
+    orden = ["ffmpeg", "-v", "error", "-y"]
+    for r in rutas:
+        orden += ["-i", r]
+    # `-ss` como opción de SALIDA, después del grafo. Delante del `-i` ffmpeg
+    # pone los tiempos a cero y todas las expresiones, que van en tiempo de
+    # línea, apuntarían al sitio equivocado.
+    orden += ["-filter_complex_script", ruta_grafo, "-map", "[v]",
+              "-ss", str(args.t), "-frames:v", "1", args.salida]
+
+    p = subprocess.run(orden, capture_output=True, text=True)
     if p.returncode != 0:
         salir(ok=False, motivo="fallo", detalle=p.stderr.strip()[:200])
     salir(ok=True, ruta=args.salida)
