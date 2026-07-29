@@ -61,7 +61,23 @@ FadeIn {
                 a[3] + (b[3] - a[3]) * f]
     }
 
-    readonly property var estadoCamara: camaraEn(segundos)
+    //  Mientras arrastras el encuadre manda esto, y al soltar se vuelve a la
+    //  trayectoria que calcula python. Es lo que separa un arrastre que
+    //  responde de uno que va a saltos.
+    property var camaraForzada: null
+
+    // El recorte que corresponde a un centro dado, con el zoom de ahora.
+    function encuadreEn(cx, cy) {
+        const z = estadoCamara ? estadoCamara[0] : 1
+        const w = Captura.anchoVideo / z
+        const h = Captura.altoVideo / z
+        return [z,
+                Math.max(0, Math.min(Captura.anchoVideo - w, cx - w / 2)),
+                Math.max(0, Math.min(Captura.altoVideo - h, cy - h / 2))]
+    }
+
+    readonly property var estadoCamara: camaraForzada
+        ? camaraForzada : camaraEn(segundos)
     readonly property bool conZoom: estadoCamara[0] > 1.001
 
     function irA(t) {
@@ -107,13 +123,23 @@ FadeIn {
         ev.accepted = true
     }
 
+    //  Con sonido.
+    //
+    //  Estaba en `audioOutput: null` «para no asustar», y el efecto real era
+    //  peor: grabas, se abre el editor, no oyes nada y concluyes que la
+    //  grabación salió muda. Revisar un vídeo es también oírlo. El botón de
+    //  silencio está en el pie para quien no lo quiera.
+    property AudioOutput altavoz: AudioOutput {
+        muted: view.silenciado
+    }
+
+    property bool silenciado: false
+
     MediaPlayer {
         id: reproductor
         source: Captura.rutaVideo.length > 0 ? "file://" + Captura.rutaVideo : ""
         videoOutput: salida
-        // Sin sonido: aquí se viene a mirar el encuadre, y que empiece a sonar
-        // solo, nada más terminar de grabar, asusta.
-        audioOutput: null
+        audioOutput: altavoz
         Component.onCompleted: play()
         onMediaStatusChanged: {
             if (mediaStatus === MediaPlayer.EndOfMedia) {
@@ -192,7 +218,19 @@ FadeIn {
                 //  sale gratis.
                 Item {
                     id: lente
-                    anchors.fill: parent
+
+                    //  Sin `anchors.fill`, y no es un capricho: **un elemento
+                    //  anclado no se puede mover con x e y**. El ancla manda, y
+                    //  con ella puestas el `scale` sí se aplicaba pero el
+                    //  desplazamiento no, así que el zoom salía siempre pegado
+                    //  a la esquina superior izquierda pasara lo que pasara con
+                    //  el encuadre.
+                    //
+                    //  Es exactamente la misma trampa que costó el arrastre de
+                    //  la mazmorra, documentada en CeldaObjeto.qml. Volver a
+                    //  caer en ella dice bastante de lo bien que se esconde.
+                    width: marco.width
+                    height: marco.height
 
                     readonly property real escala: view.estadoCamara[0]
                     // de píxeles del vídeo a píxeles de este marco
@@ -207,6 +245,61 @@ FadeIn {
                         id: salida
                         anchors.fill: parent
                         fillMode: VideoOutput.Stretch
+                    }
+                }
+
+                //  Arrastrar el encuadre.
+                //
+                //  Va POR ENCIMA de `lente` y no dentro, porque dentro la
+                //  escala del zoom se aplicaría también a las coordenadas del
+                //  ratón y el encuadre se movería más deprisa cuanto más
+                //  ampliado estuviera.
+                //
+                //  Se agarra el contenido, no la cámara: llevas la imagen
+                //  hacia donde quieres mirar, que es como funciona un mapa.
+                MouseArea {
+                    anchors.fill: parent
+                    enabled: view.momento !== null
+                        && view.segundos >= view.momento.t0
+                        && view.segundos <= view.momento.t1
+                    cursorShape: enabled
+                        ? (pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
+                        : Qt.ArrowCursor
+
+                    property real xIni: 0
+                    property real yIni: 0
+                    property real cxIni: 0
+                    property real cyIni: 0
+
+                    onPressed: function (ev) {
+                        xIni = ev.x; yIni = ev.y
+                        cxIni = view.momento.cx
+                        cyIni = view.momento.cy
+                    }
+
+                    onPositionChanged: function (ev) {
+                        if (!pressed || !view.momento)
+                            return
+                        const f = lente.factor * lente.escala
+                        const cx = cxIni - (ev.x - xIni) / f
+                        const cy = cyIni - (ev.y - yIni) / f
+                        // Se pinta ya, sin esperar a que python rehaga la
+                        // trayectoria: si no, el arrastre se sentiría a cuatro
+                        // fotogramas por segundo.
+                        view.camaraForzada = view.encuadreEn(cx, cy)
+                        Captura.moverCentro(view.momento.id, cx, cy)
+                    }
+
+                    onReleased: view.camaraForzada = null
+
+                    //  La rueda cambia el nivel del momento que esté sonando.
+                    //  En el propio MouseArea: un WheelHandler hijo no recibe
+                    //  el evento, se lo queda el área.
+                    onWheel: function (ev) {
+                        if (view.momento)
+                            Captura.ajustarNivel(view.momento.id,
+                                                 ev.angleDelta.y > 0 ? 0.1 : -0.1)
+                        ev.accepted = true
                     }
                 }
 
@@ -356,61 +449,26 @@ FadeIn {
         }
 
         // ── la línea de tiempo ────────────────────────────────────
-        Rectangle {
-            id: linea
+        Pista {
             Layout.fillWidth: true
             Layout.preferredHeight: 36
-            radius: 6
-            color: Theme.surface
 
-            Repeater {
-                model: Captura.momentos
+            modelo: Captura.momentos
+            total: view.total
+            cabezal: view.segundos
+            elegido: view.elegido
 
-                delegate: Rectangle {
-                    required property var modelData
-                    required property int index
-
-                    x: linea.width * (modelData.t0 / view.total)
-                    width: Math.max(3, linea.width * ((modelData.t1 - modelData.t0) / view.total))
-                    y: 5
-                    height: linea.height - 10
-                    radius: 4
-                    color: index === view.elegido
-                        ? Theme.blue : Qt.rgba(10 / 255, 132 / 255, 1, 0.35)
-
-                    Behavior on color { ColorAnimation { duration: 140 } }
-                }
+            onSaltar: function (t) { view.irA(t) }
+            onElegir: function (i) { view.elegido = i }
+            onEditar: function (id, a, b) {
+                Captura.fijarMomento(id, { t0: a, t1: b })
             }
-
-            // dónde va la reproducción
-            Rectangle {
-                x: linea.width * (view.segundos / view.total) - 1
-                width: 2
-                height: linea.height
-                color: Theme.ink
+            onCrear: function (a, b) {
+                view.elegido = Captura.momentos.length
+                Captura.crearMomento(a, b)
             }
-
-            //  Toda la barra salta al pulsarla: es lo que uno intenta sin
-            //  pensarlo en cuanto ve una línea de tiempo.
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-
-                function saltar(x) {
-                    view.irA(x / linea.width * view.total)
-                    // Si has pinchado dentro de un momento, además lo eliges.
-                    const t = x / linea.width * view.total
-                    for (let i = 0; i < Captura.momentos.length; ++i) {
-                        const m = Captura.momentos[i]
-                        if (t >= m.t0 && t <= m.t1) {
-                            view.elegido = i
-                            return
-                        }
-                    }
-                }
-
-                onPressed: function (ev) { saltar(ev.x) }
-                onPositionChanged: function (ev) { if (pressed) view.irA(ev.x / linea.width * view.total) }
+            onNivel: function (id, d) {
+                Captura.ajustarNivel(id, d > 0 ? 0.1 : -0.1)
             }
         }
 
@@ -426,6 +484,13 @@ FadeIn {
                 glyphColor: Theme.ink
                 onActivated: reproductor.playbackState === MediaPlayer.PlayingState
                     ? reproductor.pause() : reproductor.play()
+            }
+
+            MediaButton {
+                glyph: String.fromCodePoint(view.silenciado ? 0xF0581 : 0xF057E)
+                glyphSize: 15
+                glyphColor: view.silenciado ? Theme.dim : Theme.ink
+                onActivated: view.silenciado = !view.silenciado
             }
 
             IslandLabel {

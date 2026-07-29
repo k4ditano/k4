@@ -204,6 +204,7 @@ def proponer(rastro, ancho, alto, duracion, nivel_max=Z_MAX):
         altoUtil = max(40.0, (y1 - y0) * holgura)
         z = min(ancho / anchoUtil, alto / altoUtil)
         m["z"] = round(max(Z_MIN, min(nivel_max, z)), 3)
+        m["seguir"] = True
         m["id"] = len(salida) + 1
         salida.append(m)
 
@@ -288,6 +289,15 @@ def trayectoria(momentos, rastro, ancho, alto, duracion, fps=30.0):
                 g = suave_entrada(encaja(u_ent, 0, 1))
                 cx = origen[0] + (activo["cx"] - origen[0]) * g
                 cy = origen[1] + (activo["cy"] - origen[1]) * g
+            elif not activo.get("seguir", True):
+                #  Encuadre fijo: te has puesto tú a mover el centro, así que la
+                #  cámara se queda donde la dejaste. Sin esta rama, arrastrar el
+                #  encuadre no se vería: en cuanto acababa la entrada, la cámara
+                #  se volvía a ir detrás del cursor.
+                #
+                #  Los planes de antes de que esto existiera no traen la clave, y
+                #  el `True` por defecto los deja como estaban.
+                cx, cy = activo["cx"], activo["cy"]
             else:
                 #  Ya dentro: se sigue al cursor, y AQUÍ sí manda el límite de
                 #  paneo junto con la zona muerta. Es lo que separa un

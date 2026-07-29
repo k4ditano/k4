@@ -209,7 +209,7 @@ Singleton {
     property string rutaVideo: ""
     property string regionActual: ""          // "" = pantalla entera
 
-    property string audio: "sistema"          // ninguno · sistema · micro
+    property string audio: "ambos"          // ninguno · sistema · micro
     property string codec: "h264"             // h264 · hevc
     property int fps: 60
 
@@ -313,10 +313,22 @@ Singleton {
         else
             orden.push("-o", monitorActual())
 
-        if (audio === "sistema")
-            orden.push("-a", sinkMonitor)
+        //  `--audio=<dispositivo>` y no `-a <dispositivo>`.
+        //
+        //  wf-recorder documenta `-a[=DEVICE]` con el valor PEGADO: pasarlo
+        //  suelto hace que tome el dispositivo por defecto y se coma el nombre
+        //  como argumento posicional. El resultado era una pista de audio
+        //  perfectamente válida y en silencio digital —-91 dB—, porque el
+        //  dispositivo por defecto es el micro y está mudo. Grababa sin sonido
+        //  sin quejarse una sola vez.
+        //  «ambos» graba el SISTEMA aquí; el micro va por su cuenta en otro
+        //  proceso y se junta al final. Sin esta rama wf-recorder no recibía
+        //  fuente ninguna y el vídeo salía mudo, con lo que el juntado
+        //  producía vídeo + micro: una sola pista, y encima la equivocada.
+        if (audio === "sistema" || audio === "ambos")
+            orden.push("--audio=" + sinkMonitor)
         else if (audio === "micro")
-            orden.push("-a")
+            orden.push("--audio=" + fuenteMicro)
 
         return orden
     }
@@ -326,6 +338,10 @@ Singleton {
     // enchufar unos auriculares.
     property string sinkMonitor: "@DEFAULT_MONITOR@"
 
+    // El micrófono por defecto, por el mismo motivo: cambia al enchufar unos
+    // auriculares y hay que preguntarlo, no darlo por sabido.
+    property string fuenteMicro: "@DEFAULT_SOURCE@"
+
     Process {
         command: ["sh", "-c", "echo \"$(pactl get-default-sink).monitor\""]
         running: true
@@ -334,6 +350,18 @@ Singleton {
                 const n = String(this.text).trim()
                 if (n.length > 8)
                     captura.sinkMonitor = n
+            }
+        }
+    }
+
+    Process {
+        command: ["sh", "-c", "pactl get-default-source"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const n = String(this.text).trim()
+                if (n.length > 3)
+                    captura.fuenteMicro = n
             }
         }
     }
@@ -356,6 +384,41 @@ Singleton {
             rastreador.write("clic " + boton + "\n")
     }
 
+    //  El micro, grabado aparte.
+    //
+    //  wf-recorder solo acepta UN dispositivo de audio, así que para tener
+    //  sistema y micro por separado no queda otra que un segundo proceso. Se
+    //  arrancan en el mismo tic y se paran en el mismo tic; el desfase que
+    //  quede son decenas de milisegundos, que en un clip corto no se nota.
+    //
+    //  Separado y no mezclado: mezclarlo al grabar es irreversible, y lo que se
+    //  quiere es poder bajarle el volumen a uno de los dos después.
+    property string rutaMicro: ""
+
+    Process {
+        id: grabadorMicro
+
+        //  Es SU salida la que dispara el juntado, no un temporizador.
+        //
+        //  Con un respiro de 900 ms se juntaba el m4a mientras ffmpeg todavía
+        //  lo estaba cerrando, y salía un fichero con una sola pista sin que
+        //  nada se quejara. Esperar a que el proceso muera es la única forma de
+        //  saber que el fichero está entero.
+        //
+        //  El 255 es lo que devuelve ffmpeg al recibir un SIGINT: es una parada
+        //  limpia, no un fallo.
+        onExited: function (codigo) {
+            if (captura.estado === "cerrando")
+                captura.juntarPistas()
+        }
+    }
+
+    function ordenMicro(ruta) {
+        return ["ffmpeg", "-v", "error", "-y",
+                "-f", "pulse", "-i", fuenteMicro,
+                "-c:a", "aac", "-b:a", "160k", ruta]
+    }
+
     Process {
         id: grabador
 
@@ -374,6 +437,14 @@ Singleton {
                                   "--hz", "30",
                                   "--region", captura.regionActual]
             rastreador.running = true
+
+            if (captura.audio === "ambos") {
+                captura.rutaMicro = captura.rutaVideo.replace(/\.mp4$/, ".micro.m4a")
+                grabadorMicro.command = captura.ordenMicro(captura.rutaMicro)
+                grabadorMicro.running = true
+            } else {
+                captura.rutaMicro = ""
+            }
         }
 
         onExited: function (codigo) {
@@ -383,21 +454,17 @@ Singleton {
             // recibir el SIGINT, y matarlo dejaría la última línea a medias.
             if (rastreador.running)
                 rastreador.signal(2)
-            captura.grabando = false
-            captura.estado = ""
-
+            // Y al micro, por lo mismo: un m4a sin cerrar no lo abre nadie.
+            if (grabadorMicro.running) {
+                // El juntado lo dispara `grabadorMicro.onExited`, cuando el
+                // fichero del micro ya está cerrado de verdad.
+                captura.estado = "cerrando"
+                grabadorMicro.signal(2)
+                return
+            }
             // wf-recorder sale con 0 al recibir el SIGINT que le mandamos: eso
             // es una parada limpia, no un fallo.
-            if (captura.rutaVideo.length > 0) {
-                captura.videoListo(captura.rutaVideo)
-                if (captura.zoomAuto) {
-                    // Un respiro: el rastreador acaba de recibir su SIGINT y
-                    // todavía está cerrando el fichero.
-                    proponerLuego.restart()
-                }
-            } else {
-                captura.videoFallido("fallo")
-            }
+            captura.rematarGrabacion()
         }
     }
 
@@ -405,6 +472,72 @@ Singleton {
         id: proponerLuego
         interval: 700
         onTriggered: captura.proponerZoom()
+    }
+
+    //  Juntar el micro con el vídeo, como pista aparte.
+    //
+    //  Un respiro antes: ffmpeg acaba de recibir su SIGINT y todavía está
+    //  escribiendo la cabecera del m4a. Sin esperar, se junta un fichero a
+    //  medias.
+    function juntarPistas() {
+        {
+            const salida = captura.rutaVideo.replace(/\.mp4$/, ".dos.mp4")
+            juntador.destino = salida
+            //  `-c copy`: no se recodifica nada, solo se reempaqueta. Es
+            //  instantáneo y no pierde calidad.
+            //
+            //  Las dos pistas van SEPARADAS y no mezcladas: mezclar al grabar
+            //  es irreversible, y lo que se quiere es poder bajarle el volumen
+            //  a una de las dos más tarde.
+            juntador.command = ["ffmpeg", "-v", "error", "-y",
+                                "-i", captura.rutaVideo,
+                                "-i", captura.rutaMicro,
+                                "-map", "0:v", "-map", "0:a?", "-map", "1:a",
+                                "-c", "copy",
+                                "-metadata:s:a:0", "title=Sistema",
+                                "-metadata:s:a:1", "title=Micrófono",
+                                salida]
+            juntador.running = true
+        }
+    }
+
+    Process {
+        id: juntador
+        property string destino: ""
+
+        onExited: function (codigo) {
+            if (codigo === 0 && destino.length > 0) {
+                // El fichero con las dos pistas ocupa el sitio del original, y
+                // los trozos sueltos se van.
+                limpiador.command = ["sh", "-c",
+                    "mv -f " + captura.entrecomillar(destino) + " "
+                    + captura.entrecomillar(captura.rutaVideo)
+                    + " && rm -f " + captura.entrecomillar(captura.rutaMicro)]
+                limpiador.running = true
+            } else {
+                // Si falla, el vídeo original sigue ahí con su pista de
+                // sistema: se pierde el micro, no la grabación.
+                captura.rematarGrabacion()
+            }
+        }
+    }
+
+    Process {
+        id: limpiador
+        onExited: captura.rematarGrabacion()
+    }
+
+    //  El final de una grabación, una vez el fichero ya está como debe.
+    function rematarGrabacion() {
+        grabando = false
+        estado = ""
+        if (rutaVideo.length > 0) {
+            videoListo(rutaVideo)
+            if (zoomAuto)
+                proponerLuego.restart()
+        } else {
+            videoFallido("fallo")
+        }
     }
 
     Timer {
@@ -459,7 +592,55 @@ Singleton {
 
     function quitarMomento(id) {
         momentos = momentos.filter(function (m) { return m.id !== id })
-        guardarPlan()
+        persistir()
+    }
+
+    //  Cambiar campos sueltos de un momento.
+    //
+    //  Se reasigna el array entero y se copia el objeto: mutar en su sitio no
+    //  emite el cambio y la vista se quedaría como estaba. Es la misma trampa
+    //  de siempre en QML y sigue costando lo mismo encontrarla.
+    function fijarMomento(id, campos) {
+        momentos = momentos.map(function (m) {
+            if (m.id !== id)
+                return m
+            return Object.assign({}, m, campos)
+        })
+        persistir()
+    }
+
+    //  Un momento nuevo, dibujado a mano en un hueco de la línea de tiempo.
+    //
+    //  Nace con `seguir: false`: si lo has puesto tú, el encuadre es una
+    //  decisión tuya y no tiene sentido que la cámara se vaya detrás del cursor.
+    function crearMomento(t0, t1) {
+        let mayor = 0
+        for (let i = 0; i < momentos.length; ++i)
+            mayor = Math.max(mayor, momentos[i].id)
+
+        const nuevo = {
+            id: mayor + 1,
+            t0: Math.max(0, Math.min(t0, t1)),
+            t1: Math.min(duracionVideo, Math.max(t0, t1)),
+            cx: Math.round(anchoVideo / 2),
+            cy: Math.round(altoVideo / 2),
+            z: zoomNivel,
+            seguir: false
+        }
+        momentos = momentos.concat([nuevo]).sort(function (a, b) {
+            return a.t0 - b.t0
+        })
+        persistir()
+        return nuevo.id
+    }
+
+    // Mover el encuadre a mano deja de seguir al cursor, por lo mismo.
+    function moverCentro(id, cx, cy) {
+        fijarMomento(id, {
+            cx: Math.round(Math.max(0, Math.min(anchoVideo, cx))),
+            cy: Math.round(Math.max(0, Math.min(altoVideo, cy))),
+            seguir: false
+        })
     }
 
     function moverMomento(id, delta) {
@@ -473,7 +654,7 @@ Singleton {
             d.t1 = Math.min(duracionVideo, d.t1 + delta)
             return d
         })
-        guardarPlan()
+        persistir()
     }
 
     function ajustarNivel(id, delta) {
@@ -484,7 +665,7 @@ Singleton {
             d.z = Math.max(1.1, Math.min(4, Math.round((d.z + delta) * 100) / 100))
             return d
         })
-        guardarPlan()
+        persistir()
     }
 
     property real duracionVideo: 0
@@ -492,6 +673,26 @@ Singleton {
     // del marco donde se previsualiza.
     property int anchoVideo: 1920
     property int altoVideo: 1080
+
+    //  Guardar con rebote.
+    //
+    //  Arrastrar un bloque son sesenta eventos por segundo, y cada uno lanzaba
+    //  un `python3`. Con esto son cinco por segundo como mucho, y solo se
+    //  escribe el último estado, que es el único que importa.
+    function persistir() { persistidor.restart() }
+
+    Timer {
+        id: persistidor
+        interval: 200
+        onTriggered: {
+            // Si el anterior sigue escribiendo, se espera: dos procesos sobre
+            // el mismo fichero acaban con uno pisando al otro.
+            if (escritorPlan.running)
+                restart()
+            else
+                captura.guardarPlan()
+        }
+    }
 
     function guardarPlan() {
         escritorPlan.command = ["python3", "-c",
