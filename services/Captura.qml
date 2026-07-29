@@ -577,6 +577,15 @@ Singleton {
     //  [{ i, titulo, volumen, mudo }]
     property var pistasAudio: []
 
+    //  Por dónde iba la reproducción.
+    //
+    //  Cada vista del editor tiene su propio reproductor —nunca hay dos a la
+    //  vez, porque al abrir una se destruye la otra—, así que en vez de
+    //  compartir el sumidero de vídeo entre ventanas, que es delicado, basta
+    //  con apuntar el instante y volver a él. Se paga un reabrir de medio
+    //  segundo al cambiar de tamaño, y a cambio no hay nada que sincronizar.
+    property real posicionEditor: 0
+
     function fijarPista(i, campos) {
         pistasAudio = pistasAudio.map(function (p) {
             if (p.i !== i)

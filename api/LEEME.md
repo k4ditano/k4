@@ -61,6 +61,17 @@ Los `Process`, `Timer` e `IpcHandler` van como **hijos sueltos del plugin**, no
 dentro de la vista: la vista solo existe mientras tu módulo tiene la island, y
 casi todo lo que hace un plugin tiene que seguir vivo con la island cerrada.
 
+## Al tocar la API, reiniciar
+
+Quickshell recarga la configuración sola en cuanto guardas un fichero, pero **el
+módulo `K4` no**: el motor QML cachea los módulos y se queda con la versión que
+cargó al arrancar. Si cambias algo de `api/` y no ves el efecto —o ves un error
+que ya has arreglado—, no es tu edición: hay que reiniciar la barra.
+
+```
+qs -c k4 kill && ./arrancar
+```
+
 ## Qué ofrece `K4`
 
 | | Para qué |

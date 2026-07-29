@@ -18,6 +18,7 @@
 //          Item { anchors.fill: parent; ... }
 //      }
 
+import QtQuick
 import Quickshell
 import Quickshell.Wayland
 
@@ -35,6 +36,13 @@ PanelWindow {
     // Por encima de todo, la island incluida.
     property bool encima: true
 
+    //  Qué parte de la superficie captura los clics.
+    //
+    //  Sin esto, una ventana a pantalla completa se traga TODO el ratón aunque
+    //  solo pinte un panel en medio. Señalando el panel, lo de fuera sigue
+    //  siendo utilizable mientras la ventana está delante.
+    property Item zonaActiva: null
+
     anchors.top: true
     anchors.left: true
     anchors.right: true
@@ -44,6 +52,10 @@ PanelWindow {
 
     // No reserva sitio: las ventanas de debajo no se recolocan por su culpa.
     exclusionMode: ExclusionMode.Ignore
+
+    mask: ventana.zonaActiva ? recorteZona : null
+
+    property Region recorteZona: Region { item: ventana.zonaActiva }
 
     WlrLayershell.namespace: ventana.nombre
     WlrLayershell.layer: ventana.encima ? WlrLayer.Overlay : WlrLayer.Top

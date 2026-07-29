@@ -83,6 +83,15 @@ K4Plugin {
             Captura.parar()
             return
         }
+        if (grande) {
+            //  Apartar desde la ventana: se cierra y queda en la píldora, igual
+            //  que desde la island.
+            grande = false
+            Modulos.minimizar("captura-zoom", Idioma.t("Editor de zoom"),
+                              Captura.momentos.length + Idioma.t(" momentos"),
+                              0xF1276)
+            return
+        }
         if (modo === "zoom") {
             //  Cerrar el editor lo aparta, no lo tira. Editar un vídeo lleva su
             //  rato y no tiene sentido obligar a tenerlo delante hasta acabar:
@@ -102,6 +111,7 @@ K4Plugin {
     //  esto tira el plan y se olvida.
     function descartar() {
         Captura.descartarZoom()
+        grande = false
         modo = "menu"
         open = false
     }
@@ -137,6 +147,32 @@ K4Plugin {
     K4.Cargador {
         active: Captura.seleccionando
         SelectorRegion {}
+    }
+
+    //  El editor en grande, en su propia ventana.
+    //
+    //  Cuelga del plugin y no de la vista por lo mismo que el selector: la
+    //  vista solo existe mientras el módulo tiene la island, y aquí la island
+    //  se libera justamente al abrir la ventana.
+    property bool grande: false
+
+    K4.Cargador {
+        active: self.grande
+        EditorGrande { plugin: self }
+    }
+
+    function abrirGrande() {
+        grande = true
+        modo = "menu"
+        open = false
+    }
+
+    function cerrarGrande() {
+        grande = false
+        if (Captura.momentos.length > 0) {
+            modo = "zoom"
+            open = true
+        }
     }
 
     // ── la cuenta atrás y el vídeo ────────────────────────────────
@@ -270,6 +306,9 @@ K4Plugin {
         function grabarRegion(): void { self.close(); Captura.grabarRegion() }
         function parar(): void { Captura.parar() }
         function grabarAlternar(): void { self.close(); Captura.alternarGrabacion() }
+
+        function grande(): void { self.abrirGrande() }
+        function encoger(): void { self.cerrarGrande() }
 
         // Reabrir el editor del último vídeo, por si se cerró sin querer.
         function zoom(): void { Captura.proponerZoom() }
