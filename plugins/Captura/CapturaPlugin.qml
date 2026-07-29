@@ -59,11 +59,11 @@ K4Plugin {
         : (modo === "hecha" ? 500 : 520)))
     //  El editor crece con las capas.
     //
-    //  Cada capa añade una fila a la línea de tiempo, y con la altura fija esas
-    //  filas se comían el vídeo. Hasta cinco capas se paga en alto; a partir de
+    //  Cada banda añade una fila a la línea de tiempo, y con la altura fija esas
+    //  filas se comían el vídeo. Hasta cinco bandas se paga en alto; a partir de
     //  ahí toca la ventana grande, que para eso está.
     islandHeight: modo === "cuenta" ? 150
-        : (modo === "editor" ? 610 + Math.min(5, Editor.capas.length) * 29
+        : (modo === "editor" ? 610 + Math.min(5, Editor.cuantasBandas) * 29
         : (modo === "abrir" ? 440 : (modo === "hecha" ? 132 : 208)))
 
     view: Component {
@@ -389,6 +389,15 @@ K4Plugin {
 
         // Editar un vídeo concreto, sin pasar por el selector.
         function editar(ruta: string): void { self.abrirVideo(ruta) }
+
+        //  Poner una imagen encima, sin pasar por el diálogo.
+        //
+        //  Sirve para automatizar y también para un atajo que suelte encima lo
+        //  que haya en el portapapeles. `t` en segundos de la línea; con -1 va
+        //  por donde vaya la reproducción.
+        function imagen(ruta: string, t: real): void {
+            Editor.crearImagen(ruta, t >= 0 ? t : Editor.posicionEditor)
+        }
 
         // Volver a lo que estuviera abierto, por si se cerró sin querer.
         function retomar(): void {

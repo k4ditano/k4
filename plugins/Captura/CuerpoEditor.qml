@@ -494,6 +494,84 @@ Item {
                         }
                     }
 
+                    //  Cambiar de banda.
+                    //
+                    //  Esto es lo que de verdad se pide cuando se pregunta «¿y
+                    //  puedo pasarlo a otra capa?»: mover ESTA cosa arriba o
+                    //  abajo en el apilado, no mover la banda entera. Subir por
+                    //  encima de la última crea una banda nueva, así que no hace
+                    //  falta un botón aparte para eso.
+                    IslandLabel {
+                        Layout.topMargin: 4
+                        text: Idioma.t("Capa")
+                        color: Theme.dim
+                        font.pixelSize: 9
+                        font.capitalization: Font.AllUppercase
+                        font.weight: Font.DemiBold
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Repeater {
+                            model: [
+                                { texto: Idioma.t("Subir"),  icono: 0xF005D, d: 1 },
+                                { texto: Idioma.t("Bajar"),  icono: 0xF0045, d: -1 }
+                            ]
+
+                            delegate: Rectangle {
+                                id: botonBanda
+                                required property var modelData
+
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 26
+                                radius: 13
+                                color: bandaRaton.containsMouse ? Theme.surfaceHi
+                                                                : Theme.surface
+                                opacity: botonBanda.modelData.d < 0
+                                         && Editor.capaSel
+                                         && Editor.bandaDe(Editor.capaSel) <= 1
+                                    ? 0.4 : 1
+
+                                RowLayout {
+                                    anchors.centerIn: parent
+                                    spacing: 5
+
+                                    IconGlyph {
+                                        text: String.fromCodePoint(botonBanda.modelData.icono)
+                                        color: Theme.muted
+                                        font.pixelSize: 12
+                                    }
+
+                                    IslandLabel {
+                                        text: botonBanda.modelData.texto
+                                        font.pixelSize: 10
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: bandaRaton
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Editor.subirCapa(
+                                        Editor.idSel, botonBanda.modelData.d)
+                                }
+                            }
+                        }
+                    }
+
+                    IslandLabel {
+                        visible: Editor.capaSel !== null
+                        text: Idioma.f(Idioma.t("Capa %1 de %2"),
+                                       String(Editor.capaSel
+                                              ? Editor.bandaDe(Editor.capaSel) : 1),
+                                       String(Editor.cuantasBandas))
+                        color: Theme.dim
+                        font.pixelSize: 9
+                    }
+
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.topMargin: 4

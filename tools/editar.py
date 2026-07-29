@@ -454,16 +454,22 @@ def norma_video(ancho, alto, fps):
 def capas_de(plan, tipo=None):
     """Las capas del plan, de abajo arriba.
 
-    **El orden de la lista ES el orden de apilado**, igual que en `clips` el
-    orden es el de la línea. La primera se pinta primero y por tanto queda
-    debajo; la última, encima de todas.
+    Cada capa pertenece a una **banda**, y las bandas son lo que se apila: la 1
+    es la de abajo y la última la de arriba. Dentro de una banda pueden convivir
+    varias capas —lo normal es que no se pisen en el tiempo—, y ahí manda el
+    orden de la lista.
 
-    Antes había un campo `z` aparte y se ordenaba por él. Sobraba: con la lista
-    ordenada, subir una capa es moverla un puesto —la misma operación que mover
-    un clip— y no hay dos sitios que puedan discrepar sobre quién está encima.
+    Al principio una capa ERA una banda, una cosa suelta con su fila propia. Se
+    quedó corto por los dos lados: no había nada que mover de una banda a otra
+    —que es lo primero que uno intenta— y con seis imágenes salían seis filas
+    cuando lo natural son dos bandas con tres cada una.
+
+    El orden se saca con `sorted`, que en python es estable: dentro de la misma
+    banda se conserva el orden de la lista. No hace falta más.
     """
-    return [c for c in plan.get("capas", [])
-            if tipo is None or c.get("tipo") == tipo]
+    capas = [c for c in plan.get("capas", [])
+             if tipo is None or c.get("tipo") == tipo]
+    return sorted(capas, key=lambda c: c.get("banda", 1))
 
 
 def entradas(plan):

@@ -62,15 +62,15 @@ RowLayout {
 
     onCabezalChanged: seguirCabezal()
 
-    //  Las capas, de arriba abajo tal como se ven encima del vídeo.
+    //  Las bandas, de arriba abajo tal como se ven encima del vídeo.
     //
-    //  En el plan van de abajo arriba, porque es el orden en que se apilan los
-    //  `overlay`. Aquí se dan la vuelta: en una lista, lo de arriba es lo que
-    //  está delante, y nadie espera lo contrario.
-    readonly property var capasVista: {
+    //  En el plan la banda 1 es la de abajo, porque es la primera que se apila.
+    //  Aquí se dan la vuelta: en una lista, lo de arriba es lo que está delante,
+    //  y nadie espera lo contrario. La vuelta se da SOLO aquí.
+    readonly property var bandasVista: {
         const r = []
-        for (let i = Editor.capas.length - 1; i >= 0; --i)
-            r.push({ capa: Editor.capas[i], indice: i })
+        for (let b = Editor.cuantasBandas; b >= 1; --b)
+            r.push({ banda: b, capas: Editor.capasDeBanda(b) })
         return r
     }
 
@@ -109,7 +109,7 @@ RowLayout {
         }
 
         Repeater {
-            model: linea.capasVista
+            model: linea.bandasVista
 
             delegate: CabeceraPista {
                 required property var modelData
@@ -118,24 +118,33 @@ RowLayout {
                 Layout.fillWidth: true
                 Layout.preferredHeight: linea.altoPista
 
-                texto: modelData.capa.ruta.split("/").pop()
+                //  Cómo se llama una banda: por lo que lleva si lleva una cosa,
+                //  y por cuántas si lleva varias. Poner «Capa 2» a secas cuando
+                //  dentro hay un logo obliga a pinchar para saber qué es.
+                texto: modelData.capas.length === 1
+                    ? modelData.capas[0].ruta.split("/").pop()
+                    : (modelData.capas.length === 0
+                       ? Idioma.t("Capa ") + modelData.banda
+                       : Idioma.f(Idioma.t("%1 cosas"),
+                                  String(modelData.capas.length)))
                 glifo: 0x000F02E9      // md-image
                 tono: Theme.green
-                elegida: Editor.tipoSel === "capa"
-                    && Editor.idSel === modelData.capa.id
+                elegida: Editor.capaSel !== null
+                    && Editor.bandaDe(Editor.capaSel) === modelData.banda
 
+                // La banda de arriba no sube y la de abajo no baja. Quitar una
+                // banda es quitar todo lo que lleve, así que eso no va aquí.
                 conBotones: true
-                // El de arriba del todo no puede subir, y el de abajo bajar.
+                conQuitar: false
                 puedeSubir: index > 0
-                puedeBajar: index < linea.capasVista.length - 1
+                puedeBajar: index < linea.bandasVista.length - 1
 
-                onPulsada: Editor.seleccionar("capa", modelData.capa.id)
-                //  Subir en la lista es ir hacia el final en el plan, porque
-                //  allí el orden es de abajo arriba. La vuelta se da aquí y en
-                //  un solo sitio.
-                onSubir: Editor.moverCapa(modelData.capa.id, 1)
-                onBajar: Editor.moverCapa(modelData.capa.id, -1)
-                onQuitar: Editor.quitarCapa(modelData.capa.id)
+                onPulsada: if (modelData.capas.length > 0)
+                               Editor.seleccionar("capa", modelData.capas[0].id)
+                //  Subir en la lista es subir de banda en el plan, y la lista va
+                //  del revés. La vuelta se da aquí y en un solo sitio.
+                onSubir: Editor.moverBanda(modelData.banda, 1)
+                onBajar: Editor.moverBanda(modelData.banda, -1)
             }
         }
     }
@@ -256,13 +265,13 @@ RowLayout {
                 }
             }
 
-            // ── una fila por capa ─────────────────────────────────
+            // ── una fila por banda ────────────────────────────────
             //
-            //  Una capa es UNA cosa, así que su fila tiene un solo bloque. Es lo
-            //  que hace que «subir» y «bajar» quieran decir exactamente lo mismo
-            //  aquí que en el apilado de la imagen.
+            //  Cada banda puede llevar varias cosas, normalmente en instantes
+            //  distintos. Lo que se apila es la banda, así que subir algo de
+            //  banda es lo que cambia qué tapa a qué.
             Repeater {
-                model: linea.capasVista
+                model: linea.bandasVista
 
                 delegate: Pista {
                     required property var modelData
@@ -270,24 +279,31 @@ RowLayout {
                     Layout.fillWidth: true
                     Layout.preferredHeight: linea.altoPista
 
-                    modelo: [modelData.capa]
+                    modelo: modelData.capas
                     total: linea.total
                     cabezal: linea.cabezal
                     tono: Theme.green
                     // Una capa necesita un fichero detrás, y eso se elige, no se
                     // dibuja arrastrando en un hueco.
                     creable: false
-                    elegido: Editor.tipoSel === "capa"
-                        && Editor.idSel === modelData.capa.id ? 0 : -1
+                    elegido: {
+                        for (let i = 0; i < modelData.capas.length; ++i)
+                            if (Editor.tipoSel === "capa"
+                                    && modelData.capas[i].id === Editor.idSel)
+                                return i
+                        return -1
+                    }
 
                     onSaltar: function (t) { linea.saltar(t) }
-                    onElegir: {
-                        Editor.seleccionar("capa", modelData.capa.id)
+                    onElegir: function (i) {
+                        if (i < 0 || i >= modelData.capas.length)
+                            return
+                        const c = modelData.capas[i]
+                        Editor.seleccionar("capa", c.id)
                         //  Y si el cabezal está fuera de su tramo, llevarlo
                         //  dentro: una capa solo se puede mover y escalar
                         //  mientras se ve, así que elegirla sin poder tocarla no
                         //  sirve de nada.
-                        const c = modelData.capa
                         if (linea.cabezal < c.t0 || linea.cabezal > c.t1)
                             linea.saltar(c.t0 + Math.min(0.3, (c.t1 - c.t0) / 2))
                     }

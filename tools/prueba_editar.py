@@ -223,7 +223,7 @@ def prueba_grafo_volumen():
 # ── las capas ─────────────────────────────────────────────────────
 def capa(**campos):
     d = {"id": 1, "tipo": "imagen", "ruta": fichero("logo.png"), "t0": 2.0,
-         "t1": 4.0, "x": 0.5, "y": 0.5, "escala": 0.25, "opacidad": 1.0}
+         "t1": 4.0, "x": 0.5, "y": 0.5, "escala": 0.25, "opacidad": 1.0, "banda": 1}
     d.update(campos)
     return d
 
@@ -244,7 +244,7 @@ def prueba_capas_van_despues_del_zoom():
 
 
 def prueba_capas_en_orden_de_lista():
-    """El orden de la lista es el de apilado: la última queda encima."""
+    """Dentro de una banda, el orden de la lista es el de apilado."""
     p = con_capas([capa(id=2, ruta=fichero("abajo.png")),
                    capa(id=1, ruta=fichero("arriba.png"))])
     texto, _ = editar.grafo(p)
@@ -259,6 +259,42 @@ def prueba_capas_en_orden_de_lista():
     rutas, _, de_capa = editar.entradas(q)
     igual("dando la vuelta a la lista, cambia quién va debajo",
           rutas[de_capa[1]], fichero("arriba.png"))
+
+
+def prueba_bandas_manda_la_banda():
+    """La banda pesa más que el orden de la lista: es lo que se apila."""
+    p = con_capas([capa(id=1, banda=3, ruta=fichero("arriba.png")),
+                   capa(id=2, banda=1, ruta=fichero("abajo.png"))])
+    orden = [c["id"] for c in editar.capas_de(p)]
+    igual("la banda 1 va debajo aunque esté después en la lista", orden, [2, 1])
+
+    rutas, _, de_capa = editar.entradas(p)
+    igual("y es la que se abre primero",
+          rutas[de_capa[2]], fichero("abajo.png"))
+
+
+def prueba_bandas_conserva_el_orden_dentro():
+    """Dos en la misma banda: manda la lista, porque `sorted` es estable."""
+    p = con_capas([capa(id=7, banda=2, ruta=fichero("abajo.png")),
+                   capa(id=8, banda=2, ruta=fichero("arriba.png")),
+                   capa(id=9, banda=1, ruta=fichero("logo.png"))])
+    igual("primero la banda 1 y luego la 2 en su orden",
+          [c["id"] for c in editar.capas_de(p)], [9, 7, 8])
+
+
+def prueba_bandas_los_planes_viejos_no_se_mueven():
+    """Sin `banda` todas caen en la 1, y ahí manda el orden de la lista.
+
+    Es lo que hace que no haya que migrar nada: un plan de antes de que
+    existieran las bandas se apila exactamente igual que antes.
+    """
+    viejas = [capa(id=1, ruta=fichero("abajo.png")),
+              capa(id=2, ruta=fichero("logo.png")),
+              capa(id=3, ruta=fichero("arriba.png"))]
+    for c in viejas:
+        del c["banda"]
+    igual("el apilado es el de la lista, como siempre",
+          [c["id"] for c in editar.capas_de(con_capas(viejas))], [1, 2, 3])
 
 
 def prueba_capa_centro_y_tamano():

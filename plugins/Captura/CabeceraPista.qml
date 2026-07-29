@@ -20,6 +20,9 @@ Rectangle {
     property bool conBotones: false
     property bool puedeSubir: true
     property bool puedeBajar: true
+    //  Una banda no se «quita»: lo que se quita es lo que lleva dentro, y eso se
+    //  hace desde la ficha de la derecha, con lo elegido delante.
+    property bool conQuitar: true
 
     signal pulsada()
     signal subir()
@@ -74,11 +77,12 @@ Rectangle {
         visible: cabecera.conBotones && raton.containsMouse
 
         Repeater {
-            model: [
-                { glifo: 0x000F005D, accion: "subir"  },   // md-arrow_up
-                { glifo: 0x000F0045, accion: "bajar"  },   // md-arrow_down
-                { glifo: 0x000F0156, accion: "quitar" }    // md-close
-            ]
+            model: cabecera.conQuitar
+                ? [{ glifo: 0x000F005D, accion: "subir"  },   // md-arrow_up
+                   { glifo: 0x000F0045, accion: "bajar"  },   // md-arrow_down
+                   { glifo: 0x000F0156, accion: "quitar" }]   // md-close
+                : [{ glifo: 0x000F005D, accion: "subir"  },
+                   { glifo: 0x000F0045, accion: "bajar"  }]
 
             delegate: Rectangle {
                 id: boton

@@ -199,9 +199,51 @@ Singleton {
     //  no una lista por cada cosa: es lo que hace que esto sea un editor y no
     //  una colección de funciones que no se hablan entre ellas.
     //
+    //  Cada capa pertenece a una **banda** (`banda: 1, 2, 3…`), y las bandas son
+    //  lo que se apila: la 1 abajo, la última arriba. Dentro de una banda caben
+    //  varias capas, normalmente en instantes distintos.
+    //
+    //  Al principio una capa era una banda —una cosa suelta con su fila propia—
+    //  y se quedó corto por los dos lados: no había nada que mover de una banda
+    //  a otra, que es lo primero que uno intenta, y con seis imágenes salían
+    //  seis filas cuando lo natural son dos bandas con tres cada una.
+    //
     //  `x`, `y` y `escala` van en fracción del fotograma, y `x`/`y` apuntan al
     //  CENTRO. Así el plan no depende de la resolución.
     property var capas: []
+
+    function bandaDe(c) { return c.banda !== undefined ? c.banda : 1 }
+
+    //  Cuántas bandas hay. Al menos una, aunque esté vacía: si no, al quitar la
+    //  última capa desaparecería la fila y no habría dónde soltar la siguiente.
+    readonly property int cuantasBandas: {
+        let n = 1
+        for (let i = 0; i < capas.length; ++i)
+            n = Math.max(n, bandaDe(capas[i]))
+        return n
+    }
+
+    // Las capas de una banda, en el orden en que se apilan dentro de ella.
+    function capasDeBanda(b) {
+        return capas.filter(function (c) { return bandaDe(c) === b })
+    }
+
+    //  Una banda donde quepa algo entre t0 y t1 sin pisar a nadie.
+    //
+    //  Es lo que hace que meter tres logos seguidos no cree tres bandas: si en
+    //  la 1 hay hueco en ese tramo, va a la 1.
+    function bandaLibre(t0, t1) {
+        for (let b = 1; b <= cuantasBandas; ++b) {
+            const dentro = capasDeBanda(b)
+            let choca = false
+            for (let i = 0; i < dentro.length; ++i)
+                if (t0 < dentro[i].t1 && t1 > dentro[i].t0)
+                    choca = true
+            if (!choca)
+                return b
+        }
+        return cuantasBandas + 1
+    }
 
     function nuevoIdCapa() {
         let mayor = 0
@@ -210,25 +252,46 @@ Singleton {
         return mayor + 1
     }
 
+    //  Lo que ffmpeg va a saber abrir como imagen.
+    //
+    //  Se comprueba la extensión y no solo que el fichero exista: `grafo()` salta
+    //  las capas cuyo fichero falta, pero uno que existe y no es una imagen se le
+    //  pasa a ffmpeg tal cual y tumba el render entero. Sale un fotograma negro y
+    //  ni una pista de por qué. Me pasó apuntando una capa a /dev/null.
+    readonly property var extensionesImagen: ["png", "jpg", "jpeg", "webp",
+                                              "gif", "bmp", "avif", "tiff"]
+
+    function esImagen(ruta) {
+        const punto = ruta.lastIndexOf(".")
+        if (punto < 0)
+            return false
+        return extensionesImagen.indexOf(
+            ruta.slice(punto + 1).toLowerCase()) >= 0
+    }
+
     function crearImagen(ruta, t0) {
         if (!ruta || ruta.length === 0)
             return 0
+        if (!esImagen(ruta)) {
+            fallo("no-es-imagen")
+            return 0
+        }
         // Tres segundos desde donde estés, o lo que quepa si estás al final.
         const a = Math.max(0, Math.min(t0, Math.max(0, duracionLinea - 1)))
+        const b = Math.min(duracionLinea, a + 3)
         const nueva = {
             id: nuevoIdCapa(),
             tipo: "imagen",
             ruta: ruta,
             t0: a,
-            t1: Math.min(duracionLinea, a + 3),
+            t1: b,
+            // A la banda de más abajo donde no pise a nadie: tres logos seguidos
+            // en instantes distintos comparten fila, que es lo que se espera.
+            banda: bandaLibre(a, b),
             // Arriba a la derecha y a un cuarto de ancho: es donde va un logo, y
             // desde ahí se mueve con el ratón en un gesto.
             x: 0.8, y: 0.15, escala: 0.25, opacidad: 1.0
         }
-        //  Al final de la lista, que es lo mismo que encima de todo: **el orden
-        //  de la lista ES el orden de apilado**, igual que en `clips` el orden
-        //  es el de la línea. Había un campo `z` aparte y sobraba: nadie lo
-        //  cambiaba nunca y era un segundo sitio donde decir lo mismo.
         capas = capas.concat([nueva])
         persistir()
         seleccionar("capa", nueva.id)
@@ -246,26 +309,77 @@ Singleton {
 
     function quitarCapa(id) {
         capas = capas.filter(function (c) { return c.id !== id })
-        persistir()
+        // Quitar la última de una banda deja la banda vacía; que no se quede.
+        compactarBandas()
         seleccionar("", 0)
     }
 
-    //  Subir o bajar una capa en el apilado.
+    //  Llevar una capa a otra banda.
     //
-    //  `d` va en el sentido del PLAN: +1 la acerca al final de la lista, o sea
-    //  la pone más encima. La lista de la interfaz se enseña del revés —arriba
-    //  lo que está delante, que es lo que espera cualquiera—, y esa vuelta se da
-    //  una sola vez, en la vista.
-    function moverCapa(id, d) {
+    //  `d` va en el sentido del PLAN: +1 la sube una banda. La lista de la
+    //  interfaz se enseña del revés —arriba lo que está delante, que es lo que
+    //  espera cualquiera—, y esa vuelta se da una sola vez, en la vista.
+    //
+    //  Se puede subir una banda por encima de las que hay: así se crea una nueva
+    //  sin tener que pedirla aparte. Bajar de la 1 no lleva a ninguna parte.
+    function subirCapa(id, d) {
         const i = capas.findIndex(function (c) { return c.id === id })
         if (i < 0)
             return
-        const n = Math.max(0, Math.min(capas.length - 1, i + d))
-        if (n === i)
+        const b = Math.max(1, Math.min(cuantasBandas + 1, bandaDe(capas[i]) + d))
+        if (b === bandaDe(capas[i]))
             return
+
+        //  Y también al principio o al final de la lista, según el sentido.
+        //
+        //  Dentro de una banda manda el orden de la lista, así que bajar de banda
+        //  sin tocarla dejaría la capa por encima de las que ya estaban abajo:
+        //  «bajar» y quedarse delante es lo contrario de lo que dice el botón.
+        //  Con dos capas que se pisen en el tiempo esto se ve a la primera.
         const nuevas = capas.slice()
-        nuevas.splice(n, 0, nuevas.splice(i, 1)[0])
+        const capa = Object.assign({}, nuevas.splice(i, 1)[0], { banda: b })
+        if (d > 0)
+            nuevas.push(capa)
+        else
+            nuevas.unshift(capa)
         capas = nuevas
+        compactarBandas()
+    }
+
+    //  Quitar las bandas que se hayan quedado vacías.
+    //
+    //  Sin esto, mover la única capa de la banda 2 a la 3 deja la 2 como una fila
+    //  vacía para siempre, y a los cuatro movimientos la línea de tiempo es un
+    //  paisaje de filas en blanco.
+    function compactarBandas() {
+        const usadas = []
+        for (let i = 0; i < capas.length; ++i) {
+            const b = bandaDe(capas[i])
+            if (usadas.indexOf(b) < 0)
+                usadas.push(b)
+        }
+        usadas.sort(function (a, b) { return a - b })
+
+        capas = capas.map(function (c) {
+            return Object.assign({}, c,
+                                 { banda: usadas.indexOf(bandaDe(c)) + 1 })
+        })
+        persistir()
+    }
+
+    //  Subir o bajar una banda entera, con todo lo que lleve dentro.
+    function moverBanda(b, d) {
+        const otra = b + d
+        if (otra < 1 || otra > cuantasBandas || d === 0)
+            return
+        capas = capas.map(function (c) {
+            const suya = bandaDe(c)
+            if (suya === b)
+                return Object.assign({}, c, { banda: otra })
+            if (suya === otra)
+                return Object.assign({}, c, { banda: b })
+            return c
+        })
         persistir()
     }
 
