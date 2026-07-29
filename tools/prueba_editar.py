@@ -223,7 +223,7 @@ def prueba_grafo_volumen():
 # ── las capas ─────────────────────────────────────────────────────
 def capa(**campos):
     d = {"id": 1, "tipo": "imagen", "ruta": fichero("logo.png"), "t0": 2.0,
-         "t1": 4.0, "x": 0.5, "y": 0.5, "escala": 0.25, "opacidad": 1.0, "z": 1}
+         "t1": 4.0, "x": 0.5, "y": 0.5, "escala": 0.25, "opacidad": 1.0}
     d.update(campos)
     return d
 
@@ -243,17 +243,22 @@ def prueba_capas_van_despues_del_zoom():
           texto.index("zoompan=") < texto.index("overlay="), True)
 
 
-def prueba_capas_por_z():
-    p = con_capas([capa(id=1, z=5, ruta=fichero("arriba.png")),
-                   capa(id=2, z=1, ruta=fichero("abajo.png"))])
+def prueba_capas_en_orden_de_lista():
+    """El orden de la lista es el de apilado: la última queda encima."""
+    p = con_capas([capa(id=2, ruta=fichero("abajo.png")),
+                   capa(id=1, ruta=fichero("arriba.png"))])
     texto, _ = editar.grafo(p)
-    #  La de z menor entra primero en la cadena, así que la otra le queda
-    #  encima. Si el orden se invirtiera, subir el z hundiría la capa.
-    igual("la de abajo se encadena primero",
+    igual("la primera de la lista se encadena primero",
           texto.index("ov0") < texto.index("ov1"), True)
     rutas, _, de_capa = editar.entradas(p)
-    igual("y la de abajo es la primera entrada nueva",
-          rutas[de_capa[2]], fichero("abajo.png"))
+    igual("y es la de abajo", rutas[de_capa[2]], fichero("abajo.png"))
+
+    # Y al revés, para que no pase por casualidad.
+    q = con_capas([capa(id=1, ruta=fichero("arriba.png")),
+                   capa(id=2, ruta=fichero("abajo.png"))])
+    rutas, _, de_capa = editar.entradas(q)
+    igual("dando la vuelta a la lista, cambia quién va debajo",
+          rutas[de_capa[1]], fichero("arriba.png"))
 
 
 def prueba_capa_centro_y_tamano():

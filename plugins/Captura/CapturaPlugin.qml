@@ -57,9 +57,14 @@ K4Plugin {
     islandWidth: modo === "cuenta" ? 200
         : (modo === "editor" ? 940 : (modo === "abrir" ? 640
         : (modo === "hecha" ? 500 : 520)))
+    //  El editor crece con las capas.
+    //
+    //  Cada capa añade una fila a la línea de tiempo, y con la altura fija esas
+    //  filas se comían el vídeo. Hasta cinco capas se paga en alto; a partir de
+    //  ahí toca la ventana grande, que para eso está.
     islandHeight: modo === "cuenta" ? 150
-        : (modo === "editor" ? 610 : (modo === "abrir" ? 440
-        : (modo === "hecha" ? 132 : 208)))
+        : (modo === "editor" ? 610 + Math.min(5, Editor.capas.length) * 29
+        : (modo === "abrir" ? 440 : (modo === "hecha" ? 132 : 208)))
 
     view: Component {
         Loader {

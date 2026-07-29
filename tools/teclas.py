@@ -3,6 +3,7 @@
 
     python3 teclas.py escribe hola
     python3 teclas.py pulsa ESC ENTER TAB
+    python3 teclas.py manten CTRL 3     # tres segundos, para ctrl+rueda
 
 El compositor no acepta pulsaciones sintéticas por Wayland, pero sí un
 dispositivo de entrada del kernel: uinput crea uno y lo ve como cualquier
@@ -143,6 +144,25 @@ def main():
                 for c in reversed(codigos[:-1]):
                     t.evento(EV_KEY, c, 0)
                 t.sync()
+        elif orden == "manten":
+            #  Mantener un modificador un rato, para comprobar cosas como
+            #  ctrl+rueda.
+            #
+            #  Con segundos y no con «pulsa/suelta» en dos llamadas porque cada
+            #  llamada crea y destruye su propio dispositivo uinput: al morir el
+            #  proceso el compositor da la tecla por soltada, así que la segunda
+            #  llamada no encontraría nada mantenido. Aquí el dispositivo vive lo
+            #  que dure la espera, y mientras tanto otro proceso mueve el ratón.
+            nombre = resto[0].upper()
+            if nombre not in ESPECIALES:
+                print("no sé mantener %s" % nombre, file=sys.stderr)
+                return 1
+            segundos = float(resto[1]) if len(resto) > 1 else 2.0
+            t.evento(EV_KEY, ESPECIALES[nombre], 1)
+            t.sync()
+            time.sleep(segundos)
+            t.evento(EV_KEY, ESPECIALES[nombre], 0)
+            t.sync()
         else:
             print("orden desconocida: %s" % orden, file=sys.stderr)
             return 1

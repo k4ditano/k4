@@ -801,6 +801,7 @@ Item {
 
         // ── la línea de tiempo ────────────────────────────────────
         LineaTiempo {
+            id: linea
             Layout.fillWidth: true
 
             total: view.total
@@ -919,6 +920,40 @@ Item {
                 text: view.segundos.toFixed(1) + " / " + view.total.toFixed(1) + " s"
                 color: Theme.muted
                 font.pixelSize: 10
+            }
+
+            //  Acercar y alejar la línea de tiempo.
+            //
+            //  También va con ctrl+rueda, que es lo que uno prueba, pero eso no
+            //  se descubre solo: sin un botón, en un vídeo largo no habría forma
+            //  de enterarse de que la línea se puede acercar.
+            MediaButton {
+                glyph: String.fromCodePoint(0xF034A)     // md-magnify_minus
+                glyphSize: 13
+                glyphColor: linea.acercamiento > 1 ? Theme.ink : Theme.dim
+                onActivated: linea.acercar(1 / 1.6, linea.width / 2)
+            }
+
+            //  Con hueco reservado siempre.
+            //
+            //  Estaba oculta mientras la línea cabía entera, y al aparecer
+            //  empujaba el botón de acercar: el segundo clic de una serie caía
+            //  al lado. Un botón que se mueve porque lo has pulsado es de las
+            //  cosas más molestas que puede hacer una interfaz.
+            IslandLabel {
+                Layout.preferredWidth: 26
+                horizontalAlignment: Text.AlignHCenter
+                text: linea.acercamiento > 1.001
+                    ? "×" + linea.acercamiento.toFixed(1) : ""
+                color: Theme.dim
+                font.pixelSize: 9
+            }
+
+            MediaButton {
+                glyph: String.fromCodePoint(0xF034B)     // md-magnify_plus
+                glyphSize: 13
+                glyphColor: Theme.ink
+                onActivated: linea.acercar(1.6, linea.width / 2)
             }
 
             IslandLabel {

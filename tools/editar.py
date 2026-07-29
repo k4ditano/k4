@@ -454,12 +454,16 @@ def norma_video(ancho, alto, fps):
 def capas_de(plan, tipo=None):
     """Las capas del plan, de abajo arriba.
 
-    El orden de la lista es el orden en que se pintan, y ese es el orden en que
-    se encadenan los `overlay`: la última queda encima de todas.
+    **El orden de la lista ES el orden de apilado**, igual que en `clips` el
+    orden es el de la línea. La primera se pinta primero y por tanto queda
+    debajo; la última, encima de todas.
+
+    Antes había un campo `z` aparte y se ordenaba por él. Sobraba: con la lista
+    ordenada, subir una capa es moverla un puesto —la misma operación que mover
+    un clip— y no hay dos sitios que puedan discrepar sobre quién está encima.
     """
-    capas = [c for c in plan.get("capas", [])
-             if tipo is None or c.get("tipo") == tipo]
-    return sorted(capas, key=lambda c: c.get("z", 0))
+    return [c for c in plan.get("capas", [])
+            if tipo is None or c.get("tipo") == tipo]
 
 
 def entradas(plan):

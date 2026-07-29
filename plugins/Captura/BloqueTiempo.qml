@@ -31,7 +31,6 @@ Rectangle {
     signal cambiado(real nuevoT0, real nuevoT1)
     signal soltado()
     signal pulsado()
-    signal rueda(int delta)
 
     // El estado del gesto en curso. Solo manda mientras `editando`.
     property bool editando: false
@@ -121,12 +120,13 @@ Rectangle {
             bloque.editando = false
         }
 
-        //  La rueda va aquí y no en un WheelHandler del rectángulo: los
-        //  MouseArea están por encima y el evento no llegaba a bajar.
-        onWheel: function (ev) {
-            bloque.rueda(ev.angleDelta.y)
-            ev.accepted = true
-        }
+        //  Sin `onWheel` a propósito.
+        //
+        //  Aquí la rueda cambiaba el nivel del zoom. Dejó de tener sentido en
+        //  cuanto la línea de tiempo se pudo recorrer: la rueda es para moverse,
+        //  y un bloque que se la quedara haría que la línea se atascara cada vez
+        //  que el puntero pasara por encima de algo. El nivel se cambia con la
+        //  rueda sobre el vídeo, que además es donde se ve el efecto.
     }
 
     // ── estirar ───────────────────────────────────────────────────

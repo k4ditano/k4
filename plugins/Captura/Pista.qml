@@ -30,7 +30,6 @@ Rectangle {
     signal editar(int id, real t0, real t1)
     signal soltar()
     signal crear(real t0, real t1)
-    signal nivel(int id, int delta)
 
     radius: 6
     color: Theme.surface
@@ -113,7 +112,6 @@ Rectangle {
             onPulsado: pista.elegir(index)
             onCambiado: function (a, b) { pista.editar(modelData.id, a, b) }
             onSoltado: pista.soltar()
-            onRueda: function (d) { pista.nivel(modelData.id, d) }
         }
     }
 

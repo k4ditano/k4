@@ -223,9 +223,12 @@ Singleton {
             t1: Math.min(duracionLinea, a + 3),
             // Arriba a la derecha y a un cuarto de ancho: es donde va un logo, y
             // desde ahí se mueve con el ratón en un gesto.
-            x: 0.8, y: 0.15, escala: 0.25, opacidad: 1.0,
-            z: capas.length + 1
+            x: 0.8, y: 0.15, escala: 0.25, opacidad: 1.0
         }
+        //  Al final de la lista, que es lo mismo que encima de todo: **el orden
+        //  de la lista ES el orden de apilado**, igual que en `clips` el orden
+        //  es el de la línea. Había un campo `z` aparte y sobraba: nadie lo
+        //  cambiaba nunca y era un segundo sitio donde decir lo mismo.
         capas = capas.concat([nueva])
         persistir()
         seleccionar("capa", nueva.id)
@@ -245,6 +248,25 @@ Singleton {
         capas = capas.filter(function (c) { return c.id !== id })
         persistir()
         seleccionar("", 0)
+    }
+
+    //  Subir o bajar una capa en el apilado.
+    //
+    //  `d` va en el sentido del PLAN: +1 la acerca al final de la lista, o sea
+    //  la pone más encima. La lista de la interfaz se enseña del revés —arriba
+    //  lo que está delante, que es lo que espera cualquiera—, y esa vuelta se da
+    //  una sola vez, en la vista.
+    function moverCapa(id, d) {
+        const i = capas.findIndex(function (c) { return c.id === id })
+        if (i < 0)
+            return
+        const n = Math.max(0, Math.min(capas.length - 1, i + d))
+        if (n === i)
+            return
+        const nuevas = capas.slice()
+        nuevas.splice(n, 0, nuevas.splice(i, 1)[0])
+        capas = nuevas
+        persistir()
     }
 
     // ── qué está seleccionado ─────────────────────────────────────

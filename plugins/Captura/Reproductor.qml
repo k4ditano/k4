@@ -115,10 +115,12 @@ Item {
         videoOutput: salida
         audioOutput: AudioOutput { muted: repro.silenciado }
 
-        onPositionChanged: {
+        //  Con parámetro declarado y no usando el `position` que Qt inyecta:
+        //  la inyección está en desahucio y avisa por consola en cada carga.
+        onPositionChanged: function (ms) {
             if (!repro.tramo || playbackState === MediaPlayer.StoppedState)
                 return
-            const s = position / 1000
+            const s = ms / 1000
 
             //  ¿Se acabó el trozo? Al siguiente.
             //
