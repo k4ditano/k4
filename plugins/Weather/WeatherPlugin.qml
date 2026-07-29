@@ -2,7 +2,7 @@
 //  decide cuándo se ve y guarda el estado de la búsqueda de ciudad.
 
 import QtQuick
-import Quickshell.Io
+import K4 as K4
 import "../../core"
 import "../../services"
 
@@ -69,7 +69,7 @@ K4Plugin {
         closeSearch()
     }
 
-    IpcHandler {
+    K4.Ipc {
         target: "k4.weather"
         function toggle(): void { self.toggle() }
         function close(): void { self.close() }

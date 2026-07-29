@@ -6,7 +6,7 @@
 //  ajustes viven aquí y esa herramienta queda como un acceso más.
 
 import QtQuick
-import Quickshell.Io
+import K4 as K4
 import "../../core"
 import "../../services"
 
@@ -44,7 +44,7 @@ K4Plugin {
 
     function close() { open = false }
 
-    IpcHandler {
+    K4.Ipc {
         target: "k4.settings"
         function toggle(): void { self.toggle() }
         function close(): void { self.close() }

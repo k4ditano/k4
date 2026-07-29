@@ -5,8 +5,7 @@
 //  consulta anterior ni el de otras sesiones de Codex que haya por ahí.
 
 import QtQuick
-import Quickshell
-import Quickshell.Io
+import K4 as K4
 import "../../core"
 import "../../services"
 
@@ -38,7 +37,7 @@ K4Plugin {
     property string threadId: ""
 
     readonly property string dir: "/tmp/k4-ask"
-    readonly property string script: Quickshell.shellPath("ask.sh")
+    readonly property string script: K4.Paths.enRaiz("ask.sh")
 
     islandWidth: 700
     islandHeight: messages.length > 0 ? 430 : 128
@@ -64,7 +63,7 @@ K4Plugin {
 
     function newConversation() {
         if (askProcess.running)
-            askProcess.signal(15)
+            askProcess.parar(15)
 
         timeoutTimer.stop()
         query = ""
@@ -224,69 +223,64 @@ K4Plugin {
     function guardarImagen(ruta) {
         if (!ruta || ruta.length === 0)
             return
-        const destino = Quickshell.env("HOME") + "/Imágenes"
-        Quickshell.execDetached(["sh", "-c",
+        const destino = K4.Sistema.entorno("HOME") + "/Imágenes"
+        K4.Sistema.lanzar(["sh", "-c",
             "mkdir -p " + JSON.stringify(destino)
             + " && cp -n " + JSON.stringify(ruta) + " " + JSON.stringify(destino) + "/"])
     }
 
     function abrirExterno(ruta) {
         if (ruta && ruta.length > 0)
-            Quickshell.execDetached(["xdg-open", ruta])
+            K4.Sistema.lanzar(["xdg-open", ruta])
     }
 
     function copyAnswer() {
         for (let i = messages.length - 1; i >= 0; --i) {
             if (messages[i].role === "assistant" && messages[i].text.length > 0) {
-                Quickshell.execDetached(["wl-copy", "--", messages[i].text])
+                K4.Sistema.lanzar(["wl-copy", "--", messages[i].text])
                 return
             }
         }
     }
 
-    Process {
+    K4.Process {
         command: ["mkdir", "-p", self.dir]
         running: true
     }
 
-    Process {
+    K4.Process {
         id: selectionProcess
         command: ["wl-paste", "--primary", "--no-newline"]
 
-        stdout: StdioCollector {
-            onStreamFinished: {
-                self.selectionCandidate = this.text.trim().substring(0, 4000)
-                // solo se adjunta si lo pediste explícitamente
-                if (self.attachSelectionOnOpen)
-                    self.selection = self.selectionCandidate
-            }
+        onSalida: function (texto) {
+            self.selectionCandidate = texto.trim().substring(0, 4000)
+            // solo se adjunta si lo pediste explícitamente
+            if (self.attachSelectionOnOpen)
+                self.selection = self.selectionCandidate
         }
     }
 
-    Process {
+    K4.Process {
         id: shotProcess
-        onExited: function (code) {
+        onTerminado: function (code) {
             const shot = code === 0 ? self.dir + "/shot.png" : ""
             self.openAsk(false)
             self.image = shot
         }
     }
 
-    Process {
+    K4.Process {
         id: askProcess
+        porLineas: true
 
-        stdout: SplitParser {
-            onRead: function (line) { self.handleEvent(line) }
+        onLinea: function (line) { self.handleEvent(line) }
+
+        onLineaError: function (line) {
+            if (line.indexOf("ERROR") !== -1 || line.indexOf("error:") !== -1)
+                self.lastError = line
         }
 
-        stderr: SplitParser {
-            onRead: function (line) {
-                if (line.indexOf("ERROR") !== -1 || line.indexOf("error:") !== -1)
-                    self.lastError = line
-            }
-        }
-
-        onExited: function (code) {
+        onTerminado: function (code) {
             timeoutTimer.stop()
 
             const last = self.messages.length > 0
@@ -309,7 +303,7 @@ K4Plugin {
         interval: 120000
         onTriggered: {
             if (askProcess.running) {
-                askProcess.signal(15)
+                askProcess.parar(15)
                 self.status = "error"
                 self.updateLastMessage("error", "Codex no respondió en 2 minutos.")
             }
@@ -324,7 +318,7 @@ K4Plugin {
         }
     }
 
-    IpcHandler {
+    K4.Ipc {
         target: "k4.ask"
         function toggle(): void {
             if (self.open) self.close()

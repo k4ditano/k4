@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
+import K4 as K4
 import "../../core"
 import "../../services"
 
@@ -400,7 +400,7 @@ FadeIn {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            Quickshell.execDetached(herramienta.modelData.orden)
+                            K4.Sistema.lanzar(herramienta.modelData.orden)
                             view.plugin.close()
                         }
                     }

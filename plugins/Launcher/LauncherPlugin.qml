@@ -5,8 +5,7 @@
 //  de teclear, para no abusar del servicio.
 
 import QtQuick
-import Quickshell
-import Quickshell.Io
+import K4 as K4
 import "../../core"
 import "../../services"
 
@@ -37,12 +36,12 @@ K4Plugin {
     property bool aurSearching: false
 
     // Al abrir el lanzador se actualiza el índice de aplicaciones del usuario.
-    // DesktopEntries ya vigila cambios, pero este paso cubre instalaciones que
+    // K4.Apps ya vigila cambios, pero este paso cubre instalaciones que
     // crean el .desktop mientras k4 estaba cerrado o durante un escaneo.
     readonly property string applicationsDir: {
-        const dataHome = Quickshell.env("XDG_DATA_HOME")
+        const dataHome = K4.Sistema.entorno("XDG_DATA_HOME")
         const base = dataHome && dataHome.length > 0
-            ? dataHome : Quickshell.env("HOME") + "/.local/share"
+            ? dataHome : K4.Sistema.entorno("HOME") + "/.local/share"
         return base + "/applications"
     }
 
@@ -149,7 +148,7 @@ K4Plugin {
         }
 
         if (repoSearchProcess.running)
-            repoSearchProcess.signal(15)
+            repoSearchProcess.parar(15)
 
         repoSearchProcess.command = ["pacman", "-Ss", "--"].concat(q.split(/\s+/))
         repoSearchProcess.running = true
@@ -164,7 +163,7 @@ K4Plugin {
         }
 
         if (aurSearchProcess.running)
-            aurSearchProcess.signal(15)
+            aurSearchProcess.parar(15)
 
         aurSearching = true
         aurSearchProcess.command = ["yay", "-Ss", "--aur", "--color=never", "--"].concat(q.split(/\s+/))
@@ -215,7 +214,7 @@ K4Plugin {
             + " || { notify-send -a 'Instalar' -u critical '" + pkg.name + "' 'La instalación falló';"
             + " printf '\\nPulsa Enter para cerrar…'; read _; }"
 
-        Quickshell.execDetached(["uwsm", "app", "--", "kitty", "-e", "sh", "-c", script])
+        K4.Sistema.lanzar(["uwsm", "app", "--", "kitty", "-e", "sh", "-c", script])
         close()
     }
 
@@ -224,7 +223,7 @@ K4Plugin {
     // bajabas con las flechas o la rueda.
     function rebuild(conservarSeleccion) {
         const q = query.trim().toLowerCase()
-        const applications = DesktopEntries.applications.values
+        const applications = K4.Apps.lista
         const found = []
 
         for (let i = 0; i < applications.length; ++i) {
@@ -321,14 +320,14 @@ K4Plugin {
     // directorio que pida la propia entrada y, si no pide ninguno, en casa.
     function abrir(entry) {
         const dir = entry.workingDirectory && entry.workingDirectory.length > 0
-            ? entry.workingDirectory : Quickshell.env("HOME")
+            ? entry.workingDirectory : K4.Sistema.entorno("HOME")
 
         if (!entry.command || entry.command.length === 0) {
             entry.execute()
             return
         }
 
-        Quickshell.execDetached(["sh", "-c",
+        K4.Sistema.lanzar(["sh", "-c",
             "cd " + JSON.stringify(dir) + " && exec \"$@\"", "sh"].concat(entry.command))
     }
 
@@ -346,8 +345,8 @@ K4Plugin {
     }
 
     Connections {
-        target: DesktopEntries
-        function onApplicationsChanged() { self.rebuild() }
+        target: K4.Apps
+        function onListaChanged() { self.rebuild() }
     }
 
     Timer {
@@ -363,51 +362,47 @@ K4Plugin {
         onTriggered: self.rebuild(true)
     }
 
-    Process {
+    K4.Process {
         id: installedListProcess
         command: ["pacman", "-Qq"]
 
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const set = ({})
-                const names = this.text.split("\n")
-                for (let i = 0; i < names.length; ++i) {
-                    const name = names[i].trim()
-                    if (name.length > 0)
-                        set[name] = true
-                }
-                self.installedPackages = set
+        onSalida: function (texto) {
+            const set = ({})
+            const names = texto.split("\n")
+            for (let i = 0; i < names.length; ++i) {
+                const name = names[i].trim()
+                if (name.length > 0)
+                    set[name] = true
             }
+            self.installedPackages = set
         }
     }
 
-    Process {
+    K4.Process {
         id: desktopDatabaseProcess
         command: ["update-desktop-database", self.applicationsDir]
-        onExited: self.rebuild()
+        onTerminado: self.rebuild()
     }
 
-    Process {
+    K4.Process {
         id: repoSearchProcess
         environment: ({ "LC_ALL": "C" })
 
-        stdout: StdioCollector {
-            onStreamFinished: self.repoResults = self.parsePackages(this.text, false)
+        onSalida: function (texto) {
+            self.repoResults = self.parsePackages(texto, false)
         }
     }
 
-    Process {
+    K4.Process {
         id: aurSearchProcess
         environment: ({ "LC_ALL": "C" })
 
-        stdout: StdioCollector {
-            onStreamFinished: {
-                self.aurResults = self.parsePackages(this.text, true)
-                self.aurSearching = false
-            }
+        onSalida: function (texto) {
+            self.aurResults = self.parsePackages(texto, true)
+            self.aurSearching = false
         }
 
-        onExited: self.aurSearching = false
+        onTerminado: self.aurSearching = false
     }
 
     Timer {
@@ -422,7 +417,7 @@ K4Plugin {
         onTriggered: self.runAurSearch()
     }
 
-    IpcHandler {
+    K4.Ipc {
         target: "k4.launcher"
         function toggle(): void { self.toggle() }
         function install(q: string): void { self.openPackageSearch(q) }

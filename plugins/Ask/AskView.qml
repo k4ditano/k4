@@ -1,7 +1,7 @@
 import QtQuick
 import "../../services"
 import QtQuick.Layouts
-import Quickshell
+import K4 as K4
 import "../../core"
 
 FadeIn {
@@ -340,7 +340,7 @@ FadeIn {
                         text: messageRow.modelData.text.length > 0 ? messageRow.modelData.text : "…"
 
                         onLinkActivated: function (enlace) {
-                            Quickshell.execDetached(["xdg-open", enlace])
+                            K4.Sistema.lanzar(["xdg-open", enlace])
                         }
 
                         // el cursor avisa de que el enlace se puede pulsar

@@ -10,8 +10,7 @@
 //  línea `require`, y todo vuelve a estar como estaba.
 
 import QtQuick
-import Quickshell
-import Quickshell.Io
+import K4 as K4
 import "../../core"
 import "../../services"
 
@@ -39,10 +38,10 @@ K4Plugin {
     hoverExitDelay: 1000
     onHoverTimedOut: close()
 
-    readonly property string hyprDir: Quickshell.env("HOME") + "/.config/hypr"
+    readonly property string hyprDir: K4.Sistema.entorno("HOME") + "/.config/hypr"
     readonly property string themeFile: hyprDir + "/config/k4-theme.lua"
     readonly property string entryFile: hyprDir + "/hyprland.lua"
-    readonly property string stateFile: Quickshell.env("HOME") + "/.local/state/k4/hyprtheme.json"
+    readonly property string stateFile: K4.Sistema.entorno("HOME") + "/.local/state/k4/hyprtheme.json"
 
     // ── ajustes ───────────────────────────────────────────────────
     property string preset: "cachyos"
@@ -225,9 +224,9 @@ K4Plugin {
     property var wallpapers: []
 
     readonly property var wallDirs: [
-        Quickshell.env("HOME") + "/Imágenes",
-        Quickshell.env("HOME") + "/Pictures",
-        Quickshell.env("HOME") + "/Descargas",
+        K4.Sistema.entorno("HOME") + "/Imágenes",
+        K4.Sistema.entorno("HOME") + "/Pictures",
+        K4.Sistema.entorno("HOME") + "/Descargas",
         "/usr/share/wallpapers",
         "/usr/share/backgrounds"
     ]
@@ -240,10 +239,10 @@ K4Plugin {
 
         if (wallTool === "swaybg") {
             // no sabe recargar: se mata y se levanta otro
-            Quickshell.execDetached(["sh", "-c",
+            K4.Sistema.lanzar(["sh", "-c",
                 "pkill -x swaybg; swaybg -i " + JSON.stringify(path) + " -m fill >/dev/null 2>&1 &"])
         } else {
-            Quickshell.execDetached(["sh", "-c",
+            K4.Sistema.lanzar(["sh", "-c",
                 wallTool + " img " + JSON.stringify(path)
                 + " --transition-type grow --transition-fps 60 >/dev/null 2>&1"
                 + " || { " + wallTool + "-daemon >/dev/null 2>&1 & sleep 1; "
@@ -284,48 +283,44 @@ K4Plugin {
     property var panel: null
 
     // ── archivos ──────────────────────────────────────────────────
-    FileView { id: themeView; path: self.themeFile }
-    FileView { id: entryView; path: self.entryFile; blockLoading: true }
-    FileView { id: stateView; path: self.stateFile; blockLoading: true }
+    K4.Fichero { id: themeView; path: self.themeFile }
+    K4.Fichero { id: entryView; path: self.entryFile; blockLoading: true }
+    K4.Fichero { id: stateView; path: self.stateFile; blockLoading: true }
 
-    Process { id: evalProcess }
+    K4.Process { id: evalProcess }
 
-    Process {
+    K4.Process {
         // el estado vive en ~/.local/state/k4, que puede no existir aún
-        command: ["mkdir", "-p", Quickshell.env("HOME") + "/.local/state/k4"]
+        command: ["mkdir", "-p", K4.Paths.estado]
         running: true
-        onExited: self.loadState()
+        onTerminado: self.loadState()
     }
 
-    Process {
+    K4.Process {
         id: toolScan
         command: ["sh", "-c",
             "command -v awww || command -v swww || command -v swaybg || true"]
         running: true
 
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const found = this.text.trim().split("\n")[0]
-                if (found.length === 0)
-                    return
-                self.wallTool = found.substring(found.lastIndexOf("/") + 1)
-            }
+        onSalida: function (texto) {
+            const found = texto.trim().split("\n")[0]
+            if (found.length === 0)
+                return
+            self.wallTool = found.substring(found.lastIndexOf("/") + 1)
         }
     }
 
-    Process {
+    K4.Process {
         id: wallScan
 
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const found = this.text.trim().split("\n").filter(function (p) { return p.length > 0 })
-                found.sort()
-                self.wallpapers = found.slice(0, 120)
-            }
+        onSalida: function (texto) {
+            const found = texto.trim().split("\n").filter(function (p) { return p.length > 0 })
+            found.sort()
+            self.wallpapers = found.slice(0, 120)
         }
     }
 
-    IpcHandler {
+    K4.Ipc {
         target: "k4.theme"
         function toggle(): void { self.toggle() }
         function close(): void { self.close() }

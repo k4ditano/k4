@@ -1,0 +1,24 @@
+#!/bin/sh
+#  Arranca k4.
+#
+#  Existe por una razón concreta: la API de plugins vive en un módulo QML
+#  llamado K4, y para que un plugin pueda escribir `import K4` a secas hace
+#  falta que su carpeta padre esté en el import path del motor. Quickshell no
+#  ofrece ni una opción de línea de mandatos ni una API para añadirla —
+#  comprobado—, así que solo queda la variable de entorno.
+#
+#  Ponerla aquí y no en la configuración del compositor no es manía: quien
+#  clone k4 no tiene por qué saber que existe. Aquí va con el proyecto.
+#
+#      exec-once = ~/.config/quickshell/k4/arrancar
+#
+#  Cualquier argumento se le pasa tal cual a quickshell.
+
+raiz=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+# El módulo se llama K4 y vive en api/K4, así que lo que se añade es api/.
+# Se antepone a lo que ya hubiera, sin pisarlo.
+QML_IMPORT_PATH="$raiz/api${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}"
+export QML_IMPORT_PATH
+
+exec quickshell -p "$raiz/shell.qml" "$@"

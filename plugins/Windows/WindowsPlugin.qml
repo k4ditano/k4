@@ -5,8 +5,7 @@
 //  lleva a la anterior, que es el 90% de las veces lo que quieres.
 
 import QtQuick
-import Quickshell
-import Quickshell.Io
+import K4 as K4
 import "../../core"
 import "../../services"
 
@@ -78,7 +77,7 @@ K4Plugin {
 
     onCountChanged: if (index >= count) index = Math.max(0, count - 1)
 
-    IpcHandler {
+    K4.Ipc {
         target: "k4.windows"
 
         function toggle(): void { self.toggle() }

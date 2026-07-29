@@ -1,8 +1,7 @@
 import QtQuick
 import "../../services"
 import QtQuick.Layouts
-import Quickshell
-import Quickshell.Widgets
+import K4 as K4
 import "../../core"
 
 FadeIn {
@@ -167,13 +166,13 @@ FadeIn {
                     anchors.rightMargin: 12
                     spacing: 12
 
-                    IconImage {
+                    K4.Icono {
                         Layout.preferredWidth: 26
                         Layout.preferredHeight: 26
                         Layout.alignment: Qt.AlignVCenter
                         visible: appRow.modelData.isInstall !== true
                         source: appRow.modelData.icon.length > 0
-                            ? Quickshell.iconPath(appRow.modelData.icon, true) : ""
+                            ? K4.Apps.icono(appRow.modelData.icon, true) : ""
                     }
 
                     IconGlyph {

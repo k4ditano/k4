@@ -1,0 +1,18 @@
+#  La API de plugins de k4.
+#
+#  Un plugin importa QtQuick y K4. Nada más. Todo lo que aquí se ofrece está
+#  envuelto a propósito para que el día que exista un host de Windows o Mac se
+#  reimplemente esta carpeta y los plugins no se enteren.
+#
+#  Los servicios internos de services/ SÍ pueden usar Quickshell directamente:
+#  son implementación, no superficie pública. La regla es para plugins/.
+
+module K4
+
+singleton Paths 1.0 Paths.qml
+Process 1.0 Process.qml
+Ipc 1.0 Ipc.qml
+singleton Sistema 1.0 Sistema.qml
+singleton Apps 1.0 Apps.qml
+Fichero 1.0 Fichero.qml
+Icono 1.0 Icono.qml

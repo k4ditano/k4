@@ -5,8 +5,7 @@
 //  que hace que una barra se gane fama de pesada.
 
 import QtQuick
-import Quickshell
-import Quickshell.Io
+import K4 as K4
 import "../../core"
 import "../../services"
 
@@ -58,7 +57,7 @@ K4Plugin {
         onTriggered: self.closing = false
     }
 
-    IpcHandler {
+    K4.Ipc {
         target: "k4.system"
 
         function toggle(): void { self.toggle() }

@@ -6,7 +6,7 @@
 //  desentonaría al lado de la píldora.
 
 import QtQuick
-import Quickshell.Io
+import K4 as K4
 import "../../core"
 import "../../services"
 
@@ -59,7 +59,7 @@ K4Plugin {
         }
     }
 
-    IpcHandler {
+    K4.Ipc {
         target: "k4.tray"
         function toggle(): void { self.toggle() }
         function close(): void { self.close() }
