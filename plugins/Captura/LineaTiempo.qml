@@ -173,12 +173,16 @@ RowLayout {
                 //  y por cuántas si lleva varias. Vacía, por su número — decía
                 //  «0 cosas», que es verdad y no sirve para nada.
                 texto: modelData.capas.length === 1
-                    ? modelData.capas[0].ruta.split("/").pop()
+                    ? Editor.nombreCapa(modelData.capas[0])
                     : (modelData.capas.length === 0
                        ? Idioma.t("Capa ") + modelData.banda
                        : Idioma.f(Idioma.t("%1 cosas"),
                                   String(modelData.capas.length)))
-                glifo: 0x000F02E9      // md-image
+                //  El icono dice de qué es la banda cuando lleva una sola cosa.
+                glifo: modelData.capas.length === 1
+                       && modelData.capas[0].tipo === "texto"
+                    ? 0x000F0284      // md-format_text
+                    : 0x000F02E9      // md-image
                 tono: Theme.green
                 elegida: Editor.capaSel !== null
                     && Editor.bandaDe(Editor.capaSel) === modelData.banda

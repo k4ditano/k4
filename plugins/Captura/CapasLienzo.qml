@@ -20,6 +20,17 @@ Item {
     // El instante de la línea, para saber qué capas tocan ahora.
     property real segundos: 0
 
+    //  La tipografía de los rótulos, del mismo fichero que usa ffmpeg.
+    //
+    //  Cargada por ruta y no por nombre de familia: pedir «Adwaita Sans» al
+    //  sistema puede devolver otra versión o una sustituta, y entonces el ancho
+    //  del rótulo en la previa no sería el del render. El fichero es el mismo que
+    //  nombra `FUENTE` en tools/editar.py.
+    FontLoader {
+        id: fuenteRotulos
+        source: "file:///usr/share/fonts/Adwaita/AdwaitaSans-Regular.ttf"
+    }
+
     Repeater {
         //  En el orden de APILADO, no en el de la lista.
         //
@@ -54,23 +65,43 @@ Item {
             readonly property real ey: moviendo ? vY : modelData.y
             readonly property real eEscala: escalando ? vEscala : modelData.escala
 
+            readonly property bool esTexto: modelData.tipo === "texto"
+
             //  La proporción de la imagen la trae la propia imagen. ffmpeg
             //  escala con `-1` de alto, o sea conservándola, así que aquí hay
             //  que hacer lo mismo o la previa mentiría.
             readonly property real relacion: imagen.implicitWidth > 0
                 ? imagen.implicitHeight / imagen.implicitWidth : 0.5625
 
-            width: Math.max(8, lienzo.width * eEscala)
-            height: width * relacion
+            //  Un rótulo mide lo que mida el texto; una imagen, lo que se le diga.
+            //
+            //  Y se coloca con la MISMA fórmula que `drawtext`: el centro pedido
+            //  menos medio alto del texto. Ojo, «medio alto del texto» es alto de
+            //  línea —subida más bajada—, no la caja de los trazos visibles, así
+            //  que el rótulo se ve un poco por encima del centro pedido. Es un
+            //  detalle raro, pero copiarlo es lo que hace que la previa coincida:
+            //  medido, ffmpeg deja el centro visible en 0,837 cuando se le pide
+            //  0,85, y aquí sale lo mismo por construcción.
+            width: esTexto ? rotulo.implicitWidth + relleno * 2
+                           : Math.max(8, lienzo.width * eEscala)
+            height: esTexto ? rotulo.implicitHeight + relleno * 2
+                            : width * relacion
             x: ex * lienzo.width - width / 2
             y: ey * lienzo.height - height / 2
+
+            // El mismo `boxborderw` que le pasa el grafo a ffmpeg.
+            readonly property real tamTexto: lienzo.height
+                * (modelData.tam !== undefined ? modelData.tam : 0.06)
+            readonly property real relleno: esTexto && modelData.fondo > 0.001
+                ? Math.max(2, Math.round(tamTexto * 0.28)) : 0
 
             opacity: modelData.opacidad !== undefined ? modelData.opacidad : 1
 
             Image {
                 id: imagen
                 anchors.fill: parent
-                source: capa.modelData.ruta.length > 0
+                visible: !capa.esTexto
+                source: !capa.esTexto && capa.modelData.ruta
                     ? "file://" + capa.modelData.ruta : ""
                 fillMode: Image.Stretch
                 // El PNG llega a menudo mucho más grande que el hueco; sin esto
@@ -78,6 +109,30 @@ Item {
                 sourceSize.width: Math.max(64, width)
                 smooth: true
                 asynchronous: true
+            }
+
+            // ── el rótulo ─────────────────────────────────────────
+            Rectangle {
+                anchors.fill: parent
+                visible: capa.esTexto && capa.modelData.fondo > 0.001
+                color: capa.modelData.colorFondo || "#000000"
+                opacity: capa.modelData.fondo !== undefined
+                    ? capa.modelData.fondo : 0.5
+            }
+
+            Text {
+                id: rotulo
+                visible: capa.esTexto
+                x: capa.relleno
+                y: capa.relleno
+                text: capa.modelData.texto || ""
+                color: capa.modelData.color || "#ffffff"
+                //  La misma tipografía que le pasa el grafo a ffmpeg, cargada del
+                //  mismo fichero. Sin esto el ancho del rótulo en la previa no
+                //  tendría por qué parecerse al del render.
+                font.family: fuenteRotulos.name
+                font.pixelSize: Math.max(6, capa.tamTexto)
+                renderType: Text.NativeRendering
             }
 
             // ── el marco de selección ─────────────────────────────
@@ -147,9 +202,18 @@ Item {
 
                 function enLienzo(ev) { return mapToItem(lienzo, ev.x, ev.y).x }
 
+                //  Una imagen se escala por el ancho y un rótulo por el cuerpo de
+                //  letra. Es el mismo gesto, pero lo que cambia no es lo mismo:
+                //  `escala` va en fracción del ANCHO del fotograma y `tam` en
+                //  fracción del ALTO, porque así lo trata cada filtro.
+                readonly property real actual: capa.esTexto
+                    ? capa.modelData.tam : capa.modelData.escala
+                readonly property real referencia: capa.esTexto
+                    ? lienzo.height : lienzo.width
+
                 onPressed: function (ev) {
                     xIni = enLienzo(ev)
-                    capa.vEscala = capa.modelData.escala
+                    capa.vEscala = actual
                     capa.escalando = true
                 }
 
@@ -160,12 +224,13 @@ Item {
                     //  capa: por eso el doble. Arrastrar la esquina un píxel
                     //  aleja el borde un píxel, y el de enfrente otro.
                     const d = (enLienzo(ev) - xIni) * 2
-                    capa.vEscala = Math.max(0.02, Math.min(2,
-                        capa.modelData.escala + d / Math.max(1, lienzo.width)))
+                    capa.vEscala = Math.max(0.01, Math.min(2,
+                        actual + d / Math.max(1, referencia)))
                 }
 
                 onReleased: {
-                    Editor.fijarCapa(capa.modelData.id, { escala: capa.vEscala })
+                    Editor.fijarCapa(capa.modelData.id, capa.esTexto
+                        ? { tam: capa.vEscala } : { escala: capa.vEscala })
                     capa.escalando = false
                 }
 

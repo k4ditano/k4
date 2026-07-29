@@ -323,6 +323,50 @@ Singleton {
         return nueva.id
     }
 
+    //  Un rótulo.
+    //
+    //  Nace con texto de relleno y no vacío: una capa invisible en un sitio que
+    //  no sabes es imposible de encontrar, y lo primero que se hace es
+    //  reescribirlo de todas formas.
+    function crearTexto(t0) {
+        const a = Math.max(0, Math.min(t0, Math.max(0, duracionLinea - 1)))
+        const b = Math.min(duracionLinea, a + 3)
+        const nueva = {
+            id: nuevoIdCapa(),
+            tipo: "texto",
+            texto: Idioma.t("Escribe aquí"),
+            t0: a,
+            t1: b,
+            banda: proximaEnBandaNueva ? cuantasBandas + 1 : bandaLibre(a, b),
+            // Abajo y centrado, que es donde va un rótulo.
+            x: 0.5, y: 0.85, tam: 0.06,
+            color: "#ffffff",
+            //  Con caja detrás por defecto. Un rótulo blanco sobre un vídeo
+            //  claro no se lee, y descubrirlo al renderizar es tarde.
+            fondo: 0.5, colorFondo: "#000000"
+        }
+        capas = capas.concat([nueva])
+        proximaEnBandaNueva = false
+        persistir()
+        seleccionar("capa", nueva.id)
+        return nueva.id
+    }
+
+    //  Cómo se llama una capa en una lista.
+    //
+    //  Una imagen por su fichero y un rótulo por lo que dice: es lo que
+    //  distingue dos rótulos, y el nombre de un fichero que no existe no
+    //  distinguiría nada.
+    function nombreCapa(c) {
+        if (!c)
+            return ""
+        if (c.tipo === "texto") {
+            const t = String(c.texto || "").trim()
+            return t.length > 0 ? t : Idioma.t("Rótulo")
+        }
+        return String(c.ruta || "").split("/").pop()
+    }
+
     function fijarCapa(id, campos) {
         capas = capas.map(function (c) {
             if (c.id !== id)

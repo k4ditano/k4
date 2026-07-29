@@ -154,7 +154,8 @@ Item {
             return Idioma.t("Trozo ") + (Editor.tramoDe(Editor.idSel) + 1)
                    + "/" + Editor.tramos.length
         if (Editor.capaSel)
-            return Idioma.t("Imagen")
+            return Editor.capaSel.tipo === "texto" ? Idioma.t("Rótulo")
+                                                   : Idioma.t("Imagen")
         if (momento)
             return Idioma.t("Momento ") + momento.id
         return Idioma.t("Sin selección")
@@ -166,7 +167,10 @@ Item {
                    + Editor.clipSel.hasta.toFixed(1) + " s "
                    + Idioma.t("del original")
         if (Editor.capaSel)
-            return Editor.capaSel.ruta.split("/").pop()
+            return Editor.capaSel.tipo === "texto"
+                ? Editor.capaSel.t0.toFixed(1) + " – "
+                  + Editor.capaSel.t1.toFixed(1) + " s"
+                : Editor.capaSel.ruta.split("/").pop()
         if (momento)
             return momento.t0.toFixed(1) + " – " + momento.t1.toFixed(1) + " s"
                    + "   ·   ×" + momento.z.toFixed(1)
@@ -439,8 +443,63 @@ Item {
                     Layout.topMargin: 6
                     spacing: 4
 
+                    //  Lo que dice el rótulo.
+                    //
+                    //  Aquí y no editando encima del vídeo: sobre el vídeo el
+                    //  texto puede ser diminuto o quedar sobre algo del mismo
+                    //  color, y escribir a ciegas en un sitio así no es escribir.
                     IslandLabel {
-                        text: Idioma.t("Opacidad")
+                        visible: Editor.capaSel && Editor.capaSel.tipo === "texto"
+                        text: Idioma.t("Texto")
+                        color: Theme.dim
+                        font.pixelSize: 9
+                        font.capitalization: Font.AllUppercase
+                        font.weight: Font.DemiBold
+                    }
+
+                    Rectangle {
+                        visible: Editor.capaSel && Editor.capaSel.tipo === "texto"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 30
+                        radius: 8
+                        color: Theme.surface
+                        border.width: 1
+                        border.color: campoTexto.activeFocus
+                            ? Theme.blue : Qt.rgba(1, 1, 1, 0.1)
+
+                        TextInput {
+                            id: campoTexto
+                            anchors.fill: parent
+                            anchors.leftMargin: 9
+                            anchors.rightMargin: 9
+                            verticalAlignment: TextInput.AlignVCenter
+                            color: Theme.ink
+                            font.pixelSize: 12
+                            font.family: Theme.uiFont
+                            selectByMouse: true
+                            selectionColor: Theme.blue
+                            clip: true
+
+                            //  El texto se lee del plan y se escribe al plan, sin
+                            //  copia intermedia: `text` se ata a la capa elegida
+                            //  y cada tecla la guarda con el rebote de siempre.
+                            //  Reasignarlo desde fuera mientras escribes movería
+                            //  el cursor al final, así que solo se relee cuando
+                            //  cambia de capa.
+                            property int deQuien: Editor.idSel
+                            onDeQuienChanged: text = Editor.capaSel
+                                ? (Editor.capaSel.texto || "") : ""
+                            Component.onCompleted: text = Editor.capaSel
+                                ? (Editor.capaSel.texto || "") : ""
+
+                            onTextEdited: Editor.fijarCapa(Editor.idSel,
+                                                           { texto: text })
+                        }
+                    }
+
+                    IslandLabel {
+                        text: Editor.capaSel && Editor.capaSel.tipo === "texto"
+                            ? Idioma.t("Fondo") : Idioma.t("Opacidad")
                         color: Theme.dim
                         font.pixelSize: 9
                         font.capitalization: Font.AllUppercase
@@ -459,7 +518,9 @@ Item {
 
                             Rectangle {
                                 width: parent.width * (Editor.capaSel
-                                    ? Editor.capaSel.opacidad : 1)
+                                    ? (Editor.capaSel.tipo === "texto"
+                                       ? Editor.capaSel.fondo
+                                       : Editor.capaSel.opacidad) : 1)
                                 height: parent.height
                                 radius: parent.radius
                                 color: Theme.green
@@ -474,8 +535,15 @@ Item {
                                 function poner(x) {
                                     const v = Math.max(0, Math.min(1,
                                         x / Math.max(1, width)))
+                                    const q = Math.round(v * 20) / 20
+                                    //  En un rótulo lo que se gradúa es la caja
+                                    //  de detrás: el texto en sí translúcido no
+                                    //  se lee, y bajarle la opacidad es lo que
+                                    //  uno quiere para que no tape el vídeo.
                                     Editor.fijarCapa(Editor.idSel,
-                                        { opacidad: Math.round(v * 20) / 20 })
+                                        Editor.capaSel
+                                        && Editor.capaSel.tipo === "texto"
+                                            ? { fondo: q } : { opacidad: q })
                                 }
                                 onPressed: function (ev) { poner(ev.x) }
                                 onPositionChanged: function (ev) {
@@ -488,7 +556,9 @@ Item {
                             Layout.preferredWidth: 34
                             horizontalAlignment: Text.AlignRight
                             text: Math.round((Editor.capaSel
-                                ? Editor.capaSel.opacidad : 1) * 100) + "%"
+                                ? (Editor.capaSel.tipo === "texto"
+                                   ? Editor.capaSel.fondo
+                                   : Editor.capaSel.opacidad) : 1) * 100) + "%"
                             color: Theme.dim
                             font.pixelSize: 9
                         }
@@ -538,7 +608,10 @@ Item {
                             }
 
                             IslandLabel {
-                                text: Idioma.t("Quitar la imagen")
+                                text: Editor.capaSel
+                                      && Editor.capaSel.tipo === "texto"
+                                    ? Idioma.t("Quitar el rótulo")
+                                    : Idioma.t("Quitar la imagen")
                                 font.pixelSize: 10
                             }
                         }
@@ -932,6 +1005,45 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: view.plugin.pedirImagen(view.segundos)
+                }
+            }
+
+            //  Un rótulo donde esté el cabezal.
+            //
+            //  Sin diálogo ninguno: un rótulo no necesita fichero, así que
+            //  aparece ya escribible con texto de relleno y se cambia en la ficha.
+            Rectangle {
+                Layout.preferredWidth: rotuloTexto.implicitWidth + 26
+                Layout.preferredHeight: 26
+                radius: 13
+                color: rotuloRaton.containsMouse ? Theme.surfaceHi : Theme.surface
+                border.width: 1
+                border.color: Qt.rgba(1, 1, 1, 0.14)
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 5
+
+                    IconGlyph {
+                        text: String.fromCodePoint(0xF0284)   // md-format_text
+                        color: Theme.ink
+                        font.pixelSize: 13
+                    }
+
+                    IslandLabel {
+                        id: rotuloTexto
+                        text: Idioma.t("Añadir texto")
+                        font.pixelSize: 10
+                        font.weight: Font.DemiBold
+                    }
+                }
+
+                MouseArea {
+                    id: rotuloRaton
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Editor.crearTexto(view.segundos)
                 }
             }
 

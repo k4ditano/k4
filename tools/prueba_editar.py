@@ -348,6 +348,78 @@ def prueba_capa_sin_fichero():
     igual("pero el vídeo sale igual", "[zoom]format=yuv420p[v]" in texto, True)
 
 
+# ── los rótulos ───────────────────────────────────────────────────
+def rotulo(**campos):
+    d = {"id": 1, "tipo": "texto", "banda": 1, "t0": 1.0, "t1": 4.0,
+         "texto": 'Ñandú: 50% "prueba" con : dos puntos',
+         "x": 0.5, "y": 0.85, "tam": 0.09,
+         "color": "#ffffff", "fondo": 0.0, "colorFondo": "#000000"}
+    d.update(campos)
+    return d
+
+
+def prueba_rotulo_el_texto_va_a_un_fichero():
+    """Nunca `text=`: lo escribe el usuario y un `:` rompería el grafo entero.
+
+    No el rótulo: el GRAFO, o sea el render completo. Con el texto en un fichero
+    su contenido no pasa por el parseo de filtros y da igual lo que lleve.
+    """
+    texto, _ = editar.grafo(con_capas([rotulo()]), carpeta=BORRADOR)
+    igual("va por textfile", "textfile=" in texto, True)
+    igual("y no por text=", ":text=" in texto, False)
+    igual("el texto no aparece en el grafo",
+          "Ñandú" in texto, False)
+
+    guardado = open(os.path.join(BORRADOR, "texto-1.txt")).read()
+    igual("está entero en su fichero",
+          guardado, 'Ñandú: 50% "prueba" con : dos puntos')
+
+
+def prueba_rotulo_sin_expansion():
+    """`drawtext` se cree que el texto lleva formato y se come los `%`.
+
+    Sin `expansion=none` sale «Stray %» por consola y el rótulo a medias. Pasó.
+    """
+    texto, _ = editar.grafo(con_capas([rotulo()]), carpeta=BORRADOR)
+    igual("expansion=none puesto", "expansion=none" in texto, True)
+
+
+def prueba_rotulo_tamano_y_centro():
+    texto, _ = editar.grafo(con_capas([rotulo(tam=0.09, x=0.25, y=0.7)]),
+                            carpeta=BORRADOR)
+    # 0,09 del ALTO: 1080 * 0,09 = 97
+    igual("el cuerpo va en fracción del alto", "fontsize=97" in texto, True)
+    #  Centrado como las demás capas. Ojo: `text_h` de drawtext es alto de línea,
+    #  así que el centro VISIBLE queda algo más arriba; la previa copia la misma
+    #  fórmula para que coincida.
+    igual("y se coloca por el centro",
+          "x=0.2500*w-text_w/2:y=0.7000*h-text_h/2" in texto, True)
+
+
+def prueba_rotulo_caja():
+    igual("sin fondo no hay caja",
+          "box=1" in editar.grafo(con_capas([rotulo(fondo=0)]),
+                                  carpeta=BORRADOR)[0], False)
+    texto, _ = editar.grafo(con_capas([rotulo(fondo=0.55)]), carpeta=BORRADOR)
+    igual("con fondo sí", "box=1" in texto, True)
+    igual("y con su color y alfa", "boxcolor=0x000000@0.550" in texto, True)
+
+
+def prueba_color_a_ffmpeg():
+    igual("de #rrggbb", editar.color_ffmpeg("#ff2d55"), "0xff2d55@1.000")
+    # QML puede dar ocho dígitos, y ahí el alfa va DELANTE.
+    igual("de #aarrggbb", editar.color_ffmpeg("#80ff2d55"), "0xff2d55@0.502")
+    igual("con opacidad aparte",
+          editar.color_ffmpeg("#000000", 0.55), "0x000000@0.550")
+
+
+def prueba_citar():
+    """Las rutas salen del nombre del vídeo, que lo pone el usuario."""
+    igual("comillas simples", editar.citar("/tmp/a.txt"), "'/tmp/a.txt'")
+    igual("una comilla dentro se escapa",
+          editar.citar("/tmp/o'brien.txt"), r"'/tmp/o\'brien.txt'")
+
+
 # ── el zoom, en tiempo de línea ───────────────────────────────────
 def prueba_zoom_en_tiempo_de_linea():
     """Un momento colocado en la línea no se mueve al reordenar los trozos.

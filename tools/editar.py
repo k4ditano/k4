@@ -21,7 +21,7 @@ Se usa `zoompan` y no `crop`: en ffmpeg n8.1.2 `crop` ya no tiene la opción
 Los motivos y las claves son en español pero NO son texto para el usuario: el
 QML los traduce con Idioma.t().
 """
-import argparse, json, math, os, subprocess, sys
+import argparse, json, math, os, subprocess, sys, tempfile
 
 # ── el tacto de la cámara ─────────────────────────────────────────
 #
@@ -533,6 +533,80 @@ def rama_audio(i, idx, clip, fuente, dur):
     return lineas
 
 
+#  La fuente de los rótulos.
+#
+#  La misma que usa la interfaz, y por eso está aquí y no en un ajuste: si el
+#  editor midiera el texto con una tipografía y ffmpeg lo dibujara con otra, la
+#  previa mentiría en el ancho de cada rótulo. Es la de Adwaita, que viene con
+#  GNOME y está en cualquier escritorio moderno.
+FUENTE = "/usr/share/fonts/Adwaita/AdwaitaSans-Regular.ttf"
+
+
+def citar(valor):
+    """Un valor para dentro de un filtro de ffmpeg, entre comillas simples.
+
+    El parseo de ffmpeg funciona como el del shell: dentro de comillas simples
+    todo es literal menos la propia comilla. Las rutas las compone el editor a
+    partir del nombre del vídeo, que lo pone el usuario, así que pueden traer
+    cualquier cosa.
+    """
+    return "'" + str(valor).replace("\\", "\\\\").replace("'", r"\'") + "'"
+
+
+def color_ffmpeg(css, opacidad=1.0):
+    """De `#rrggbb` o `#aarrggbb` de QML a lo que entiende ffmpeg.
+
+    ffmpeg quiere `0xRRGGBB@alfa`, con el alfa aparte y en fracción. QML puede
+    dar las dos formas, y la de ocho dígitos lleva el alfa DELANTE.
+    """
+    s = str(css).lstrip("#")
+    if len(s) == 8:
+        opacidad = opacidad * int(s[0:2], 16) / 255.0
+        s = s[2:]
+    if len(s) != 6:
+        s = "ffffff"
+    return "0x%s@%.3f" % (s, max(0.0, min(1.0, opacidad)))
+
+
+def rama_texto(n, capa, ancho, alto, carpeta, entra):
+    """Un rótulo. Devuelve (líneas, etiqueta de salida).
+
+    El texto va a un FICHERO y se le pasa con `textfile`, nunca con `text=`. No
+    es cautela de más: lo escribe el usuario, y un `:` o una comilla dentro de
+    `text=` no rompen el rótulo sino el grafo entero, o sea el render completo.
+    Con un fichero, el contenido no pasa por el parseo de filtros.
+    """
+    ruta = os.path.join(carpeta, "texto-%d.txt" % capa["id"])
+    with open(ruta, "w") as f:
+        f.write(capa.get("texto", ""))
+
+    tam = max(8, int(round(alto * float(capa.get("tam", 0.06)))))
+    #  `expansion=none`: sin esto `drawtext` se cree que el texto lleva formato y
+    #  un «50 %» acaba en «Stray %» y en un rótulo a medias. Probado.
+    partes = ["drawtext=fontfile=%s" % citar(FUENTE),
+              "textfile=%s" % citar(ruta),
+              "expansion=none",
+              "fontsize=%d" % tam,
+              "fontcolor=%s" % color_ffmpeg(capa.get("color", "#ffffff")),
+              #  Centrado en (x, y) como las demás capas: `text_w` y `text_h` son
+              #  lo que mide el rótulo ya compuesto.
+              "x=%.4f*w-text_w/2" % float(capa.get("x", 0.5)),
+              "y=%.4f*h-text_h/2" % float(capa.get("y", 0.85)),
+              "enable='between(t,%.4f,%.4f)'"
+              % (float(capa.get("t0", 0)), float(capa.get("t1", 0)))]
+
+    fondo = float(capa.get("fondo", 0.0))
+    if fondo > 0.001:
+        # Una caja detrás, para que el texto se lea sobre cualquier cosa.
+        partes += ["box=1",
+                   "boxcolor=%s" % color_ffmpeg(capa.get("colorFondo", "#000000"),
+                                                fondo),
+                   "boxborderw=%d" % max(2, int(round(tam * 0.28)))]
+
+    sale = "ov%d" % n
+    return ["[%s]%s[%s]" % (entra, ":".join(partes), sale)], sale
+
+
 def rama_capa(n, idx, capa, ancho, alto, entra):
     """Una capa encima del vídeo. Devuelve (líneas, etiqueta de salida).
 
@@ -578,8 +652,12 @@ def rama_capa(n, idx, capa, ancho, alto, entra):
     return lineas, sale
 
 
-def grafo(plan, sin_audio=False):
+def grafo(plan, sin_audio=False, carpeta=None):
     """El filter_complex entero. Devuelve (texto, nodos de la cámara).
+
+    `carpeta` es dónde dejar los ficheros que necesita el grafo —de momento el
+    texto de los rótulos—. Si no se da, uno temporal: así se puede pedir un grafo
+    para mirarlo sin ensuciar nada.
 
     `sin_audio` es para sacar un fotograma suelto: en un grafo TODA etiqueta que
     se produce hay que consumirla, así que dejar `[a]` colgando sin mapearla no
@@ -591,6 +669,9 @@ def grafo(plan, sin_audio=False):
     tramos = mapa(plan)
     _, idx_de, idx_capa = entradas(plan)
     norma = norma_video(ancho, alto, fps)
+    if carpeta is None:
+        carpeta = tempfile.mkdtemp(prefix="k4-grafo-")
+    os.makedirs(carpeta, exist_ok=True)
 
     lineas = []
 
@@ -620,7 +701,15 @@ def grafo(plan, sin_audio=False):
 
     # ── 4. las capas, después del zoom para que no se amplíen con él
     entra = "zoom"
-    for n, capa in enumerate(capas_de(plan, "imagen")):
+    for n, capa in enumerate(capas_de(plan)):
+        tipo = capa.get("tipo")
+        if tipo == "texto":
+            nuevas, entra = rama_texto(n, capa, ancho, alto, carpeta, entra)
+            lineas += nuevas
+            continue
+        if tipo != "imagen":
+            # El audio y el vídeo dentro de vídeo van por su cuenta.
+            continue
         if not capa.get("ruta") or not os.path.exists(capa["ruta"]):
             #  Una capa cuyo fichero ya no está no puede tumbar el render: se
             #  salta y el resto sale. Borrar un PNG del escritorio meses después
@@ -881,12 +970,12 @@ def escribir_grafo(plan, ruta_plan, sin_audio=False, nombre="grafo.txt"):
     De regalo, el grafo se queda en disco: cuando un render falle, ahí está lo
     que se le pidió a ffmpeg, tal cual.
     """
-    texto, nodos = grafo(plan, sin_audio)
     #  El plan es `<vídeo>.k4.json` y su carpeta adjunta es `<vídeo>.k4/`, así
     #  que solo hay que quitarle el `.json`. Con `splitext` + ".k4" salía
     #  `<vídeo>.k4.k4`, que funcionaba pero era un sitio que nadie esperaba.
     carpeta = ruta_plan[:-5] if ruta_plan.endswith(".json") else ruta_plan + ".k4"
     os.makedirs(carpeta, exist_ok=True)
+    texto, nodos = grafo(plan, sin_audio, carpeta)
     ruta = os.path.join(carpeta, nombre)
     with open(ruta, "w") as f:
         f.write(texto)
