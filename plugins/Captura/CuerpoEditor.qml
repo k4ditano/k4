@@ -191,7 +191,9 @@ Item {
             }
 
             IslandLabel {
-                text: Idioma.f(Idioma.t("%1 momentos de zoom"),
+                text: Captura.momentos.length === 0
+                    ? Idioma.t("Editor")
+                    : Idioma.f(Idioma.t("%1 momentos de zoom"),
                                String(Captura.momentos.length))
                 color: Theme.ink
                 font.pixelSize: 13
@@ -732,9 +734,8 @@ Item {
                 Layout.preferredWidth: renderTexto.implicitWidth + 24
                 Layout.preferredHeight: 26
                 radius: 13
-                color: Captura.momentos.length === 0 ? Theme.surface
-                    : (renderRaton.containsMouse ? Qt.lighter(Theme.blue, 1.15) : Theme.blue)
-                opacity: Captura.momentos.length === 0 ? 0.4 : 1
+                color: renderRaton.containsMouse
+                    ? Qt.lighter(Theme.blue, 1.15) : Theme.blue
 
                 IslandLabel {
                     id: renderTexto
@@ -749,7 +750,6 @@ Item {
                     id: renderRaton
                     anchors.fill: parent
                     hoverEnabled: true
-                    enabled: Captura.momentos.length > 0
                     cursorShape: Qt.PointingHandCursor
                     onClicked: Captura.renderizar()
                 }

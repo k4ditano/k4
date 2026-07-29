@@ -729,7 +729,7 @@ Singleton {
     }
 
     function renderizar() {
-        if (rutaPlan.length === 0 || momentos.length === 0)
+        if (rutaPlan.length === 0)
             return
         rutaRenderizada = rutaVideo.replace(/\.mp4$/, "-zoom.mp4")
         progreso = 0
@@ -807,11 +807,16 @@ Singleton {
                 captura.altoVideo = d.h || 1080
                 captura.pistasAudio = d.audio || []
                 captura.momentos = d.momentos || []
-                if (captura.momentos.length > 0) {
-                    captura.estado = "editando"
-                    recalcular.restart()
-                    captura.planListo()
-                }
+                //  El editor se abre SIEMPRE, haya momentos o no.
+                //
+                //  Antes solo se abría si el rastro del cursor había propuesto
+                //  alguno, así que una grabación sin clics —enseñar algo sin
+                //  tocar nada, que es media razón para grabar— no se podía ni
+                //  abrir. El zoom es una cosa que se le hace a un vídeo, no el
+                //  motivo de que exista el editor.
+                captura.estado = "editando"
+                recalcular.restart()
+                captura.planListo()
             }
         }
     }
