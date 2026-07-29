@@ -22,6 +22,8 @@ RowLayout {
     property real cabezal: 0
 
     signal saltar(real t)
+    // Añadir algo en una banda nueva encima de todo.
+    signal nuevaCapa()
 
     spacing: 6
 
@@ -74,7 +76,10 @@ RowLayout {
         return r
     }
 
-    readonly property int altoRegla: 13
+    //  La regla mide 20 y no los 13 que ocupan sus marcas: es la fila que en la
+    //  columna de la izquierda lleva el botón de añadir capa, y las dos tienen
+    //  que medir lo mismo o la columna se desalinea de las pistas fila a fila.
+    readonly property int altoRegla: 20
     readonly property int altoClips: 34
     readonly property int altoPista: 26
     readonly property int hueco: 3
@@ -86,15 +91,54 @@ RowLayout {
         Layout.alignment: Qt.AlignTop
         spacing: linea.hueco
 
-        // Hueco a la altura de la regla, para que todo case en horizontal.
-        Item {
+
+        //  Añadir una capa: algo nuevo, encima de todo.
+        //
+        //  Va aquí arriba y no en el pie porque es donde se busca —la columna de
+        //  capas— y porque «encima de todo» se entiende mirando dónde está el
+        //  botón. El de abajo sigue existiendo y coloca donde haya hueco.
+        Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: linea.altoRegla
+            radius: 6
+            color: nuevaRaton.containsMouse ? Theme.surfaceHi : "transparent"
+            border.width: 1
+            border.color: nuevaRaton.containsMouse
+                ? Qt.rgba(52 / 255, 199 / 255, 89 / 255, 0.5)
+                : Qt.rgba(1, 1, 1, 0.08)
+
+            Row {
+                anchors.centerIn: parent
+                spacing: 4
+
+                IconGlyph {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: String.fromCodePoint(0x000F0415)   // md-plus
+                    color: Theme.green
+                    font.pixelSize: 11
+                }
+
+                IslandLabel {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Idioma.t("Capa")
+                    color: Theme.muted
+                    font.pixelSize: 9
+                }
+            }
+
+            MouseArea {
+                id: nuevaRaton
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: linea.nuevaCapa()
+            }
         }
 
         CabeceraPista {
             Layout.fillWidth: true
             Layout.preferredHeight: linea.altoClips
+            alto: linea.altoClips
             texto: Idioma.t("Vídeo")
             glifo: 0x000F0567          // md-video
             tono: Theme.blue
@@ -103,6 +147,7 @@ RowLayout {
         CabeceraPista {
             Layout.fillWidth: true
             Layout.preferredHeight: linea.altoPista
+            alto: linea.altoPista
             texto: Idioma.t("Zoom")
             glifo: 0x000F1276          // md-magnify_scan
             tono: Theme.blue
@@ -117,34 +162,37 @@ RowLayout {
 
                 Layout.fillWidth: true
                 Layout.preferredHeight: linea.altoPista
+                alto: linea.altoPista
 
                 //  Cómo se llama una banda: por lo que lleva si lleva una cosa,
                 //  y por cuántas si lleva varias. Poner «Capa 2» a secas cuando
                 //  dentro hay un logo obliga a pinchar para saber qué es.
                 texto: modelData.capas.length === 1
                     ? modelData.capas[0].ruta.split("/").pop()
-                    : (modelData.capas.length === 0
-                       ? Idioma.t("Capa ") + modelData.banda
-                       : Idioma.f(Idioma.t("%1 cosas"),
-                                  String(modelData.capas.length)))
+                    : Idioma.f(Idioma.t("%1 cosas"),
+                               String(modelData.capas.length))
                 glifo: 0x000F02E9      // md-image
                 tono: Theme.green
                 elegida: Editor.capaSel !== null
                     && Editor.bandaDe(Editor.capaSel) === modelData.banda
 
-                // La banda de arriba no sube y la de abajo no baja. Quitar una
-                // banda es quitar todo lo que lleve, así que eso no va aquí.
-                conBotones: true
-                conQuitar: false
-                puedeSubir: index > 0
-                puedeBajar: index < linea.bandasVista.length - 1
+                arrastrable: linea.bandasVista.length > 1
 
                 onPulsada: if (modelData.capas.length > 0)
                                Editor.seleccionar("capa", modelData.capas[0].id)
-                //  Subir en la lista es subir de banda en el plan, y la lista va
+
+                //  Bajar en la LISTA es bajar de banda en el plan, y la lista va
                 //  del revés. La vuelta se da aquí y en un solo sitio.
-                onSubir: Editor.moverBanda(modelData.banda, 1)
-                onBajar: Editor.moverBanda(modelData.banda, -1)
+                //
+                //  `index` va de arriba abajo, así que el puesto en la lista al
+                //  que se ha llevado la fila es `index + filas`, y el número de
+                //  banda que le toca es el complementario.
+                onReordenada: function (filas) {
+                    const puesto = Math.max(0, Math.min(
+                        linea.bandasVista.length - 1, index + filas))
+                    Editor.ponerBandaEn(modelData.banda,
+                                        linea.bandasVista.length - puesto)
+                }
             }
         }
     }

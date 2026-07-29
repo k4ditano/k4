@@ -151,8 +151,11 @@ K4Plugin {
     //  cambiar de dueño mientras tanto.
     property real dondeVaLaImagen: 0
 
-    function pedirImagen(t) {
+    function pedirImagen(t, enCapaNueva) {
         dondeVaLaImagen = t
+        // Si se pidió desde el «+ Capa» de la columna, va encima de todo; si se
+        // pidió desde el pie, donde haya hueco.
+        Editor.proximaEnBandaNueva = enCapaNueva === true
         selectorImagen.running = true
     }
 
@@ -396,6 +399,12 @@ K4Plugin {
         //  que haya en el portapapeles. `t` en segundos de la línea; con -1 va
         //  por donde vaya la reproducción.
         function imagen(ruta: string, t: real): void {
+            Editor.crearImagen(ruta, t >= 0 ? t : Editor.posicionEditor)
+        }
+
+        // Lo mismo, pero en una capa nueva encima de todo.
+        function imagenEncima(ruta: string, t: real): void {
+            Editor.proximaEnBandaNueva = true
             Editor.crearImagen(ruta, t >= 0 ? t : Editor.posicionEditor)
         }
 

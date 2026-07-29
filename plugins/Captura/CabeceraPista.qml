@@ -1,9 +1,15 @@
 //  El nombre de una pista, a la izquierda de la línea de tiempo.
 //
 //  Es el sitio donde uno busca qué capas hay y en qué orden van, así que además
-//  de decir el nombre lleva los botones de subir, bajar y quitar. Salen al pasar
-//  el ratón por encima: en veintiséis píxeles de alto, tres botones permanentes
-//  no dejarían sitio para leer de qué capa se trata.
+//  se arrastra para reordenarlas. Había flechas de subir y bajar y sobraban: el
+//  gesto natural al ver una lista de capas es coger una y moverla, no buscar un
+//  botón. Las flechas siguen existiendo para mover un ELEMENTO de banda, que es
+//  otra cosa, y viven en la ficha de la derecha con la selección delante.
+//
+//  Mientras dura el arrastre la fila se despega y sigue al puntero; el hueco al
+//  que va se marca en la lista. El modelo se escribe al soltar, y no antes: como
+//  en los bloques de la línea de tiempo, reordenar destruye los delegados y con
+//  ellos el MouseArea que tenía el agarre.
 
 import QtQuick
 import "../../core"
@@ -16,31 +22,75 @@ Rectangle {
     property color tono: Theme.blue
     property bool elegida: false
 
-    // Las pistas fijas —vídeo y zoom— no se suben ni se bajan ni se quitan.
-    property bool conBotones: false
-    property bool puedeSubir: true
-    property bool puedeBajar: true
-    //  Una banda no se «quita»: lo que se quita es lo que lleva dentro, y eso se
-    //  hace desde la ficha de la derecha, con lo elegido delante.
-    property bool conQuitar: true
+    // Las pistas fijas —vídeo y zoom— no se reordenan.
+    property bool arrastrable: false
+    property int alto: 26
 
     signal pulsada()
-    signal subir()
-    signal bajar()
-    signal quitar()
+    // Cuántas filas se ha movido, hacia arriba en negativo.
+    signal reordenada(int filas)
 
+    property bool arrastrando: false
+    property real deltaY: 0
+
+    y: 0
+    z: arrastrando ? 20 : 0
     radius: 6
     color: elegida ? Qt.rgba(tono.r, tono.g, tono.b, 0.22)
         : (raton.containsMouse ? Theme.surfaceHi : Theme.surface)
+    opacity: arrastrando ? 0.9 : 1
 
     Behavior on color { ColorAnimation { duration: 110 } }
+
+    // Se despega con `transform` y no con `y`: la fila la coloca un layout, y
+    // escribir `y` a mano pelearía con él en cada paso.
+    transform: Translate { y: cabecera.arrastrando ? cabecera.deltaY : 0 }
 
     MouseArea {
         id: raton
         anchors.fill: parent
         hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onClicked: cabecera.pulsada()
+        preventStealing: true
+        cursorShape: cabecera.arrastrable
+            ? (pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
+            : Qt.PointingHandCursor
+
+        property real yIni: 0
+        property bool movido: false
+
+        //  En coordenadas de la ventana, no de la fila: la fila se despega con
+        //  el propio arrastre y en sus coordenadas el puntero se queda quieto.
+        //  Es la misma trampa de los bloques de la línea de tiempo.
+        function fuera(ev) { return mapToItem(null, 0, ev.y).y }
+
+        onPressed: function (ev) {
+            yIni = fuera(ev)
+            movido = false
+        }
+
+        onPositionChanged: function (ev) {
+            if (!pressed || !cabecera.arrastrable)
+                return
+            const d = fuera(ev) - yIni
+            if (!movido && Math.abs(d) < 5)
+                return
+            movido = true
+            cabecera.arrastrando = true
+            cabecera.deltaY = d
+        }
+
+        onReleased: {
+            if (!movido) {
+                cabecera.pulsada()
+                return
+            }
+            // Media fila de margen: pasado el centro de la vecina, se cambia.
+            const filas = Math.round(cabecera.deltaY / (cabecera.alto + 3))
+            cabecera.arrastrando = false
+            cabecera.deltaY = 0
+            if (filas !== 0)
+                cabecera.reordenada(filas)
+        }
     }
 
     Row {
@@ -50,8 +100,6 @@ Rectangle {
         anchors.rightMargin: 6
         anchors.verticalCenter: parent.verticalCenter
         spacing: 5
-        // Al asomar los botones, el nombre se aparta en vez de quedar debajo.
-        visible: !cabecera.conBotones || !raton.containsMouse
 
         IconGlyph {
             anchors.verticalCenter: parent.verticalCenter
@@ -62,7 +110,7 @@ Rectangle {
 
         IslandLabel {
             anchors.verticalCenter: parent.verticalCenter
-            width: parent.width - 22
+            width: parent.width - (cabecera.arrastrable ? 34 : 22)
             text: cabecera.texto
             color: cabecera.elegida ? Theme.ink : Theme.muted
             font.pixelSize: 10
@@ -70,58 +118,15 @@ Rectangle {
         }
     }
 
-    // ── subir, bajar, quitar ──────────────────────────────────────
-    Row {
-        anchors.centerIn: parent
-        spacing: 2
-        visible: cabecera.conBotones && raton.containsMouse
-
-        Repeater {
-            model: cabecera.conQuitar
-                ? [{ glifo: 0x000F005D, accion: "subir"  },   // md-arrow_up
-                   { glifo: 0x000F0045, accion: "bajar"  },   // md-arrow_down
-                   { glifo: 0x000F0156, accion: "quitar" }]   // md-close
-                : [{ glifo: 0x000F005D, accion: "subir"  },
-                   { glifo: 0x000F0045, accion: "bajar"  }]
-
-            delegate: Rectangle {
-                id: boton
-                required property var modelData
-
-                width: 24
-                height: 20
-                radius: 5
-                color: botonRaton.containsMouse
-                    ? (modelData.accion === "quitar" ? "#3a1416" : Theme.surfaceHi)
-                    : "transparent"
-
-                readonly property bool activo: modelData.accion === "subir"
-                    ? cabecera.puedeSubir
-                    : (modelData.accion === "bajar" ? cabecera.puedeBajar : true)
-
-                opacity: activo ? 1 : 0.3
-
-                IconGlyph {
-                    anchors.centerIn: parent
-                    text: String.fromCodePoint(boton.modelData.glifo)
-                    color: boton.modelData.accion === "quitar"
-                        ? Theme.red : Theme.ink
-                    font.pixelSize: 12
-                }
-
-                MouseArea {
-                    id: botonRaton
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    enabled: boton.activo
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (boton.modelData.accion === "subir")       cabecera.subir()
-                        else if (boton.modelData.accion === "bajar")  cabecera.bajar()
-                        else                                          cabecera.quitar()
-                    }
-                }
-            }
-        }
+    //  El asa, solo al pasar por encima: dice que esto se puede coger, que es
+    //  lo único que hacía falta decir.
+    IconGlyph {
+        anchors.right: parent.right
+        anchors.rightMargin: 5
+        anchors.verticalCenter: parent.verticalCenter
+        visible: cabecera.arrastrable && (raton.containsMouse || cabecera.arrastrando)
+        text: String.fromCodePoint(0x000F01DD)     // md-drag_vertical
+        color: Theme.dim
+        font.pixelSize: 13
     }
 }

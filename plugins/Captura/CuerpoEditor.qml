@@ -886,6 +886,7 @@ Item {
             cabezal: view.segundos
 
             onSaltar: function (t) { view.irA(t) }
+            onNuevaCapa: view.plugin.pedirImagen(view.segundos, true)
         }
 
         // ── pie ───────────────────────────────────────────────────

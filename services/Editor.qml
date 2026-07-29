@@ -285,14 +285,17 @@ Singleton {
             ruta: ruta,
             t0: a,
             t1: b,
-            // A la banda de más abajo donde no pise a nadie: tres logos seguidos
-            // en instantes distintos comparten fila, que es lo que se espera.
-            banda: bandaLibre(a, b),
+            //  A la banda de más abajo donde no pise a nadie: tres logos
+            //  seguidos en instantes distintos comparten fila, que es lo que se
+            //  espera. Salvo que se haya pedido una capa nueva, y entonces va
+            //  encima de todo.
+            banda: proximaEnBandaNueva ? cuantasBandas + 1 : bandaLibre(a, b),
             // Arriba a la derecha y a un cuarto de ancho: es donde va un logo, y
             // desde ahí se mueve con el ratón en un gesto.
             x: 0.8, y: 0.15, escala: 0.25, opacidad: 1.0
         }
         capas = capas.concat([nueva])
+        proximaEnBandaNueva = false
         persistir()
         seleccionar("capa", nueva.id)
         return nueva.id
@@ -367,21 +370,42 @@ Singleton {
         persistir()
     }
 
-    //  Subir o bajar una banda entera, con todo lo que lleve dentro.
-    function moverBanda(b, d) {
-        const otra = b + d
-        if (otra < 1 || otra > cuantasBandas || d === 0)
+    //  Llevar una banda a otro puesto del apilado, con todo lo que lleve.
+    //
+    //  Se reordena la lista de números de banda y luego se renumera, en vez de
+    //  intercambiar de dos en dos: arrastrar la banda 4 hasta la 1 es un solo
+    //  gesto, no tres intercambios, y con intercambios el resultado depende del
+    //  orden en que se hagan.
+    function ponerBandaEn(b, destino) {
+        const n = cuantasBandas
+        const d = Math.max(1, Math.min(n, destino))
+        if (b < 1 || b > n || d === b)
             return
+
+        const orden = []
+        for (let i = 1; i <= n; ++i)
+            orden.push(i)
+        orden.splice(d - 1, 0, orden.splice(b - 1, 1)[0])
+
+        // `orden[k]` es la banda vieja que pasa a ser la k+1.
+        const nueva = {}
+        for (let k = 0; k < orden.length; ++k)
+            nueva[orden[k]] = k + 1
+
         capas = capas.map(function (c) {
-            const suya = bandaDe(c)
-            if (suya === b)
-                return Object.assign({}, c, { banda: otra })
-            if (suya === otra)
-                return Object.assign({}, c, { banda: b })
-            return c
+            return Object.assign({}, c, { banda: nueva[bandaDe(c)] })
         })
         persistir()
     }
+
+    //  «Añadir una capa» es añadir algo en una banda nueva encima.
+    //
+    //  Estuve a punto de hacer bandas vacías que se pudieran crear a mano, y no
+    //  tiene sentido: en este modelo una banda sin nada dentro no existe en el
+    //  plan, así que sería una fila fantasma que se pierde al cerrar. Lo que de
+    //  verdad se quiere al preguntar «¿cómo añado una capa?» es poner algo
+    //  ENCIMA de lo que ya hay sin tener que colocarlo después.
+    property bool proximaEnBandaNueva: false
 
     // ── qué está seleccionado ─────────────────────────────────────
     //
