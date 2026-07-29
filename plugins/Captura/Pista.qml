@@ -25,11 +25,17 @@ Rectangle {
     // Si se pueden crear bloques arrastrando en un hueco.
     property bool creable: true
 
+    //  Si sus bloques se pueden sacar de la fila y llevar a otra. Solo tiene
+    //  sentido donde las filas son capas apiladas.
+    property bool porFilas: false
+    property real pasoFila: 29
+
     signal saltar(real t)
     signal elegir(int indice)
     signal editar(int id, real t0, real t1)
     signal soltar()
     signal crear(real t0, real t1)
+    signal moverFila(int id, int filas)
 
     radius: 6
     color: Theme.surface
@@ -110,7 +116,11 @@ Rectangle {
             height: pista.height - 10
 
             onPulsado: pista.elegir(index)
+            porFilas: pista.porFilas
+            pasoFila: pista.pasoFila
+
             onCambiado: function (a, b) { pista.editar(modelData.id, a, b) }
+            onCambiadoDeFila: function (f) { pista.moverFila(modelData.id, f) }
             onSoltado: pista.soltar()
         }
     }

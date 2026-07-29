@@ -22,6 +22,9 @@ Rectangle {
     property real cabezal: 0
 
     signal saltar(real t)
+    // Buscar un instante con el ratón: el reproductor se pausa mientras dura.
+    signal rascaInicio()
+    signal rascaFin()
 
     radius: 6
     color: Theme.surface
@@ -37,10 +40,15 @@ Rectangle {
     MouseArea {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
-        onPressed: function (ev) { pista.saltar(pista.px2t(ev.x)) }
+        onPressed: function (ev) {
+            pista.rascaInicio()
+            pista.saltar(pista.px2t(ev.x))
+        }
         onPositionChanged: function (ev) {
             if (pressed) pista.saltar(pista.px2t(ev.x))
         }
+        onReleased: pista.rascaFin()
+        onCanceled: pista.rascaFin()
     }
 
     Repeater {
@@ -160,9 +168,15 @@ Rectangle {
 
                 onReleased: {
                     if (!movido) {
-                        // Un clic sin arrastre lleva el cabezal al principio del
-                        // trozo, que es lo que uno espera al pinchar en él.
-                        pista.saltar(trozo.modelData.inicio)
+                        //  Un clic sin arrastre lleva el cabezal a DONDE has
+                        //  pinchado.
+                        //
+                        //  Antes lo llevaba al principio del trozo, y estaba mal:
+                        //  la pista de los trozos es la superficie grande de la
+                        //  línea de tiempo, así que es donde uno pincha para
+                        //  buscar un instante, y saltar al principio del trozo
+                        //  convertía cada intento en un viaje de vuelta.
+                        pista.saltar(pista.px2t(xIni))
                         return
                     }
                     // A qué hueco ha ido a parar el centro del trozo.

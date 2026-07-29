@@ -28,7 +28,17 @@ Rectangle {
     // pequeño que sus propias asas y no habría forma de agarrarlo.
     readonly property real minimo: 0.4
 
+    //  Si además se puede sacar de su fila y llevar a otra.
+    //
+    //  Solo tiene sentido donde las filas quieren decir algo apilado, o sea en
+    //  las capas: mover un zoom «a otra fila» no significa nada, porque el zoom
+    //  es uno solo. `pasoFila` es lo que mide una fila con su hueco, que el
+    //  bloque no puede saber por sí mismo.
+    property bool porFilas: false
+    property real pasoFila: 29
+
     signal cambiado(real nuevoT0, real nuevoT1)
+    signal cambiadoDeFila(int filas)
     signal soltado()
     signal pulsado()
 
@@ -36,6 +46,7 @@ Rectangle {
     property bool editando: false
     property real vT0: 0
     property real vT1: 0
+    property real vY: 0
 
     readonly property real eT0: editando ? vT0 : t0
     readonly property real eT1: editando ? vT1 : t1
@@ -44,6 +55,12 @@ Rectangle {
     width: Math.max(4, parent.width * ((eT1 - eT0) / Math.max(0.001, total)))
     radius: 4
     color: elegido ? tono : Qt.rgba(tono.r, tono.g, tono.b, 0.35)
+
+    //  Sale de su fila con `transform` y no con `y`: la `y` la pone la pista y
+    //  escribirla a mano pelearía con ella. Y con `z` por encima, o al pasar por
+    //  encima de la fila vecina se metería debajo y parecería que se ha soltado.
+    transform: Translate { y: bloque.vY }
+    z: bloque.vY !== 0 ? 20 : 0
 
     Behavior on color { ColorAnimation { duration: 140 } }
 
@@ -86,15 +103,23 @@ Rectangle {
         property real anclaT: 0
         property real t0Ini: 0
         property real duracion: 0
+        property real yIni: 0
         property bool arrastrando: false
+
+        //  En coordenadas de la VENTANA para el eje vertical, por lo mismo que
+        //  `enPista` para el horizontal: el bloque se despega con el propio
+        //  arrastre y en sus coordenadas el puntero se queda quieto.
+        function fuera(ev) { return mapToItem(null, 0, ev.y).y }
 
         onPressed: function (ev) {
             bloque.pulsado()
             anclaT = bloque.enPista(ev.x)
             t0Ini = bloque.t0
             duracion = bloque.t1 - bloque.t0
+            yIni = fuera(ev)
             bloque.vT0 = bloque.t0
             bloque.vT1 = bloque.t1
+            bloque.vY = 0
             bloque.editando = true
             arrastrando = false
         }
@@ -108,15 +133,26 @@ Rectangle {
             nuevo = bloque.encaja(nuevo, 0, bloque.total - duracion)
             bloque.vT0 = nuevo
             bloque.vT1 = nuevo + duracion
+            if (bloque.porFilas)
+                bloque.vY = fuera(ev) - yIni
         }
 
         onReleased: {
-            // Primero el modelo y luego soltar el estado local: así el binding
-            // ya encuentra el valor nuevo y el bloque no da un salto atrás.
+            //  Los dos ejes a la vez, y a propósito: en un editor mover algo de
+            //  fila y de instante en el mismo gesto es lo normal, y obligar a
+            //  hacerlo en dos pasos se nota.
+            //
+            //  Primero el modelo y luego soltar el estado local: así el binding
+            //  ya encuentra el valor nuevo y el bloque no da un salto atrás.
             if (arrastrando) {
+                const filas = bloque.porFilas
+                    ? Math.round(bloque.vY / Math.max(1, bloque.pasoFila)) : 0
                 bloque.cambiado(bloque.vT0, bloque.vT1)
+                if (filas !== 0)
+                    bloque.cambiadoDeFila(filas)
                 bloque.soltado()
             }
+            bloque.vY = 0
             bloque.editando = false
         }
 

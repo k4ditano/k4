@@ -25,6 +25,11 @@ RowLayout {
     // Añadir algo en una banda nueva encima de todo.
     signal nuevaCapa()
 
+    //  Empezar y terminar de buscar un instante con el ratón. El reproductor se
+    //  pausa mientras dura y se reanuda al soltar si estaba sonando.
+    signal rascaInicio()
+    signal rascaFin()
+
     spacing: 6
 
     // ── cuánto se ve ──────────────────────────────────────────────
@@ -165,12 +170,14 @@ RowLayout {
                 alto: linea.altoPista
 
                 //  Cómo se llama una banda: por lo que lleva si lleva una cosa,
-                //  y por cuántas si lleva varias. Poner «Capa 2» a secas cuando
-                //  dentro hay un logo obliga a pinchar para saber qué es.
+                //  y por cuántas si lleva varias. Vacía, por su número — decía
+                //  «0 cosas», que es verdad y no sirve para nada.
                 texto: modelData.capas.length === 1
                     ? modelData.capas[0].ruta.split("/").pop()
-                    : Idioma.f(Idioma.t("%1 cosas"),
-                               String(modelData.capas.length))
+                    : (modelData.capas.length === 0
+                       ? Idioma.t("Capa ") + modelData.banda
+                       : Idioma.f(Idioma.t("%1 cosas"),
+                                  String(modelData.capas.length)))
                 glifo: 0x000F02E9      // md-image
                 tono: Theme.green
                 elegida: Editor.capaSel !== null
@@ -235,6 +242,37 @@ RowLayout {
                     return escalones[escalones.length - 1]
                 }
 
+                //  Pinchar y arrastrar en la regla lleva el cabezal.
+                //
+                //  Es donde lo intenta cualquiera, y no estaba: solo se podía
+                //  desde la pista de los trozos, que además está llena de bloques
+                //  que se quedan el gesto para lo suyo. Aquí no hay nada más, así
+                //  que es la superficie fiable para buscar un instante.
+                //
+                //  Declarado ANTES de las marcas para que ellas queden encima; no
+                //  aceptan ratón, así que no se lo van a quitar.
+                MouseArea {
+                    anchors.fill: parent
+                    // Un poco más alto de lo que mide: acertar en veinte píxeles
+                    // pidiendo puntería vertical no hace falta.
+                    anchors.bottomMargin: -4
+                    cursorShape: Qt.PointingHandCursor
+
+                    function llevar(x) {
+                        linea.saltar(Math.max(0, Math.min(linea.total,
+                            x / Math.max(1, regla.width) * linea.total)))
+                    }
+                    onPressed: function (ev) {
+                        linea.rascaInicio()
+                        llevar(ev.x)
+                    }
+                    onPositionChanged: function (ev) {
+                        if (pressed) llevar(ev.x)
+                    }
+                    onReleased: linea.rascaFin()
+                    onCanceled: linea.rascaFin()
+                }
+
                 Repeater {
                     //  Todo referido a `regla` por su id y no por `parent`:
                     //  dentro de un delegado hay dos niveles de padre y coger el
@@ -279,6 +317,8 @@ RowLayout {
                 total: linea.total
                 cabezal: linea.cabezal
                 onSaltar: function (t) { linea.saltar(t) }
+                onRascaInicio: linea.rascaInicio()
+                onRascaFin: linea.rascaFin()
             }
 
             // ── el zoom ───────────────────────────────────────────
@@ -357,6 +397,18 @@ RowLayout {
                     }
                     onEditar: function (id, a, b) {
                         Editor.fijarCapa(id, { t0: a, t1: b })
+                    }
+
+                    //  Sacar una cosa de su capa y llevarla a otra.
+                    //
+                    //  Bajar en la LISTA es bajar de banda en el plan, y la lista
+                    //  va del revés, de ahí el signo menos. Arrastrar por encima
+                    //  de la primera fila da banda `cuantasBandas + 1`, que
+                    //  `ponerCapaEnBanda` acepta creando una capa nueva.
+                    porFilas: true
+                    pasoFila: linea.altoPista + linea.hueco
+                    onMoverFila: function (id, filas) {
+                        Editor.ponerCapaEnBanda(id, modelData.banda - filas)
                     }
                 }
             }

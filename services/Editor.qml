@@ -228,6 +228,28 @@ Singleton {
         return capas.filter(function (c) { return bandaDe(c) === b })
     }
 
+    //  Las capas en el orden en que se PINTAN: por banda, y dentro de una banda
+    //  por el orden de la lista.
+    //
+    //  Tiene que dar exactamente lo mismo que `capas_de()` en tools/editar.py, y
+    //  no es un detalle: la previa iba por el orden crudo de la lista mientras
+    //  ffmpeg iba por banda, así que bajar una capa cambiaba el fichero pero no
+    //  lo que se veía en el editor. La vista decía una cosa y el render otra, que
+    //  es exactamente lo que todo este modelo existe para que no pase.
+    //
+    //  Se ordena por (banda, posición) en vez de fiarse de que `sort` sea estable:
+    //  lo es en el motor de QML, pero decirlo explícitamente cuesta una línea y
+    //  quita una suposición de en medio.
+    readonly property var capasApiladas: {
+        return capas
+            .map(function (c, i) { return { capa: c, pos: i } })
+            .sort(function (a, b) {
+                const d = bandaDe(a.capa) - bandaDe(b.capa)
+                return d !== 0 ? d : a.pos - b.pos
+            })
+            .map(function (x) { return x.capa })
+    }
+
     //  Una banda donde quepa algo entre t0 y t1 sin pisar a nadie.
     //
     //  Es lo que hace que meter tres logos seguidos no cree tres bandas: si en
@@ -325,13 +347,16 @@ Singleton {
     //
     //  Se puede subir una banda por encima de las que hay: así se crea una nueva
     //  sin tener que pedirla aparte. Bajar de la 1 no lleva a ninguna parte.
-    function subirCapa(id, d) {
+    function ponerCapaEnBanda(id, banda) {
         const i = capas.findIndex(function (c) { return c.id === id })
         if (i < 0)
             return
-        const b = Math.max(1, Math.min(cuantasBandas + 1, bandaDe(capas[i]) + d))
+        //  Se puede pasar una banda por encima de las que hay: así arrastrar algo
+        //  hacia arriba crea una capa nueva sin tener que pedirla aparte.
+        const b = Math.max(1, Math.min(cuantasBandas + 1, banda))
         if (b === bandaDe(capas[i]))
             return
+        const d = b - bandaDe(capas[i])
 
         //  Y también al principio o al final de la lista, según el sentido.
         //

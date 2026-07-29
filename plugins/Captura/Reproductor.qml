@@ -33,7 +33,20 @@ Item {
     readonly property var tramo: indice >= 0 && indice < tramos.length
         ? tramos[indice] : null
 
-    readonly property bool reproduciendo: mp.playbackState === MediaPlayer.PlayingState
+    //  Si se ha PEDIDO que suene, que no es lo mismo que si suena.
+    //
+    //  Manda esto y no `playbackState`, y es la diferencia entre que funcione y
+    //  que no. El estado del medio se va a parado por su cuenta en tres sitios:
+    //  al asignar un `source` nuevo, al llegar al final del fichero, y mientras
+    //  carga. Preguntándoselo a él, cualquiera de esas tres cosas dejaba el vídeo
+    //  clavado: saltabas con la línea de tiempo y se paraba, o llegaba al final y
+    //  no volvía a empezar.
+    //
+    //  Con la intención guardada aparte, después de cada salto basta con mirar si
+    //  se quería que sonara y volver a darle.
+    property bool sonando: false
+
+    readonly property bool reproduciendo: sonando
     readonly property int pistaAudio: mp.activeAudioTrack
 
     function indiceEn(t) {
@@ -56,12 +69,34 @@ Item {
     //  había perdido.
     property real pendiente: -1
 
-    //  Si venía sonando, que siga sonando después de cambiar de fichero.
+    //  Una tregua corta después de cada salto.
     //
-    //  Hay que apuntarlo ANTES de tocar `source`: asignar un medio nuevo deja el
-    //  reproductor parado al instante, así que preguntárselo luego contesta
-    //  siempre que no, y la reproducción se cortaba en cada cambio de fichero.
-    property bool seguir: false
+    //  Buscar no es instantáneo, y hasta que surte efecto el medio sigue emitiendo
+    //  la posición VIEJA. Si se le cree, pasan dos cosas y las dos se ven: el
+    //  cabezal va al sitio nuevo y vuelve un instante al viejo, y —peor— si venías
+    //  del final del vídeo, esa posición vieja dispara el «se acabó el trozo» y la
+    //  línea da la vuelta sola.
+    //
+    //  Durante la tregua no se le cree y punto. `cabezal` ya lo ha puesto `irA`,
+    //  así que la vista está bien; lo único que se pierde son doscientos
+    //  milisegundos de seguimiento.
+    //
+    //  Y al terminar, si tenía que sonar y no suena, se le vuelve a dar: escribir
+    //  `position` deja el medio parado en algunos estados —no siempre, y ahí está
+    //  la gracia—, y sin esto el vídeo se quedaba muerto tras un salto de cada
+    //  tantos. Antes intenté adivinar en cuáles y no hay forma; preguntar después
+    //  sí funciona.
+    property bool enTregua: false
+
+    Timer {
+        id: tregua
+        interval: 200
+        onTriggered: {
+            repro.enTregua = false
+            if (repro.sonando && mp.playbackState !== MediaPlayer.PlayingState)
+                mp.play()
+        }
+    }
 
     function irA(t) {
         if (tramos.length === 0)
@@ -74,29 +109,74 @@ Item {
         cabezal = limpio
         indice = n
 
+        enTregua = true
+        tregua.restart()
+
         const fuente = "file://" + tr.ruta
         if (mp.source !== fuente) {
             pendiente = enFuente(limpio, tr)
-            seguir = mp.playbackState === MediaPlayer.PlayingState
             mp.source = fuente
         } else {
             mp.position = enFuente(limpio, tr) * 1000
+            if (sonando)
+                mp.play()
         }
     }
 
     // Al siguiente trozo, o al principio si era el último.
     function avanzar() {
-        if (indice + 1 < tramos.length)
+        if (indice + 1 < tramos.length) {
             irA(tramos[indice + 1].inicio)
-        else
-            irA(0)
+            return
+        }
+
+        //  Dar la vuelta, y con `stop()` por delante.
+        //
+        //  En el final del fichero el medio está parado en su último fotograma, y
+        //  en ese estado **escribir `position` no hace nada**: se queda donde
+        //  estaba y no avisa. Comprobado con una traza —al llegar al final, `pos`
+        //  seguía valiendo 8000 después de pedirle 0—, y el efecto era que el
+        //  vídeo se quedaba congelado en negro al terminar, con el reloj en cero.
+        //  `stop()` sí devuelve el medio al principio, y desde ahí `play()` vale.
+        mp.stop()
+        irA(0)
+        if (sonando)
+            mp.play()
     }
 
-    function alternar() {
-        mp.playbackState === MediaPlayer.PlayingState ? mp.pause() : mp.play()
+    function reproducir() { sonando = true; mp.play() }
+    function pausar() { sonando = false; mp.pause() }
+    function alternar() { sonando ? pausar() : reproducir() }
+
+    //  Rascar: buscar un instante con el ratón.
+    //
+    //  Mientras dura, el medio está en pausa. No es un adorno: escribir `position`
+    //  con el vídeo en marcha se cumple unas veces y otras no —medido, en pausa
+    //  ocho clics cayeron exactos donde decía la regla, y en marcha ninguno—, y
+    //  perseguir eso con reintentos y treguas fue una sucesión de parches que
+    //  arreglaban un síntoma y sacaban otro.
+    //
+    //  Pausar mientras se busca es además lo que hace cualquier editor, y de paso
+    //  arrastrar por la regla sale suave en vez de pelearse con la reproducción.
+    //  `sonando` no se toca, así que el botón sigue diciendo la verdad y al soltar
+    //  se reanuda solo si tocaba.
+    property bool rascando: false
+
+    function empezarRasca() {
+        if (rascando)
+            return
+        rascando = true
+        mp.pause()
     }
 
-    function pausar() { mp.pause() }
+    function terminarRasca() {
+        if (!rascando)
+            return
+        rascando = false
+        if (sonando)
+            mp.play()
+    }
+
     function fijarPistaAudio(i) { mp.activeAudioTrack = i }
 
     //  Al cambiar los clips, volver a donde estabas.
@@ -120,6 +200,10 @@ Item {
         onPositionChanged: function (ms) {
             if (!repro.tramo || playbackState === MediaPlayer.StoppedState)
                 return
+            // Recién saltado no se le cree: lo que dice es de antes.
+            if (repro.enTregua)
+                return
+
             const s = ms / 1000
 
             //  ¿Se acabó el trozo? Al siguiente.
@@ -152,10 +236,8 @@ Item {
                 position = repro.pendiente * 1000
                 repro.pendiente = -1
             }
-            if (repro.seguir) {
-                repro.seguir = false
+            if (repro.sonando)
                 play()
-            }
         }
     }
 
@@ -170,7 +252,9 @@ Item {
     //  Se apunta el instante según se reproduce y no al destruirse: en la
     //  destrucción el reproductor ya ha soltado el medio y `position` vale cero.
     Component.onCompleted: {
+        // `sonando` primero: `irA` cambia de medio y el arranque de verdad ocurre
+        // al terminar de cargar, mirando esta bandera.
+        sonando = true
         irA(Editor.posicionEditor > 0.2 ? Editor.posicionEditor : 0)
-        mp.play()
     }
 }

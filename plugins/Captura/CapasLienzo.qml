@@ -21,7 +21,13 @@ Item {
     property real segundos: 0
 
     Repeater {
-        model: Editor.capas
+        //  En el orden de APILADO, no en el de la lista.
+        //
+        //  En QML el último hijo se pinta encima, así que este orden es el que
+        //  decide qué tapa a qué. Con `Editor.capas` a secas iba por el orden
+        //  crudo y no por banda: subir una capa cambiaba el fichero renderizado
+        //  pero no la previa, o sea que la vista mentía.
+        model: Editor.capasApiladas
 
         delegate: Item {
             id: capa
