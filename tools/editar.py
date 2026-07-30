@@ -454,8 +454,9 @@ def norma_video(ancho, alto, fps):
 def capas_de(plan, tipo=None):
     """Las capas del plan, de abajo arriba.
 
-    Cada capa pertenece a una **banda**, y las bandas son lo que se apila: la 1
-    es la de abajo y la última la de arriba. Dentro de una banda pueden convivir
+    Cada capa pertenece a una **banda**, y las bandas son lo que se apila. La 1
+    es la del VÍDEO —los trozos de la pista base—, así que las capas van de la 2
+    para arriba y la última es la de más arriba. Dentro de una banda pueden convivir
     varias capas —lo normal es que no se pisen en el tiempo—, y ahí manda el
     orden de la lista.
 
@@ -469,7 +470,7 @@ def capas_de(plan, tipo=None):
     """
     capas = [c for c in plan.get("capas", [])
              if tipo is None or c.get("tipo") == tipo]
-    return sorted(capas, key=lambda c: c.get("banda", 1))
+    return sorted(capas, key=lambda c: c.get("banda", 2))
 
 
 def entradas(plan, carpeta=None):
@@ -1343,7 +1344,7 @@ def sondear(video):
 #  fichero. `momentos` y `capas` van siempre en tiempo de línea. Quien traduce
 #  entre los dos ejes es este fichero y nadie más: el QML nunca sabe en qué
 #  segundo de qué fichero está mirando, y así no puede equivocarse.
-VERSION = 2
+VERSION = 3
 
 
 #  Lo que ffmpeg va a abrir como imagen fija y no como vídeo.
@@ -1414,7 +1415,7 @@ def capa_camara(ruta, plan, desfase=0.0):
         return None
     largo = duracion_linea(plan) or dur
     d = max(0.0, float(desfase))
-    return {"id": 1, "tipo": "video", "banda": 1,
+    return {"id": 1, "tipo": "video", "banda": 2,
             "ruta": os.path.abspath(ruta),
             "t0": 0.0, "t1": round(min(largo, dur - d), 3),
             "recorte": [round(d, 3), round(dur, 3)],
@@ -1448,8 +1449,15 @@ def plan_nuevo(video, rastro="", momentos=None, camara="", desfase=0.0):
 
 
 def migrar(plan):
-    """Un plan de los de antes —un vídeo y sus momentos— al modelo de ahora."""
+    """Un plan de los de antes al modelo de ahora."""
     if plan.get("version", 1) >= VERSION:
+        return plan
+
+    #  Del 2 al 3 solo cambia la numeración de las bandas: el resto del plan ya
+    #  está en su sitio y rehacerlo perdería los cortes y las capas.
+    if plan.get("version", 1) == 2:
+        plan = subir_capas(plan)
+        plan["version"] = VERSION
         return plan
     nuevo = plan_nuevo(plan["video"], plan.get("rastro", ""),
                        plan.get("momentos", []))
@@ -1473,6 +1481,22 @@ def cargar(ruta):
     if plan.get("version", 1) < VERSION:
         plan = migrar(plan)
         guardar(plan, ruta)
+    return plan
+
+
+def subir_capas(plan):
+    """La banda 1 pasa a ser del vídeo, así que las capas suben una.
+
+    Antes los trozos de vídeo tenían su propia fila y las capas empezaban en la
+    banda 1. Ahora el vídeo ES la banda 1 y las capas van de la 2 para arriba,
+    que es lo que hace que todo se apile por un solo camino en vez de tres.
+
+    Es una renumeración y nada más: `capas_de()` ordena por banda, así que el
+    grafo que sale es exactamente el mismo. Lo que cambia es dónde se dibuja
+    cada fila.
+    """
+    for c in plan.get("capas", []):
+        c["banda"] = max(2, int(c.get("banda", 1)) + 1)
     return plan
 
 

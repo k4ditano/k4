@@ -76,8 +76,12 @@ RowLayout {
     //  y nadie espera lo contrario. La vuelta se da SOLO aquí.
     readonly property var bandasVista: {
         const r = []
-        for (let b = Editor.cuantasBandas; b >= 1; --b)
-            r.push({ banda: b, capas: Editor.capasDeBanda(b) })
+        for (let b = Editor.cuantasBandas; b >= 2; --b)
+            r.push({ banda: b, capas: Editor.capasDeBanda(b), clips: false })
+        //  Y abajo del todo, el vídeo: es la banda 1 y va en la misma lista que
+        //  las demás. Antes tenía su propia fila fija, y el zoom otra, y eso
+        //  eran cuatro filas para dos capas.
+        r.push({ banda: 1, capas: [], clips: true })
         return r
     }
 
@@ -140,24 +144,6 @@ RowLayout {
             }
         }
 
-        CabeceraPista {
-            Layout.fillWidth: true
-            Layout.preferredHeight: linea.altoClips
-            alto: linea.altoClips
-            texto: Idioma.t("Vídeo")
-            glifo: 0x000F0567          // md-video
-            tono: Theme.blue
-        }
-
-        CabeceraPista {
-            Layout.fillWidth: true
-            Layout.preferredHeight: linea.altoPista
-            alto: linea.altoPista
-            texto: Idioma.t("Zoom")
-            glifo: 0x000F1276          // md-magnify_scan
-            tono: Theme.blue
-        }
-
         Repeater {
             model: linea.bandasVista
 
@@ -165,30 +151,40 @@ RowLayout {
                 required property var modelData
                 required property int index
 
+                readonly property bool esVideo: modelData.clips === true
+
                 Layout.fillWidth: true
-                Layout.preferredHeight: linea.altoPista
-                alto: linea.altoPista
+                Layout.preferredHeight: esVideo ? linea.altoClips
+                                                : linea.altoPista
+                alto: esVideo ? linea.altoClips : linea.altoPista
 
                 //  Cómo se llama una banda: por lo que lleva si lleva una cosa,
                 //  y por cuántas si lleva varias. Vacía, por su número — decía
-                //  «0 cosas», que es verdad y no sirve para nada.
-                texto: modelData.capas.length === 1
+                //  «0 cosas», que es verdad y no sirve para nada. Y la 1 es el
+                //  vídeo, que se llama así aunque lleve veinte trozos.
+                texto: esVideo ? Idioma.t("Vídeo")
+                    : modelData.capas.length === 1
                     ? Editor.nombreCapa(modelData.capas[0])
                     : (modelData.capas.length === 0
-                       ? Idioma.t("Capa ") + modelData.banda
+                       ? Idioma.t("Capa ") + (modelData.banda - 1)
                        : Idioma.f(Idioma.t("%1 cosas"),
                                   String(modelData.capas.length)))
                 //  El icono dice de qué es la banda cuando lleva una sola cosa.
-                glifo: modelData.capas.length === 1
+                glifo: esVideo ? 0x000F0567          // md-video
+                    : modelData.capas.length === 1
                     ? Editor.glifoCapa(modelData.capas[0])
                     : 0x000F02E9      // md-image
-                tono: Theme.green
-                elegida: Editor.capaSel !== null
-                    && Editor.bandaDe(Editor.capaSel) === modelData.banda
+                tono: esVideo ? Theme.blue : Theme.green
+                elegida: esVideo
+                    ? Editor.clipSel !== null
+                    : (Editor.capaSel !== null
+                       && Editor.bandaDe(Editor.capaSel) === modelData.banda)
 
-                arrastrable: linea.bandasVista.length > 1
+                //  El vídeo no se arrastra: es la base y se queda abajo. Un
+                //  vídeo encima de todo taparía el resto y no querría decir nada.
+                arrastrable: !esVideo && linea.bandasVista.length > 2
 
-                onPulsada: if (modelData.capas.length > 0)
+                onPulsada: if (!esVideo && modelData.capas.length > 0)
                                Editor.seleccionar("capa", modelData.capas[0].id)
 
                 //  Bajar en la LISTA es bajar de banda en el plan, y la lista va
@@ -197,9 +193,14 @@ RowLayout {
                 //  `index` va de arriba abajo, así que el puesto en la lista al
                 //  que se ha llevado la fila es `index + filas`, y el número de
                 //  banda que le toca es el complementario.
+                //  La última fila de la lista es el vídeo y no se baraja, así
+                //  que el sitio más bajo al que puede ir una capa es el
+                //  penúltimo: `length - 2`.
                 onReordenada: function (filas) {
+                    if (esVideo)
+                        return
                     const puesto = Math.max(0, Math.min(
-                        linea.bandasVista.length - 1, index + filas))
+                        linea.bandasVista.length - 2, index + filas))
                     Editor.ponerBandaEn(modelData.banda,
                                         linea.bandasVista.length - puesto)
                 }
@@ -312,106 +313,45 @@ RowLayout {
                 }
             }
 
-            // ── los trozos de vídeo ───────────────────────────────
-            PistaClips {
-                Layout.fillWidth: true
-                Layout.preferredHeight: linea.altoClips
-
-                total: linea.total
-                cabezal: linea.cabezal
-                onSaltar: function (t) { linea.saltar(t) }
-                onRascaInicio: linea.rascaInicio()
-                onRascaFin: linea.rascaFin()
-            }
-
-            // ── el zoom ───────────────────────────────────────────
-            Pista {
-                Layout.fillWidth: true
-                Layout.preferredHeight: linea.altoPista
-
-                modelo: Editor.momentos
-                total: linea.total
-                cabezal: linea.cabezal
-                elegido: {
-                    //  `Pista` elige por índice y la selección va por id, porque
-                    //  con varias pistas el índice no dice de qué es. Aquí se
-                    //  traduce.
-                    for (let i = 0; i < Editor.momentos.length; ++i)
-                        if (Editor.tipoSel === "momento"
-                                && Editor.momentos[i].id === Editor.idSel)
-                            return i
-                    return -1
-                }
-
-                onSaltar: function (t) { linea.saltar(t) }
-                onElegir: function (i) {
-                    if (i >= 0 && i < Editor.momentos.length)
-                        Editor.seleccionar("momento", Editor.momentos[i].id)
-                }
-                onEditar: function (id, a, b) {
-                    Editor.fijarMomento(id, { t0: a, t1: b })
-                }
-                onCrear: function (a, b) {
-                    Editor.seleccionar("momento", Editor.crearMomento(a, b))
-                }
-            }
-
-            // ── una fila por banda ────────────────────────────────
+            // ── una fila por banda, y la 1 es el vídeo ────────────
             //
             //  Cada banda puede llevar varias cosas, normalmente en instantes
             //  distintos. Lo que se apila es la banda, así que subir algo de
             //  banda es lo que cambia qué tapa a qué.
+            //
+            //  La banda 1 son los trozos, con el zoom dibujado encima. Antes
+            //  eran dos filas fijas más una por banda; ahora es una sola pila y
+            //  el zoom no gasta fila, porque el zoom no es una capa: es algo que
+            //  se le hace al vídeo.
             Repeater {
                 model: linea.bandasVista
 
-                delegate: Pista {
+                delegate: Loader {
                     required property var modelData
 
                     Layout.fillWidth: true
-                    Layout.preferredHeight: linea.altoPista
+                    Layout.preferredHeight: modelData.clips
+                        ? linea.altoClips : linea.altoPista
 
-                    modelo: modelData.capas
-                    total: linea.total
-                    cabezal: linea.cabezal
-                    tono: Theme.green
-                    // Una capa necesita un fichero detrás, y eso se elige, no se
-                    // dibuja arrastrando en un hueco.
-                    creable: false
-                    elegido: {
-                        for (let i = 0; i < modelData.capas.length; ++i)
-                            if (Editor.tipoSel === "capa"
-                                    && modelData.capas[i].id === Editor.idSel)
-                                return i
-                        return -1
+                    sourceComponent: modelData.clips ? pistaVideo : pistaCapas
+
+                    Component {
+                        id: pistaVideo
+                        PistaClips {
+                            total: linea.total
+                            cabezal: linea.cabezal
+                            onSaltar: function (t) { linea.saltar(t) }
+                            onRascaInicio: linea.rascaInicio()
+                            onRascaFin: linea.rascaFin()
+                        }
                     }
 
-                    onSaltar: function (t) { linea.saltar(t) }
-                    onElegir: function (i) {
-                        if (i < 0 || i >= modelData.capas.length)
-                            return
-                        const c = modelData.capas[i]
-                        Editor.seleccionar("capa", c.id)
-                        //  Y si el cabezal está fuera de su tramo, llevarlo
-                        //  dentro: una capa solo se puede mover y escalar
-                        //  mientras se ve, así que elegirla sin poder tocarla no
-                        //  sirve de nada.
-                        if (linea.cabezal < c.t0 || linea.cabezal > c.t1)
-                            linea.saltar(c.t0 + Math.min(0.3, (c.t1 - c.t0) / 2))
-                    }
-                    onEditar: function (id, a, b) {
-                        Editor.fijarCapa(id, { t0: a, t1: b })
-                    }
-
-                    //  Sacar una cosa de su capa y llevarla a otra.
-                    //
-                    //  Bajar en la LISTA es bajar de banda en el plan, y la lista
-                    //  va del revés, de ahí el signo menos. Arrastrar por encima
-                    //  de la primera fila da banda `cuantasBandas + 1`, que
-                    //  `ponerCapaEnBanda` acepta creando una capa nueva.
-                    porFilas: true
-                    pasoFila: linea.altoPista + linea.hueco
-                    onMoverFila: function (id, filas) {
-                        Editor.ponerCapaEnBanda(id, modelData.banda - filas)
+                    Component {
+                        id: pistaCapas
+                        PistaBanda {
+                            banda: modelData
+                            linea: linea
+                        }
                     }
                 }
             }

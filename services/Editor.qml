@@ -254,16 +254,30 @@ Singleton {
     //  CENTRO. Así el plan no depende de la resolución.
     property var capas: []
 
-    function bandaDe(c) { return c.banda !== undefined ? c.banda : 1 }
+    //  Una capa sin banda va a la 2, que es la primera que le corresponde: la
+    //  1 es del vídeo. Un plan de los de antes se sube entero al abrirlo, así
+    //  que aquí no llegan capas en la 1 salvo que alguien edite el JSON a mano.
+    function bandaDe(c) {
+        const b = c.banda !== undefined ? c.banda : primeraBandaLibre
+        return Math.max(primeraBandaLibre, b)
+    }
 
-    //  Cuántas bandas hay. Al menos una, aunque esté vacía: si no, al quitar la
-    //  última capa desaparecería la fila y no habría dónde soltar la siguiente.
+    //  Cuántas bandas hay, contando la 1, que es SIEMPRE la del vídeo.
+    //
+    //  El vídeo es la capa 1: nace con el plan y no se puede quitar. Las capas
+    //  que añades empiezan en la 2 y se apilan por encima. Antes había tres
+    //  cosas apilándose por caminos distintos —los trozos con su fila fija, el
+    //  zoom con la suya y las capas con las bandas— y eran cuatro filas para dos
+    //  capas.
     readonly property int cuantasBandas: {
-        let n = 1
+        let n = 2
         for (let i = 0; i < capas.length; ++i)
             n = Math.max(n, bandaDe(capas[i]))
         return n
     }
+
+    //  La primera banda donde puede ir una capa. La 1 es del vídeo.
+    readonly property int primeraBandaLibre: 2
 
     // Las capas de una banda, en el orden en que se apilan dentro de ella.
     function capasDeBanda(b) {
@@ -297,7 +311,7 @@ Singleton {
     //  Es lo que hace que meter tres logos seguidos no cree tres bandas: si en
     //  la 1 hay hueco en ese tramo, va a la 1.
     function bandaLibre(t0, t1) {
-        for (let b = 1; b <= cuantasBandas; ++b) {
+        for (let b = primeraBandaLibre; b <= cuantasBandas; ++b) {
             const dentro = capasDeBanda(b)
             let choca = false
             for (let i = 0; i < dentro.length; ++i)
@@ -849,8 +863,10 @@ Singleton {
         if (i < 0)
             return
         //  Se puede pasar una banda por encima de las que hay: así arrastrar algo
-        //  hacia arriba crea una capa nueva sin tener que pedirla aparte.
-        const b = Math.max(1, Math.min(cuantasBandas + 1, banda))
+        //  hacia arriba crea una capa nueva sin tener que pedirla aparte. Por
+        //  abajo el tope es la 2: la 1 es del vídeo y no admite inquilinos.
+        const b = Math.max(primeraBandaLibre,
+                           Math.min(cuantasBandas + 1, banda))
         if (b === bandaDe(capas[i]))
             return
         const d = b - bandaDe(capas[i])
@@ -885,9 +901,11 @@ Singleton {
         }
         usadas.sort(function (a, b) { return a - b })
 
+        //  `+ 2` y no `+ 1`: la banda 1 es la del vídeo, así que la primera
+        //  que puede ocupar una capa es la 2.
         capas = capas.map(function (c) {
             return Object.assign({}, c,
-                                 { banda: usadas.indexOf(bandaDe(c)) + 1 })
+                                 { banda: usadas.indexOf(bandaDe(c)) + 2 })
         })
         persistir()
     }
@@ -898,21 +916,25 @@ Singleton {
     //  intercambiar de dos en dos: arrastrar la banda 4 hasta la 1 es un solo
     //  gesto, no tres intercambios, y con intercambios el resultado depende del
     //  orden en que se hagan.
+    //  Solo se barajan las bandas de capas: la 1 es del vídeo y se queda
+    //  abajo. Un vídeo que se pudiera poner encima de todo taparía el resto y
+    //  no significaría nada.
     function ponerBandaEn(b, destino) {
         const n = cuantasBandas
-        const d = Math.max(1, Math.min(n, destino))
-        if (b < 1 || b > n || d === b)
+        const primera = primeraBandaLibre
+        const d = Math.max(primera, Math.min(n, destino))
+        if (b < primera || b > n || d === b)
             return
 
         const orden = []
-        for (let i = 1; i <= n; ++i)
+        for (let i = primera; i <= n; ++i)
             orden.push(i)
-        orden.splice(d - 1, 0, orden.splice(b - 1, 1)[0])
+        orden.splice(d - primera, 0, orden.splice(b - primera, 1)[0])
 
-        // `orden[k]` es la banda vieja que pasa a ser la k+1.
+        // `orden[k]` es la banda vieja que pasa a ser la k-ésima de capas.
         const nueva = {}
         for (let k = 0; k < orden.length; ++k)
-            nueva[orden[k]] = k + 1
+            nueva[orden[k]] = k + primera
 
         capas = capas.map(function (c) {
             return Object.assign({}, c, { banda: nueva[bandaDe(c)] })

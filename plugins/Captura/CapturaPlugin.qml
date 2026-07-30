@@ -61,11 +61,22 @@ K4Plugin {
         : (modo === "hecha" ? 500 : 520)))
     //  El editor crece con las capas.
     //
-    //  Cada banda añade una fila a la línea de tiempo, y con la altura fija esas
-    //  filas se comían el vídeo. Hasta cinco bandas se paga en alto; a partir de
-    //  ahí toca la ventana grande, que para eso está.
+    //  Cada banda añade una fila a la línea de tiempo. Antes el alto topaba en
+    //  cinco bandas —`min(5, bandas)`— mientras la línea seguía creciendo, así
+    //  que a partir de la sexta las filas de abajo se salían por debajo del
+    //  borde de la island sin ningún aviso. Medido: con ocho bandas la línea
+    //  pedía 318 px y la island seguía dando los mismos 755.
+    //
+    //  Ahora el alto sigue a las bandas de verdad y quien pone el tope es la
+    //  island, que ya lo tenía; pasado ese punto la línea se recorre en vertical
+    //  dentro de su propio hueco, que es lo que hace `rodilloV` en el cuerpo.
+    //
+    //  La banda 1 es el vídeo y su fila es más alta que las demás: de ahí que la
+    //  primera cuente distinto.
     islandHeight: modo === "cuenta" ? 150
-        : (modo === "editor" ? 610 + Math.min(5, Editor.cuantasBandas) * 29
+        : (modo === "editor"
+           ? Math.min(Theme.maxIslandHeight,
+                      610 + Math.max(0, Editor.cuantasBandas - 1) * 29)
         : (modo === "abrir" ? 440 : (modo === "hecha" ? 132 : 208)))
 
     view: Component {

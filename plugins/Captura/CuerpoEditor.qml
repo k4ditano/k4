@@ -12,6 +12,7 @@
 
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 import K4 as K4
 import "../../core"
 import "../../services"
@@ -28,6 +29,19 @@ Item {
     signal agrandar()
 
     focus: true
+
+    //  Cuánto alto le queda a la línea de tiempo.
+    //
+    //  La island crece con las bandas hasta su tope, y a partir de ahí la línea
+    //  se recorre en vertical en vez de desbordarse. El número sale de lo que
+    //  mide todo lo demás del editor —cabecera, vídeo y pie— y por eso vive
+    //  aquí y no en el plugin: aquí es donde están esas piezas.
+    //  Los 300 son lo que ocupa todo lo demás: cabecera, pie, márgenes y el
+    //  mínimo del vídeo. Con menos, el pie acababa por debajo del borde de la
+    //  island — que es lo que pasaba con 470 mal contados.
+    readonly property int altoParaLinea: Math.max(
+        linea.altoRegla + linea.altoClips + 10,
+        view.height - 300)
 
     readonly property var momento: Editor.momentoSel
 
@@ -209,6 +223,7 @@ Item {
     }
 
     ColumnLayout {
+        id: reparto
         anchors.fill: parent
         anchors.margins: 14
         spacing: 8
@@ -279,6 +294,9 @@ Item {
                 //  grande casi el doble, y el mismo cuerpo sirve para las dos.
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                //  Pero no por debajo de esto: con muchas capas, la línea de
+                //  tiempo se comía el vídeo hasta dejarlo en una raya.
+                Layout.minimumHeight: 180
                 radius: 8
                 color: "black"
                 clip: true
@@ -435,658 +453,381 @@ Item {
                 }
             }
 
-            // ── la ficha del momento ──────────────────────────────
-            ColumnLayout {
-                //  `fillWidth: false` explícito: un layout anidado lo pone a
-                //  true por su cuenta, y con eso este panel se quedaba TODO el
-                //  ancho —su contenido implícito es grande— dejando el vídeo en
-                //  una tira de ocho píxeles. En la island colaba porque no
-                //  sobraba sitio; en la ventana grande se veía a la primera.
+            //  Con desplazamiento propio, y no es un capricho: desde que la
+            //  rejilla de acciones vive aquí, el contenido de la ficha pasa de
+            //  los quinientos píxeles, y su alto implícito arrastraba a toda la
+            //  fila y empujaba el pie por debajo del borde de la island. Medido:
+            //  861 px de contenido en 814 disponibles.
+            //
+            //  `fillWidth: false` explícito: un layout anidado lo pone a true
+            //  por su cuenta, y con eso este panel se quedaba TODO el ancho
+            //  dejando el vídeo en una tira.
+            Flickable {
+                id: ficha
                 Layout.fillWidth: false
                 Layout.preferredWidth: 300
                 Layout.fillHeight: true
-                spacing: 6
-
-                //  Qué hay elegido.
-                //
-                //  Con dos pistas la ficha ya no puede ser siempre la del zoom:
-                //  si acabas de pinchar un trozo, lo que quieres saber es de
-                //  dónde sale y qué le puedes hacer.
-                IslandLabel {
-                    text: view.tituloSel
-                    color: Theme.ink
-                    font.pixelSize: 13
-                    font.weight: Font.DemiBold
+                contentWidth: width
+                contentHeight: fichaCol.implicitHeight
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                flickableDirection: Flickable.VerticalFlick
+                ScrollBar.vertical: ScrollBar {
+                    policy: ficha.contentHeight > ficha.height
+                        ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
                 }
 
-                IslandLabel {
-                    visible: text.length > 0
-                    text: view.detalleSel
-                    color: Theme.muted
-                    font.pixelSize: 11
-                    elide: Text.ElideMiddle
-                    Layout.fillWidth: true
-                }
-
-                // ── lo que se le hace a una capa ──────────────────
-                //
-                //  Mover y escalar se hacen encima del vídeo con el ratón, y su
-                //  tramo se estira en la línea de tiempo. Aquí queda lo que no
-                //  tiene un gesto natural.
                 ColumnLayout {
-                    visible: Editor.capaSel !== null
-                    Layout.fillWidth: true
-                    Layout.topMargin: 6
-                    spacing: 4
+                    id: fichaCol
+                    width: ficha.width - 10
+                    spacing: 6
 
-                    //  Quitar el fondo verde de un vídeo encima.
+                    //  Qué hay elegido.
                     //
-                    //  La previa no lo enseña: `VideoOutput` no sabe hacer un
-                    //  croma. Lo dice el propio botón y para verlo está
-                    //  «previa exacta».
-                    Rectangle {
-                        readonly property bool puesto: Editor.capaSel
-                            && Editor.capaSel.croma
-                            && Editor.capaSel.croma.color
-
-                        visible: Editor.capaSel && Editor.capaSel.tipo === "video"
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: visible ? 26 : 0
-                        radius: 13
-                        color: puesto ? Theme.green
-                             : cromaRaton.containsMouse ? Theme.surfaceHi
-                                                        : Theme.surface
-
-                        RowLayout {
-                            anchors.centerIn: parent
-                            spacing: 5
-
-                            IconGlyph {
-                                text: String.fromCodePoint(0xF00E3)   // md-brush
-                                color: parent.parent.puesto ? "#ffffff" : Theme.muted
-                                font.pixelSize: 12
-                            }
-
-                            IslandLabel {
-                                text: parent.parent.puesto
-                                    ? Idioma.t("Fondo verde quitado (al renderizar)")
-                                    : Idioma.t("Quitar el fondo verde")
-                                color: parent.parent.puesto ? "#ffffff" : Theme.muted
-                                font.pixelSize: 10
-                            }
-                        }
-
-                        MouseArea {
-                            id: cromaRaton
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: Editor.alternarCroma(Editor.idSel)
-                        }
-                    }
-
-                    //  Qué le hace la zona a lo que hay debajo.
-                    //
-                    //  Los tres modos son la misma capa: cambiar de uno a otro
-                    //  conserva el sitio, el tamaño y la ventana de tiempo, que
-                    //  es lo que cuesta colocar.
+                    //  Con dos pistas la ficha ya no puede ser siempre la del zoom:
+                    //  si acabas de pinchar un trozo, lo que quieres saber es de
+                    //  dónde sale y qué le puedes hacer.
                     IslandLabel {
-                        visible: Editor.capaSel && Editor.capaSel.tipo === "zona"
-                        text: Idioma.t("Qué hace")
-                        color: Theme.dim
-                        font.pixelSize: 9
-                        font.capitalization: Font.AllUppercase
+                        text: view.tituloSel
+                        color: Theme.ink
+                        font.pixelSize: 13
                         font.weight: Font.DemiBold
                     }
 
-                    RowLayout {
-                        visible: Editor.capaSel && Editor.capaSel.tipo === "zona"
+                    IslandLabel {
+                        visible: text.length > 0
+                        text: view.detalleSel
+                        color: Theme.muted
+                        font.pixelSize: 11
+                        elide: Text.ElideMiddle
                         Layout.fillWidth: true
-                        spacing: 3
-
-                        Repeater {
-                            model: [
-                                { id: "desenfoque", nombre: Idioma.t("Difuminar"),
-                                  icono: 0xF00B5 },                    // md-blur
-                                { id: "pixelado", nombre: Idioma.t("Pixelar"),
-                                  icono: 0xF00B6 },                    // md-blur_linear
-                                { id: "foco", nombre: Idioma.t("Foco"),
-                                  icono: 0xF04C9 }                     // md-spotlight_beam
-                            ]
-
-                            delegate: Rectangle {
-                                id: chipModo
-                                required property var modelData
-
-                                readonly property bool puesto: Editor.capaSel
-                                    && (Editor.capaSel.modo || "desenfoque")
-                                       === chipModo.modelData.id
-
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 26
-                                radius: 13
-                                color: chipModo.puesto ? Theme.blue
-                                     : modoRaton.containsMouse ? Theme.surfaceHi
-                                                               : Theme.surface
-
-                                ColumnLayout {
-                                    anchors.centerIn: parent
-                                    spacing: 0
-
-                                    IconGlyph {
-                                        Layout.alignment: Qt.AlignHCenter
-                                        text: String.fromCodePoint(
-                                            chipModo.modelData.icono)
-                                        color: chipModo.puesto ? "#ffffff"
-                                                               : Theme.muted
-                                        font.pixelSize: 13
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: modoRaton
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: Editor.fijarCapa(Editor.idSel,
-                                        { modo: chipModo.modelData.id })
-                                }
-                            }
-                        }
                     }
 
-                    //  Lo que dice el rótulo.
+                    // ── qué se le puede añadir ────────────────────────
                     //
-                    //  Aquí y no editando encima del vídeo: sobre el vídeo el
-                    //  texto puede ser diminuto o quedar sobre algo del mismo
-                    //  color, y escribir a ciegas en un sitio así no es escribir.
-                    IslandLabel {
-                        visible: Editor.capaSel && Editor.capaSel.tipo === "texto"
-                        text: Idioma.t("Texto")
-                        color: Theme.dim
-                        font.pixelSize: 9
-                        font.capitalization: Font.AllUppercase
-                        font.weight: Font.DemiBold
-                    }
-
-                    Rectangle {
-                        visible: Editor.capaSel && Editor.capaSel.tipo === "texto"
+                    //  Aquí y no en el pie, y no es una preferencia: ocho botones
+                    //  con nombre pedían 1207 píxeles en una island de 1000, y eso
+                    //  estiraba la columna entera hasta empujar esta misma ficha
+                    //  fuera del borde. Medido antes de moverlos.
+                    //
+                    //  Y encaja mejor: este panel estaba casi vacío mientras no
+                    //  hubiera nada elegido, que es justo cuando se va a añadir
+                    //  algo. Al elegir un trozo o una capa deja sitio a lo suyo.
+                    ColumnLayout {
+                        visible: Editor.tipoSel === ""
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 30
-                        radius: 8
-                        color: Theme.surface
-                        border.width: 1
-                        border.color: campoTexto.activeFocus
-                            ? Theme.blue : Qt.rgba(1, 1, 1, 0.1)
+                        Layout.topMargin: 4
+                        spacing: 4
 
-                        TextInput {
-                            id: campoTexto
-                            anchors.fill: parent
-                            anchors.leftMargin: 9
-                            anchors.rightMargin: 9
-                            verticalAlignment: TextInput.AlignVCenter
-                            color: Theme.ink
-                            font.pixelSize: 12
-                            font.family: Theme.uiFont
-                            selectByMouse: true
-                            selectionColor: Theme.blue
-                            clip: true
-
-                            //  El texto se lee del plan y se escribe al plan, sin
-                            //  copia intermedia: `text` se ata a la capa elegida
-                            //  y cada tecla la guarda con el rebote de siempre.
-                            //  Reasignarlo desde fuera mientras escribes movería
-                            //  el cursor al final, así que solo se relee cuando
-                            //  cambia de capa.
-                            property int deQuien: Editor.idSel
-                            onDeQuienChanged: text = Editor.capaSel
-                                ? (Editor.capaSel.texto || "") : ""
-                            Component.onCompleted: text = Editor.capaSel
-                                ? (Editor.capaSel.texto || "") : ""
-
-                            onTextEdited: Editor.fijarCapa(Editor.idSel,
-                                                           { texto: text })
+                        IslandLabel {
+                            text: Idioma.t("Añadir")
+                            color: Theme.dim
+                            font.pixelSize: 9
+                            font.capitalization: Font.AllUppercase
+                            font.weight: Font.DemiBold
                         }
-                    }
 
-                    IslandLabel {
-                        text: {
-                            if (!Editor.capaSel) return Idioma.t("Opacidad")
-                            if (Editor.capaSel.tipo === "texto") return Idioma.t("Fondo")
-                            if (Editor.capaSel.tipo === "audio") return Idioma.t("Volumen")
-                            if (Editor.capaSel.tipo === "zona") return Idioma.t("Fuerza")
-                            return Idioma.t("Opacidad")
-                        }
-                        color: Theme.dim
-                        font.pixelSize: 9
-                        font.capitalization: Font.AllUppercase
-                        font.weight: Font.DemiBold
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-
-                        Rectangle {
+                        GridLayout {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 4
-                            radius: 2
-                            color: Theme.track
+                            columns: 2
+                            columnSpacing: 4
+                            rowSpacing: 4
 
-                            Rectangle {
-                                //  El volumen llega a 2 y las opacidades a 1, así
-                                //  que la barra se normaliza por su tope: subir el
-                                //  doble es lo que hace falta cuando la música
-                                //  viene baja.
-                                width: parent.width * Math.min(1,
-                                    view.valorBarra / view.topeBarra)
-                                height: parent.height
-                                radius: parent.radius
-                                color: Theme.green
+                            BotonAccion {
+                                texto: Idioma.t("Zoom")
+                                icono: 0xF1276                   // md-magnify_scan
+                                onPulsado: {
+                                    //  Dos segundos desde donde estés, o lo que
+                                    //  quepa si estás cerca del final.
+                                    const a = Math.min(view.segundos,
+                                                       Math.max(0, view.total - 2))
+                                    Editor.seleccionar("momento", Editor.crearMomento(
+                                        a, Math.min(view.total, a + 2)))
+                                }
                             }
 
-                            MouseArea {
-                                anchors.fill: parent
-                                anchors.topMargin: -8
-                                anchors.bottomMargin: -8
-                                cursorShape: Qt.PointingHandCursor
+                            BotonAccion {
+                                texto: Idioma.t("Imagen")
+                                icono: 0xF02E9                   // md-image
+                                onPulsado: view.plugin.pedirImagen(view.segundos)
+                            }
 
-                                function poner(x) {
-                                    const v = Math.max(0, Math.min(view.topeBarra,
-                                        x / Math.max(1, width) * view.topeBarra))
-                                    const q = Math.round(v * 20) / 20
-                                    //  En un rótulo lo que se gradúa es la caja
-                                    //  de detrás: el texto en sí translúcido no
-                                    //  se lee, y bajarle la opacidad es lo que
-                                    //  uno quiere para que no tape el vídeo.
-                                    if (!Editor.capaSel) return
-                                    if (Editor.capaSel.tipo === "texto")
-                                        Editor.fijarCapa(Editor.idSel, { fondo: q })
-                                    else if (Editor.capaSel.tipo === "audio")
-                                        Editor.fijarCapa(Editor.idSel, { volumen: q })
-                                    else if (Editor.capaSel.tipo === "zona")
-                                        Editor.fijarCapa(Editor.idSel, { fuerza: q })
-                                    else
-                                        Editor.fijarCapa(Editor.idSel, { opacidad: q })
-                                }
-                                onPressed: function (ev) { poner(ev.x) }
-                                onPositionChanged: function (ev) {
-                                    if (pressed) poner(ev.x)
-                                }
+                            BotonAccion {
+                                texto: Idioma.t("Texto")
+                                icono: 0xF0284                   // md-format_text
+                                onPulsado: Editor.crearTexto(view.segundos)
+                            }
+
+                            BotonAccion {
+                                texto: Idioma.t("Zona")
+                                icono: 0xF00B5                   // md-blur
+                                onPulsado: Editor.crearZona(view.segundos,
+                                                            "desenfoque")
+                            }
+
+                            BotonAccion {
+                                texto: Idioma.t("Audio")
+                                icono: 0xF075A                   // md-music
+                                onPulsado: view.plugin.pedirAudio(view.segundos)
+                            }
+
+                            BotonAccion {
+                                texto: Idioma.t("Vídeo")
+                                icono: 0xF0E57   // md-picture_in_picture_bottom_right
+                                onPulsado: view.plugin.pedirPip(view.segundos)
+                            }
+
+                            BotonAccion {
+                                texto: Idioma.t("Censurar")
+                                icono: 0xF075F                   // md-volume_mute
+                                onPulsado: Editor.crearCensura(view.segundos,
+                                                               "silencio")
+                            }
+
+                            BotonAccion {
+                                //  Solo si el vídeo trae rastro: uno abierto del
+                                //  disco no tiene clics que resaltar.
+                                visible: Editor.fuentes.length > 0
+                                    && String(Editor.fuentes[0].rastro || "").length > 0
+                                texto: Idioma.t("Clics")
+                                icono: 0xF0CFD           // md-cursor_default_click
+                                activo: Editor.clicsActivos
+                                onPulsado: Editor.alternarClics()
                             }
                         }
 
                         IslandLabel {
-                            Layout.preferredWidth: 34
-                            horizontalAlignment: Text.AlignRight
-                            text: Math.round(view.valorBarra * 100) + "%"
+                            text: Idioma.t("Herramientas")
                             color: Theme.dim
                             font.pixelSize: 9
+                            font.capitalization: Font.AllUppercase
+                            font.weight: Font.DemiBold
+                            Layout.topMargin: 4
+                        }
+
+                        BotonAccion {
+                            readonly property bool hay: Editor.cuantosSilencios > 0
+                            readonly property bool buscando:
+                                Editor.estadoSilencios === "buscando"
+
+                            texto: buscando ? Idioma.t("Escuchando…")
+                                 : hay ? Idioma.t("Quitar ")
+                                         + Editor.cuantosSilencios
+                                         + Idioma.t(" silencios")
+                                 : Editor.estadoSilencios === "fallo"
+                                         ? Idioma.t("No se pudo")
+                                         : Idioma.t("Buscar silencios")
+                            icono: 0xF057E                       // md-volume_high
+                            activo: hay
+                            peligro: true
+                            disponible: !buscando
+                            onPulsado: {
+                                if (hay)
+                                    Editor.quitarSilencios()
+                                else
+                                    Editor.buscarSilencios()
+                            }
                         }
                     }
 
-                    //  Sin botones de subir y bajar.
+                    // ── lo que se le hace a una capa ──────────────────
                     //
-                    //  Los había, y sobraban en cuanto el bloque de la línea de
-                    //  tiempo se pudo arrastrar de una fila a otra: el gesto de
-                    //  coger algo y llevarlo a la capa de arriba se entiende sin
-                    //  leer nada, y dos formas de hacer lo mismo son una de más.
-                    //
-                    //  Lo que sí hace falta es SABER en qué capa está, porque
-                    //  arrastrando no siempre se ve dónde ha caído.
-                    IslandLabel {
-                        Layout.topMargin: 4
+                    //  Mover y escalar se hacen encima del vídeo con el ratón, y su
+                    //  tramo se estira en la línea de tiempo. Aquí queda lo que no
+                    //  tiene un gesto natural.
+                    ColumnLayout {
                         visible: Editor.capaSel !== null
-                        text: Idioma.f(Idioma.t("Capa %1 de %2"),
-                                       String(Editor.capaSel
-                                              ? Editor.bandaDe(Editor.capaSel) : 1),
-                                       String(Editor.cuantasBandas))
-                             + "  ·  " + Idioma.t("arrastra el bloque para cambiarla")
-                        color: Theme.dim
-                        font.pixelSize: 9
-                        wrapMode: Text.WordWrap
                         Layout.fillWidth: true
-                    }
+                        Layout.topMargin: 6
+                        spacing: 4
 
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.topMargin: 4
-                        Layout.preferredHeight: 26
-                        radius: 13
-                        color: quitarCapaRaton.containsMouse ? "#3a1416"
-                                                             : Theme.surface
-                        border.width: 1
-                        border.color: Qt.rgba(1, 0.27, 0.23, 0.3)
+                        //  Quitar el fondo verde de un vídeo encima.
+                        //
+                        //  La previa no lo enseña: `VideoOutput` no sabe hacer un
+                        //  croma. Lo dice el propio botón y para verlo está
+                        //  «previa exacta».
+                        Rectangle {
+                            readonly property bool puesto: Editor.capaSel
+                                && Editor.capaSel.croma
+                                && Editor.capaSel.croma.color
 
-                        RowLayout {
-                            anchors.centerIn: parent
-                            spacing: 5
-
-                            IconGlyph {
-                                text: String.fromCodePoint(0xF01B4)  // md-delete
-                                color: Theme.red
-                                font.pixelSize: 12
-                            }
-
-                            IslandLabel {
-                                text: {
-                                    if (!Editor.capaSel) return Idioma.t("Quitar")
-                                    if (Editor.capaSel.tipo === "texto")
-                                        return Idioma.t("Quitar el rótulo")
-                                    if (Editor.capaSel.tipo === "audio")
-                                        return Idioma.t("Quitar el audio")
-                                    if (Editor.capaSel.tipo === "video")
-                                        return Idioma.t("Quitar el vídeo")
-                                    return Idioma.t("Quitar la imagen")
-                                }
-                                font.pixelSize: 10
-                            }
-                        }
-
-                        MouseArea {
-                            id: quitarCapaRaton
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: Editor.quitarCapa(Editor.idSel)
-                        }
-                    }
-                }
-
-                // ── lo que se le hace a un trozo ──────────────────
-                ColumnLayout {
-                    visible: Editor.clipSel !== null
-                    Layout.fillWidth: true
-                    Layout.topMargin: 6
-                    spacing: 6
-
-                    IslandLabel {
-                        text: Idioma.t("Velocidad")
-                        color: Theme.dim
-                        font.pixelSize: 9
-                        font.capitalization: Font.AllUppercase
-                        font.weight: Font.DemiBold
-                    }
-
-                    //  El trozo del fichero no cambia: lo que cambia es cuánto
-                    //  ocupa en la línea. Por eso al tocar esto los zooms y los
-                    //  rótulos que hubiera después se recolocan solos.
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 3
-
-                        Repeater {
-                            model: [0.25, 0.5, 1, 1.5, 2, 4]
-
-                            delegate: Rectangle {
-                                id: chipVel
-                                required property var modelData
-
-                                readonly property bool puesto: Editor.clipSel
-                                    && Math.abs(Editor.velocidadDe(Editor.clipSel)
-                                                - chipVel.modelData) < 0.001
-
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 24
-                                radius: 12
-                                color: chipVel.puesto ? Theme.blue
-                                     : velRaton.containsMouse ? Theme.surfaceHi
-                                                              : Theme.surface
-
-                                IslandLabel {
-                                    anchors.centerIn: parent
-                                    text: "×" + (chipVel.modelData === 1
-                                        ? "1" : String(chipVel.modelData))
-                                    color: chipVel.puesto ? "#ffffff" : Theme.muted
-                                    font.pixelSize: 10
-                                    font.weight: chipVel.puesto ? Font.DemiBold
-                                                                : Font.Normal
-                                }
-
-                                MouseArea {
-                                    id: velRaton
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: Editor.ponerVelocidad(
-                                        Editor.idSel, chipVel.modelData)
-                                }
-                            }
-                        }
-                    }
-
-                    IslandLabel {
-                        text: Idioma.t("Color")
-                        color: Theme.dim
-                        font.pixelSize: 9
-                        font.capitalization: Font.AllUppercase
-                        font.weight: Font.DemiBold
-                    }
-
-                    //  Del TROZO, no de la línea: sirve para juntar dos
-                    //  grabaciones que no casan sin tocar la otra.
-                    //
-                    //  La previa no lo enseña —`VideoOutput` no tiene un `eq`
-                    //  que aplicarle—, así que aquí abajo se dice y para verlo
-                    //  de verdad está «previa exacta».
-                    Repeater {
-                        model: [
-                            { clave: "brillo",     nombre: Idioma.t("Brillo"),
-                              min: -0.5, max: 0.5, def: 0 },
-                            { clave: "contraste",  nombre: Idioma.t("Contraste"),
-                              min: 0.0,  max: 2.0, def: 1 },
-                            { clave: "saturacion", nombre: Idioma.t("Saturación"),
-                              min: 0.0,  max: 2.0, def: 1 }
-                        ]
-
-                        delegate: RowLayout {
-                            id: filaColor
-                            required property var modelData
-
-                            readonly property real valor: Editor.colorDe(
-                                Editor.clipSel, filaColor.modelData.clave)
-                            readonly property real recorrido:
-                                filaColor.modelData.max - filaColor.modelData.min
-
+                            visible: Editor.capaSel && Editor.capaSel.tipo === "video"
                             Layout.fillWidth: true
-                            spacing: 6
-
-                            IslandLabel {
-                                Layout.preferredWidth: 58
-                                text: filaColor.modelData.nombre
-                                color: Theme.muted
-                                font.pixelSize: 9
-                            }
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 4
-                                radius: 2
-                                color: Theme.track
-
-                                Rectangle {
-                                    width: parent.width * Math.max(0, Math.min(1,
-                                        (filaColor.valor - filaColor.modelData.min)
-                                        / filaColor.recorrido))
-                                    height: parent.height
-                                    radius: parent.radius
-                                    color: Theme.green
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    anchors.topMargin: -8
-                                    anchors.bottomMargin: -8
-                                    cursorShape: Qt.PointingHandCursor
-
-                                    function poner(x) {
-                                        if (!Editor.clipSel)
-                                            return
-                                        const u = Math.max(0, Math.min(1,
-                                            x / Math.max(1, width)))
-                                        const v = filaColor.modelData.min
-                                            + u * filaColor.recorrido
-                                        const campos = {}
-                                        campos[filaColor.modelData.clave] =
-                                            Math.round(v * 20) / 20
-                                        Editor.ponerColor(Editor.idSel, campos)
-                                    }
-                                    onPressed: function (ev) { poner(ev.x) }
-                                    onPositionChanged: function (ev) {
-                                        if (pressed) poner(ev.x)
-                                    }
-                                    //  Doble clic devuelve el valor de fábrica:
-                                    //  con un deslizador tan corto, volver al
-                                    //  centro exacto a mano es una pelea.
-                                    onDoubleClicked: {
-                                        if (!Editor.clipSel)
-                                            return
-                                        const campos = {}
-                                        campos[filaColor.modelData.clave] =
-                                            filaColor.modelData.def
-                                        Editor.ponerColor(Editor.idSel, campos)
-                                    }
-                                }
-                            }
-
-                            IslandLabel {
-                                Layout.preferredWidth: 26
-                                horizontalAlignment: Text.AlignRight
-                                text: filaColor.valor.toFixed(2)
-                                color: Theme.dim
-                                font.pixelSize: 9
-                            }
-                        }
-                    }
-
-                    IslandLabel {
-                        Layout.fillWidth: true
-                        text: Idioma.t("El color solo se ve al renderizar")
-                        color: Theme.dim
-                        font.pixelSize: 9
-                        wrapMode: Text.WordWrap
-                    }
-
-                    Repeater {
-                        model: [
-                            { texto: Idioma.t("Cortar aquí"), icono: 0xF0190,             // md-content_cut
-                              accion: "cortar" },
-                            //  Congelar mete un trozo NUEVO, así que va con los
-                            //  demás botones del trozo y no con los de añadir:
-                            //  lo que congela es el fotograma que estás viendo.
-                            { texto: Idioma.t("Congelar 2 s"), icono: 0xF03E4,            // md-pause
-                              accion: "congelar" },
-                            { texto: Idioma.t("Quitar el trozo"), icono: 0xF01B4,
-                              accion: "quitar" }
-                        ]
-
-                        delegate: Rectangle {
-                            id: botonClip
-                            required property var modelData
-
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 26
+                            Layout.preferredHeight: visible ? 26 : 0
                             radius: 13
-                            color: clipRaton.containsMouse ? Theme.surfaceHi
-                                                           : Theme.surface
-                            // Quitar el último trozo dejaría la línea vacía.
-                            opacity: botonClip.modelData.accion === "quitar"
-                                     && Editor.tramos.length <= 1 ? 0.4 : 1
+                            color: puesto ? Theme.green
+                                 : cromaRaton.containsMouse ? Theme.surfaceHi
+                                                            : Theme.surface
 
                             RowLayout {
                                 anchors.centerIn: parent
                                 spacing: 5
 
                                 IconGlyph {
-                                    text: String.fromCodePoint(botonClip.modelData.icono)
-                                    color: botonClip.modelData.accion === "quitar"
-                                        ? Theme.red : Theme.muted
+                                    text: String.fromCodePoint(0xF00E3)   // md-brush
+                                    color: parent.parent.puesto ? "#ffffff" : Theme.muted
                                     font.pixelSize: 12
                                 }
 
                                 IslandLabel {
-                                    text: botonClip.modelData.texto
+                                    text: parent.parent.puesto
+                                        ? Idioma.t("Fondo verde quitado (al renderizar)")
+                                        : Idioma.t("Quitar el fondo verde")
+                                    color: parent.parent.puesto ? "#ffffff" : Theme.muted
                                     font.pixelSize: 10
                                 }
                             }
 
                             MouseArea {
-                                id: clipRaton
+                                id: cromaRaton
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    const a = botonClip.modelData.accion
-                                    if (a === "cortar")
-                                        Editor.cortar(view.segundos)
-                                    else if (a === "congelar")
-                                        Editor.congelar(view.segundos, 2)
-                                    else
-                                        Editor.quitarClip(Editor.idSel)
+                                onClicked: Editor.alternarCroma(Editor.idSel)
+                            }
+                        }
+
+                        //  Qué le hace la zona a lo que hay debajo.
+                        //
+                        //  Los tres modos son la misma capa: cambiar de uno a otro
+                        //  conserva el sitio, el tamaño y la ventana de tiempo, que
+                        //  es lo que cuesta colocar.
+                        IslandLabel {
+                            visible: Editor.capaSel && Editor.capaSel.tipo === "zona"
+                            text: Idioma.t("Qué hace")
+                            color: Theme.dim
+                            font.pixelSize: 9
+                            font.capitalization: Font.AllUppercase
+                            font.weight: Font.DemiBold
+                        }
+
+                        RowLayout {
+                            visible: Editor.capaSel && Editor.capaSel.tipo === "zona"
+                            Layout.fillWidth: true
+                            spacing: 3
+
+                            Repeater {
+                                model: [
+                                    { id: "desenfoque", nombre: Idioma.t("Difuminar"),
+                                      icono: 0xF00B5 },                    // md-blur
+                                    { id: "pixelado", nombre: Idioma.t("Pixelar"),
+                                      icono: 0xF00B6 },                    // md-blur_linear
+                                    { id: "foco", nombre: Idioma.t("Foco"),
+                                      icono: 0xF04C9 }                     // md-spotlight_beam
+                                ]
+
+                                delegate: Rectangle {
+                                    id: chipModo
+                                    required property var modelData
+
+                                    readonly property bool puesto: Editor.capaSel
+                                        && (Editor.capaSel.modo || "desenfoque")
+                                           === chipModo.modelData.id
+
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 26
+                                    radius: 13
+                                    color: chipModo.puesto ? Theme.blue
+                                         : modoRaton.containsMouse ? Theme.surfaceHi
+                                                                   : Theme.surface
+
+                                    ColumnLayout {
+                                        anchors.centerIn: parent
+                                        spacing: 0
+
+                                        IconGlyph {
+                                            Layout.alignment: Qt.AlignHCenter
+                                            text: String.fromCodePoint(
+                                                chipModo.modelData.icono)
+                                            color: chipModo.puesto ? "#ffffff"
+                                                                   : Theme.muted
+                                            font.pixelSize: 13
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        id: modoRaton
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: Editor.fijarCapa(Editor.idSel,
+                                            { modo: chipModo.modelData.id })
+                                    }
                                 }
                             }
                         }
-                    }
-                }
 
-                // ── lo que se dice en el vídeo ────────────────────
-                //
-                //  Es lo que llena el hueco de la ficha cuando no hay nada
-                //  elegido, que es la mayor parte del tiempo. Cada línea lleva a
-                //  su instante al pulsarla y se convierte en rótulo con el botón:
-                //  ese puente es lo que hace que la transcripción sirva para algo
-                //  más que subtitular.
-                // ── los fundidos ──────────────────────────────────
-                //
-                //  De la línea entera y no de un trozo, así que siempre
-                //  visibles: no hay nada que seleccionar para llegar a ellos.
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.topMargin: 8
-                    spacing: 4
+                        //  Lo que dice el rótulo.
+                        //
+                        //  Aquí y no editando encima del vídeo: sobre el vídeo el
+                        //  texto puede ser diminuto o quedar sobre algo del mismo
+                        //  color, y escribir a ciegas en un sitio así no es escribir.
+                        IslandLabel {
+                            visible: Editor.capaSel && Editor.capaSel.tipo === "texto"
+                            text: Idioma.t("Texto")
+                            color: Theme.dim
+                            font.pixelSize: 9
+                            font.capitalization: Font.AllUppercase
+                            font.weight: Font.DemiBold
+                        }
 
-                    IslandLabel {
-                        text: Idioma.t("Fundidos")
-                        color: Theme.dim
-                        font.pixelSize: 9
-                        font.capitalization: Font.AllUppercase
-                        font.weight: Font.DemiBold
-                    }
-
-                    Repeater {
-                        model: [
-                            { cual: "entrada", nombre: Idioma.t("Al entrar") },
-                            { cual: "salida",  nombre: Idioma.t("Al salir") },
-                            { cual: "entre",   nombre: Idioma.t("En los cortes") }
-                        ]
-
-                        delegate: RowLayout {
-                            id: filaFundido
-                            required property var modelData
-
-                            readonly property real valor:
-                                filaFundido.modelData.cual === "entrada"
-                                    ? Editor.fundidoEntrada
-                              : filaFundido.modelData.cual === "salida"
-                                    ? Editor.fundidoSalida
-                                    : Editor.fundidoEntre
-
-                            //  Hasta 2 s: más que eso en un corte es que se te
-                            //  ha ido la mano, y el trozo se queda en negro.
-                            readonly property real tope: 2.0
-
+                        Rectangle {
+                            visible: Editor.capaSel && Editor.capaSel.tipo === "texto"
                             Layout.fillWidth: true
-                            //  «En los cortes» no pinta nada con un solo trozo.
-                            visible: filaFundido.modelData.cual !== "entre"
-                                     || Editor.tramos.length > 1
-                            spacing: 6
+                            Layout.preferredHeight: 30
+                            radius: 8
+                            color: Theme.surface
+                            border.width: 1
+                            border.color: campoTexto.activeFocus
+                                ? Theme.blue : Qt.rgba(1, 1, 1, 0.1)
 
-                            IslandLabel {
-                                Layout.preferredWidth: 58
-                                text: filaFundido.modelData.nombre
-                                color: Theme.muted
-                                font.pixelSize: 9
+                            TextInput {
+                                id: campoTexto
+                                anchors.fill: parent
+                                anchors.leftMargin: 9
+                                anchors.rightMargin: 9
+                                verticalAlignment: TextInput.AlignVCenter
+                                color: Theme.ink
+                                font.pixelSize: 12
+                                font.family: Theme.uiFont
+                                selectByMouse: true
+                                selectionColor: Theme.blue
+                                clip: true
+
+                                //  El texto se lee del plan y se escribe al plan, sin
+                                //  copia intermedia: `text` se ata a la capa elegida
+                                //  y cada tecla la guarda con el rebote de siempre.
+                                //  Reasignarlo desde fuera mientras escribes movería
+                                //  el cursor al final, así que solo se relee cuando
+                                //  cambia de capa.
+                                property int deQuien: Editor.idSel
+                                onDeQuienChanged: text = Editor.capaSel
+                                    ? (Editor.capaSel.texto || "") : ""
+                                Component.onCompleted: text = Editor.capaSel
+                                    ? (Editor.capaSel.texto || "") : ""
+
+                                onTextEdited: Editor.fijarCapa(Editor.idSel,
+                                                               { texto: text })
                             }
+                        }
+
+                        IslandLabel {
+                            text: {
+                                if (!Editor.capaSel) return Idioma.t("Opacidad")
+                                if (Editor.capaSel.tipo === "texto") return Idioma.t("Fondo")
+                                if (Editor.capaSel.tipo === "audio") return Idioma.t("Volumen")
+                                if (Editor.capaSel.tipo === "zona") return Idioma.t("Fuerza")
+                                return Idioma.t("Opacidad")
+                            }
+                            color: Theme.dim
+                            font.pixelSize: 9
+                            font.capitalization: Font.AllUppercase
+                            font.weight: Font.DemiBold
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
 
                             Rectangle {
                                 Layout.fillWidth: true
@@ -1095,8 +836,12 @@ Item {
                                 color: Theme.track
 
                                 Rectangle {
-                                    width: parent.width * Math.max(0, Math.min(1,
-                                        filaFundido.valor / filaFundido.tope))
+                                    //  El volumen llega a 2 y las opacidades a 1, así
+                                    //  que la barra se normaliza por su tope: subir el
+                                    //  doble es lo que hace falta cuando la música
+                                    //  viene baja.
+                                    width: parent.width * Math.min(1,
+                                        view.valorBarra / view.topeBarra)
                                     height: parent.height
                                     radius: parent.radius
                                     color: Theme.green
@@ -1109,11 +854,22 @@ Item {
                                     cursorShape: Qt.PointingHandCursor
 
                                     function poner(x) {
-                                        const u = Math.max(0, Math.min(1,
-                                            x / Math.max(1, width)))
-                                        Editor.ponerFundido(
-                                            filaFundido.modelData.cual,
-                                            Math.round(u * filaFundido.tope * 20) / 20)
+                                        const v = Math.max(0, Math.min(view.topeBarra,
+                                            x / Math.max(1, width) * view.topeBarra))
+                                        const q = Math.round(v * 20) / 20
+                                        //  En un rótulo lo que se gradúa es la caja
+                                        //  de detrás: el texto en sí translúcido no
+                                        //  se lee, y bajarle la opacidad es lo que
+                                        //  uno quiere para que no tape el vídeo.
+                                        if (!Editor.capaSel) return
+                                        if (Editor.capaSel.tipo === "texto")
+                                            Editor.fijarCapa(Editor.idSel, { fondo: q })
+                                        else if (Editor.capaSel.tipo === "audio")
+                                            Editor.fijarCapa(Editor.idSel, { volumen: q })
+                                        else if (Editor.capaSel.tipo === "zona")
+                                            Editor.fijarCapa(Editor.idSel, { fuerza: q })
+                                        else
+                                            Editor.fijarCapa(Editor.idSel, { opacidad: q })
                                     }
                                     onPressed: function (ev) { poner(ev.x) }
                                     onPositionChanged: function (ev) {
@@ -1123,449 +879,894 @@ Item {
                             }
 
                             IslandLabel {
-                                Layout.preferredWidth: 30
+                                Layout.preferredWidth: 34
                                 horizontalAlignment: Text.AlignRight
-                                text: filaFundido.valor.toFixed(2) + " s"
+                                text: Math.round(view.valorBarra * 100) + "%"
                                 color: Theme.dim
                                 font.pixelSize: 9
                             }
                         }
-                    }
-                }
 
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Layout.topMargin: 8
-                    spacing: 4
-
-                    IslandLabel {
-                        text: Idioma.t("Transcripción")
-                        color: Theme.dim
-                        font.pixelSize: 9
-                        font.capitalization: Font.AllUppercase
-                        font.weight: Font.DemiBold
-                    }
-
-                    //  El estado, cuando hay algo que decir. Aquí es donde
-                    //  aparece el mandato de instalación si falta whisper: son
-                    //  1,4 GB entre binario y modelo y eso no se descarga solo.
-                    IslandLabel {
-                        visible: text.length > 0
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        text: {
-                            const e = Editor.estadoTranscripcion
-                            if (e === "comprobando") return Idioma.t("Comprobando…")
-                            if (e === "extrayendo")  return Idioma.t("Sacando el audio…")
-                            if (e === "transcribiendo") return Idioma.t("Escuchando… esto tarda")
-                            if (e === "fallo") return Idioma.t("No se pudo transcribir")
-                            if (e === "falta")
-                                return Editor.faltaTranscripcion === "modelo"
-                                    ? Idioma.t("Falta el modelo de voz")
-                                    : Idioma.t("Falta whisper.cpp")
-                            return ""
-                        }
-                        color: Editor.estadoTranscripcion === "fallo"
-                            ? Theme.red : Theme.muted
-                        font.pixelSize: 10
-                    }
-
-                    Rectangle {
-                        visible: Editor.estadoTranscripcion === "falta"
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: comoTexto.implicitHeight + 16
-                        radius: 8
-                        color: Theme.surface
-
+                        //  Sin botones de subir y bajar.
+                        //
+                        //  Los había, y sobraban en cuanto el bloque de la línea de
+                        //  tiempo se pudo arrastrar de una fila a otra: el gesto de
+                        //  coger algo y llevarlo a la capa de arriba se entiende sin
+                        //  leer nada, y dos formas de hacer lo mismo son una de más.
+                        //
+                        //  Lo que sí hace falta es SABER en qué capa está, porque
+                        //  arrastrando no siempre se ve dónde ha caído.
                         IslandLabel {
-                            id: comoTexto
-                            anchors.fill: parent
-                            anchors.margins: 8
-                            text: Editor.comoInstalar
-                            color: Theme.muted
+                            Layout.topMargin: 4
+                            visible: Editor.capaSel !== null
+                            text: Idioma.f(Idioma.t("Capa %1 de %2"),
+                                           String(Editor.capaSel
+                                                  ? Editor.bandaDe(Editor.capaSel) : 1),
+                                           String(Editor.cuantasBandas))
+                                 + "  ·  " + Idioma.t("arrastra el bloque para cambiarla")
+                            color: Theme.dim
                             font.pixelSize: 9
-                            font.family: "monospace"
-                            wrapMode: Text.WrapAnywhere
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            //  Pulsar lo copia: nadie va a teclear a mano una
-                            //  URL de Hugging Face de ciento y pico caracteres.
-                            onClicked: K4.Sistema.copiar(Editor.comoInstalar)
-                        }
-                    }
-
-                    Rectangle {
-                        visible: Editor.transcripcion.length === 0
-                            && Editor.estadoTranscripcion === ""
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 26
-                        radius: 13
-                        color: transRaton.containsMouse ? Theme.surfaceHi
-                                                        : Theme.surface
-
-                        RowLayout {
-                            anchors.centerIn: parent
-                            spacing: 5
-
-                            IconGlyph {
-                                text: String.fromCodePoint(0xF036C)  // md-microphone
-                                color: Theme.blue
-                                font.pixelSize: 12
-                            }
-
-                            IslandLabel {
-                                text: Idioma.t("Transcribir")
-                                font.pixelSize: 10
-                            }
-                        }
-
-                        MouseArea {
-                            id: transRaton
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: Editor.transcribir()
-                        }
-                    }
-
-                    //  Toda la transcripción de golpe, con estilo de subtítulo.
-                    //
-                    //  Segmento a segmento ya se podía —el botón de cada línea—,
-                    //  pero para poner subtítulos a un vídeo entero eso son
-                    //  cuarenta clics. Salen como capas normales: si alguna
-                    //  frase queda mal, se retoca sola.
-                    Rectangle {
-                        visible: Editor.transcripcion.length > 0
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: visible ? 24 : 0
-                        radius: 12
-                        color: quemarRaton.containsMouse ? Theme.surfaceHi
-                                                         : Theme.surface
-
-                        RowLayout {
-                            anchors.centerIn: parent
-                            spacing: 5
-
-                            IconGlyph {
-                                text: String.fromCodePoint(0xF0A17)   // md-subtitles_outline
-                                color: Theme.muted
-                                font.pixelSize: 12
-                            }
-
-                            IslandLabel {
-                                text: Idioma.t("Quemar los ")
-                                      + Editor.transcripcion.length
-                                      + Idioma.t(" como subtítulos")
-                                color: Theme.muted
-                                font.pixelSize: 10
-                            }
-                        }
-
-                        MouseArea {
-                            id: quemarRaton
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: Editor.quemarTranscripcion()
-                        }
-                    }
-
-                    ListView {
-                        visible: Editor.transcripcion.length > 0
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        clip: true
-                        spacing: 2
-                        model: Editor.transcripcion
-                        boundsBehavior: Flickable.StopAtBounds
-
-                        delegate: Rectangle {
-                            id: linea
-                            required property var modelData
-
-                            //  El segmento que suena ahora, resaltado: es lo que
-                            //  convierte la lista en algo que se puede seguir
-                            //  mientras el vídeo corre.
-                            readonly property bool ahora: view.segundos >= modelData.t0
-                                && view.segundos <= modelData.t1
-
-                            width: ListView.view.width
-                            height: cuerpo.implicitHeight + 12
-                            radius: 7
-                            color: ahora ? Qt.rgba(10 / 255, 132 / 255, 1, 0.18)
-                                : (lineaRaton.containsMouse ? Theme.surface
-                                                            : "transparent")
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: 6
-                                spacing: 6
-
-                                IslandLabel {
-                                    Layout.preferredWidth: 28
-                                    text: linea.modelData.t0.toFixed(1)
-                                    color: Theme.dim
-                                    font.pixelSize: 9
-                                }
-
-                                IslandLabel {
-                                    id: cuerpo
-                                    Layout.fillWidth: true
-                                    text: linea.modelData.texto
-                                    color: linea.ahora ? Theme.ink : Theme.muted
-                                    font.pixelSize: 10
-                                    wrapMode: Text.WordWrap
-                                }
-
-                                //  De lo dicho a un rótulo, con sus mismos
-                                //  tiempos. El puente que hace que esto valga
-                                //  para más que subtitular.
-                                MediaButton {
-                                    glyph: String.fromCodePoint(0xF0284)
-                                    glyphSize: 12
-                                    glyphColor: Theme.green
-                                    onActivated: Editor.rotuloDesde(linea.modelData)
-                                }
-                            }
-
-                            MouseArea {
-                                id: lineaRaton
-                                anchors.fill: parent
-                                anchors.rightMargin: 26
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: view.irA(linea.modelData.t0)
-                            }
-                        }
-                    }
-                }
-
-                GridLayout {
-                    // Los botones del zoom solo pintan algo con un zoom elegido.
-                    visible: Editor.clipSel === null && Editor.capaSel === null
-                    columns: 2
-                    columnSpacing: 6
-                    rowSpacing: 6
-                    Layout.fillWidth: true
-
-                    Repeater {
-                        model: [
-                            { texto: Idioma.t("Antes"),   icono: 0xF0141, accion: "antes" },
-                            { texto: Idioma.t("Después"), icono: 0xF0142, accion: "despues" },
-                            { texto: Idioma.t("Menos"),   icono: 0xF034A, accion: "menos" },
-                            { texto: Idioma.t("Más"),     icono: 0xF034B, accion: "mas" }
-                        ]
-
-                        delegate: Rectangle {
-                            id: boton
-                            required property var modelData
-
+                            wrapMode: Text.WordWrap
                             Layout.fillWidth: true
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.topMargin: 4
                             Layout.preferredHeight: 26
                             radius: 13
-                            color: botonRaton.containsMouse ? Theme.surfaceHi : Theme.surface
-                            opacity: view.momento ? 1 : 0.4
+                            color: quitarCapaRaton.containsMouse ? "#3a1416"
+                                                                 : Theme.surface
+                            border.width: 1
+                            border.color: Qt.rgba(1, 0.27, 0.23, 0.3)
 
                             RowLayout {
                                 anchors.centerIn: parent
                                 spacing: 5
 
                                 IconGlyph {
-                                    text: String.fromCodePoint(boton.modelData.icono)
+                                    text: String.fromCodePoint(0xF01B4)  // md-delete
+                                    color: Theme.red
+                                    font.pixelSize: 12
+                                }
+
+                                IslandLabel {
+                                    text: {
+                                        if (!Editor.capaSel) return Idioma.t("Quitar")
+                                        if (Editor.capaSel.tipo === "texto")
+                                            return Idioma.t("Quitar el rótulo")
+                                        if (Editor.capaSel.tipo === "audio")
+                                            return Idioma.t("Quitar el audio")
+                                        if (Editor.capaSel.tipo === "video")
+                                            return Idioma.t("Quitar el vídeo")
+                                        return Idioma.t("Quitar la imagen")
+                                    }
+                                    font.pixelSize: 10
+                                }
+                            }
+
+                            MouseArea {
+                                id: quitarCapaRaton
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: Editor.quitarCapa(Editor.idSel)
+                            }
+                        }
+                    }
+
+                    // ── lo que se le hace a un trozo ──────────────────
+                    ColumnLayout {
+                        visible: Editor.clipSel !== null
+                        Layout.fillWidth: true
+                        Layout.topMargin: 6
+                        spacing: 6
+
+                        IslandLabel {
+                            text: Idioma.t("Velocidad")
+                            color: Theme.dim
+                            font.pixelSize: 9
+                            font.capitalization: Font.AllUppercase
+                            font.weight: Font.DemiBold
+                        }
+
+                        //  El trozo del fichero no cambia: lo que cambia es cuánto
+                        //  ocupa en la línea. Por eso al tocar esto los zooms y los
+                        //  rótulos que hubiera después se recolocan solos.
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 3
+
+                            Repeater {
+                                model: [0.25, 0.5, 1, 1.5, 2, 4]
+
+                                delegate: Rectangle {
+                                    id: chipVel
+                                    required property var modelData
+
+                                    readonly property bool puesto: Editor.clipSel
+                                        && Math.abs(Editor.velocidadDe(Editor.clipSel)
+                                                    - chipVel.modelData) < 0.001
+
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 24
+                                    radius: 12
+                                    color: chipVel.puesto ? Theme.blue
+                                         : velRaton.containsMouse ? Theme.surfaceHi
+                                                                  : Theme.surface
+
+                                    IslandLabel {
+                                        anchors.centerIn: parent
+                                        text: "×" + (chipVel.modelData === 1
+                                            ? "1" : String(chipVel.modelData))
+                                        color: chipVel.puesto ? "#ffffff" : Theme.muted
+                                        font.pixelSize: 10
+                                        font.weight: chipVel.puesto ? Font.DemiBold
+                                                                    : Font.Normal
+                                    }
+
+                                    MouseArea {
+                                        id: velRaton
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: Editor.ponerVelocidad(
+                                            Editor.idSel, chipVel.modelData)
+                                    }
+                                }
+                            }
+                        }
+
+                        IslandLabel {
+                            text: Idioma.t("Color")
+                            color: Theme.dim
+                            font.pixelSize: 9
+                            font.capitalization: Font.AllUppercase
+                            font.weight: Font.DemiBold
+                        }
+
+                        //  Del TROZO, no de la línea: sirve para juntar dos
+                        //  grabaciones que no casan sin tocar la otra.
+                        //
+                        //  La previa no lo enseña —`VideoOutput` no tiene un `eq`
+                        //  que aplicarle—, así que aquí abajo se dice y para verlo
+                        //  de verdad está «previa exacta».
+                        Repeater {
+                            model: [
+                                { clave: "brillo",     nombre: Idioma.t("Brillo"),
+                                  min: -0.5, max: 0.5, def: 0 },
+                                { clave: "contraste",  nombre: Idioma.t("Contraste"),
+                                  min: 0.0,  max: 2.0, def: 1 },
+                                { clave: "saturacion", nombre: Idioma.t("Saturación"),
+                                  min: 0.0,  max: 2.0, def: 1 }
+                            ]
+
+                            delegate: RowLayout {
+                                id: filaColor
+                                required property var modelData
+
+                                readonly property real valor: Editor.colorDe(
+                                    Editor.clipSel, filaColor.modelData.clave)
+                                readonly property real recorrido:
+                                    filaColor.modelData.max - filaColor.modelData.min
+
+                                Layout.fillWidth: true
+                                spacing: 6
+
+                                IslandLabel {
+                                    Layout.preferredWidth: 58
+                                    text: filaColor.modelData.nombre
+                                    color: Theme.muted
+                                    font.pixelSize: 9
+                                }
+
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 4
+                                    radius: 2
+                                    color: Theme.track
+
+                                    Rectangle {
+                                        width: parent.width * Math.max(0, Math.min(1,
+                                            (filaColor.valor - filaColor.modelData.min)
+                                            / filaColor.recorrido))
+                                        height: parent.height
+                                        radius: parent.radius
+                                        color: Theme.green
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        anchors.topMargin: -8
+                                        anchors.bottomMargin: -8
+                                        cursorShape: Qt.PointingHandCursor
+
+                                        function poner(x) {
+                                            if (!Editor.clipSel)
+                                                return
+                                            const u = Math.max(0, Math.min(1,
+                                                x / Math.max(1, width)))
+                                            const v = filaColor.modelData.min
+                                                + u * filaColor.recorrido
+                                            const campos = {}
+                                            campos[filaColor.modelData.clave] =
+                                                Math.round(v * 20) / 20
+                                            Editor.ponerColor(Editor.idSel, campos)
+                                        }
+                                        onPressed: function (ev) { poner(ev.x) }
+                                        onPositionChanged: function (ev) {
+                                            if (pressed) poner(ev.x)
+                                        }
+                                        //  Doble clic devuelve el valor de fábrica:
+                                        //  con un deslizador tan corto, volver al
+                                        //  centro exacto a mano es una pelea.
+                                        onDoubleClicked: {
+                                            if (!Editor.clipSel)
+                                                return
+                                            const campos = {}
+                                            campos[filaColor.modelData.clave] =
+                                                filaColor.modelData.def
+                                            Editor.ponerColor(Editor.idSel, campos)
+                                        }
+                                    }
+                                }
+
+                                IslandLabel {
+                                    Layout.preferredWidth: 26
+                                    horizontalAlignment: Text.AlignRight
+                                    text: filaColor.valor.toFixed(2)
+                                    color: Theme.dim
+                                    font.pixelSize: 9
+                                }
+                            }
+                        }
+
+                        IslandLabel {
+                            Layout.fillWidth: true
+                            text: Idioma.t("El color solo se ve al renderizar")
+                            color: Theme.dim
+                            font.pixelSize: 9
+                            wrapMode: Text.WordWrap
+                        }
+
+                        Repeater {
+                            model: [
+                                { texto: Idioma.t("Cortar aquí"), icono: 0xF0190,             // md-content_cut
+                                  accion: "cortar" },
+                                //  Congelar mete un trozo NUEVO, así que va con los
+                                //  demás botones del trozo y no con los de añadir:
+                                //  lo que congela es el fotograma que estás viendo.
+                                { texto: Idioma.t("Congelar 2 s"), icono: 0xF03E4,            // md-pause
+                                  accion: "congelar" },
+                                { texto: Idioma.t("Quitar el trozo"), icono: 0xF01B4,
+                                  accion: "quitar" }
+                            ]
+
+                            delegate: Rectangle {
+                                id: botonClip
+                                required property var modelData
+
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 26
+                                radius: 13
+                                color: clipRaton.containsMouse ? Theme.surfaceHi
+                                                               : Theme.surface
+                                // Quitar el último trozo dejaría la línea vacía.
+                                opacity: botonClip.modelData.accion === "quitar"
+                                         && Editor.tramos.length <= 1 ? 0.4 : 1
+
+                                RowLayout {
+                                    anchors.centerIn: parent
+                                    spacing: 5
+
+                                    IconGlyph {
+                                        text: String.fromCodePoint(botonClip.modelData.icono)
+                                        color: botonClip.modelData.accion === "quitar"
+                                            ? Theme.red : Theme.muted
+                                        font.pixelSize: 12
+                                    }
+
+                                    IslandLabel {
+                                        text: botonClip.modelData.texto
+                                        font.pixelSize: 10
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: clipRaton
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        const a = botonClip.modelData.accion
+                                        if (a === "cortar")
+                                            Editor.cortar(view.segundos)
+                                        else if (a === "congelar")
+                                            Editor.congelar(view.segundos, 2)
+                                        else
+                                            Editor.quitarClip(Editor.idSel)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // ── lo que se dice en el vídeo ────────────────────
+                    //
+                    //  Es lo que llena el hueco de la ficha cuando no hay nada
+                    //  elegido, que es la mayor parte del tiempo. Cada línea lleva a
+                    //  su instante al pulsarla y se convierte en rótulo con el botón:
+                    //  ese puente es lo que hace que la transcripción sirva para algo
+                    //  más que subtitular.
+                    // ── los fundidos ──────────────────────────────────
+                    //
+                    //  De la línea entera y no de un trozo, así que siempre
+                    //  visibles: no hay nada que seleccionar para llegar a ellos.
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 8
+                        spacing: 4
+
+                        IslandLabel {
+                            text: Idioma.t("Fundidos")
+                            color: Theme.dim
+                            font.pixelSize: 9
+                            font.capitalization: Font.AllUppercase
+                            font.weight: Font.DemiBold
+                        }
+
+                        Repeater {
+                            model: [
+                                { cual: "entrada", nombre: Idioma.t("Al entrar") },
+                                { cual: "salida",  nombre: Idioma.t("Al salir") },
+                                { cual: "entre",   nombre: Idioma.t("En los cortes") }
+                            ]
+
+                            delegate: RowLayout {
+                                id: filaFundido
+                                required property var modelData
+
+                                readonly property real valor:
+                                    filaFundido.modelData.cual === "entrada"
+                                        ? Editor.fundidoEntrada
+                                  : filaFundido.modelData.cual === "salida"
+                                        ? Editor.fundidoSalida
+                                        : Editor.fundidoEntre
+
+                                //  Hasta 2 s: más que eso en un corte es que se te
+                                //  ha ido la mano, y el trozo se queda en negro.
+                                readonly property real tope: 2.0
+
+                                Layout.fillWidth: true
+                                //  «En los cortes» no pinta nada con un solo trozo.
+                                visible: filaFundido.modelData.cual !== "entre"
+                                         || Editor.tramos.length > 1
+                                spacing: 6
+
+                                IslandLabel {
+                                    Layout.preferredWidth: 58
+                                    text: filaFundido.modelData.nombre
+                                    color: Theme.muted
+                                    font.pixelSize: 9
+                                }
+
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 4
+                                    radius: 2
+                                    color: Theme.track
+
+                                    Rectangle {
+                                        width: parent.width * Math.max(0, Math.min(1,
+                                            filaFundido.valor / filaFundido.tope))
+                                        height: parent.height
+                                        radius: parent.radius
+                                        color: Theme.green
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        anchors.topMargin: -8
+                                        anchors.bottomMargin: -8
+                                        cursorShape: Qt.PointingHandCursor
+
+                                        function poner(x) {
+                                            const u = Math.max(0, Math.min(1,
+                                                x / Math.max(1, width)))
+                                            Editor.ponerFundido(
+                                                filaFundido.modelData.cual,
+                                                Math.round(u * filaFundido.tope * 20) / 20)
+                                        }
+                                        onPressed: function (ev) { poner(ev.x) }
+                                        onPositionChanged: function (ev) {
+                                            if (pressed) poner(ev.x)
+                                        }
+                                    }
+                                }
+
+                                IslandLabel {
+                                    Layout.preferredWidth: 30
+                                    horizontalAlignment: Text.AlignRight
+                                    text: filaFundido.valor.toFixed(2) + " s"
+                                    color: Theme.dim
+                                    font.pixelSize: 9
+                                }
+                            }
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.topMargin: 8
+                        spacing: 4
+
+                        IslandLabel {
+                            text: Idioma.t("Transcripción")
+                            color: Theme.dim
+                            font.pixelSize: 9
+                            font.capitalization: Font.AllUppercase
+                            font.weight: Font.DemiBold
+                        }
+
+                        //  El estado, cuando hay algo que decir. Aquí es donde
+                        //  aparece el mandato de instalación si falta whisper: son
+                        //  1,4 GB entre binario y modelo y eso no se descarga solo.
+                        IslandLabel {
+                            visible: text.length > 0
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: {
+                                const e = Editor.estadoTranscripcion
+                                if (e === "comprobando") return Idioma.t("Comprobando…")
+                                if (e === "extrayendo")  return Idioma.t("Sacando el audio…")
+                                if (e === "transcribiendo") return Idioma.t("Escuchando… esto tarda")
+                                if (e === "fallo") return Idioma.t("No se pudo transcribir")
+                                if (e === "falta")
+                                    return Editor.faltaTranscripcion === "modelo"
+                                        ? Idioma.t("Falta el modelo de voz")
+                                        : Idioma.t("Falta whisper.cpp")
+                                return ""
+                            }
+                            color: Editor.estadoTranscripcion === "fallo"
+                                ? Theme.red : Theme.muted
+                            font.pixelSize: 10
+                        }
+
+                        Rectangle {
+                            visible: Editor.estadoTranscripcion === "falta"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: comoTexto.implicitHeight + 16
+                            radius: 8
+                            color: Theme.surface
+
+                            IslandLabel {
+                                id: comoTexto
+                                anchors.fill: parent
+                                anchors.margins: 8
+                                text: Editor.comoInstalar
+                                color: Theme.muted
+                                font.pixelSize: 9
+                                font.family: "monospace"
+                                wrapMode: Text.WrapAnywhere
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                //  Pulsar lo copia: nadie va a teclear a mano una
+                                //  URL de Hugging Face de ciento y pico caracteres.
+                                onClicked: K4.Sistema.copiar(Editor.comoInstalar)
+                            }
+                        }
+
+                        Rectangle {
+                            visible: Editor.transcripcion.length === 0
+                                && Editor.estadoTranscripcion === ""
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 26
+                            radius: 13
+                            color: transRaton.containsMouse ? Theme.surfaceHi
+                                                            : Theme.surface
+
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: 5
+
+                                IconGlyph {
+                                    text: String.fromCodePoint(0xF036C)  // md-microphone
+                                    color: Theme.blue
+                                    font.pixelSize: 12
+                                }
+
+                                IslandLabel {
+                                    text: Idioma.t("Transcribir")
+                                    font.pixelSize: 10
+                                }
+                            }
+
+                            MouseArea {
+                                id: transRaton
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: Editor.transcribir()
+                            }
+                        }
+
+                        //  Toda la transcripción de golpe, con estilo de subtítulo.
+                        //
+                        //  Segmento a segmento ya se podía —el botón de cada línea—,
+                        //  pero para poner subtítulos a un vídeo entero eso son
+                        //  cuarenta clics. Salen como capas normales: si alguna
+                        //  frase queda mal, se retoca sola.
+                        Rectangle {
+                            visible: Editor.transcripcion.length > 0
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: visible ? 24 : 0
+                            radius: 12
+                            color: quemarRaton.containsMouse ? Theme.surfaceHi
+                                                             : Theme.surface
+
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: 5
+
+                                IconGlyph {
+                                    text: String.fromCodePoint(0xF0A17)   // md-subtitles_outline
                                     color: Theme.muted
                                     font.pixelSize: 12
                                 }
 
                                 IslandLabel {
-                                    text: boton.modelData.texto
+                                    text: Idioma.t("Quemar los ")
+                                          + Editor.transcripcion.length
+                                          + Idioma.t(" como subtítulos")
+                                    color: Theme.muted
                                     font.pixelSize: 10
                                 }
                             }
 
                             MouseArea {
-                                id: botonRaton
+                                id: quemarRaton
                                 anchors.fill: parent
                                 hoverEnabled: true
-                                enabled: view.momento !== null
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    const a = boton.modelData.accion
-                                    if (a === "antes")        Editor.moverMomento(view.momento.id, -0.2)
-                                    else if (a === "despues") Editor.moverMomento(view.momento.id, 0.2)
-                                    else if (a === "menos")   Editor.ajustarNivel(view.momento.id, -0.2)
-                                    else if (a === "mas")     Editor.ajustarNivel(view.momento.id, 0.2)
-                                }
+                                onClicked: Editor.quemarTranscripcion()
                             }
                         }
-                    }
-                }
 
-                //  Las pistas de audio.
-                //
-                //  Se graban por separado —sistema y micro— para poder
-                //  equilibrarlas después: mezclarlas al grabar sería
-                //  irreversible. Lo que se toque aquí se aplica al renderizar.
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.bottomMargin: 4
-                    spacing: 3
-                    visible: Editor.pistasAudio.length > 0
-
-                    IslandLabel {
-                        text: Idioma.t("Audio")
-                        color: Theme.dim
-                        font.pixelSize: 9
-                        font.capitalization: Font.AllUppercase
-                        font.weight: Font.DemiBold
-                    }
-
-                    Repeater {
-                        model: Editor.pistasAudio
-
-                        delegate: RowLayout {
-                            id: filaPista
-                            required property var modelData
-
+                        ListView {
+                            visible: Editor.transcripcion.length > 0
                             Layout.fillWidth: true
-                            spacing: 6
+                            Layout.fillHeight: true
+                            clip: true
+                            spacing: 2
+                            model: Editor.transcripcion
+                            boundsBehavior: Flickable.StopAtBounds
 
-                            //  Silenciar, y de paso decir cuál estás oyendo:
-                            //  el reproductor solo puede sacar una pista a la
-                            //  vez, así que pulsar el nombre cambia de monitor.
-                            MediaButton {
-                                glyph: String.fromCodePoint(
-                                    filaPista.modelData.mudo ? 0xF0581 : 0xF057E)
-                                glyphSize: 13
-                                glyphColor: filaPista.modelData.mudo
-                                    ? Theme.dim : Theme.ink
-                                onActivated: Editor.fijarPista(
-                                    filaPista.modelData.i,
-                                    { mudo: !filaPista.modelData.mudo })
-                            }
+                            delegate: Rectangle {
+                                id: linea
+                                required property var modelData
 
-                            IslandLabel {
-                                Layout.preferredWidth: 62
-                                text: filaPista.modelData.titulo.length > 0
-                                    ? filaPista.modelData.titulo
-                                    : Idioma.t("Pista ") + (filaPista.modelData.i + 1)
-                                color: reproductor.pistaAudio === filaPista.modelData.i
-                                    ? Theme.ink : Theme.muted
-                                font.pixelSize: 10
-                                elide: Text.ElideRight
+                                //  El segmento que suena ahora, resaltado: es lo que
+                                //  convierte la lista en algo que se puede seguir
+                                //  mientras el vídeo corre.
+                                readonly property bool ahora: view.segundos >= modelData.t0
+                                    && view.segundos <= modelData.t1
 
-                                MouseArea {
+                                width: ListView.view.width
+                                height: cuerpo.implicitHeight + 12
+                                radius: 7
+                                color: ahora ? Qt.rgba(10 / 255, 132 / 255, 1, 0.18)
+                                    : (lineaRaton.containsMouse ? Theme.surface
+                                                                : "transparent")
+
+                                RowLayout {
                                     anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: reproductor.fijarPistaAudio(filaPista.modelData.i)
-                                }
-                            }
+                                    anchors.margins: 6
+                                    spacing: 6
 
-                            // El volumen, de 0 a 2: subir el doble es lo que
-                            // hace falta cuando el micro quedó bajo.
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 4
-                                radius: 2
-                                color: Theme.track
-                                opacity: filaPista.modelData.mudo ? 0.4 : 1
-
-                                Rectangle {
-                                    width: parent.width
-                                        * Math.min(1, filaPista.modelData.volumen / 2)
-                                    height: parent.height
-                                    radius: parent.radius
-                                    color: Theme.blue
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    anchors.topMargin: -8
-                                    anchors.bottomMargin: -8
-                                    cursorShape: Qt.PointingHandCursor
-
-                                    function poner(x) {
-                                        const v = Math.max(0, Math.min(2,
-                                            x / Math.max(1, width) * 2))
-                                        Editor.fijarPista(filaPista.modelData.i,
-                                                           { volumen: Math.round(v * 20) / 20 })
+                                    IslandLabel {
+                                        Layout.preferredWidth: 28
+                                        text: linea.modelData.t0.toFixed(1)
+                                        color: Theme.dim
+                                        font.pixelSize: 9
                                     }
-                                    onPressed: function (ev) { poner(ev.x) }
-                                    onPositionChanged: function (ev) {
-                                        if (pressed) poner(ev.x)
+
+                                    IslandLabel {
+                                        id: cuerpo
+                                        Layout.fillWidth: true
+                                        text: linea.modelData.texto
+                                        color: linea.ahora ? Theme.ink : Theme.muted
+                                        font.pixelSize: 10
+                                        wrapMode: Text.WordWrap
+                                    }
+
+                                    //  De lo dicho a un rótulo, con sus mismos
+                                    //  tiempos. El puente que hace que esto valga
+                                    //  para más que subtitular.
+                                    MediaButton {
+                                        glyph: String.fromCodePoint(0xF0284)
+                                        glyphSize: 12
+                                        glyphColor: Theme.green
+                                        onActivated: Editor.rotuloDesde(linea.modelData)
                                     }
                                 }
-                            }
 
-                            IslandLabel {
-                                Layout.preferredWidth: 30
-                                horizontalAlignment: Text.AlignRight
-                                text: Math.round(filaPista.modelData.volumen * 100) + "%"
-                                color: Theme.dim
-                                font.pixelSize: 9
+                                MouseArea {
+                                    id: lineaRaton
+                                    anchors.fill: parent
+                                    anchors.rightMargin: 26
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: view.irA(linea.modelData.t0)
+                                }
                             }
                         }
                     }
-                }
 
-                Rectangle {
-                    // El trozo y la capa tienen su propio «quitar» arriba.
-                    visible: Editor.clipSel === null && Editor.capaSel === null
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 26
-                    radius: 13
-                    color: quitarRaton.containsMouse ? "#3a1416" : Theme.surface
-                    border.width: 1
-                    border.color: Qt.rgba(1, 0.27, 0.23, 0.3)
-                    opacity: view.momento ? 1 : 0.4
+                    GridLayout {
+                        // Los botones del zoom solo pintan algo con un zoom elegido.
+                        visible: Editor.clipSel === null && Editor.capaSel === null
+                        columns: 2
+                        columnSpacing: 6
+                        rowSpacing: 6
+                        Layout.fillWidth: true
 
-                    RowLayout {
-                        anchors.centerIn: parent
-                        spacing: 5
+                        Repeater {
+                            model: [
+                                { texto: Idioma.t("Antes"),   icono: 0xF0141, accion: "antes" },
+                                { texto: Idioma.t("Después"), icono: 0xF0142, accion: "despues" },
+                                { texto: Idioma.t("Menos"),   icono: 0xF034A, accion: "menos" },
+                                { texto: Idioma.t("Más"),     icono: 0xF034B, accion: "mas" }
+                            ]
 
-                        IconGlyph {
-                            text: String.fromCodePoint(0xF01B4)     // md-delete
-                            color: Theme.red
-                            font.pixelSize: 12
+                            delegate: Rectangle {
+                                id: boton
+                                required property var modelData
+
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 26
+                                radius: 13
+                                color: botonRaton.containsMouse ? Theme.surfaceHi : Theme.surface
+                                opacity: view.momento ? 1 : 0.4
+
+                                RowLayout {
+                                    anchors.centerIn: parent
+                                    spacing: 5
+
+                                    IconGlyph {
+                                        text: String.fromCodePoint(boton.modelData.icono)
+                                        color: Theme.muted
+                                        font.pixelSize: 12
+                                    }
+
+                                    IslandLabel {
+                                        text: boton.modelData.texto
+                                        font.pixelSize: 10
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: botonRaton
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    enabled: view.momento !== null
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        const a = boton.modelData.accion
+                                        if (a === "antes")        Editor.moverMomento(view.momento.id, -0.2)
+                                        else if (a === "despues") Editor.moverMomento(view.momento.id, 0.2)
+                                        else if (a === "menos")   Editor.ajustarNivel(view.momento.id, -0.2)
+                                        else if (a === "mas")     Editor.ajustarNivel(view.momento.id, 0.2)
+                                    }
+                                }
+                            }
                         }
+                    }
+
+                    //  Las pistas de audio.
+                    //
+                    //  Se graban por separado —sistema y micro— para poder
+                    //  equilibrarlas después: mezclarlas al grabar sería
+                    //  irreversible. Lo que se toque aquí se aplica al renderizar.
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.bottomMargin: 4
+                        spacing: 3
+                        visible: Editor.pistasAudio.length > 0
 
                         IslandLabel {
-                            text: Idioma.t("Quitar")
-                            font.pixelSize: 10
+                            text: Idioma.t("Audio")
+                            color: Theme.dim
+                            font.pixelSize: 9
+                            font.capitalization: Font.AllUppercase
+                            font.weight: Font.DemiBold
+                        }
+
+                        Repeater {
+                            model: Editor.pistasAudio
+
+                            delegate: RowLayout {
+                                id: filaPista
+                                required property var modelData
+
+                                Layout.fillWidth: true
+                                spacing: 6
+
+                                //  Silenciar, y de paso decir cuál estás oyendo:
+                                //  el reproductor solo puede sacar una pista a la
+                                //  vez, así que pulsar el nombre cambia de monitor.
+                                MediaButton {
+                                    glyph: String.fromCodePoint(
+                                        filaPista.modelData.mudo ? 0xF0581 : 0xF057E)
+                                    glyphSize: 13
+                                    glyphColor: filaPista.modelData.mudo
+                                        ? Theme.dim : Theme.ink
+                                    onActivated: Editor.fijarPista(
+                                        filaPista.modelData.i,
+                                        { mudo: !filaPista.modelData.mudo })
+                                }
+
+                                IslandLabel {
+                                    Layout.preferredWidth: 62
+                                    text: filaPista.modelData.titulo.length > 0
+                                        ? filaPista.modelData.titulo
+                                        : Idioma.t("Pista ") + (filaPista.modelData.i + 1)
+                                    color: reproductor.pistaAudio === filaPista.modelData.i
+                                        ? Theme.ink : Theme.muted
+                                    font.pixelSize: 10
+                                    elide: Text.ElideRight
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: reproductor.fijarPistaAudio(filaPista.modelData.i)
+                                    }
+                                }
+
+                                // El volumen, de 0 a 2: subir el doble es lo que
+                                // hace falta cuando el micro quedó bajo.
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 4
+                                    radius: 2
+                                    color: Theme.track
+                                    opacity: filaPista.modelData.mudo ? 0.4 : 1
+
+                                    Rectangle {
+                                        width: parent.width
+                                            * Math.min(1, filaPista.modelData.volumen / 2)
+                                        height: parent.height
+                                        radius: parent.radius
+                                        color: Theme.blue
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        anchors.topMargin: -8
+                                        anchors.bottomMargin: -8
+                                        cursorShape: Qt.PointingHandCursor
+
+                                        function poner(x) {
+                                            const v = Math.max(0, Math.min(2,
+                                                x / Math.max(1, width) * 2))
+                                            Editor.fijarPista(filaPista.modelData.i,
+                                                               { volumen: Math.round(v * 20) / 20 })
+                                        }
+                                        onPressed: function (ev) { poner(ev.x) }
+                                        onPositionChanged: function (ev) {
+                                            if (pressed) poner(ev.x)
+                                        }
+                                    }
+                                }
+
+                                IslandLabel {
+                                    Layout.preferredWidth: 30
+                                    horizontalAlignment: Text.AlignRight
+                                    text: Math.round(filaPista.modelData.volumen * 100) + "%"
+                                    color: Theme.dim
+                                    font.pixelSize: 9
+                                }
+                            }
                         }
                     }
 
-                    MouseArea {
-                        id: quitarRaton
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        enabled: view.momento !== null
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: Editor.quitarMomento(view.momento.id)
+                    Rectangle {
+                        // El trozo y la capa tienen su propio «quitar» arriba.
+                        visible: Editor.clipSel === null && Editor.capaSel === null
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 26
+                        radius: 13
+                        color: quitarRaton.containsMouse ? "#3a1416" : Theme.surface
+                        border.width: 1
+                        border.color: Qt.rgba(1, 0.27, 0.23, 0.3)
+                        opacity: view.momento ? 1 : 0.4
+
+                        RowLayout {
+                            anchors.centerIn: parent
+                            spacing: 5
+
+                            IconGlyph {
+                                text: String.fromCodePoint(0xF01B4)     // md-delete
+                                color: Theme.red
+                                font.pixelSize: 12
+                            }
+
+                            IslandLabel {
+                                text: Idioma.t("Quitar")
+                                font.pixelSize: 10
+                            }
+                        }
+
+                        MouseArea {
+                            id: quitarRaton
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            enabled: view.momento !== null
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Editor.quitarMomento(view.momento.id)
+                        }
                     }
                 }
             }
         }
 
         // ── la línea de tiempo ────────────────────────────────────
-        LineaTiempo {
-            id: linea
+        //  La línea, dentro de algo que se pueda recorrer en vertical.
+        //
+        //  El alto de la island crece con las bandas pero tiene un tope, y en
+        //  cuanto se llega a él las filas de abajo se salían por debajo del
+        //  borde sin más aviso. Es el mismo problema que tuvieron los ajustes y
+        //  se arregla igual: un `Flickable` con barra.
+        //
+        //  Se desplaza la línea ENTERA —cabeceras, regla y pistas— y no solo las
+        //  filas: las dos columnas tienen que moverse a la vez o la cabecera
+        //  dejaría de decir de qué es cada pista, que es lo único para lo que
+        //  está.
+        Flickable {
+            id: rodilloV
             Layout.fillWidth: true
+            //  Lo que pida la línea, hasta donde quepa.
+            //
+            //  Y no `fillHeight`: con eso la línea y el vídeo se repartían el
+            //  hueco a medias y la línea se quedaba en dos filas teniendo nueve.
+            //  Aquí la línea coge lo suyo y el vídeo se queda con el resto, que
+            //  es el orden en que importan: las filas o están o no están, y el
+            //  vídeo se ve igual de bien un poco más pequeño.
+            Layout.preferredHeight: Math.min(linea.implicitHeight,
+                                             view.altoParaLinea)
+            contentWidth: width
+            contentHeight: linea.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            //  Solo en vertical: el horizontal ya lo lleva la línea por dentro,
+            //  y dos desplazamientos peleándose por el mismo arrastre es lo que
+            //  hace que ninguno de los dos vaya bien.
+            flickableDirection: Flickable.VerticalFlick
+            ScrollBar.vertical: ScrollBar {
+                policy: rodilloV.contentHeight > rodilloV.height
+                    ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+            }
 
-            total: view.total
-            cabezal: view.segundos
+            LineaTiempo {
+                id: linea
+                width: rodilloV.width
 
-            onSaltar: function (t) { view.irA(t) }
-            onNuevaCapa: view.plugin.pedirImagen(view.segundos, true)
-            onRascaInicio: reproductor.empezarRasca()
-            onRascaFin: reproductor.terminarRasca()
+                total: view.total
+                cabezal: view.segundos
+
+                onSaltar: function (t) { view.irA(t) }
+                onNuevaCapa: view.plugin.pedirImagen(view.segundos, true)
+                onRascaInicio: reproductor.empezarRasca()
+                onRascaFin: reproductor.terminarRasca()
+            }
         }
 
         // ── pie ───────────────────────────────────────────────────
         RowLayout {
+            id: pie
             Layout.fillWidth: true
             spacing: 8
 
@@ -1574,353 +1775,6 @@ Item {
                 glyphSize: 16
                 glyphColor: Theme.ink
                 onActivated: reproductor.alternar()
-            }
-
-            //  Crear un zoom donde esté el cabezal.
-            //
-            //  Se podía crear arrastrando en un hueco de la línea de tiempo,
-            //  pero eso no lo adivina nadie: sin un botón, la única forma de
-            //  añadir un momento era que lo propusiera el rastro del cursor.
-            Rectangle {
-                Layout.preferredWidth: nuevoTexto.implicitWidth + 26
-                Layout.preferredHeight: 26
-                radius: 13
-                color: nuevoRaton.containsMouse ? Theme.surfaceHi : Theme.surface
-                border.width: 1
-                border.color: Qt.rgba(10 / 255, 132 / 255, 1, 0.35)
-
-                RowLayout {
-                    anchors.centerIn: parent
-                    spacing: 5
-
-                    IconGlyph {
-                        text: String.fromCodePoint(0xF1276)   // md-magnify_scan
-                        color: Theme.blue
-                        font.pixelSize: 13
-                    }
-
-                    IslandLabel {
-                        id: nuevoTexto
-                        text: Idioma.t("Añadir zoom")
-                        font.pixelSize: 10
-                        font.weight: Font.DemiBold
-                    }
-                }
-
-                MouseArea {
-                    id: nuevoRaton
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        // Dos segundos desde donde estés, o lo que quepa si
-                        // estás cerca del final.
-                        const a = Math.min(view.segundos, Math.max(0, view.total - 2))
-                        const b = Math.min(view.total, a + 2)
-                        Editor.seleccionar("momento", Editor.crearMomento(a, b))
-                    }
-                }
-            }
-
-            //  Traer una imagen de fuera.
-            //
-            //  Por zenity y no por un selector propio: una imagen se busca
-            //  mirándola, no escribiendo su nombre, y el diálogo del sistema
-            //  trae vista previa. Debajo habla con el portal, así que es el
-            //  mismo que sale en cualquier otra aplicación.
-            Rectangle {
-                Layout.preferredWidth: imagenTexto.implicitWidth + 26
-                Layout.preferredHeight: 26
-                radius: 13
-                color: imagenRaton.containsMouse ? Theme.surfaceHi : Theme.surface
-                border.width: 1
-                border.color: Qt.rgba(52 / 255, 199 / 255, 89 / 255, 0.35)
-
-                RowLayout {
-                    anchors.centerIn: parent
-                    spacing: 5
-
-                    IconGlyph {
-                        text: String.fromCodePoint(0xF087C)   // md-image_plus
-                        color: Theme.green
-                        font.pixelSize: 13
-                    }
-
-                    IslandLabel {
-                        id: imagenTexto
-                        text: Idioma.t("Añadir imagen")
-                        font.pixelSize: 10
-                        font.weight: Font.DemiBold
-                    }
-                }
-
-                MouseArea {
-                    id: imagenRaton
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: view.plugin.pedirImagen(view.segundos)
-                }
-            }
-
-            //  Un rótulo donde esté el cabezal.
-            //
-            //  Sin diálogo ninguno: un rótulo no necesita fichero, así que
-            //  aparece ya escribible con texto de relleno y se cambia en la ficha.
-            Rectangle {
-                Layout.preferredWidth: rotuloTexto.implicitWidth + 26
-                Layout.preferredHeight: 26
-                radius: 13
-                color: rotuloRaton.containsMouse ? Theme.surfaceHi : Theme.surface
-                border.width: 1
-                border.color: Qt.rgba(1, 1, 1, 0.14)
-
-                RowLayout {
-                    anchors.centerIn: parent
-                    spacing: 5
-
-                    IconGlyph {
-                        text: String.fromCodePoint(0xF0284)   // md-format_text
-                        color: Theme.ink
-                        font.pixelSize: 13
-                    }
-
-                    IslandLabel {
-                        id: rotuloTexto
-                        text: Idioma.t("Añadir texto")
-                        font.pixelSize: 10
-                        font.weight: Font.DemiBold
-                    }
-                }
-
-                MouseArea {
-                    id: rotuloRaton
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: Editor.crearTexto(view.segundos)
-                }
-            }
-
-            //  Callar un tramo, o taparlo con un pitido.
-            Rectangle {
-                Layout.preferredWidth: censuraTexto.implicitWidth + 26
-                Layout.preferredHeight: 26
-                radius: 13
-                color: censuraRaton.containsMouse ? Theme.surfaceHi
-                                                  : Theme.surface
-                border.width: 1
-                border.color: Qt.rgba(1, 1, 1, 0.14)
-
-                RowLayout {
-                    anchors.centerIn: parent
-                    spacing: 5
-
-                    IconGlyph {
-                        text: String.fromCodePoint(0xF075F)   // md-volume_mute
-                        color: Theme.ink
-                        font.pixelSize: 13
-                    }
-
-                    IslandLabel {
-                        id: censuraTexto
-                        text: Idioma.t("Censurar audio")
-                        font.pixelSize: 10
-                        font.weight: Font.DemiBold
-                    }
-                }
-
-                MouseArea {
-                    id: censuraRaton
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: Editor.crearCensura(view.segundos, "silencio")
-                }
-            }
-
-            //  Buscar los trozos donde no se dice nada.
-            //
-            //  Los marca, no los borra. Cuando hay marcados, el botón cambia y
-            //  ofrece quitarlos: así se revisan antes, que es lo que hace falta
-            //  cuando lo que está en juego es la grabación de alguien.
-            Rectangle {
-                readonly property bool hay: Editor.cuantosSilencios > 0
-                readonly property bool buscando:
-                    Editor.estadoSilencios === "buscando"
-
-                Layout.preferredWidth: silencioTexto.implicitWidth + 26
-                Layout.preferredHeight: 26
-                radius: 13
-                color: hay ? Theme.red
-                     : silencioRaton.containsMouse ? Theme.surfaceHi
-                                                   : Theme.surface
-                border.width: 1
-                border.color: hay ? "transparent" : Qt.rgba(1, 1, 1, 0.14)
-                opacity: buscando ? 0.5 : 1
-
-                RowLayout {
-                    anchors.centerIn: parent
-                    spacing: 5
-
-                    IconGlyph {
-                        text: String.fromCodePoint(0xF057E)   // md-volume_high
-                        color: parent.parent.hay ? "#ffffff" : Theme.ink
-                        font.pixelSize: 13
-                    }
-
-                    IslandLabel {
-                        id: silencioTexto
-                        text: parent.parent.buscando
-                                ? Idioma.t("Escuchando…")
-                            : parent.parent.hay
-                                ? Idioma.t("Quitar ") + Editor.cuantosSilencios
-                                  + Idioma.t(" silencios")
-                            : Editor.estadoSilencios === "fallo"
-                                ? Idioma.t("No se pudo")
-                                : Idioma.t("Buscar silencios")
-                        color: parent.parent.hay ? "#ffffff" : Theme.ink
-                        font.pixelSize: 10
-                        font.weight: Font.DemiBold
-                    }
-                }
-
-                MouseArea {
-                    id: silencioRaton
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (parent.buscando)
-                            return
-                        if (parent.hay)
-                            Editor.quitarSilencios()
-                        else
-                            Editor.buscarSilencios()
-                    }
-                }
-            }
-
-            //  Un destello donde has pulsado.
-            //
-            //  Es un interruptor y no un botón de añadir: los clics ya están en
-            //  el rastro de la grabación con su instante, así que no hay nada
-            //  que crear. Solo aparece si el vídeo trae rastro; uno abierto del
-            //  disco no tiene clics que resaltar y el botón sobraría.
-            Rectangle {
-                visible: Editor.fuentes.length > 0
-                         && String(Editor.fuentes[0].rastro || "").length > 0
-                Layout.preferredWidth: clicsTexto.implicitWidth + 26
-                Layout.preferredHeight: 26
-                radius: 13
-                color: Editor.clicsActivos ? Theme.blue
-                     : clicsRaton.containsMouse ? Theme.surfaceHi : Theme.surface
-                border.width: 1
-                border.color: Editor.clicsActivos ? "transparent"
-                                                  : Qt.rgba(1, 1, 1, 0.14)
-
-                RowLayout {
-                    anchors.centerIn: parent
-                    spacing: 5
-
-                    IconGlyph {
-                        text: String.fromCodePoint(0xF0CFD)   // md-cursor_default_click
-                        color: Editor.clicsActivos ? "#ffffff" : Theme.ink
-                        font.pixelSize: 13
-                    }
-
-                    IslandLabel {
-                        id: clicsTexto
-                        text: Idioma.t("Resaltar clics")
-                        color: Editor.clicsActivos ? "#ffffff" : Theme.ink
-                        font.pixelSize: 10
-                        font.weight: Font.DemiBold
-                    }
-                }
-
-                MouseArea {
-                    id: clicsRaton
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: Editor.alternarClics()
-                }
-            }
-
-            //  Tapar algo que no debería salir, o destacar dónde mirar.
-            //
-            //  Un solo botón para los tres modos: nace desenfoque, que es para
-            //  lo que se busca esto el 90 % de las veces, y en la ficha se
-            //  cambia a pixelado o a foco sin perder el sitio ni el tamaño.
-            Rectangle {
-                Layout.preferredWidth: zonaTexto.implicitWidth + 26
-                Layout.preferredHeight: 26
-                radius: 13
-                color: zonaRaton.containsMouse ? Theme.surfaceHi : Theme.surface
-                border.width: 1
-                border.color: Qt.rgba(1, 1, 1, 0.14)
-
-                RowLayout {
-                    anchors.centerIn: parent
-                    spacing: 5
-
-                    IconGlyph {
-                        text: String.fromCodePoint(0xF00B5)   // md-blur
-                        color: Theme.ink
-                        font.pixelSize: 13
-                    }
-
-                    IslandLabel {
-                        id: zonaTexto
-                        text: Idioma.t("Añadir zona")
-                        font.pixelSize: 10
-                        font.weight: Font.DemiBold
-                    }
-                }
-
-                MouseArea {
-                    id: zonaRaton
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: Editor.crearZona(view.segundos, "desenfoque")
-                }
-            }
-
-            //  Música o una voz encima de lo que ya suena.
-            Rectangle {
-                Layout.preferredWidth: audioTexto.implicitWidth + 26
-                Layout.preferredHeight: 26
-                radius: 13
-                color: audioRaton.containsMouse ? Theme.surfaceHi : Theme.surface
-                border.width: 1
-                border.color: Qt.rgba(1, 0.8, 0.2, 0.3)
-
-                RowLayout {
-                    anchors.centerIn: parent
-                    spacing: 5
-
-                    IconGlyph {
-                        text: String.fromCodePoint(0xF075A)   // md-music
-                        color: Theme.yellow
-                        font.pixelSize: 13
-                    }
-
-                    IslandLabel {
-                        id: audioTexto
-                        text: Idioma.t("Añadir audio")
-                        font.pixelSize: 10
-                        font.weight: Font.DemiBold
-                    }
-                }
-
-                MouseArea {
-                    id: audioRaton
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: view.plugin.pedirAudio(view.segundos)
-                }
             }
 
             //  Un vídeo dentro del vídeo.

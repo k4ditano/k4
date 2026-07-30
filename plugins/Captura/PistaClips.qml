@@ -282,6 +282,103 @@ Rectangle {
         return n
     }
 
+    // ── el zoom, encima de los trozos ─────────────────────────────
+    //
+    //  El zoom no es una capa: es algo que se le HACE al vídeo, y por eso vive
+    //  en la fila del vídeo y no en una propia. Antes gastaba una fila entera
+    //  para unas pocas marcas, y con dos capas eso eran cuatro filas.
+    //
+    //  Va en una tira de siete píxeles pegada al borde de abajo, con su propia
+    //  zona de ratón: arrastrar un trozo y estirar un zoom son dos gestos en el
+    //  mismo sitio, y separarlos por altura es lo que evita que se peleen. Es lo
+    //  mismo que ya hacen las asas de recorte.
+    readonly property int altoZoom: 7
+
+    Repeater {
+        model: Editor.momentos
+
+        delegate: Rectangle {
+            id: marca
+            required property var modelData
+
+            readonly property bool elegido: Editor.tipoSel === "momento"
+                && Editor.idSel === modelData.id
+
+            //  Lo que se está estirando, en local: escribir el modelo reasigna
+            //  el array y el Repeater se lleva por delante el delegado que tiene
+            //  el agarre. Es la misma trampa que ya pagó la pista de clips.
+            property bool estirando: false
+            property real vA: 0
+            property real vB: 0
+
+            readonly property real a: estirando ? vA : modelData.t0
+            readonly property real b: estirando ? vB : modelData.t1
+
+            x: pista.t2px(a)
+            width: Math.max(4, pista.t2px(b - a))
+            y: pista.height - pista.altoZoom - 1
+            height: pista.altoZoom
+            radius: 3
+            color: elegido ? Theme.blue : Qt.rgba(10 / 255, 132 / 255, 1, 0.55)
+            border.width: elegido ? 1 : 0
+            border.color: Theme.ink
+
+            MouseArea {
+                anchors.fill: parent
+                //  Las asas se comen los seis píxeles de cada punta, así que el
+                //  centro es lo que queda para elegir y arrastrar entero.
+                anchors.leftMargin: 6
+                anchors.rightMargin: 6
+                cursorShape: Qt.PointingHandCursor
+                onPressed: Editor.seleccionar("momento", marca.modelData.id)
+            }
+
+            Repeater {
+                model: 2
+                delegate: MouseArea {
+                    required property int index
+                    readonly property bool izquierda: index === 0
+
+                    width: 7
+                    height: parent.height
+                    x: izquierda ? -1 : parent.width - 6
+                    cursorShape: Qt.SizeHorCursor
+                    preventStealing: true
+
+                    property real xIni: 0
+
+                    onPressed: function (ev) {
+                        xIni = mapToItem(pista, ev.x, 0).x
+                        marca.vA = marca.modelData.t0
+                        marca.vB = marca.modelData.t1
+                        marca.estirando = true
+                        Editor.seleccionar("momento", marca.modelData.id)
+                    }
+                    onPositionChanged: function (ev) {
+                        if (!pressed)
+                            return
+                        const d = pista.px2t(
+                            mapToItem(pista, ev.x, 0).x - xIni)
+                        if (izquierda)
+                            marca.vA = Math.max(0, Math.min(
+                                marca.modelData.t1 - 0.2,
+                                marca.modelData.t0 + d))
+                        else
+                            marca.vB = Math.min(pista.total, Math.max(
+                                marca.modelData.t0 + 0.2,
+                                marca.modelData.t1 + d))
+                    }
+                    onReleased: {
+                        Editor.fijarMomento(marca.modelData.id,
+                                            { t0: marca.vA, t1: marca.vB })
+                        marca.estirando = false
+                    }
+                    onCanceled: marca.estirando = false
+                }
+            }
+        }
+    }
+
     // ── dónde va la reproducción ──────────────────────────────────
     Rectangle {
         x: pista.t2px(pista.cabezal) - 1

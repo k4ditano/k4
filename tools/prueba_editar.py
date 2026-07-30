@@ -423,6 +423,41 @@ def prueba_grafo_sin_audio_no_deja_nada_colgando():
     igual("y no queda etiqueta [a] suelta", texto.endswith("[a]"), False)
 
 
+# ── el vídeo es la banda 1 ────────────────────────────────────────
+def prueba_migracion_sube_las_capas():
+    """La banda 1 pasa a ser del vídeo, así que las capas suben una."""
+    viejo = {"version": 2, "capas": [{"id": 1, "banda": 1},
+                                     {"id": 2, "banda": 2},
+                                     {"id": 3}]}
+    nuevo = editar.subir_capas(viejo)
+    igual("la 1 sube a la 2", nuevo["capas"][0]["banda"], 2)
+    igual("la 2 sube a la 3", nuevo["capas"][1]["banda"], 3)
+    igual("y la que no la traía va a la 2", nuevo["capas"][2]["banda"], 2)
+
+
+def prueba_migracion_conserva_el_orden():
+    """Renumerar no puede cambiar qué tapa a qué: solo dónde se dibuja."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8}])
+    p["version"] = 2
+    p["capas"] = [{"id": 1, "tipo": "imagen", "banda": 1,
+                   "ruta": fichero("abajo.png"), "t0": 0, "t1": 8,
+                   "x": 0.5, "y": 0.5, "escala": 0.3},
+                  {"id": 2, "tipo": "imagen", "banda": 2,
+                   "ruta": fichero("arriba.png"), "t0": 0, "t1": 8,
+                   "x": 0.5, "y": 0.5, "escala": 0.2}]
+    antes = [c["id"] for c in editar.capas_de(p)]
+    editar.subir_capas(p)
+    igual("el orden de apilado no cambia",
+          [c["id"] for c in editar.capas_de(p)], antes)
+
+
+def prueba_capas_por_defecto_a_la_dos():
+    """Una capa sin banda ya no cae en la del vídeo."""
+    p = con_capas([{"id": 1, "tipo": "imagen", "ruta": fichero("x.png"),
+                    "t0": 0, "t1": 4, "x": 0.5, "y": 0.5, "escala": 0.2}])
+    igual("sin banda va a la 2", editar.capas_de(p)[0].get("banda", 2), 2)
+
+
 # ── la cámara ─────────────────────────────────────────────────────
 def prueba_croma_va_antes_de_escalar():
     """Escalar primero deja un halo: los píxeles inventados en el borde ya no
