@@ -22,14 +22,47 @@ import sys
 CONFIG = os.path.expanduser("~/.config/hypr/config")
 BINDS = os.path.join(CONFIG, "binds.lua")
 
-RE_LOCAL = re.compile(r'^\s*local\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"([^"]*)"')
-RE_GLOBAL = re.compile(r'^\s*([A-Z_][A-Z0-9_]*)\s*=\s*"([^"]*)"')
+
+def ficheros():
+    """Los .lua que atan teclas, `binds.lua` primero.
+
+    No basta con leer `binds.lua`: desde que el instalador de k4 saca sus atajos
+    a `k4.lua` —para no escribir dentro del fichero del usuario— viven en otro
+    sitio, y este panel se los dejaba fuera. Así que se lee cualquier .lua de la
+    carpeta que contenga `hl.bind`, y el orden es estable para que la lista no
+    baile entre arranques.
+    """
+    rutas = []
+    try:
+        nombres = sorted(os.listdir(CONFIG))
+    except OSError:
+        return rutas
+    for nombre in nombres:
+        if not nombre.endswith(".lua"):
+            continue
+        ruta = os.path.join(CONFIG, nombre)
+        try:
+            if "hl.bind" not in open(ruta).read():
+                continue
+        except OSError:
+            continue
+        rutas.append(ruta)
+    # `binds.lua` delante: es el que trae las secciones que el usuario reconoce.
+    rutas.sort(key=lambda r: (os.path.basename(r) != "binds.lua", r))
+    return rutas
+
+# Anclados al final a propósito: sin el `$`, `local k4 = "a" .. raiz .. "b"` se
+# quedaba solo con el primer trozo y la orden salía descabalada.
+RE_LOCAL = re.compile(r'^\s*local\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"([^"]*)"\s*(?:--.*)?$')
+RE_GLOBAL = re.compile(r'^\s*([A-Z_][A-Z0-9_]*)\s*=\s*"([^"]*)"\s*(?:--.*)?$')
 RE_NUM = re.compile(r'^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(\d+)')
 RE_BIND = re.compile(r'hl\.bind\s*\(\s*(.+)$')
 RE_FOR = re.compile(r'^\s*for\s+(\w+)\s*=\s*(\w+)\s*,\s*(\w+)\s*do')
 # Dentro del bucle se suele hacer `local key = i % 10` y luego atar con `key`:
 # sin seguir ese alias, la combinación salía literalmente como «+ key».
 RE_ALIAS = re.compile(r'^\s*local\s+(\w+)\s*=\s*.*\b%s\b')
+# `local k4 = "quickshell ipc -p " .. raiz .. "/shell.qml call k4 "`
+RE_LOCAL_EXPR = re.compile(r'^\s*local\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?)\s*$')
 
 # Lo que hace cada despachador, en cristiano. Los que no estén salen con su
 # nombre limpio, que sigue diciendo bastante.
@@ -54,8 +87,8 @@ VERBOS = {
 def variables():
     """Todo lo que haga falta para reconstruir las cadenas."""
     vals = {}
-    for fichero in ("variables.lua", "binds.lua"):
-        ruta = os.path.join(CONFIG, fichero)
+    rutas = [os.path.join(CONFIG, "variables.lua")] + ficheros()
+    for ruta in rutas:
         try:
             texto = open(ruta).read()
         except OSError:
@@ -70,7 +103,32 @@ def variables():
                 m = RE_NUM.match(linea)
                 if m:
                     vals[m.group(1)] = m.group(2)
+                    continue
+                # Y las que se arman concatenando, que es como k4.lua construye
+                # sus tres llamadas de IPC a partir de la raíz. Sin esto la
+                # línea salía como «k4toggleLauncher» en vez de «k4 · lanzador».
+                m = RE_LOCAL_EXPR.match(linea)
+                if m:
+                    valor = literal(m.group(2), vals)
+                    if valor is not None:
+                        vals[m.group(1)] = valor
     return vals
+
+
+def literal(expr, vals):
+    """La expresión Lua como cadena, o None si algo no se puede resolver aún."""
+    trozos = []
+    for parte in expr.split(".."):
+        parte = parte.strip()
+        if not parte:
+            return None
+        if parte.startswith('"') and parte.endswith('"') and len(parte) >= 2:
+            trozos.append(parte[1:-1])
+        elif parte in vals:
+            trozos.append(vals[parte])
+        else:
+            return None
+    return "".join(trozos) if trozos else None
 
 
 def resolver(expr, vals, indice=None):
@@ -108,6 +166,28 @@ def partir(texto):
     return texto, ""
 
 
+def hasta_cierre(texto):
+    """Lo que hay dentro del paréntesis, hasta el que lo cierra.
+
+    Recortar con `rstrip(")")` no vale cuando detrás viene otro argumento: en
+    `hl.dsp.exec_cmd(k4 .. "togglePlay"), { locked = true })` se colaba el
+    `{ locked = true }` dentro de la orden.
+    """
+    hondo = 0
+    comillas = False
+    for i, c in enumerate(texto):
+        if c == '"' and (i == 0 or texto[i - 1] != "\\"):
+            comillas = not comillas
+        elif not comillas:
+            if c in "({[":
+                hondo += 1
+            elif c in ")}]":
+                if hondo == 0:
+                    return texto[:i]
+                hondo -= 1
+    return texto
+
+
 def describir(accion, vals):
     accion = accion.strip().rstrip(")").strip()
 
@@ -115,12 +195,19 @@ def describir(accion, vals):
     if not m:
         return accion[:80]
 
-    nombre, dentro = m.group(1), m.group(2)
+    nombre, dentro = m.group(1), hasta_cierre(m.group(2))
 
     if nombre == "exec_cmd":
-        orden = resolver(dentro.rstrip(")"), vals).strip()
+        orden = resolver(dentro, vals).strip()
         # los tres prefijos largos que aparecen una y otra vez
         if "quickshell ipc" in orden:
+            # `call k4 abrir`, pero también `call k4.editor abrir`: cada módulo
+            # publica su propio objetivo y cortar por «call k4 » a secas dejaba
+            # esos con la orden entera, ruta incluida.
+            m3 = re.search(r'call\s+k4(?:\.(\w+))?\s+(.*)$', orden)
+            if m3:
+                modulo = (m3.group(1) + " ") if m3.group(1) else ""
+                return "k4 · " + modulo + m3.group(2).strip()
             return "k4 · " + orden.split("call k4 ")[-1].strip()
         if orden.startswith("noctalia msg "):
             return "noctalia · " + orden[len("noctalia msg "):].strip()
@@ -152,11 +239,17 @@ def describir(accion, vals):
 
 def leer():
     vals = variables()
-    try:
-        lineas = open(BINDS).read().split("\n")
-    except OSError:
-        return []
+    salida = []
+    for ruta in ficheros():
+        try:
+            lineas = open(ruta).read().split("\n")
+        except OSError:
+            continue
+        salida.extend(leer_fichero(lineas, vals))
+    return salida
 
+
+def leer_fichero(lineas, vals):
     salida = []
     seccion = "General"
     bucle = None
