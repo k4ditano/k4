@@ -103,6 +103,35 @@ Item {
         }
     }
 
+    //  Y mientras dura la tregua, el cabezal sigue andando por su cuenta.
+    //
+    //  No creerle al medio durante 200 ms es necesario —lo que dice es de
+    //  antes— pero dejar el cabezal QUIETO esos 200 ms no lo es, y es lo que se
+    //  veía: una microparada en cada corte, puntual como un reloj, aunque el
+    //  decodificador ya estuviera listo. Aquí se avanza a ojo el tiempo que
+    //  toca; cuando acaba la tregua manda otra vez el medio y corrige lo que
+    //  haya que corregir, que serán milisegundos.
+    Timer {
+        id: aCiegas
+        interval: 33
+        repeat: true
+        running: repro.enTregua && repro.sonando && !repro.rascando
+                 && !repro.enImagen
+        onTriggered: {
+            //  Sin multiplicar por la velocidad: el cabezal va en tiempo de
+            //  LÍNEA, y la línea avanza a un segundo por segundo aunque el
+            //  trozo de debajo se esté viendo al cuádruple. Quien corre más es
+            //  el fichero, no el reloj.
+            const t = repro.cabezal + interval / 1000
+            //  Sin pasarse del trozo: si se acabara durante la tregua, quien
+            //  tiene que decidir qué viene después es `avanzar`, no esto.
+            if (repro.tramo && t >= repro.tramo.fin - 0.001)
+                return
+            repro.cabezal = t
+            Editor.posicionEditor = t
+        }
+    }
+
     function irA(t) {
         if (tramos.length === 0)
             return
@@ -136,10 +165,31 @@ Item {
         }
     }
 
+    //  ¿El trozo `b` es la continuación exacta de `a` en el mismo fichero?
+    //
+    //  Cortar un vídeo por la mitad y no mover nada deja dos trozos que en el
+    //  fichero van pegados. En ese caso no hay NADA que buscar: el medio ya
+    //  está reproduciendo justo ahí.
+    function continua(a, b) {
+        return a && b && !a.imagen && !b.imagen && a.ruta === b.ruta
+            && Math.abs(b.desde - a.hasta) < 0.05
+            && Math.abs(b.velocidad - a.velocidad) < 0.001
+    }
+
     // Al siguiente trozo, o al principio si era el último.
     function avanzar() {
         if (indice + 1 < tramos.length) {
-            irA(tramos[indice + 1].inicio)
+            //  Si el siguiente sigue donde lo dejó el anterior, se pasa de uno a
+            //  otro sin tocar el reproductor: ni `position`, ni tregua, ni el
+            //  parón que traían. Es el caso más corriente —cortar sin
+            //  reordenar— y era donde más se notaba el tirón.
+            const sig = tramos[indice + 1]
+            if (continua(tramos[indice], sig)) {
+                indice = indice + 1
+                cabezal = sig.inicio
+                return
+            }
+            irA(sig.inicio)
             return
         }
 
