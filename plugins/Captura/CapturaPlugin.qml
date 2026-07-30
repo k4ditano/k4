@@ -457,6 +457,12 @@ K4Plugin {
             Editor.crearImagen(ruta, t >= 0 ? t : Editor.posicionEditor)
         }
 
+        //  Buscar los trozos callados y marcarlos. No borra nada: para eso está
+        //  `quitarSilencios`, que se pide aparte a propósito.
+        function silencios(): void { Editor.buscarSilencios() }
+        function quitarSilencios(): void { Editor.quitarSilencios() }
+        function olvidarSilencios(): void { Editor.olvidarSilencios() }
+
         // Volver a lo que estuviera abierto, por si se cerró sin querer.
         function retomar(): void {
             if (!Editor.abierto)

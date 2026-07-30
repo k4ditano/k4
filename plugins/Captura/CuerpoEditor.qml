@@ -1606,6 +1606,105 @@ Item {
                 }
             }
 
+            //  Callar un tramo, o taparlo con un pitido.
+            Rectangle {
+                Layout.preferredWidth: censuraTexto.implicitWidth + 26
+                Layout.preferredHeight: 26
+                radius: 13
+                color: censuraRaton.containsMouse ? Theme.surfaceHi
+                                                  : Theme.surface
+                border.width: 1
+                border.color: Qt.rgba(1, 1, 1, 0.14)
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 5
+
+                    IconGlyph {
+                        text: String.fromCodePoint(0xF075F)   // md-volume_mute
+                        color: Theme.ink
+                        font.pixelSize: 13
+                    }
+
+                    IslandLabel {
+                        id: censuraTexto
+                        text: Idioma.t("Censurar audio")
+                        font.pixelSize: 10
+                        font.weight: Font.DemiBold
+                    }
+                }
+
+                MouseArea {
+                    id: censuraRaton
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Editor.crearCensura(view.segundos, "silencio")
+                }
+            }
+
+            //  Buscar los trozos donde no se dice nada.
+            //
+            //  Los marca, no los borra. Cuando hay marcados, el botón cambia y
+            //  ofrece quitarlos: así se revisan antes, que es lo que hace falta
+            //  cuando lo que está en juego es la grabación de alguien.
+            Rectangle {
+                readonly property bool hay: Editor.cuantosSilencios > 0
+                readonly property bool buscando:
+                    Editor.estadoSilencios === "buscando"
+
+                Layout.preferredWidth: silencioTexto.implicitWidth + 26
+                Layout.preferredHeight: 26
+                radius: 13
+                color: hay ? Theme.red
+                     : silencioRaton.containsMouse ? Theme.surfaceHi
+                                                   : Theme.surface
+                border.width: 1
+                border.color: hay ? "transparent" : Qt.rgba(1, 1, 1, 0.14)
+                opacity: buscando ? 0.5 : 1
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 5
+
+                    IconGlyph {
+                        text: String.fromCodePoint(0xF057E)   // md-volume_high
+                        color: parent.parent.hay ? "#ffffff" : Theme.ink
+                        font.pixelSize: 13
+                    }
+
+                    IslandLabel {
+                        id: silencioTexto
+                        text: parent.parent.buscando
+                                ? Idioma.t("Escuchando…")
+                            : parent.parent.hay
+                                ? Idioma.t("Quitar ") + Editor.cuantosSilencios
+                                  + Idioma.t(" silencios")
+                            : Editor.estadoSilencios === "fallo"
+                                ? Idioma.t("No se pudo")
+                                : Idioma.t("Buscar silencios")
+                        color: parent.parent.hay ? "#ffffff" : Theme.ink
+                        font.pixelSize: 10
+                        font.weight: Font.DemiBold
+                    }
+                }
+
+                MouseArea {
+                    id: silencioRaton
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (parent.buscando)
+                            return
+                        if (parent.hay)
+                            Editor.quitarSilencios()
+                        else
+                            Editor.buscarSilencios()
+                    }
+                }
+            }
+
             //  Un destello donde has pulsado.
             //
             //  Es un interruptor y no un botón de añadir: los clics ya están en

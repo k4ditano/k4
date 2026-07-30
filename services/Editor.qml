@@ -81,11 +81,16 @@ Singleton {
     //  separarse: para que discrepen habría que cambiar la definición en un
     //  sitio y no en el otro. La easing de la cámara, que sí podría irse, sigue
     //  calculándose en un solo lado.
-    readonly property var tramos: {
+    //
+    //  Toma la lista como argumento para poder trabajar sobre una copia sin
+    //  publicarla: cortar por diez silencios seguidos reasignando `clips` diez
+    //  veces destruiría y recrearía los delegates cada vez, y de paso guardaría
+    //  el plan diez veces.
+    function tramosDe(lista) {
         let t = 0
         const r = []
-        for (let i = 0; i < clips.length; ++i) {
-            const c = clips[i]
+        for (let i = 0; i < lista.length; ++i) {
+            const c = lista[i]
             const v = velocidadDe(c)
             const d = Math.max(0, c.hasta - c.desde) / v
             if (d <= 0)
@@ -97,6 +102,8 @@ Singleton {
         }
         return r
     }
+
+    readonly property var tramos: tramosDe(clips)
 
     readonly property real duracionLinea: tramos.length > 0
         ? tramos[tramos.length - 1].fin : 0
@@ -353,6 +360,149 @@ Singleton {
         return nueva.id
     }
 
+    // ── silencios ─────────────────────────────────────────────────
+    //
+    //  Se buscan, se parten los trozos por sus bordes y se MARCAN. No se borran:
+    //  sin un deshacer, quitarle a alguien pedazos de su grabación porque un
+    //  umbral dijo que ahí no se hablaba es jugársela. Marcados se ven en la
+    //  línea de tiempo, se revisan, y quitarlos es otro botón.
+    property string estadoSilencios: ""      // "" · buscando · fallo
+    readonly property int cuantosSilencios: {
+        let n = 0
+        for (let i = 0; i < clips.length; ++i)
+            if (clips[i].silencio)
+                ++n
+        return n
+    }
+
+    function buscarSilencios() {
+        if (rutaPlan.length === 0 || estadoSilencios === "buscando")
+            return
+        estadoSilencios = "buscando"
+        buscador.command = ["python3", guion, "silencios", rutaPlan]
+        buscador.running = true
+    }
+
+    //  Partir la lista por un instante de LÍNEA, devolviendo la lista nueva.
+    //
+    //  Trabaja sobre una copia y no sobre `clips` porque hay que dar muchos
+    //  cortes seguidos; publicar entre uno y otro sería recalcularlo todo cada
+    //  vez y guardar el plan diez veces.
+    function partirLista(lista, t, siguienteId) {
+        const tramos = tramosDe(lista)
+        let tr = null
+        for (let i = 0; i < tramos.length; ++i)
+            if (t > tramos[i].inicio && t < tramos[i].fin)
+                tr = tramos[i]
+        if (!tr)
+            return lista
+        const enFuente = tr.desde + (t - tr.inicio) * tr.velocidad
+        //  Un corte pegado a un borde deja un trozo de duración cero, que ni se
+        //  ve ni sirve. 20 ms es menos de un fotograma a 30 fps.
+        if (enFuente - tr.desde < 0.02 || tr.hasta - enFuente < 0.02)
+            return lista
+        const izq = Object.assign({}, lista[tr.indice], { hasta: enFuente })
+        const der = Object.assign({}, lista[tr.indice],
+                                  { id: siguienteId, desde: enFuente })
+        const nueva = lista.slice()
+        nueva.splice(tr.indice, 1, izq, der)
+        return nueva
+    }
+
+    function aplicarSilencios(tramos) {
+        if (!tramos || tramos.length === 0) {
+            estadoSilencios = ""
+            return
+        }
+        //  Todos los bordes de una vez, y de mayor a menor no hace falta: partir
+        //  no mueve de sitio a nadie, la línea sigue durando lo mismo.
+        let lista = clips.slice()
+        let id = nuevoIdClip()
+        const bordes = []
+        for (let i = 0; i < tramos.length; ++i) {
+            bordes.push(tramos[i][0])
+            bordes.push(tramos[i][1])
+        }
+        for (let i = 0; i < bordes.length; ++i) {
+            const antes = lista.length
+            lista = partirLista(lista, bordes[i], id)
+            if (lista.length > antes)
+                ++id
+        }
+
+        //  Y ahora marcar los que hayan quedado dentro de un silencio. Se mira
+        //  el centro del trozo: un borde puede caer justo en la frontera.
+        const conMarcas = tramosDe(lista)
+        const dentro = {}
+        for (let i = 0; i < conMarcas.length; ++i) {
+            const medio = (conMarcas[i].inicio + conMarcas[i].fin) / 2
+            for (let j = 0; j < tramos.length; ++j)
+                if (medio > tramos[j][0] && medio < tramos[j][1])
+                    dentro[conMarcas[i].clip] = true
+        }
+        clips = lista.map(function (c) {
+            return dentro[c.id] ? Object.assign({}, c, { silencio: true })
+                                : c
+        })
+        estadoSilencios = ""
+        persistir()
+    }
+
+    //  Quitar de golpe todo lo marcado. Esto sí borra, pero ya lo has visto.
+    function quitarSilencios() {
+        const quedan = clips.filter(function (c) { return !c.silencio })
+        if (quedan.length === 0 || quedan.length === clips.length)
+            return
+        clips = quedan
+        seleccionar("", 0)
+        persistir()
+    }
+
+    //  Y desmarcarlos, por si el umbral se pasó de listo.
+    function olvidarSilencios() {
+        clips = clips.map(function (c) {
+            if (!c.silencio)
+                return c
+            const d = Object.assign({}, c)
+            delete d.silencio
+            return d
+        })
+        persistir()
+    }
+
+    Process {
+        id: buscador
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let d = null
+                try { d = JSON.parse(this.text) } catch (e) { }
+                if (!d || !d.ok) {
+                    editor.estadoSilencios = "fallo"
+                    return
+                }
+                editor.aplicarSilencios(d.tramos || [])
+            }
+        }
+    }
+
+    //  Callar un tramo del sonido, o taparlo con un pitido.
+    function crearCensura(t0, modo) {
+        const a = Math.max(0, Math.min(t0, Math.max(0, duracionLinea - 0.5)))
+        const b = Math.min(duracionLinea, a + 2)
+        const nueva = {
+            id: nuevoIdCapa(),
+            tipo: "censura",
+            modo: modo || "silencio",
+            t0: a, t1: b,
+            banda: proximaEnBandaNueva ? cuantasBandas + 1 : bandaLibre(a, b)
+        }
+        capas = capas.concat([nueva])
+        proximaEnBandaNueva = false
+        persistir()
+        seleccionar("capa", nueva.id)
+        return nueva.id
+    }
+
     //  Cuánto dura un fundido. `cual` es "entrada", "salida" o "entre".
     function ponerFundido(cual, segundos) {
         const v = Math.max(0, Math.min(5, Number(segundos) || 0))
@@ -568,6 +718,9 @@ Singleton {
             return c.modo === "pixelado" ? Idioma.t("Pixelado")
                  : c.modo === "foco"     ? Idioma.t("Foco")
                                          : Idioma.t("Desenfoque")
+        if (c.tipo === "censura")
+            return c.modo === "pitido" ? Idioma.t("Pitido")
+                                       : Idioma.t("Silenciado")
         return String(c.ruta || "").split("/").pop()
     }
 
@@ -584,6 +737,9 @@ Singleton {
         //  Codepoints comprobados contra los nombres de la propia fuente, no de
         //  memoria: los tres primeros que puse eran un tenedor, un rayo y una
         //  pila. Se miran con fontTools sobre MesloLGSNerdFontMono-Regular.ttf.
+        if (c.tipo === "censura")
+            return c.modo === "pitido" ? 0x000F1479     // md-cosine_wave
+                                       : 0x000F075F     // md-volume_mute
         if (c.tipo === "zona")
             return c.modo === "pixelado" ? 0x000F00B6   // md-blur_linear
                  : c.modo === "foco"     ? 0x000F04C9   // md-spotlight_beam

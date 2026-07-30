@@ -423,6 +423,51 @@ def prueba_grafo_sin_audio_no_deja_nada_colgando():
     igual("y no queda etiqueta [a] suelta", texto.endswith("[a]"), False)
 
 
+# ── censura ───────────────────────────────────────────────────────
+def prueba_censura_calla_el_tramo():
+    p = con_capas([{"id": 1, "tipo": "censura", "modo": "silencio",
+                    "banda": 1, "t0": 3.0, "t1": 5.0}])
+    g, _ = editar.grafo(p)
+    igual("baja el volumen a cero en su ventana",
+          "volume=0:enable='between(t,3.0000,5.0000)'" in g, True)
+    igual("y sin pitido", "sine=" in g, False)
+
+
+def prueba_censura_pitido():
+    p = con_capas([{"id": 1, "tipo": "censura", "modo": "pitido",
+                    "banda": 1, "t0": 3.0, "t1": 5.0}])
+    g, _ = editar.grafo(p)
+    igual("calla igual", "volume=0:enable=" in g, True)
+    igual("y encima pone el tono", "sine=f=1000:d=2.0000" in g, True)
+    igual("colocado en su sitio", "adelay=delays=3000:all=1" in g, True)
+
+
+def prueba_censura_va_despues_de_la_mezcla():
+    """Si fuera antes, la música añadida sonaría encima de lo censurado."""
+    p = con_capas([
+        {"id": 1, "tipo": "audio", "banda": 1, "ruta": fichero("m.mp3"),
+         "t0": 0, "volumen": 1.0},
+        {"id": 2, "tipo": "censura", "modo": "silencio", "banda": 2,
+         "t0": 3.0, "t1": 5.0}])
+    g, _ = editar.grafo(p)
+    igual("la mezcla primero",
+          g.index("amix=inputs=2") < g.index("volume=0:enable="), True)
+
+
+def prueba_censura_al_reves_no_cuenta():
+    """Un bloque arrastrado hasta cruzarse no puede dar un `sine` negativo."""
+    p = con_capas([{"id": 1, "tipo": "censura", "modo": "pitido",
+                    "banda": 1, "t0": 5.0, "t1": 3.0}])
+    g, _ = editar.grafo(p)
+    igual("no entra en el grafo", "volume=0:enable=" in g, False)
+
+
+def prueba_sin_censura_no_ensucia():
+    g, _ = editar.grafo(plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8}]))
+    igual("no hay volume=0", "volume=0:" in g, False)
+    igual("y el audio sale por [a]", "[a]" in g, True)
+
+
 # ── fundidos y color ──────────────────────────────────────────────
 def prueba_color_solo_sale_si_se_toca():
     limpio = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8}])

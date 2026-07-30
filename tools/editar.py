@@ -21,7 +21,7 @@ Se usa `zoompan` y no `crop`: en ffmpeg n8.1.2 `crop` ya no tiene la opción
 Los motivos y las claves son en español pero NO son texto para el usuario: el
 QML los traduce con Idioma.t().
 """
-import argparse, json, math, os, subprocess, sys, tempfile
+import argparse, json, math, os, re, subprocess, sys, tempfile
 
 # ── el tacto de la cámara ─────────────────────────────────────────
 #
@@ -1132,6 +1132,15 @@ def grafo(plan, sin_audio=False, carpeta=None):
     # ── 6. el audio añadido, encima de lo que ya suena
     lineas += ramas_audio_extra(plan, idx_capa, sin_audio)
 
+    # ── 7. y lo censurado, lo ÚLTIMO
+    #
+    #  Después de la mezcla a propósito: si fuera antes, la música añadida
+    #  seguiría sonando encima de lo que se quería tapar.
+    if not sin_audio:
+        nuevas, fin = ramas_censura(plan, "amez")
+        lineas += nuevas
+        lineas.append("[%s]anull[a]" % fin)
+
     return ";\n".join(lineas), len(puntos)
 
 
@@ -1151,7 +1160,7 @@ def ramas_audio_extra(plan, idx_capa, sin_audio):
         # Ni se molestan en entrar: nadie va a escucharlas.
         return ["[mez]anullsink"]
     if not extras:
-        return ["[mez]anull[a]"]
+        return ["[mez]anull[amez]"]
 
     lineas, etiquetas = [], ["[mez]"]
     for k, capa in enumerate(extras):
@@ -1174,9 +1183,61 @@ def ramas_audio_extra(plan, idx_capa, sin_audio):
     #  `normalize=0` y `duration=first`: sin el primero, `amix` reparte el volumen
     #  entre las entradas y añadir música bajaría la voz sin que nadie lo pida; sin
     #  el segundo, el `apad` de arriba alargaría el vídeo hasta el infinito.
-    lineas.append("%samix=inputs=%d:normalize=0:duration=first[a]"
+    lineas.append("%samix=inputs=%d:normalize=0:duration=first[amez]"
                   % ("".join(etiquetas), len(etiquetas)))
     return lineas
+
+
+def ramas_censura(plan, entra):
+    """Callar un tramo del sonido, o taparlo con un pitido.
+
+    Va sobre la mezcla YA hecha, o sea lo último: si fuera antes, la música
+    añadida seguiría sonando encima de lo que se quería tapar, que es justo lo
+    contrario de censurar.
+
+    Devuelve (líneas, etiqueta de salida). Si no hay nada que censurar devuelve
+    la etiqueta que le dieron, sin tocar el grafo.
+    """
+    capas = [c for c in capas_de(plan, "censura")
+             if float(c.get("t1", 0)) > float(c.get("t0", 0))]
+    if not capas:
+        return [], entra
+
+    lineas = []
+    #  Primero se callan todos los tramos. `volume=0` con `enable` es lo mismo
+    #  que un silencio, y encadenar varios `volume` no cuesta nada.
+    for n, capa in enumerate(capas):
+        sale = "cen%d" % n
+        lineas.append("[%s]volume=0:enable='between(t,%.4f,%.4f)'[%s]"
+                      % (entra, float(capa["t0"]), float(capa["t1"]), sale))
+        entra = sale
+
+    #  Y encima, los pitidos de los que lo pidan. Un `sine` recortado a la
+    #  ventana y retrasado hasta su sitio, sumado a lo que ya hay.
+    pitidos = [c for c in capas if c.get("modo") == "pitido"]
+    if not pitidos:
+        return lineas, entra
+
+    etiquetas = ["[%s]" % entra]
+    for n, capa in enumerate(pitidos):
+        t0, t1 = float(capa["t0"]), float(capa["t1"])
+        et = "pit%d" % n
+        partes = ["sine=f=1000:d=%.4f" % (t1 - t0)]
+        retardo = max(0, int(round(t0 * 1000)))
+        if retardo > 0:
+            partes.append("adelay=delays=%d:all=1" % retardo)
+        #  `volume`: un tono a tope tapa pero también taladra. A −12 dB se oye
+        #  que hay algo censurado sin que haya que bajar el volumen del vídeo.
+        partes.append("volume=0.25")
+        partes.append("apad")
+        partes.append(NORMA_AUDIO)
+        lineas.append(",".join(partes) + "[%s]" % et)
+        etiquetas.append("[%s]" % et)
+
+    sale = "cenmix"
+    lineas.append("%samix=inputs=%d:normalize=0:duration=first[%s]"
+                  % ("".join(etiquetas), len(etiquetas), sale))
+    return lineas, sale
 
 
 # ── datos del vídeo ───────────────────────────────────────────────
@@ -1534,6 +1595,69 @@ def orden_render(args):
     salir(ok=True, estado="fin", ruta=args.salida)
 
 
+def orden_silencios(args):
+    """Dónde no se dice nada, en tiempo de línea.
+
+    Se le pasa a ffmpeg el MISMO grafo que al render y se escucha su salida de
+    audio con `silencedetect`. Hacerlo sobre la mezcla final y no fichero a
+    fichero es lo que hace que los cortes salgan ya en tiempo de línea, sin
+    traducir nada: si has bajado el volumen de una pista o has metido música,
+    eso cuenta.
+
+    No corta nada: devuelve los tramos y quien decide es el usuario. Sin un
+    deshacer, borrar trozos por su cuenta sería jugársela con su grabación.
+    """
+    plan = cargar(args.plan)
+    carpeta = carpeta_de(args.plan)
+    rutas, _, _, _ = entradas(plan, carpeta)
+
+    #  El detector va DENTRO del grafo y no como `-af`: ffmpeg no deja mezclar
+    #  filtrado simple y complejo sobre el mismo flujo, y contesta «Simple and
+    #  complex filtering cannot be used together for the same stream».
+    #  Y el vídeo a la basura: en un grafo TODA etiqueta que se produce hay que
+    #  consumirla. Dejar `[v]` suelta no es «no me interesa el vídeo», es un
+    #  «Filter has output unconnected» que tumba la orden. Es la misma trampa
+    #  que ya se pagó con `[a]` en la previa.
+    texto, _ = grafo(plan, carpeta=carpeta)
+    texto += (";\n[v]nullsink;\n[a]silencedetect=noise=%ddB:d=%.3f[adet]"
+              % (args.umbral, args.minimo))
+    ruta_grafo = os.path.join(carpeta, "grafo-silencios.txt")
+    with open(ruta_grafo, "w") as f:
+        f.write(texto)
+
+    orden = ["ffmpeg", "-hide_banner", "-y"]
+    for r in rutas:
+        orden += ["-i", r]
+    #  Solo el audio: descodificar el vídeo para tirarlo es tiempo regalado, y
+    #  aquí se está esperando a que conteste para poder cortar.
+    orden += ["-filter_complex_script", ruta_grafo, "-map", "[adet]",
+              "-vn", "-f", "null", "-"]
+
+    p = subprocess.run(orden, capture_output=True, text=True)
+    if p.returncode != 0:
+        salir(ok=False, motivo="fallo", detalle=p.stderr.strip()[-200:])
+
+    #  `silencedetect` no devuelve datos: los escribe en el registro, una línea
+    #  por borde. El final del último puede faltar si el vídeo acaba callado, y
+    #  entonces el tramo llega hasta el final de la línea.
+    total = duracion_linea(plan)
+    tramos, abierto = [], None
+    for linea in p.stderr.split("\n"):
+        m = re.search(r"silence_start:\s*(-?[\d.]+)", linea)
+        if m:
+            abierto = max(0.0, float(m.group(1)))
+            continue
+        m = re.search(r"silence_end:\s*(-?[\d.]+)", linea)
+        if m and abierto is not None:
+            tramos.append([round(abierto, 3),
+                           round(min(total, float(m.group(1))), 3)])
+            abierto = None
+    if abierto is not None and total - abierto > args.minimo:
+        tramos.append([round(abierto, 3), round(total, 3)])
+
+    salir(ok=True, duracion=round(total, 3), tramos=tramos)
+
+
 def orden_previa(args):
     plan = cargar(args.plan)
     rutas, _, _, _ = entradas(plan, carpeta_de(args.plan))
@@ -1582,6 +1706,13 @@ def main():
     d = sub.add_parser("camara")
     d.add_argument("plan")
 
+    z = sub.add_parser("silencios")
+    z.add_argument("plan")
+    #  −35 dB y 0,6 s: medido sobre una locución normal, con −50 se cuela el
+    #  ruido de sala y con 0,3 s parte entre palabras.
+    z.add_argument("--umbral", type=int, default=-35)
+    z.add_argument("--minimo", type=float, default=0.6)
+
     m = sub.add_parser("medir")
     m.add_argument("fichero")
 
@@ -1593,6 +1724,7 @@ def main():
     args = ap.parse_args()
     {"abrir": orden_abrir, "proponer": orden_proponer, "render": orden_render,
      "previa": orden_previa, "camara": orden_camara,
+     "silencios": orden_silencios,
      "medir": orden_medir}[args.orden](args)
 
 

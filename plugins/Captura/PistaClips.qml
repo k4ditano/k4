@@ -84,7 +84,17 @@ Rectangle {
             //  había soltado.
             z: arrastrando ? 10 : 0
 
+            //  Un trozo marcado como silencio va en rojo, y por eso se marcan y
+            //  no se borran: así se ve de un vistazo qué se va a quitar antes de
+            //  quitarlo. El clip lleva la marca; aquí solo se pinta.
+            readonly property bool mudo: {
+                const i = Editor.indiceDeClip(modelData.clip)
+                return i >= 0 && !!Editor.clips[i].silencio
+            }
+
             color: elegido ? Theme.blue
+                : mudo ? (raton.containsMouse ? Qt.rgba(0.65, 0.28, 0.30, 0.9)
+                                              : Qt.rgba(0.52, 0.22, 0.24, 0.85))
                 : (raton.containsMouse ? Qt.rgba(0.35, 0.45, 0.6, 0.85)
                                        : Qt.rgba(0.28, 0.34, 0.45, 0.8))
             opacity: arrastrando ? 0.85 : 1
