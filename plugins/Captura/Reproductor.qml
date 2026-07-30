@@ -103,33 +103,67 @@ Item {
         }
     }
 
-    //  Y mientras dura la tregua, el cabezal sigue andando por su cuenta.
+    //  El reloj del cabezal, y no el medio.
     //
-    //  No creerle al medio durante 200 ms es necesario —lo que dice es de
-    //  antes— pero dejar el cabezal QUIETO esos 200 ms no lo es, y es lo que se
-    //  veía: una microparada en cada corte, puntual como un reloj, aunque el
-    //  decodificador ya estuviera listo. Aquí se avanza a ojo el tiempo que
-    //  toca; cuando acaba la tregua manda otra vez el medio y corrige lo que
-    //  haya que corregir, que serán milisegundos.
+    //  Un `MediaPlayer` avisa de su posición cada 50 ms —medido: mediana 50,
+    //  máximo 54— y eso es lo que se veía como vibración: a lo ancho de la línea
+    //  son saltos de cuatro o cinco píxeles, tres veces por segundo, en vez de
+    //  un cabezal que se desliza. La microparada de los cortes era lo mismo,
+    //  solo que ahí el hueco es más largo.
+    //
+    //  Así que el cabezal lo lleva este reloj, que va a 16 ms, y el medio pasa a
+    //  ser quien CORRIGE: si se han separado, se acerca poco a poco. Es lo que
+    //  hace cualquier reproductor con la barra de progreso, y por lo mismo.
+    //
+    //  Vale también para los trozos que son una imagen: ahí no hay medio que
+    //  avise de nada, y antes hacía falta un segundo temporizador solo para eso.
+    property real ultimoTic: 0
+    //  Dónde dice el medio que está, y cuándo lo dijo. El reloj lo usa para
+    //  corregirse sin dar nunca un paso atrás.
+    property real objetivo: -1
+    property real objetivoEn: 0
+
     Timer {
-        id: aCiegas
-        interval: 33
+        id: reloj
+        interval: 16
         repeat: true
-        running: repro.enTregua && repro.sonando && !repro.rascando
-                 && !repro.enImagen
+        running: repro.sonando && !repro.rascando && repro.tramos.length > 0
         onTriggered: {
-            //  Sin multiplicar por la velocidad: el cabezal va en tiempo de
-            //  LÍNEA, y la línea avanza a un segundo por segundo aunque el
-            //  trozo de debajo se esté viendo al cuádruple. Quien corre más es
-            //  el fichero, no el reloj.
-            const t = repro.cabezal + interval / 1000
-            //  Sin pasarse del trozo: si se acabara durante la tregua, quien
-            //  tiene que decidir qué viene después es `avanzar`, no esto.
-            if (repro.tramo && t >= repro.tramo.fin - 0.001)
+            const ahora = Date.now()
+            //  Con el tiempo de verdad y no con `interval`: si el hilo se
+            //  entretiene, el reloj no se queda atrás.
+            const paso = repro.ultimoTic > 0
+                ? Math.min(0.25, (ahora - repro.ultimoTic) / 1000) : 0
+            repro.ultimoTic = ahora
+            if (paso <= 0 || !repro.tramo)
                 return
+
+            //  El ritmo se ajusta para acercarse a lo que dice el medio, pero
+            //  nunca baja de cero: si va rezagado se anda más despacio y si va
+            //  adelantado más deprisa, y en un segundo se han juntado. Lo que
+            //  no se hace es mover el cabezal hacia atrás, que es justo lo que
+            //  se veía como vibración.
+            let ritmo = 1.0
+            if (repro.objetivo >= 0 && !repro.enTregua) {
+                const donde = repro.objetivo
+                    + (ahora - repro.objetivoEn) / 1000
+                const error = donde - repro.cabezal
+                ritmo = Math.max(0.5, Math.min(1.5, 1 + error * 2))
+            }
+
+            //  Sin multiplicar por la velocidad del trozo: el cabezal va en
+            //  tiempo de LÍNEA, y la línea avanza a un segundo por segundo
+            //  aunque lo de debajo se esté viendo al cuádruple. Quien corre más
+            //  es el fichero, no el reloj.
+            const t = repro.cabezal + paso * ritmo
+            if (t >= repro.tramo.fin - 0.001) {
+                repro.avanzar()
+                return
+            }
             repro.cabezal = t
             Editor.posicionEditor = t
         }
+        onRunningChanged: if (running) repro.ultimoTic = Date.now()
     }
 
     function irA(t) {
@@ -142,6 +176,9 @@ Item {
         const tr = tramos[n]
         cabezal = limpio
         indice = n
+        //  El objetivo viejo apuntaba a otro sitio: hasta que el medio vuelva a
+        //  hablar, el reloj va solo y a ritmo normal.
+        objetivo = -1
 
         enTregua = true
         tregua.restart()
@@ -187,6 +224,9 @@ Item {
             if (continua(tramos[indice], sig)) {
                 indice = indice + 1
                 cabezal = sig.inicio
+                //  Mismo fichero y misma posición, pero el instante de LÍNEA es
+                //  otro: el objetivo se recalcula con el primer aviso que llegue.
+                objetivo = -1
                 return
             }
             irA(sig.inicio)
@@ -271,11 +311,8 @@ Item {
         onPositionChanged: function (ms) {
             if (!repro.tramo || playbackState === MediaPlayer.StoppedState)
                 return
-            // Recién saltado no se le cree: lo que dice es de antes.
-            if (repro.enTregua)
-                return
 
-            //  Y si lo que toca es una imagen, el medio no pinta nada aquí.
+            //  Si lo que toca es una imagen, el medio no pinta nada aquí.
             //
             //  Al entrar en un congelado se le da `pause()`, pero todavía llega
             //  algún aviso de posición del vídeo anterior. Como el tramo ya es
@@ -286,6 +323,25 @@ Item {
                 return
 
             const s = ms / 1000
+
+            //  Recién saltado no se le cree… hasta que diga algo coherente.
+            //
+            //  La tregua existe porque tras un salto el medio sigue informando
+            //  de DÓNDE ESTABA, y hacerle caso descolocaba el cabezal. Pero
+            //  esperar los 200 ms enteros cuando el decodificador ya está listo
+            //  es tiempo tirado. Así que los 200 ms pasan a ser el TOPE: en
+            //  cuanto la posición cae dentro del trozo nuevo y no va por detrás
+            //  de lo que ya se ha pintado, se le vuelve a creer.
+            if (repro.enTregua) {
+                const dentro = s >= repro.tramo.desde - 0.05
+                            && s <= repro.tramo.hasta + 0.05
+                const enLinea = repro.tramo.inicio
+                    + (s - repro.tramo.desde) / (repro.tramo.velocidad || 1)
+                if (!dentro || enLinea + 0.02 < repro.cabezal)
+                    return
+                repro.enTregua = false
+                tregua.stop()
+            }
 
             //  ¿Se acabó el trozo? Al siguiente.
             //
@@ -302,9 +358,26 @@ Item {
             //  De vuelta a tiempo de línea, deshaciendo la velocidad. Con un
             //  clip a 2× el fichero avanza el doble de deprisa, y sin dividir
             //  aquí el cabezal se iría al doble de rápido que el vídeo.
-            repro.cabezal = repro.tramo.inicio
+            const t = repro.tramo.inicio
                 + (s - repro.tramo.desde) / (repro.tramo.velocidad || 1)
-            Editor.posicionEditor = repro.cabezal
+
+            //  Y aquí NO se manda, se apunta a dónde debería estar.
+            //
+            //  Quien mueve el cabezal es el reloj de arriba, que va suave. Este
+            //  aviso llega cada 50 ms y si escribiera el valor directamente
+            //  volvería a verse a saltos, que es de lo que se venía.
+            //
+            //  Con la diferencia grande —un salto, un tirón del decodificador—
+            //  se hace caso y punto. Con la pequeña, el reloj corrige el RITMO,
+            //  que es lo único que no da marcha atrás. Poner aquí
+            //  `cabezal += error * 0.1` parecía lo natural y medí 56 retrocesos:
+            //  con el error negativo, eso ES un paso atrás.
+            repro.objetivo = t
+            repro.objetivoEn = Date.now()
+            if (Math.abs(t - repro.cabezal) > 0.25) {
+                repro.cabezal = t
+                Editor.posicionEditor = t
+            }
         }
 
         onMediaStatusChanged: {
@@ -349,26 +422,10 @@ Item {
         asynchronous: true
     }
 
-    //  Quien mueve el cabezal mientras se ve una imagen.
-    //
-    //  Un `MediaPlayer` avisa de que avanza y por eso el resto del tiempo no
-    //  hace falta reloj. Una imagen no avanza sola: sin esto, la reproducción se
-    //  quedaba clavada al entrar en un congelado y no salía nunca.
-    Timer {
-        id: relojImagen
-        interval: 33
-        repeat: true
-        running: repro.enImagen && repro.sonando && !repro.rascando
-        onTriggered: {
-            const t = repro.cabezal + interval / 1000
-            if (repro.tramo && t >= repro.tramo.fin - 0.001) {
-                repro.avanzar()
-                return
-            }
-            repro.cabezal = t
-            Editor.posicionEditor = t
-        }
-    }
+    //  Los trozos que son una imagen no necesitan nada aparte: el reloj de
+    //  arriba los lleva igual que a los demás. Antes tenían su propio
+    //  temporizador porque el cabezal lo movía el medio, y una imagen no tiene
+    //  medio que lo mueva.
 
     //  Arrancar por donde se dejó.
     //
