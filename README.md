@@ -326,7 +326,7 @@ compatibilidad con los atajos ya configurados; en módulos nuevos usa el suyo:
 | `k4.settings` | `toggle` · `close` · `alternar <opción>` |
 | `k4.game` | `toggle` · `close` · `nueva` · `habilidad <0-2>` · `ver <pestaña>` · `cofre <tipo>` · `adelantar <segundos>` · `estado` |
 | `k4.captura` | `menu` · `close` · `pantalla` · `region` · `ventana` · `anotar` · `grabar` · `grabarRegion` · `grabarAlternar` · `parar` · `grande` · `encoger` |
-| `k4.editor` | `abrir` · `editar <ruta>` · `retomar` · `imagen <ruta> <t>` · `imagenEncima <ruta> <t>` · `congelar <t> <dur>` · `subtitular` · `formato <mp4|webm|gif>` · `silencios` · `quitarSilencios` · `olvidarSilencios` · `grande` · `encoger` |
+| `k4.editor` | `abrir` · `editar <ruta>` · `retomar` · `imagen <ruta> <t>` · `imagenEncima <ruta> <t>` · `congelar <t> <dur>` · `elegirTrozo <n>` · `separarAudio` · `devolverAudio` · `subtitular` · `formato <mp4|webm|gif>` · `silencios` · `quitarSilencios` · `olvidarSilencios` · `grande` · `encoger` |
 
 El editor tiene canal propio y no cuelga de `k4.captura` a propósito: llegar a
 él ya no pasa por haber grabado nada.

@@ -568,7 +568,12 @@ def rama_audio(i, idx, clip, fuente, dur, fundido=""):
     ninguna —o la fuente no tiene audio— se rellena con silencio, porque a
     `concat` hay que darle todas las ramas o no arranca.
     """
-    vivas = [p for p in fuente.get("pistas", []) if not p.get("mudo")]
+    #  Un clip mudo no aporta sonido, y eso ya sabe hacerlo la rama de
+    #  silencio que existe para los vídeos sin audio. Es lo que deja
+    #  «separar el audio» sin tener que inventar nada: se saca a una capa y el
+    #  trozo se calla.
+    vivas = [] if clip.get("mudo") else [
+        p for p in fuente.get("pistas", []) if not p.get("mudo")]
 
     if not vivas:
         #  Silencio del mismo largo que el trozo. Sin esto, un clip sacado de un
@@ -1216,8 +1221,23 @@ def ramas_audio_extra(plan, idx_capa, sin_audio):
     for k, capa in enumerate(extras):
         et = "ax%d" % k
         retardo = max(0, int(round(float(capa.get("t0", 0)) * 1000)))
-        partes = ["[%d:a]volume=%.3f"
-                  % (idx_capa[capa["id"]], float(capa.get("volumen", 1.0)))]
+
+        #  El recorte: qué trozo del fichero se oye.
+        #
+        #  Hasta ahora una capa de audio entraba entera y solo se elegía CUÁNDO
+        #  empezaba. Con recorte se puede además decir QUÉ parte, que es lo que
+        #  hace falta para sacar el audio de un trozo de vídeo a su propia capa:
+        #  el trozo va del segundo 12 al 18 del fichero, no del 0 al 6.
+        #
+        #  Va antes del `volume` porque cortar y luego bajar es una operación
+        #  menos que al revés, y antes del `adelay` porque el retardo cuenta
+        #  desde el principio de lo que se oye, no del fichero.
+        recorte = capa.get("recorte") or []
+        partes = ["[%d:a]" % idx_capa[capa["id"]]]
+        if len(recorte) == 2 and float(recorte[1]) > float(recorte[0]):
+            partes[0] += ("atrim=start=%.4f:end=%.4f,asetpts=PTS-STARTPTS,"
+                          % (float(recorte[0]), float(recorte[1])))
+        partes[0] += "volume=%.3f" % float(capa.get("volumen", 1.0))
         if retardo > 0:
             #  `all=1` y no `delays=N|N`: con un valor por canal hay que saber
             #  cuántos canales trae el fichero, y un mp3 mono y un wav estéreo no

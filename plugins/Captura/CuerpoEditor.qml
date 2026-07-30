@@ -1133,6 +1133,15 @@ Item {
                             model: [
                                 { texto: Idioma.t("Cortar aquí"), icono: 0xF0190,             // md-content_cut
                                   accion: "cortar" },
+                                //  Separar el audio saca el sonido del trozo a
+                                //  su propia capa y deja el trozo mudo. Desde
+                                //  ahí se mueve y se recorta como cualquier
+                                //  música añadida.
+                                { texto: Editor.clipSel && Editor.clipSel.mudo
+                                            ? Idioma.t("Devolver el audio")
+                                            : Idioma.t("Separar el audio"),
+                                  icono: 0xF057E,            // md-volume_high
+                                  accion: "audio" },
                                 //  Congelar mete un trozo NUEVO, así que va con los
                                 //  demás botones del trozo y no con los de añadir:
                                 //  lo que congela es el fotograma que estás viendo.
@@ -1181,6 +1190,10 @@ Item {
                                         const a = botonClip.modelData.accion
                                         if (a === "cortar")
                                             Editor.cortar(view.segundos)
+                                        else if (a === "audio")
+                                            Editor.clipSel && Editor.clipSel.mudo
+                                                ? Editor.devolverAudio(Editor.idSel)
+                                                : Editor.separarAudio(Editor.idSel)
                                         else if (a === "congelar")
                                             Editor.congelar(view.segundos, 2)
                                         else

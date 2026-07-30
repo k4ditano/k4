@@ -379,6 +379,63 @@ Singleton {
         return nueva.id
     }
 
+    //  Sacar el audio de un trozo a su propia capa.
+    //
+    //  Es lo que permite recortar el sonido por su cuenta: dejar la voz sonando
+    //  por encima del corte siguiente, adelantarla, o bajarle el volumen solo en
+    //  ese cacho. Reusa las capas de audio que ya existen —no hay una pista de
+    //  audio aparte— y lo único nuevo es que una capa de audio puede llevar
+    //  recorte, igual que ya lo llevaba un vídeo dentro del vídeo.
+    //
+    //  El trozo se queda mudo, no vacío: el vídeo sigue ahí y lo que se ha
+    //  movido es su sonido. Deshacerlo es quitar la capa y desmarcar el trozo.
+    function separarAudio(id) {
+        const i = indiceDeClip(id)
+        if (i < 0 || clips[i].mudo)
+            return 0
+        const c = clips[i]
+        const tr = tramoDe(id) >= 0 && tramos.length > 0
+            ? tramos[tramoDe(id)] : null
+        if (!tr)
+            return 0
+
+        const nueva = {
+            id: nuevoIdCapa(),
+            tipo: "audio",
+            ruta: rutaDe(c.fuente),
+            //  Dónde se oye en la línea, y qué parte del fichero se oye.
+            t0: tr.inicio,
+            t1: tr.fin,
+            recorte: [c.desde, c.hasta],
+            volumen: 1.0,
+            dur: Math.max(0.1, c.hasta - c.desde),
+            banda: bandaLibre(tr.inicio, tr.fin)
+        }
+        capas = capas.concat([nueva])
+        clips = clips.map(function (x, j) {
+            return j === i ? Object.assign({}, x, { mudo: true }) : x
+        })
+        persistir()
+        seleccionar("capa", nueva.id)
+        return nueva.id
+    }
+
+    //  Devolverle el sonido a un trozo. No borra la capa: quitarle a alguien
+    //  algo que ha movido y ajustado sería peor que dejarle dos sonidos.
+    function devolverAudio(id) {
+        const i = indiceDeClip(id)
+        if (i < 0)
+            return
+        clips = clips.map(function (x, j) {
+            if (j !== i)
+                return x
+            const d = Object.assign({}, x)
+            delete d.mudo
+            return d
+        })
+        persistir()
+    }
+
     // ── congelar ──────────────────────────────────────────────────
     //
     //  Parar la imagen unos segundos sin parar de hablar. El fotograma se saca

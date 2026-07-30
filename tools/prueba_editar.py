@@ -423,6 +423,37 @@ def prueba_grafo_sin_audio_no_deja_nada_colgando():
     igual("y no queda etiqueta [a] suelta", texto.endswith("[a]"), False)
 
 
+# ── separar el audio ──────────────────────────────────────────────
+def prueba_clip_mudo_va_por_el_silencio():
+    """Un trozo mudo usa la misma rama que un vídeo sin audio."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 4, "mudo": True},
+              {"id": 2, "fuente": 1, "desde": 4, "hasta": 8}])
+    g, _ = editar.grafo(p)
+    igual("el mudo se rellena con silencio", "anullsrc" in g, True)
+    #  Y el otro no: solo hay UNA rama de audio de verdad.
+    igual("el que suena sigue sonando", g.count("[0:a:0]atrim"), 1)
+
+
+def prueba_capa_de_audio_con_recorte():
+    """Sin recorte, el audio separado sonaría desde el principio del fichero."""
+    p = con_capas([{"id": 1, "tipo": "audio", "banda": 2,
+                    "ruta": fichero("v.mp4"), "t0": 3.0, "t1": 6.0,
+                    "recorte": [3.0, 6.0], "volumen": 1.0}])
+    g, _ = editar.grafo(p)
+    igual("recorta el trozo que toca",
+          "atrim=start=3.0000:end=6.0000" in g, True)
+    igual("y lo coloca donde toca", "adelay=delays=3000:all=1" in g, True)
+
+
+def prueba_capa_de_audio_sin_recorte_sigue_igual():
+    """Una música añadida no lleva recorte y no puede cambiar de forma."""
+    p = con_capas([{"id": 1, "tipo": "audio", "banda": 2,
+                    "ruta": fichero("m.mp3"), "t0": 2.0, "volumen": 0.5}])
+    g, _ = editar.grafo(p)
+    igual("no aparece atrim", "atrim=start" in g.split("[mez]")[-1], False)
+    igual("y el volumen sigue ahí", "volume=0.500" in g, True)
+
+
 # ── el vídeo es la banda 1 ────────────────────────────────────────
 def prueba_migracion_sube_las_capas():
     """La banda 1 pasa a ser del vídeo, así que las capas suben una."""

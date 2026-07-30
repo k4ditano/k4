@@ -477,6 +477,17 @@ K4Plugin {
                 Editor.formatoSalida = cual
         }
 
+        //  Sacar el audio de un trozo a su propia capa, o devolvérselo.
+        function separarAudio(): void { Editor.separarAudio(Editor.idSel) }
+        function devolverAudio(): void { Editor.devolverAudio(Editor.idSel) }
+        //  Elegir un trozo por su número en la línea, para poder probar esto
+        //  sin ratón. `n` empieza en 1.
+        function elegirTrozo(n: int): void {
+            const i = Math.max(0, n - 1)
+            if (i < Editor.tramos.length)
+                Editor.seleccionar("clip", Editor.tramos[i].clip)
+        }
+
         //  Parar la imagen unos segundos. `t` en segundos de la línea; con -1
         //  va por donde vaya la reproducción.
         function congelar(t: real, dur: real): void {
