@@ -713,6 +713,24 @@ def rama_pip(n, idx, capa, ancho, alto, entra):
     #  `setpts` SIEMPRE, aunque no haya recorte: pone los tiempos del clip a cero
     #  y luego lo empuja hasta su instante.
     filtros.append("setpts=PTS-STARTPTS+%.4f/TB" % float(capa.get("t0", 0)))
+
+    #  Quitar el fondo verde, ANTES de escalar.
+    #
+    #  Antes y no después porque el escalado inventa píxeles intermedios entre
+    #  el sujeto y el fondo, y esos ya no son ni verde ni piel: recortarlos
+    #  después deja un halo. `despill` quita el reflejo verde que queda en los
+    #  bordes, que es lo que delata un croma mal hecho.
+    croma = capa.get("croma") or {}
+    if croma.get("color"):
+        filtros.append("format=rgba")
+        filtros.append("chromakey=%s:%.4f:%.4f"
+                       % (color_ffmpeg(croma["color"]).split("@")[0],
+                          encaja(float(croma.get("tolerancia", 0.15)),
+                                 0.01, 1.0),
+                          encaja(float(croma.get("suavizado", 0.05)),
+                                 0.0, 1.0)))
+        filtros.append("despill=type=green")
+
     filtros.append("scale=%d:-1" % ancho_capa)
     filtros.append("setsar=1")
 
@@ -1377,9 +1395,36 @@ def describir_fuente(ruta, rastro="", ident=1):
                        for p in pistas_audio(ruta)]}
 
 
-def plan_nuevo(video, rastro="", momentos=None):
+def capa_camara(ruta, plan, desfase=0.0):
+    """La cámara grabada a la vez, como un vídeo dentro del vídeo.
+
+    Nace abajo a la derecha y a un cuarto de ancho, que es donde la pone todo el
+    mundo, y cubriendo la grabación entera. A partir de ahí es una capa normal:
+    se mueve, se escala, se recorta o se tira.
+
+    `desfase` es lo que la pantalla se adelantó a la cámara: dos procesos no
+    arrancan en el mismo milisegundo. Se descuenta del recorte para que el
+    instante cero de la línea sea el mismo en las dos. Si aun así baila, el
+    recorte se ajusta a mano — para eso está.
+    """
+    if not ruta or not os.path.exists(ruta):
+        return None
+    ancho, alto, _, dur, _ = sondear(ruta)
+    if dur <= 0:
+        return None
+    largo = duracion_linea(plan) or dur
+    d = max(0.0, float(desfase))
+    return {"id": 1, "tipo": "video", "banda": 1,
+            "ruta": os.path.abspath(ruta),
+            "t0": 0.0, "t1": round(min(largo, dur - d), 3),
+            "recorte": [round(d, 3), round(dur, 3)],
+            "w": ancho, "h": alto,
+            "x": 0.82, "y": 0.8, "escala": 0.25, "opacidad": 1.0}
+
+
+def plan_nuevo(video, rastro="", momentos=None, camara="", desfase=0.0):
     f = describir_fuente(video, rastro)
-    return {"version": VERSION,
+    plan = {"version": VERSION,
             "w": f["w"], "h": f["h"], "fps": f["fps"],
             "fuentes": [f],
             # Un solo trozo, el vídeo entero. Trocearlo es cosa del editor.
@@ -1389,6 +1434,17 @@ def plan_nuevo(video, rastro="", momentos=None):
             # Lo que se dice en el vídeo, cuando alguien lo pida. Va en el plan
             # para no tener que volver a transcribir al reabrir, que es lo caro.
             "transcripcion": []}
+
+    #  Si se grabó la cámara a la vez, entra ya puesta.
+    #
+    #  No se busca por el nombre del fichero: quien grabó sabe si hubo cámara y
+    #  cuánto se adelantó la pantalla, y adivinarlo por un `.cam.mp4` que ande
+    #  cerca metería en el plan un vídeo que a lo mejor no es de esta toma.
+    if camara:
+        capa = capa_camara(camara, plan, desfase)
+        if capa:
+            plan["capas"] = [capa]
+    return plan
 
 
 def migrar(plan):
@@ -1529,7 +1585,8 @@ def orden_abrir(args):
     if args.guardar and os.path.exists(args.guardar):
         plan = cargar(args.guardar)
         salir(ok=True, **plan)
-    plan = plan_nuevo(args.video, args.rastro)
+    plan = plan_nuevo(args.video, args.rastro, camara=args.camara,
+                      desfase=args.desfase)
     if args.guardar:
         guardar(plan, args.guardar)
     salir(ok=True, **plan)
@@ -1540,7 +1597,8 @@ def orden_proponer(args):
         salir(ok=False, motivo="sin-rastro")
     ancho, alto, fps, duracion, _ = sondear(args.video)
     momentos = proponer(args.rastro, ancho, alto, duracion, args.nivel)
-    plan = plan_nuevo(args.video, args.rastro, momentos)
+    plan = plan_nuevo(args.video, args.rastro, momentos,
+                      camara=args.camara, desfase=args.desfase)
     if args.guardar:
         guardar(plan, args.guardar)
     salir(ok=True, **plan)
@@ -1815,12 +1873,16 @@ def main():
     e.add_argument("video")
     e.add_argument("--rastro", default="")
     e.add_argument("--guardar", default="")
+    e.add_argument("--camara", default="")
+    e.add_argument("--desfase", type=float, default=0.0)
 
     a = sub.add_parser("proponer")
     a.add_argument("rastro")
     a.add_argument("--video", required=True)
     a.add_argument("--guardar", default="")
     a.add_argument("--nivel", type=float, default=Z_MAX)
+    a.add_argument("--camara", default="")
+    a.add_argument("--desfase", type=float, default=0.0)
 
     #  El vídeo ya no va suelto: sale del plan.
     #

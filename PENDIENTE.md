@@ -148,6 +148,31 @@ Lo que queda, por orden de lo que más cambia la experiencia:
 
 ## Sin verificar
 
+### La cámara, con una cámara de verdad
+
+Todo lo de V7 está probado con una cámara sintética —`lavfi:` como dispositivo,
+que también sirve para grabar una demo sin salir en ella— porque **en esta
+máquina no hay ninguna webcam**: `/sys/class/video4linux` está vacío.
+
+Lo que sí está medido: la detección lista los nodos y su nombre, el interruptor
+solo aparece si hay alguno, los dos ficheros salen, la capa nace en el sitio
+—x 1334-1813 medido contra 1334-1814 esperado— y el croma deja el fondo verde
+en cero píxeles.
+
+Lo que falta comprobar en cuanto haya una webcam enchufada:
+
+- Que `-f v4l2 -framerate 30 -i /dev/videoN` grabe de verdad. La rama de lavfi
+  es la que se ha ejercitado.
+- **El desfase entre pantalla y cámara.** Se mide con los dos instantes de
+  arranque y con la fuente sintética salió de 0 a 1 ms, pero una webcam tarda en
+  despertar —el sensor, el autoenfoque— y ese retardo NO lo ve este método:
+  ffmpeg arranca enseguida y el primer fotograma llega después. Si al probarlo
+  la cámara va por detrás, la cuenta hay que hacerla con el primer fotograma y
+  no con el arranque del proceso.
+- Que los nodos que no son cámaras —una capturadora, un `/dev/video1` que es la
+  salida de metadatos de la misma webcam— no ensucien la lista.
+
+
 Nada de esto está roto que se sepa; simplemente no se ha podido comprobar desde
 aquí, porque necesita ratón de verdad.
 

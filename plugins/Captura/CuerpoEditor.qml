@@ -479,6 +479,52 @@ Item {
                     Layout.topMargin: 6
                     spacing: 4
 
+                    //  Quitar el fondo verde de un vídeo encima.
+                    //
+                    //  La previa no lo enseña: `VideoOutput` no sabe hacer un
+                    //  croma. Lo dice el propio botón y para verlo está
+                    //  «previa exacta».
+                    Rectangle {
+                        readonly property bool puesto: Editor.capaSel
+                            && Editor.capaSel.croma
+                            && Editor.capaSel.croma.color
+
+                        visible: Editor.capaSel && Editor.capaSel.tipo === "video"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: visible ? 26 : 0
+                        radius: 13
+                        color: puesto ? Theme.green
+                             : cromaRaton.containsMouse ? Theme.surfaceHi
+                                                        : Theme.surface
+
+                        RowLayout {
+                            anchors.centerIn: parent
+                            spacing: 5
+
+                            IconGlyph {
+                                text: String.fromCodePoint(0xF00E3)   // md-brush
+                                color: parent.parent.puesto ? "#ffffff" : Theme.muted
+                                font.pixelSize: 12
+                            }
+
+                            IslandLabel {
+                                text: parent.parent.puesto
+                                    ? Idioma.t("Fondo verde quitado (al renderizar)")
+                                    : Idioma.t("Quitar el fondo verde")
+                                color: parent.parent.puesto ? "#ffffff" : Theme.muted
+                                font.pixelSize: 10
+                            }
+                        }
+
+                        MouseArea {
+                            id: cromaRaton
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Editor.alternarCroma(Editor.idSel)
+                        }
+                    }
+
                     //  Qué le hace la zona a lo que hay debajo.
                     //
                     //  Los tres modos son la misma capa: cambiar de uno a otro

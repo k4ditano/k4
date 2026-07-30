@@ -423,6 +423,31 @@ def prueba_grafo_sin_audio_no_deja_nada_colgando():
     igual("y no queda etiqueta [a] suelta", texto.endswith("[a]"), False)
 
 
+# ── la cámara ─────────────────────────────────────────────────────
+def prueba_croma_va_antes_de_escalar():
+    """Escalar primero deja un halo: los píxeles inventados en el borde ya no
+    son ni verde ni piel, y recortarlos después no los quita."""
+    p = con_capas([{"id": 1, "tipo": "video", "banda": 1,
+                    "ruta": fichero("cam.mp4"), "t0": 0, "t1": 5,
+                    "recorte": [0, 5], "w": 640, "h": 480,
+                    "x": 0.8, "y": 0.8, "escala": 0.25,
+                    "croma": {"color": "#00ff00", "tolerancia": 0.25}}])
+    g, _ = editar.grafo(p)
+    igual("hay chromakey", "chromakey=" in g, True)
+    igual("y va antes del scale",
+          g.index("chromakey=") < g.index("scale=480"), True)
+    igual("con despill detrás", "despill=type=green" in g, True)
+
+
+def prueba_sin_croma_no_se_toca():
+    p = con_capas([{"id": 1, "tipo": "video", "banda": 1,
+                    "ruta": fichero("cam.mp4"), "t0": 0, "t1": 5,
+                    "recorte": [0, 5], "w": 640, "h": 480,
+                    "x": 0.8, "y": 0.8, "escala": 0.25}])
+    g, _ = editar.grafo(p)
+    igual("no hay chromakey", "chromakey" in g, False)
+
+
 # ── clips de imagen ───────────────────────────────────────────────
 def con_imagen():
     """Un plan con un trozo de vídeo y otro que es una imagen fija."""

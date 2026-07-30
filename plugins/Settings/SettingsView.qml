@@ -128,11 +128,18 @@ FadeIn {
                                 readonly property bool disponible: !modelData.requiere
                                     || Settings.valor(modelData.requiere)
 
+                                //  Y otras ni siquiera aparecen si no hay con qué.
+                                //
+                                //  Un interruptor de «grabar la cámara» sin cámara
+                                //  enchufada no es una opción, es una promesa falsa.
+                                //  En cuanto conectes una, aparece.
+                                visible: modelData.si !== "camara" || Captura.hayCamara
+
                                 opacity: disponible ? 1 : 0.4
                                 Behavior on opacity { NumberAnimation { duration: 140 } }
 
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 40
+                                Layout.preferredHeight: visible ? 40 : 0
                                 radius: 10
                                 color: filaMouse.containsMouse ? Theme.surfaceHi : Theme.surface
 

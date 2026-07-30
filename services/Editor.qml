@@ -583,6 +583,36 @@ Singleton {
         return isFinite(v) ? v : d
     }
 
+    //  Quitar el fondo verde de una capa de vídeo.
+    //
+    //  Solo tiene sentido con fondo de croma detrás; sin él, apagado, la cámara
+    //  sale en su recuadro y ya. Por eso es un interruptor y no algo que venga
+    //  puesto.
+    function alternarCroma(id) {
+        const c = capaPorId(id)
+        if (!c || c.tipo !== "video")
+            return
+        fijarCapa(id, c.croma && c.croma.color
+            ? { croma: null }
+            : { croma: { color: "#00ff00", tolerancia: 0.25,
+                         suavizado: 0.05 } })
+    }
+
+    function ponerToleranciaCroma(id, v) {
+        const c = capaPorId(id)
+        if (!c || !c.croma)
+            return
+        fijarCapa(id, { croma: Object.assign({}, c.croma, {
+            tolerancia: Math.max(0.01, Math.min(1, Number(v) || 0.25)) }) })
+    }
+
+    function capaPorId(id) {
+        for (let i = 0; i < capas.length; ++i)
+            if (capas[i].id === id)
+                return capas[i]
+        return null
+    }
+
     //  Resaltar dónde se ha pulsado.
     //
     //  No crea ninguna capa: los clics ya están apuntados en el rastro de la
@@ -1081,6 +1111,25 @@ Singleton {
 
     readonly property string guion: Quickshell.shellPath("tools/editar.py")
 
+    //  La cámara que se grabó a la vez, si la hubo.
+    //
+    //  Se pasa por argumento y no se busca sola en python porque hace falta
+    //  también el desfase, y ese solo lo sabe quien arrancó los dos procesos:
+    //  dos ffmpeg no empiezan en el mismo milisegundo y fingir que sí sería
+    //  mentir sobre la sincronía. Se apunta al grabar y se olvida al usarlo.
+    property string camaraPendiente: ""
+    property real desfasePendiente: 0
+
+    function argsCamara() {
+        if (camaraPendiente.length === 0)
+            return []
+        const a = ["--camara", camaraPendiente,
+                   "--desfase", String(desfasePendiente.toFixed(3))]
+        camaraPendiente = ""
+        desfasePendiente = 0
+        return a
+    }
+
     // ── abrir ─────────────────────────────────────────────────────
     //
     //  Dos formas de llegar aquí y una sola de salir. `abrir` sirve para
@@ -1092,7 +1141,7 @@ Singleton {
         preparar(video)
         abridor.command = [guion, "abrir", video,
                            "--rastro", rastro || "",
-                           "--guardar", rutaPlan]
+                           "--guardar", rutaPlan].concat(argsCamara())
         abridor.running = true
     }
 
@@ -1103,7 +1152,7 @@ Singleton {
         proponedor.command = [guion, "proponer", rastro,
                               "--video", video,
                               "--guardar", rutaPlan,
-                              "--nivel", String(zoomNivel)]
+                              "--nivel", String(zoomNivel)].concat(argsCamara())
         proponedor.running = true
     }
 

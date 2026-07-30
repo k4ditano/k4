@@ -274,6 +274,9 @@ Singleton {
     function alternarGrabacion() { grabando || estado === "cuenta" ? parar() : grabar("") }
 
     function arrancarGrabador() {
+        //  Por si has enchufado una webcam desde que arrancó la barra, que es
+        //  lo normal: se mira ahora y no solo al principio.
+        buscarCamaras()
         pedirNombreVideo.running = true
     }
 
@@ -433,6 +436,110 @@ Singleton {
                 "-c:a", "aac", "-b:a", "160k", ruta]
     }
 
+    // ── la cámara ─────────────────────────────────────────────────
+    //
+    //  Se graba en un fichero APARTE, no incrustada en el vídeo. Así en el
+    //  editor es una capa más: se coloca, se escala, se le quita el fondo o se
+    //  tira. Incrustarla al grabar es irreversible, que es justo lo que se ha
+    //  evitado también con el micro.
+    //
+    //  Qué cámaras hay se pregunta al kernel, no a ffmpeg: `/sys/class/video4linux`
+    //  las lista aunque ffmpeg no esté compilado con v4l2, y hay que saberlo
+    //  ANTES de ofrecer el interruptor. Se mira al arrancar y cada vez que se va
+    //  a grabar, que es cuando importa: enchufar una webcam a mitad de sesión es
+    //  lo normal.
+    property var camaras: []
+    readonly property bool hayCamara: camaras.length > 0
+    property string rutaCamara: ""
+
+    function buscarCamaras() { rastreoCamaras.running = true }
+
+    Process {
+        id: rastreoCamaras
+        running: true
+        //  El nombre bonito sale de `name`, que es lo que enseña el sistema; si
+        //  no está, el nodo a secas ya distingue una de otra.
+        command: ["sh", "-c",
+            "for d in /sys/class/video4linux/video*; do " +
+            "[ -e \"$d\" ] || continue; " +
+            "n=$(cat \"$d/name\" 2>/dev/null || echo); " +
+            "echo \"/dev/$(basename $d)|$n\"; done"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const salida = []
+                const lineas = String(this.text).trim().split("\n")
+                for (let i = 0; i < lineas.length; ++i) {
+                    const l = lineas[i].trim()
+                    if (l.length === 0)
+                        continue
+                    const p = l.split("|")
+                    salida.push({ nodo: p[0], nombre: p[1] || p[0] })
+                }
+                captura.camaras = salida
+            }
+        }
+    }
+
+    //  Qué dispositivo usar: el elegido si sigue estando, y si no el primero.
+    //
+    //  «Si sigue estando» importa: los nodos se renumeran al enchufar y
+    //  desenchufar, y guardarse un /dev/video2 que ya no existe dejaría la
+    //  grabación sin cámara sin decir por qué.
+    readonly property string camaraElegida: {
+        const puesto = Settings.camaraDispositivo
+        if (puesto.startsWith("lavfi:"))
+            return puesto
+        for (let i = 0; i < camaras.length; ++i)
+            if (camaras[i].nodo === puesto)
+                return puesto
+        return camaras.length > 0 ? camaras[0].nodo : ""
+    }
+
+    function ordenCamara(ruta) {
+        const orden = ["ffmpeg", "-v", "error", "-y"]
+        //  `lavfi:` es una cámara de mentira, para poder probar todo esto sin
+        //  tener una enchufada: `lavfi:testsrc2=s=640x480:r=30`. No es un apaño
+        //  de laboratorio, también vale para grabar una demo sin salir en ella.
+        if (camaraElegida.startsWith("lavfi:"))
+            //  `-re` para que vaya a ritmo real: una fuente de lavfi genera tan
+            //  deprisa como el codificador trague, y sin esto seis segundos de
+            //  grabación salían veinte minutos de vídeo. Una cámara de verdad
+            //  la limita el hardware; esta hay que limitarla a mano, y con eso
+            //  se comporta igual.
+            orden.push("-re", "-f", "lavfi", "-i", camaraElegida.substring(6))
+        else
+            orden.push("-f", "v4l2", "-framerate", "30", "-i", camaraElegida)
+        //  `ultrafast` y sin audio: la cámara es una esquina del fotograma, no
+        //  hace falta apretarla, y el sonido ya lo lleva el micro.
+        return orden.concat(["-c:v", "libx264", "-preset", "ultrafast",
+                             "-pix_fmt", "yuv420p", "-an", ruta])
+    }
+
+    //  Cuánto se ha adelantado la pantalla a la cámara, en segundos.
+    //
+    //  Dos procesos no arrancan en el mismo milisegundo, y lo honesto es
+    //  medirlo y apuntarlo en vez de fingir que sí. La capa nace con ese
+    //  desfase ya restado; si aún baila, el recorte se ajusta a mano.
+    property real desfaseCamara: 0
+    property real inicioPantalla: 0
+
+    Process {
+        id: grabadorCamara
+        //  El instante en que la cámara empezó de verdad, para saber cuánto se
+        //  le adelantó la pantalla. Son decenas de milisegundos.
+        onStarted: captura.desfaseCamara =
+            Math.max(0, (Date.now() - captura.inicioPantalla) / 1000)
+    }
+
+    //  Se le entrega al editor junto con el vídeo, y solo una vez.
+    function pasarCamaraAlEditor() {
+        if (rutaCamara.length === 0)
+            return
+        Editor.camaraPendiente = rutaCamara
+        Editor.desfasePendiente = desfaseCamara
+        rutaCamara = ""
+    }
+
     Process {
         id: grabador
 
@@ -459,6 +566,21 @@ Singleton {
             } else {
                 captura.rutaMicro = ""
             }
+
+            //  Y la cámara, si se pidió y hay alguna.
+            //
+            //  Se apunta el instante de cada arranque para saber cuánto se
+            //  adelantó una a la otra: son decenas de milisegundos, pero
+            //  fingir que son cero sería mentir sobre la sincronía.
+            captura.inicioPantalla = Date.now()
+            captura.desfaseCamara = 0
+            if (Settings.grabarCamara && captura.camaraElegida.length > 0) {
+                captura.rutaCamara = captura.rutaVideo.replace(/\.mp4$/, ".cam.mp4")
+                grabadorCamara.command = captura.ordenCamara(captura.rutaCamara)
+                grabadorCamara.running = true
+            } else {
+                captura.rutaCamara = ""
+            }
         }
 
         onExited: function (codigo) {
@@ -468,6 +590,11 @@ Singleton {
             // recibir el SIGINT, y matarlo dejaría la última línea a medias.
             if (rastreador.running)
                 rastreador.signal(2)
+            //  Y a la cámara: un mp4 sin cerrar no lo abre nadie. No se espera
+            //  a que muera —el juntado no la necesita— pero sí se le pide por
+            //  las buenas, que es lo que cierra el contenedor.
+            if (grabadorCamara.running)
+                grabadorCamara.signal(2)
             // Y al micro, por lo mismo: un m4a sin cerrar no lo abre nadie.
             if (grabadorMicro.running) {
                 // El juntado lo dispara `grabadorMicro.onExited`, cuando el
@@ -489,6 +616,9 @@ Singleton {
         id: abrirEnEditor
         interval: 700
         onTriggered: {
+            //  La cámara se entrega antes de cualquiera de los dos caminos:
+            //  quien crea el plan la necesita ya, con su desfase.
+            captura.pasarCamaraAlEditor()
             if (Editor.zoomAuto)
                 Editor.proponer(captura.rutaVideo, captura.rutaRastro)
             else

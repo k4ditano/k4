@@ -39,6 +39,14 @@ Singleton {
     property string grabarAudio: "ambos"        // ninguno · sistema · micro · ambos
     property string grabarCodec: "h264"         // h264 · hevc
     property int grabarFps: 60
+    //  ¿Grabar también la cámara, en un fichero aparte?
+    //
+    //  Aparte y no incrustada: así en el editor se coloca, se escala y se quita
+    //  cuando quieras, en vez de quedar pegada al vídeo para siempre.
+    property bool grabarCamara: false
+    //  Qué cámara. Vacío es «la primera que haya», que es lo que quiere
+    //  cualquiera con una sola. Se rellena solo al detectarlas.
+    property string camaraDispositivo: ""
 
     // ── editor ────────────────────────────────────────────────────
     // services/Editor.qml los lee.
@@ -110,7 +118,12 @@ Singleton {
                 { id: "grabarCodec", tipo: "eleccion", de: "codecs",
                   nombre: Idioma.t("Códec de la grabación"),
                   desc: Idioma.t("HEVC ocupa menos y tarda más en abrirse"),
-                  glifo: 0xF0381 }
+                  glifo: 0xF0381 },
+                //  Solo si hay cámara: ofrecer un interruptor que no puede
+                //  hacer nada es peor que no ofrecerlo.
+                { id: "grabarCamara", nombre: Idioma.t("Grabar también la cámara"),
+                  desc: Idioma.t("En un fichero aparte, para colocarla en el editor"),
+                  glifo: 0xF0567, si: "camara" }
             ]
         },
         {
@@ -194,6 +207,7 @@ Singleton {
         "juegoActivo", "juegoContinuar", "juegoEnPildora", "juegoPorTokens",
         "capturaDestino", "capturaCursor",
         "grabarAudio", "grabarCodec", "grabarFps",
+        "grabarCamara", "camaraDispositivo",
         "zoomAuto", "zoomNivel", "editorCodec",
         "bandejaEnPildora", "notificacionesAlPasar"
     ]
