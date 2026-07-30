@@ -158,6 +158,7 @@ Item {
             if (Editor.capaSel.tipo === "texto")  return Idioma.t("Rótulo")
             if (Editor.capaSel.tipo === "audio")  return Idioma.t("Audio")
             if (Editor.capaSel.tipo === "video")  return Idioma.t("Vídeo encima")
+            if (Editor.capaSel.tipo === "zona")   return Editor.nombreCapa(Editor.capaSel)
             return Idioma.t("Imagen")
         }
         if (momento)
@@ -176,6 +177,11 @@ Item {
         if (!c) return 1
         if (c.tipo === "texto") return c.fondo !== undefined ? c.fondo : 0.5
         if (c.tipo === "audio") return c.volumen !== undefined ? c.volumen : 0.8
+        //  La fuerza es 0-1 en el plan y cada modo la traduce a lo suyo en
+        //  python: sigma para el desenfoque, tamaño de bloque para el pixelado
+        //  y cuánto oscurece para el foco. Así el panel enseña UN control y
+        //  cambiar de modo no obliga a volver a ajustarlo.
+        if (c.tipo === "zona") return c.fuerza !== undefined ? c.fuerza : 0.6
         return c.opacidad !== undefined ? c.opacidad : 1
     }
 
@@ -184,13 +190,18 @@ Item {
             return Editor.clipSel.desde.toFixed(1) + " → "
                    + Editor.clipSel.hasta.toFixed(1) + " s "
                    + Idioma.t("del original")
-        if (Editor.capaSel)
+        if (Editor.capaSel) {
+            //  Una zona no tiene fichero que enseñar: lo suyo es su ventana.
+            if (Editor.capaSel.tipo === "zona")
+                return Editor.capaSel.t0.toFixed(1) + " – "
+                       + Editor.capaSel.t1.toFixed(1) + " s"
             return Editor.capaSel.tipo === "texto"
                 ? Editor.capaSel.t0.toFixed(1) + " – "
                   + Editor.capaSel.t1.toFixed(1) + " s"
                 : Editor.capaSel.ruta.split("/").pop()
                   + (Editor.capaSel.tipo === "audio"
                      ? "   ·   " + Editor.capaSel.t0.toFixed(1) + " s" : "")
+        }
         if (momento)
             return momento.t0.toFixed(1) + " – " + momento.t1.toFixed(1) + " s"
                    + "   ·   ×" + momento.z.toFixed(1)
@@ -394,6 +405,10 @@ Item {
                         anchors.fill: parent
                         segundos: view.segundos
                         sonando: reproductor.reproduciendo
+                        //  Para desenfocar hace falta la imagen de debajo, y la
+                        //  de debajo es la que YA lleva el zoom: las zonas van
+                        //  después del `zoompan` como las demás capas.
+                        fuenteVideo: lente
                     }
 
                     // Que lo que ves lleva zoom, para no confundirlo con el vídeo
@@ -464,6 +479,76 @@ Item {
                     Layout.topMargin: 6
                     spacing: 4
 
+                    //  Qué le hace la zona a lo que hay debajo.
+                    //
+                    //  Los tres modos son la misma capa: cambiar de uno a otro
+                    //  conserva el sitio, el tamaño y la ventana de tiempo, que
+                    //  es lo que cuesta colocar.
+                    IslandLabel {
+                        visible: Editor.capaSel && Editor.capaSel.tipo === "zona"
+                        text: Idioma.t("Qué hace")
+                        color: Theme.dim
+                        font.pixelSize: 9
+                        font.capitalization: Font.AllUppercase
+                        font.weight: Font.DemiBold
+                    }
+
+                    RowLayout {
+                        visible: Editor.capaSel && Editor.capaSel.tipo === "zona"
+                        Layout.fillWidth: true
+                        spacing: 3
+
+                        Repeater {
+                            model: [
+                                { id: "desenfoque", nombre: Idioma.t("Difuminar"),
+                                  icono: 0xF00B5 },                    // md-blur
+                                { id: "pixelado", nombre: Idioma.t("Pixelar"),
+                                  icono: 0xF00B6 },                    // md-blur_linear
+                                { id: "foco", nombre: Idioma.t("Foco"),
+                                  icono: 0xF04C9 }                     // md-spotlight_beam
+                            ]
+
+                            delegate: Rectangle {
+                                id: chipModo
+                                required property var modelData
+
+                                readonly property bool puesto: Editor.capaSel
+                                    && (Editor.capaSel.modo || "desenfoque")
+                                       === chipModo.modelData.id
+
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 26
+                                radius: 13
+                                color: chipModo.puesto ? Theme.blue
+                                     : modoRaton.containsMouse ? Theme.surfaceHi
+                                                               : Theme.surface
+
+                                ColumnLayout {
+                                    anchors.centerIn: parent
+                                    spacing: 0
+
+                                    IconGlyph {
+                                        Layout.alignment: Qt.AlignHCenter
+                                        text: String.fromCodePoint(
+                                            chipModo.modelData.icono)
+                                        color: chipModo.puesto ? "#ffffff"
+                                                               : Theme.muted
+                                        font.pixelSize: 13
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: modoRaton
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Editor.fijarCapa(Editor.idSel,
+                                        { modo: chipModo.modelData.id })
+                                }
+                            }
+                        }
+                    }
+
                     //  Lo que dice el rótulo.
                     //
                     //  Aquí y no editando encima del vídeo: sobre el vídeo el
@@ -523,6 +608,7 @@ Item {
                             if (!Editor.capaSel) return Idioma.t("Opacidad")
                             if (Editor.capaSel.tipo === "texto") return Idioma.t("Fondo")
                             if (Editor.capaSel.tipo === "audio") return Idioma.t("Volumen")
+                            if (Editor.capaSel.tipo === "zona") return Idioma.t("Fuerza")
                             return Idioma.t("Opacidad")
                         }
                         color: Theme.dim
@@ -572,6 +658,8 @@ Item {
                                         Editor.fijarCapa(Editor.idSel, { fondo: q })
                                     else if (Editor.capaSel.tipo === "audio")
                                         Editor.fijarCapa(Editor.idSel, { volumen: q })
+                                    else if (Editor.capaSel.tipo === "zona")
+                                        Editor.fijarCapa(Editor.idSel, { fuerza: q })
                                     else
                                         Editor.fijarCapa(Editor.idSel, { opacidad: q })
                                 }
@@ -1309,6 +1397,46 @@ Item {
                 }
             }
 
+            //  Tapar algo que no debería salir, o destacar dónde mirar.
+            //
+            //  Un solo botón para los tres modos: nace desenfoque, que es para
+            //  lo que se busca esto el 90 % de las veces, y en la ficha se
+            //  cambia a pixelado o a foco sin perder el sitio ni el tamaño.
+            Rectangle {
+                Layout.preferredWidth: zonaTexto.implicitWidth + 26
+                Layout.preferredHeight: 26
+                radius: 13
+                color: zonaRaton.containsMouse ? Theme.surfaceHi : Theme.surface
+                border.width: 1
+                border.color: Qt.rgba(1, 1, 1, 0.14)
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 5
+
+                    IconGlyph {
+                        text: String.fromCodePoint(0xF00B5)   // md-blur
+                        color: Theme.ink
+                        font.pixelSize: 13
+                    }
+
+                    IslandLabel {
+                        id: zonaTexto
+                        text: Idioma.t("Añadir zona")
+                        font.pixelSize: 10
+                        font.weight: Font.DemiBold
+                    }
+                }
+
+                MouseArea {
+                    id: zonaRaton
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Editor.crearZona(view.segundos, "desenfoque")
+                }
+            }
+
             //  Música o una voz encima de lo que ya suena.
             Rectangle {
                 Layout.preferredWidth: audioTexto.implicitWidth + 26
@@ -1352,7 +1480,7 @@ Item {
             //  dentro de otro se entiende—. Los cuatro frecuentes conservan su
             //  nombre.
             MediaButton {
-                glyph: String.fromCodePoint(0xF0E57)   // md-picture_in_picture
+                glyph: String.fromCodePoint(0xF0E57)   // md-picture_in_picture_bottom_right
                 glyphSize: 15
                 glyphColor: Theme.ink
                 onActivated: view.plugin.pedirPip(view.segundos)

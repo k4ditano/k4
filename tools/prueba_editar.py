@@ -423,6 +423,78 @@ def prueba_grafo_sin_audio_no_deja_nada_colgando():
     igual("y no queda etiqueta [a] suelta", texto.endswith("[a]"), False)
 
 
+# ── zonas ─────────────────────────────────────────────────────────
+def zona(**campos):
+    d = {"id": 9, "tipo": "zona", "modo": "desenfoque", "banda": 1,
+         "t0": 2.0, "t1": 6.0, "x": 0.3, "y": 0.4, "an": 0.3, "al": 0.25,
+         "fuerza": 0.5}
+    d.update(campos)
+    return d
+
+
+def prueba_zona_recorta_donde_toca():
+    p = con_capas([zona()])
+    g, _ = editar.grafo(p)
+    #  1920x1080: an 0.3 → 576, al 0.25 → 270, y la esquina en el centro menos
+    #  medio: 0.3*1920 - 288 = 288, 0.4*1080 - 135 = 297 (par → 296).
+    igual("recorta la caja pedida", "crop=576:270:288:296" in g, True)
+    igual("y la vuelve a pegar en el mismo sitio",
+          "overlay=x=288:y=296" in g, True)
+    igual("en su ventana de tiempo",
+          "enable='between(t,2.0000,6.0000)'" in g, True)
+
+
+def prueba_zona_va_despues_del_zoom():
+    """Como toda capa: si fuera antes, el zoom ampliaría el desenfoque."""
+    g, _ = editar.grafo(con_capas([zona()]))
+    igual("el zoom primero", g.index("zoompan=") < g.index("crop="), True)
+
+
+def prueba_zona_modos():
+    difu, _ = editar.grafo(con_capas([zona(modo="desenfoque")]))
+    igual("el desenfoque usa gblur", "gblur=sigma=" in difu, True)
+
+    pixel, _ = editar.grafo(con_capas([zona(modo="pixelado")]))
+    igual("el pixelado usa pixelize", "pixelize=w=" in pixel, True)
+    igual("y no gblur", "gblur" in pixel, False)
+
+    #  El foco es al revés: se estropea TODO menos la zona, así que lo que se
+    #  recorta se pega intacto encima de un fondo oscurecido.
+    foco, _ = editar.grafo(con_capas([zona(modo="foco")]))
+    igual("el foco oscurece con eq", "eq=brightness=-" in foco, True)
+    igual("y no toca la región", "gblur" in foco or "pixelize" in foco, False)
+
+
+def prueba_zona_fuerza():
+    for f, espera in ((0.0, 2.0), (0.5, 21.0), (1.0, 40.0)):
+        cerca("desenfoque con fuerza %.1f" % f,
+              editar.fuerza_zona("desenfoque", f), espera)
+    igual("pixelado mínimo de 4", editar.fuerza_zona("pixelado", 0.0), 4)
+    igual("pixelado a tope", editar.fuerza_zona("pixelado", 1.0), 64)
+    for f in (-3, 2, "x" if False else 1.5):
+        # Fuera de rango se acota en vez de salir un filtro imposible.
+        v = editar.fuerza_zona("desenfoque", f)
+        igual("fuerza %r acotada" % f, 2.0 <= v <= 40.0, True)
+
+
+def prueba_zona_no_se_sale_del_fotograma():
+    """Arrastrada al borde, un crop negativo no es un aviso: tumba el render."""
+    for x, y in ((0.0, 0.0), (1.0, 1.0), (0.99, 0.02), (-0.5, 1.7)):
+        an, al, cx, cy = editar.caja_zona(zona(x=x, y=y), 1920, 1080)
+        igual("(%.2f,%.2f) x dentro" % (x, y), 0 <= cx and cx + an <= 1920, True)
+        igual("(%.2f,%.2f) y dentro" % (x, y), 0 <= cy and cy + al <= 1080, True)
+        igual("(%.2f,%.2f) anchura par" % (x, y), an % 2, 0)
+        igual("(%.2f,%.2f) altura par" % (x, y), al % 2, 0)
+
+
+def prueba_zona_no_necesita_fichero():
+    """Es la única capa que se hace con la propia imagen, sin abrir nada."""
+    p = con_capas([zona()])
+    rutas, _, de_capa = editar.entradas(p)
+    igual("no añade una entrada", len(rutas), 1)
+    igual("ni le toca índice", 9 in de_capa, False)
+
+
 def prueba_capa_sin_fichero():
     """Borrar el PNG meses después no puede impedirte reexportar el vídeo."""
     p = con_capas([capa(ruta=os.path.join(BORRADOR, "esto-no-existe.png"))])

@@ -11,6 +11,7 @@
 //  el marco tiene la proporción del vídeo de salida, la regla de tres vale.
 
 import QtQuick
+import QtQuick.Effects
 import QtMultimedia
 import "../../core"
 import "../../services"
@@ -22,6 +23,14 @@ Item {
     property real segundos: 0
     // Si la reproducción va en marcha, para que los vídeos de dentro la sigan.
     property bool sonando: false
+
+    //  De dónde sacar la imagen para desenfocarla o pixelarla.
+    //
+    //  Es `lente`, o sea el vídeo YA con el zoom aplicado, que es exactamente
+    //  lo que le llega a la zona en el grafo: las zonas van después del
+    //  `zoompan`, igual que las demás capas. Sin esto habría que desenfocar el
+    //  vídeo sin zoom y la previa enseñaría otra cosa.
+    property Item fuenteVideo: null
 
     //  La tipografía de los rótulos, del mismo fichero que usa ffmpeg.
     //
@@ -63,6 +72,8 @@ Item {
             property real vX: 0
             property real vY: 0
             property real vEscala: 0
+            // Una zona se estira por los dos lados, así que lleva su propio alto.
+            property real vAl: 0
 
             readonly property real ex: moviendo ? vX : modelData.x
             readonly property real ey: moviendo ? vY : modelData.y
@@ -70,11 +81,14 @@ Item {
 
             readonly property bool esTexto: modelData.tipo === "texto"
             readonly property bool esPip: modelData.tipo === "video"
+            readonly property bool esZona: modelData.tipo === "zona"
+            readonly property string modoZona: modelData.modo || "desenfoque"
             //  El audio no se pinta: no tiene sitio en el fotograma. Su bloque
             //  vive en la línea de tiempo y su volumen en la ficha.
             readonly property bool visual: modelData.tipo === "texto"
                                         || modelData.tipo === "imagen"
                                         || modelData.tipo === "video"
+                                        || modelData.tipo === "zona"
 
             //  La proporción de la imagen la trae la propia imagen. ffmpeg
             //  escala con `-1` de alto, o sea conservándola, así que aquí hay
@@ -96,9 +110,17 @@ Item {
             //  detalle raro, pero copiarlo es lo que hace que la previa coincida:
             //  medido, ffmpeg deja el centro visible en 0,837 cuando se le pide
             //  0,85, y aquí sale lo mismo por construcción.
+            //  Una zona lleva ancho y alto por separado, y no `escala` con la
+            //  proporción de la imagen: tapar una barra de direcciones pide un
+            //  rectángulo ancho y bajo, y con un solo número no se dice eso.
+            readonly property real vAn: escalando ? vEscala : (modelData.an || 0.3)
+            readonly property real eAl: escalando ? vAl : (modelData.al || 0.25)
+
             width: esTexto ? rotulo.implicitWidth + relleno * 2
+                 : esZona  ? Math.max(8, lienzo.width * vAn)
                            : Math.max(8, lienzo.width * eEscala)
             height: esTexto ? rotulo.implicitHeight + relleno * 2
+                  : esZona  ? Math.max(8, lienzo.height * eAl)
                             : width * relacion
             x: ex * lienzo.width - width / 2
             y: ey * lienzo.height - height / 2
@@ -153,10 +175,122 @@ Item {
                 }
             }
 
+            // ── la zona ───────────────────────────────────────────
+            //
+            //  Se saca el trozo del vídeo que hay debajo y se vuelve a pintar
+            //  aquí estropeado. Es una aproximación: el desenfoque de Qt no es
+            //  el `gblur` de ffmpeg ni el pixelado es su `pixelize`, así que el
+            //  fichero manda y para eso está «previa exacta». Lo que sí es
+            //  exacto —y es lo que importa al colocarla— son el sitio, el
+            //  tamaño y la ventana de tiempo.
+            //
+            //  `sourceRect` va en coordenadas de `lente`, que lleva el zoom
+            //  encima; `mapFromItem` se encarga de esa vuelta.
+            ShaderEffectSource {
+                id: trozoVideo
+                //  Con tamaño, aunque no se dibuje: sin ancho y alto la textura
+                //  sale de 0×0 y la zona no se ve. Quien la pinta es el
+                //  MultiEffect de debajo, así que esto va invisible.
+                width: Math.max(1, capa.width)
+                height: Math.max(1, capa.height)
+                visible: false
+                sourceItem: capa.esZona && capa.modoZona !== "foco"
+                    ? lienzo.fuenteVideo : null
+                live: true
+                hideSource: false
+
+                readonly property real escalaLente: lienzo.fuenteVideo
+                    ? Math.max(0.001, lienzo.fuenteVideo.scale) : 1
+                readonly property point esquina: lienzo.fuenteVideo
+                    ? lienzo.fuenteVideo.mapFromItem(lienzo, capa.x, capa.y)
+                    : Qt.point(0, 0)
+
+                sourceRect: Qt.rect(esquina.x, esquina.y,
+                                    capa.width / escalaLente,
+                                    capa.height / escalaLente)
+
+                //  El pixelado se hace aquí y no con un filtro: se pide la
+                //  textura pequeña y se deja que la amplíe sin suavizar, que es
+                //  literalmente lo que hace `pixelize`. La fuerza del plan es
+                //  0-1 y se traduce igual que en python: bloques de 4 a 64 px.
+                readonly property int bloque: Math.max(
+                    4, Math.round(4 + (capa.modelData.fuerza !== undefined
+                                       ? capa.modelData.fuerza : 0.5) * 60))
+                textureSize: capa.modoZona === "pixelado"
+                    ? Qt.size(Math.max(1, Math.round(capa.width / bloque)),
+                              Math.max(1, Math.round(capa.height / bloque)))
+                    : Qt.size(0, 0)
+                smooth: capa.modoZona !== "pixelado"
+            }
+
+            MultiEffect {
+                anchors.fill: parent
+                visible: capa.esZona && capa.modoZona !== "foco"
+                source: trozoVideo
+
+                //  La fuerza del plan va tal cual, y `blurMax` lo más alto que
+                //  todavía sirve de algo.
+                //
+                //  El desenfoque de Qt NO se puede casar con la sigma de
+                //  `gblur`: aquí el mando es un 0-1 sobre `blurMax`, no un radio
+                //  en píxeles. Intenté traducirlo por la sigma y salió peor.
+                //  Medido contra el render sobre las barras SMPTE —comparando la
+                //  caja de píxeles que cambian— ffmpeg empieza a cambiar en
+                //  x=84; la previa a tope llega a x=120 con blurMax 64 y a x=106
+                //  con 128, y con 256 deja de hacer efecto.
+                //
+                //  O sea: **la previa difumina menos que el render**, y desde
+                //  aquí no hay forma de arreglarlo. Lo que sí es exacto es el
+                //  dónde y el cuándo, que es lo que se ajusta a ojo; para la
+                //  intensidad está «previa exacta».
+                blurEnabled: capa.modoZona === "desenfoque"
+                blur: capa.modelData.fuerza !== undefined
+                    ? capa.modelData.fuerza : 0.5
+                blurMax: 128
+                autoPaddingEnabled: false
+            }
+
+            //  El foco es al revés: lo que se estropea es TODO menos la zona.
+            //  Cuatro rectángulos alrededor, que es más barato y más exacto que
+            //  una máscara, y da el mismo resultado con un rectángulo.
+            //  `parent: lienzo` porque tienen que salirse de la capa: la capa ES
+            //  la zona nítida, y esto es lo de fuera. Y `z: -1` para quedar por
+            //  debajo del marco de selección y de las asas.
+            Repeater {
+                model: capa.esZona && capa.modoZona === "foco"
+                    ? [ { i: 0 }, { i: 1 }, { i: 2 }, { i: 3 } ] : []
+
+                delegate: Rectangle {
+                    id: sombra
+                    required property var modelData
+                    readonly property int lado: modelData.i   // 0 izq 1 der 2 arr 3 abj
+
+                    parent: lienzo
+                    z: -1
+                    visible: capa.visible
+                    color: "#000000"
+                    opacity: 0.15 + (capa.modelData.fuerza !== undefined
+                                     ? capa.modelData.fuerza : 0.5) * 0.65
+
+                    x: lado === 0 ? 0
+                     : lado === 1 ? capa.x + capa.width
+                                  : capa.x
+                    y: lado <= 1 ? 0
+                     : lado === 2 ? 0
+                                  : capa.y + capa.height
+                    width: lado === 0 ? Math.max(0, capa.x)
+                         : lado === 1 ? Math.max(0, lienzo.width - capa.x - capa.width)
+                                      : capa.width
+                    height: lado <= 1 ? lienzo.height
+                          : lado === 2 ? Math.max(0, capa.y)
+                                       : Math.max(0, lienzo.height - capa.y - capa.height)
+                }
+            }
+
             Image {
                 id: imagen
                 anchors.fill: parent
-                visible: !capa.esTexto && !capa.esPip
+                visible: !capa.esTexto && !capa.esPip && !capa.esZona
                 source: !capa.esTexto && !capa.esPip && capa.modelData.ruta
                     ? "file://" + capa.modelData.ruta : ""
                 fillMode: Image.Stretch
@@ -255,21 +389,29 @@ Item {
                 cursorShape: Qt.SizeFDiagCursor
 
                 property real xIni: 0
+                property real yIni: 0
 
-                function enLienzo(ev) { return mapToItem(lienzo, ev.x, ev.y).x }
+                function enLienzo(ev) { return mapToItem(lienzo, ev.x, ev.y) }
 
                 //  Una imagen se escala por el ancho y un rótulo por el cuerpo de
                 //  letra. Es el mismo gesto, pero lo que cambia no es lo mismo:
                 //  `escala` va en fracción del ANCHO del fotograma y `tam` en
-                //  fracción del ALTO, porque así lo trata cada filtro.
-                readonly property real actual: capa.esTexto
-                    ? capa.modelData.tam : capa.modelData.escala
+                //  fracción del ALTO, porque así lo trata cada filtro. Y una zona
+                //  se estira por los dos lados a la vez, que para eso lleva ancho
+                //  y alto por separado.
+                readonly property real actual: capa.esTexto ? capa.modelData.tam
+                    : capa.esZona ? (capa.modelData.an || 0.3)
+                                  : capa.modelData.escala
+                readonly property real actualAl: capa.modelData.al || 0.25
                 readonly property real referencia: capa.esTexto
                     ? lienzo.height : lienzo.width
 
                 onPressed: function (ev) {
-                    xIni = enLienzo(ev)
+                    const p = enLienzo(ev)
+                    xIni = p.x
+                    yIni = p.y
                     capa.vEscala = actual
+                    capa.vAl = actualAl
                     capa.escalando = true
                 }
 
@@ -279,14 +421,21 @@ Item {
                     //  Se escala desde el centro, que es donde está anclada la
                     //  capa: por eso el doble. Arrastrar la esquina un píxel
                     //  aleja el borde un píxel, y el de enfrente otro.
-                    const d = (enLienzo(ev) - xIni) * 2
+                    const p = enLienzo(ev)
+                    const d = (p.x - xIni) * 2
                     capa.vEscala = Math.max(0.01, Math.min(2,
                         actual + d / Math.max(1, referencia)))
+                    if (capa.esZona)
+                        capa.vAl = Math.max(0.01, Math.min(1, actualAl
+                            + (p.y - yIni) * 2 / Math.max(1, lienzo.height)))
                 }
 
                 onReleased: {
-                    Editor.fijarCapa(capa.modelData.id, capa.esTexto
-                        ? { tam: capa.vEscala } : { escala: capa.vEscala })
+                    Editor.fijarCapa(capa.modelData.id,
+                        capa.esTexto ? { tam: capa.vEscala }
+                      : capa.esZona  ? { an: Math.min(1, capa.vEscala),
+                                         al: capa.vAl }
+                                     : { escala: capa.vEscala })
                     capa.escalando = false
                 }
 

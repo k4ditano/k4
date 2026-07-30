@@ -353,6 +353,36 @@ Singleton {
         return nueva.id
     }
 
+    //  Tapar o destacar un trozo del fotograma.
+    //
+    //  No tiene fichero detrás: se hace con la propia imagen, así que es la
+    //  única capa que se crea sin pedirle nada a nadie. Los tres modos
+    //  —desenfoque, pixelado y foco— son la misma capa con distinto `modo`,
+    //  porque comparten todo: sitio, tamaño, ventana de tiempo y fuerza.
+    //
+    //  `an` y `al` son fracción del fotograma como `escala` en las demás, pero
+    //  hacen falta las dos: una zona que tapa una barra de direcciones es ancha
+    //  y baja, y con un solo número no se puede decir eso.
+    function crearZona(t0, modo) {
+        const a = Math.max(0, Math.min(t0, Math.max(0, duracionLinea - 1)))
+        const b = Math.min(duracionLinea, a + 3)
+        const nueva = {
+            id: nuevoIdCapa(),
+            tipo: "zona",
+            modo: modo || "desenfoque",
+            t0: a, t1: b,
+            banda: proximaEnBandaNueva ? cuantasBandas + 1 : bandaLibre(a, b),
+            // En medio y de buen tamaño: desde ahí se coloca en un gesto.
+            x: 0.5, y: 0.5, an: 0.3, al: 0.25,
+            fuerza: 0.6
+        }
+        capas = capas.concat([nueva])
+        proximaEnBandaNueva = false
+        persistir()
+        seleccionar("capa", nueva.id)
+        return nueva.id
+    }
+
     //  Una pista de audio añadida: música, una voz, lo que sea.
     //
     //  Antes de crearla hay que saber cuánto dura, y eso hay que preguntárselo al
@@ -484,6 +514,11 @@ Singleton {
             const t = String(c.texto || "").trim()
             return t.length > 0 ? t : Idioma.t("Rótulo")
         }
+        // Una zona no tiene fichero: lo que la distingue es qué le hace.
+        if (c.tipo === "zona")
+            return c.modo === "pixelado" ? Idioma.t("Pixelado")
+                 : c.modo === "foco"     ? Idioma.t("Foco")
+                                         : Idioma.t("Desenfoque")
         return String(c.ruta || "").split("/").pop()
     }
 
@@ -497,6 +532,13 @@ Singleton {
             return 0x000F075A                  // md-music
         if (c.tipo === "video")
             return 0x000F0E57                  // md-picture_in_picture_bottom_right
+        //  Codepoints comprobados contra los nombres de la propia fuente, no de
+        //  memoria: los tres primeros que puse eran un tenedor, un rayo y una
+        //  pila. Se miran con fontTools sobre MesloLGSNerdFontMono-Regular.ttf.
+        if (c.tipo === "zona")
+            return c.modo === "pixelado" ? 0x000F00B6   // md-blur_linear
+                 : c.modo === "foco"     ? 0x000F04C9   // md-spotlight_beam
+                                         : 0x000F00B5   // md-blur
         return 0x000F02E9
     }
 

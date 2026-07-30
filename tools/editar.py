@@ -724,6 +724,85 @@ def rama_capa(n, idx, capa, ancho, alto, entra):
     return lineas, sale
 
 
+#  Cuánto aprieta cada modo de zona.
+#
+#  En el plan la fuerza es siempre 0-1, y cada modo la traduce a lo suyo: así el
+#  panel enseña UN deslizador y cambiar de modo no obliga a volver a ajustarlo.
+#  Los topes salen de mirar el resultado: sigma 40 ya es una mancha de color, y
+#  bloques de 64 px sobre 1080 son ocho bloques de alto, que es tan ilegible como
+#  hace falta.
+def fuerza_zona(modo, f):
+    f = encaja(float(f), 0.0, 1.0)
+    if modo == "pixelado":
+        return max(4, int(round(4 + f * 60)))
+    if modo == "foco":
+        return 0.15 + f * 0.65
+    return 2.0 + f * 38.0
+
+
+def caja_zona(capa, ancho, alto):
+    """La zona en píxeles enteros y pares: (an, al, x, y) de la ESQUINA.
+
+    Pares porque el recorte va a formatos con croma submuestreado y una anchura
+    impar deja a `crop` colocando la mitad de un píxel. Y acotada al fotograma:
+    una zona arrastrada fuera del borde daría un `crop` negativo, que no es un
+    aviso sino un error que tumba el render entero.
+    """
+    def par(v, minimo=2):
+        return max(minimo, int(round(v)) & ~1)
+
+    an = par(ancho * encaja(float(capa.get("an", 0.3)), 0.01, 1.0))
+    al = par(alto * encaja(float(capa.get("al", 0.2)), 0.01, 1.0))
+    an, al = min(an, par(ancho)), min(al, par(alto))
+    x = par(ancho * float(capa.get("x", 0.5)) - an / 2.0, 0)
+    y = par(alto * float(capa.get("y", 0.5)) - al / 2.0, 0)
+    return an, al, min(x, ancho - an), min(y, alto - al)
+
+
+def rama_zona(n, capa, ancho, alto, entra):
+    """Tapar o destacar un trozo del fotograma. (líneas, etiqueta de salida).
+
+    Los tres modos son la misma jugada: partir la imagen en dos, tratar una
+    copia y volver a pegar el rectángulo encima. Lo que cambia es qué se trata.
+    En el desenfoque y el pixelado se estropea la región y se pega sobre el
+    original; en el foco se oscurece el ORIGINAL y se pega encima la región
+    intacta, que es justo lo contrario.
+
+    Va después del `zoompan`, como todas las capas: la zona es del lienzo de
+    salida y no persigue al contenido si el zoom se mueve por debajo. Es lo
+    mismo que ya pasa con los rótulos, y es lo que hace que la previa del
+    editor coincida por construcción.
+    """
+    modo = capa.get("modo", "desenfoque")
+    an, al, x, y = caja_zona(capa, ancho, alto)
+    fuerza = fuerza_zona(modo, capa.get("fuerza", 0.5))
+    a, b = float(capa.get("t0", 0.0)), float(capa.get("t1", 0.0))
+    corte = "crop=%d:%d:%d:%d" % (an, al, x, y)
+    sale = "zon%d" % n
+
+    if modo == "foco":
+        return ([
+            "[%s]split[zc%d][zf%d]" % (entra, n, n),
+            "[zc%d]eq=brightness=%.4f:saturation=%.3f[zo%d]"
+            % (n, -fuerza, max(0.0, 1.0 - fuerza * 0.5), n),
+            "[zf%d]%s[zr%d]" % (n, corte, n),
+            "[zo%d][zr%d]overlay=x=%d:y=%d:enable='between(t,%.4f,%.4f)'[%s]"
+            % (n, n, x, y, a, b, sale),
+        ], sale)
+
+    if modo == "pixelado":
+        tratar = "pixelize=w=%d:h=%d" % (fuerza, fuerza)
+    else:
+        tratar = "gblur=sigma=%.3f:steps=3" % fuerza
+
+    return ([
+        "[%s]split[zc%d][zf%d]" % (entra, n, n),
+        "[zf%d]%s,%s[zr%d]" % (n, corte, tratar, n),
+        "[zc%d][zr%d]overlay=x=%d:y=%d:enable='between(t,%.4f,%.4f)'[%s]"
+        % (n, n, x, y, a, b, sale),
+    ], sale)
+
+
 def grafo(plan, sin_audio=False, carpeta=None):
     """El filter_complex entero. Devuelve (texto, nodos de la cámara).
 
@@ -784,6 +863,11 @@ def grafo(plan, sin_audio=False, carpeta=None):
         tipo = capa.get("tipo")
         if tipo == "texto":
             nuevas, entra = rama_texto(n, capa, ancho, alto, carpeta, entra)
+            lineas += nuevas
+            continue
+        if tipo == "zona":
+            #  No tiene fichero detrás: se hace con el propio fotograma.
+            nuevas, entra = rama_zona(n, capa, ancho, alto, entra)
             lineas += nuevas
             continue
         if tipo not in ("imagen", "video"):
