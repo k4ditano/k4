@@ -1232,6 +1232,48 @@ Item {
                         }
                     }
 
+                    //  Toda la transcripción de golpe, con estilo de subtítulo.
+                    //
+                    //  Segmento a segmento ya se podía —el botón de cada línea—,
+                    //  pero para poner subtítulos a un vídeo entero eso son
+                    //  cuarenta clics. Salen como capas normales: si alguna
+                    //  frase queda mal, se retoca sola.
+                    Rectangle {
+                        visible: Editor.transcripcion.length > 0
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: visible ? 24 : 0
+                        radius: 12
+                        color: quemarRaton.containsMouse ? Theme.surfaceHi
+                                                         : Theme.surface
+
+                        RowLayout {
+                            anchors.centerIn: parent
+                            spacing: 5
+
+                            IconGlyph {
+                                text: String.fromCodePoint(0xF0A17)   // md-subtitles_outline
+                                color: Theme.muted
+                                font.pixelSize: 12
+                            }
+
+                            IslandLabel {
+                                text: Idioma.t("Quemar los ")
+                                      + Editor.transcripcion.length
+                                      + Idioma.t(" como subtítulos")
+                                color: Theme.muted
+                                font.pixelSize: 10
+                            }
+                        }
+
+                        MouseArea {
+                            id: quemarRaton
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Editor.quemarTranscripcion()
+                        }
+                    }
+
                     ListView {
                         visible: Editor.transcripcion.length > 0
                         Layout.fillWidth: true
@@ -1980,6 +2022,51 @@ Item {
             }
 
             Item { Layout.fillWidth: true; visible: Editor.estado !== "renderizando" }
+
+            //  En qué formato sale.
+            //
+            //  Aquí y no en Ajustes: el mismo vídeo se saca en mp4 para
+            //  archivarlo y en gif para pegarlo en una incidencia, así que no es
+            //  una preferencia sino una decisión de cada vez.
+            RowLayout {
+                visible: Editor.estado !== "renderizando"
+                spacing: 2
+
+                Repeater {
+                    model: ["mp4", "webm", "gif"]
+
+                    delegate: Rectangle {
+                        id: chipFmt
+                        required property var modelData
+
+                        readonly property bool puesto:
+                            Editor.formatoSalida === chipFmt.modelData
+
+                        Layout.preferredWidth: 38
+                        Layout.preferredHeight: 22
+                        radius: 11
+                        color: chipFmt.puesto ? Theme.surfaceHi : "transparent"
+                        border.width: 1
+                        border.color: chipFmt.puesto ? Qt.rgba(1, 1, 1, 0.2)
+                                                     : Qt.rgba(1, 1, 1, 0.08)
+
+                        IslandLabel {
+                            anchors.centerIn: parent
+                            text: chipFmt.modelData
+                            color: chipFmt.puesto ? Theme.ink : Theme.dim
+                            font.pixelSize: 9
+                            font.weight: chipFmt.puesto ? Font.DemiBold
+                                                        : Font.Normal
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Editor.formatoSalida = chipFmt.modelData
+                        }
+                    }
+                }
+            }
 
             Rectangle {
                 visible: Editor.estado !== "renderizando"

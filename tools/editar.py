@@ -1686,15 +1686,49 @@ def orden_render(args):
     rutas, _, _, _ = entradas(plan, carpeta_de(args.plan))
     ruta_grafo, nodos = escribir_grafo(plan, args.plan)
 
-    orden = ["ffmpeg", "-v", "error", "-y"] + abrir_entradas(plan, rutas)
-    orden += ["-filter_complex_script", ruta_grafo,
-              "-map", "[v]", "-map", "[a]",
-              "-c:v", "hevc_nvenc" if args.codec == "hevc" else "h264_nvenc",
-              "-preset", "p5", "-rc", "vbr", "-cq", "21", "-b:v", "0",
-              #  Ya no hay atajo de `-c:a copy`: con varios trozos el audio
-              #  pasa por el grafo sí o sí, porque hay que recortarlo y pegarlo.
-              "-c:a", "aac", "-b:a", "192k",
-              "-progress", "pipe:1", "-nostats", args.salida]
+    formato = getattr(args, "formato", "mp4") or "mp4"
+
+    #  El GIF no lleva audio y necesita su propia paleta.
+    #
+    #  Sin `palettegen`/`paletteuse` un GIF sale con los 216 colores de web y
+    #  cualquier degradado se convierte en bandas. Y se limita a 15 fps y 960 px
+    #  de ancho: un GIF de un minuto a 60 fps y 1080p son cientos de megas, o
+    #  sea un fichero que no se puede mandar a ningún sitio, que es justo para
+    #  lo que se hace un GIF.
+    if formato == "gif":
+        with open(ruta_grafo) as f:
+            texto = f.read()
+        texto += (";\n[a]anullsink;\n"
+                  "[v]fps=15,scale=min(960\\,iw):-2:flags=lanczos,split[gp][gq];\n"
+                  "[gp]palettegen=stats_mode=diff[pal];\n"
+                  "[gq][pal]paletteuse=dither=bayer:bayer_scale=3"
+                  ":diff_mode=rectangle[gif]")
+        with open(ruta_grafo, "w") as f:
+            f.write(texto)
+        orden = (["ffmpeg", "-v", "error", "-y"] + abrir_entradas(plan, rutas)
+                 + ["-filter_complex_script", ruta_grafo, "-map", "[gif]",
+                    "-loop", "0",
+                    "-progress", "pipe:1", "-nostats", args.salida])
+    elif formato == "webm":
+        orden = (["ffmpeg", "-v", "error", "-y"] + abrir_entradas(plan, rutas)
+                 + ["-filter_complex_script", ruta_grafo,
+                    "-map", "[v]", "-map", "[a]",
+                    #  `row-mt` y `-cpu-used 4`: vp9 sin eso tarda tanto que
+                    #  nadie espera a que acabe. La calidad se nota poco.
+                    "-c:v", "libvpx-vp9", "-crf", "32", "-b:v", "0",
+                    "-row-mt", "1", "-cpu-used", "4",
+                    "-c:a", "libopus", "-b:a", "128k",
+                    "-progress", "pipe:1", "-nostats", args.salida])
+    else:
+        orden = ["ffmpeg", "-v", "error", "-y"] + abrir_entradas(plan, rutas)
+        orden += ["-filter_complex_script", ruta_grafo,
+                  "-map", "[v]", "-map", "[a]",
+                  "-c:v", "hevc_nvenc" if args.codec == "hevc" else "h264_nvenc",
+                  "-preset", "p5", "-rc", "vbr", "-cq", "21", "-b:v", "0",
+                  #  Ya no hay atajo de `-c:a copy`: con varios trozos el audio
+                  #  pasa por el grafo sí o sí, porque hay que recortarlo y pegarlo.
+                  "-c:a", "aac", "-b:a", "192k",
+                  "-progress", "pipe:1", "-nostats", args.salida]
 
     print(json.dumps({"ok": True, "estado": "renderizando", "nodos": nodos}),
           flush=True)
@@ -1892,6 +1926,8 @@ def main():
     b.add_argument("plan")
     b.add_argument("salida")
     b.add_argument("--codec", default="h264")
+    b.add_argument("--formato", default="mp4",
+                   choices=["mp4", "webm", "gif"])
 
     d = sub.add_parser("camara")
     d.add_argument("plan")

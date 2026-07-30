@@ -1026,6 +1026,40 @@ Singleton {
         return id
     }
 
+    //  Toda la transcripción, de golpe, como rótulos.
+    //
+    //  Con estilo de subtítulo —abajo, centrado, con caja detrás— y no con el de
+    //  un rótulo suelto, que nace grande y en medio. A partir de ahí son capas
+    //  normales: se retocan una a una si hace falta.
+    //
+    //  Todas a la MISMA banda: son subtítulos, nunca se solapan entre sí, y una
+    //  banda por segmento llenaría la línea de tiempo de filas inútiles.
+    function quemarTranscripcion() {
+        if (transcripcion.length === 0)
+            return 0
+        const banda = bandaLibre(0, duracionLinea)
+        let id = nuevoIdCapa()
+        const nuevas = []
+        for (let i = 0; i < transcripcion.length; ++i) {
+            const seg = transcripcion[i]
+            const t = String(seg.texto || "").trim()
+            if (t.length === 0)
+                continue
+            nuevas.push({
+                id: id++, tipo: "texto", texto: t, banda: banda,
+                t0: seg.t0, t1: Math.max(seg.t0 + 0.4, seg.t1),
+                x: 0.5, y: 0.88, tam: 0.045,
+                color: "#ffffff", colorFondo: "#000000", fondo: 0.55,
+                opacidad: 1.0
+            })
+        }
+        if (nuevas.length === 0)
+            return 0
+        capas = capas.concat(nuevas)
+        persistir()
+        return nuevas.length
+    }
+
     // ── qué está seleccionado ─────────────────────────────────────
     //
     //  Un solo sitio para toda la línea, y no un índice por pista: con varias
@@ -1420,14 +1454,21 @@ Singleton {
     }
 
     // ── renderizar ────────────────────────────────────────────────
+    //  En qué formato sale. Se elige justo antes de renderizar y no en Ajustes:
+    //  el mismo vídeo se saca en mp4 para archivar y en gif para pegarlo en una
+    //  incidencia, y eso no es una preferencia, es una decisión de cada vez.
+    property string formatoSalida: "mp4"      // mp4 · webm · gif
+
     function renderizar() {
         if (rutaPlan.length === 0)
             return
-        rutaRenderizada = rutaVideo.replace(/\.[^./]+$/, "") + "-k4.mp4"
+        rutaRenderizada = rutaVideo.replace(/\.[^./]+$/, "")
+                          + "-k4." + formatoSalida
         progreso = 0
         estado = "renderizando"
         renderizador.command = ["python3", guion, "render",
-                                rutaPlan, rutaRenderizada, "--codec", codec]
+                                rutaPlan, rutaRenderizada, "--codec", codec,
+                                "--formato", formatoSalida]
         renderizador.running = true
     }
 

@@ -457,6 +457,15 @@ K4Plugin {
             Editor.crearImagen(ruta, t >= 0 ? t : Editor.posicionEditor)
         }
 
+        //  Toda la transcripción como subtítulos, de golpe.
+        function subtitular(): void { Editor.quemarTranscripcion() }
+
+        //  En qué formato sale el render: mp4, webm o gif.
+        function formato(cual: string): void {
+            if (cual === "mp4" || cual === "webm" || cual === "gif")
+                Editor.formatoSalida = cual
+        }
+
         //  Parar la imagen unos segundos. `t` en segundos de la línea; con -1
         //  va por donde vaya la reproducción.
         function congelar(t: real, dur: real): void {
