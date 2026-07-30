@@ -57,9 +57,18 @@ Singleton {
     // antes de que la vista exista, y así hay una sola fórmula.
     readonly property int stripRow: 38          // fila de 34 + separación de 4
 
+    //  Lo que MIDE la tira: la cabecera, las filas y sus separaciones.
+    //
+    //  Y nada más. Antes devolvía veinte píxeles de propina para el hueco y el
+    //  aire de abajo, y no llegaba: cada vista tiene sus propios márgenes y su
+    //  propio espaciado, así que una propina fija se quedaba corta en una y larga
+    //  en otra. El resultado se veía: las notificaciones aplastadas contra el
+    //  borde de abajo de la island. Ahora quien la incruste suma lo suyo, que es
+    //  lo único que sabe.
     function stripHeight(max) {
         const n = Math.min(recent.length, max)
-        return n === 0 ? 0 : n * stripRow + 20
+        // 14 de cabecera + 4 de separación + n filas de 34 separadas por 4
+        return n === 0 ? 0 : 18 + n * 34 + (n - 1) * 4
     }
 
     // ── pulsar una notificación ───────────────────────────────────

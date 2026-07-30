@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 import K4 as K4
 import "../../core"
 import "../../services"
@@ -63,172 +64,200 @@ FadeIn {
             }
         }
 
-        // ── grupos de opciones
-        Repeater {
-            model: Settings.definicion
+        //  ── grupos de opciones, dentro de algo que se pueda recorrer
+        //
+        //  Antes eran hijos directos del reparto, con el alto de la island fijo
+        //  en 516. Funcionaba mientras hubo tres grupos; al añadir los de
+        //  captura, grabación y editor el contenido pasó de novecientos píxeles y
+        //  el reparto lo aplastó: las últimas filas quedaban pegadas al borde y
+        //  el grupo del editor no llegaba a verse. Un ajuste al que no se puede
+        //  llegar es peor que no tenerlo.
+        //
+        //  La cabecera y la zona peligrosa se quedan FUERA, así que cerrar y el
+        //  botón de borrar la partida están siempre a la vista y no hay que
+        //  buscarlos desplazando.
+        Flickable {
+            id: rodillo
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            contentWidth: width
+            contentHeight: grupos.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            //  Con barra: sin nada que lo diga, un panel que se desplaza parece
+            //  un panel al que le falta la mitad.
+            ScrollBar.vertical: ScrollBar { policy: rodillo.contentHeight > rodillo.height
+                ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff }
 
-            delegate: ColumnLayout {
-                id: seccion
-                required property var modelData
+        ColumnLayout {
+            id: grupos
+            width: rodillo.width
+            spacing: 10
 
-                Layout.fillWidth: true
-                Layout.fillHeight: false
-                spacing: 4
-
-                IslandLabel {
-                    text: seccion.modelData.grupo
-                    color: Theme.dim
-                    font.pixelSize: 9
-                    font.capitalization: Font.AllUppercase
-                    Layout.leftMargin: 2
-                }
-
+                // ── grupos de opciones
                 Repeater {
-                    model: seccion.modelData.opciones
+                    model: Settings.definicion
 
-                    delegate: Rectangle {
-                        id: opcion
+                    delegate: ColumnLayout {
+                        id: seccion
                         required property var modelData
-                        readonly property bool activa: Settings.valor(modelData.id)
-
-                        // Algunas opciones no pintan nada si su interruptor
-                        // maestro está apagado: se atenúan y dejan de
-                        // responder, en vez de mentir sobre lo que hacen.
-                        readonly property bool disponible: !modelData.requiere
-                            || Settings.valor(modelData.requiere)
-
-                        opacity: disponible ? 1 : 0.4
-                        Behavior on opacity { NumberAnimation { duration: 140 } }
 
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 40
-                        radius: 10
-                        color: filaMouse.containsMouse ? Theme.surfaceHi : Theme.surface
+                        Layout.fillHeight: false
+                        spacing: 4
 
-                        Behavior on color { ColorAnimation { duration: 120 } }
+                        IslandLabel {
+                            text: seccion.modelData.grupo
+                            color: Theme.dim
+                            font.pixelSize: 9
+                            font.capitalization: Font.AllUppercase
+                            Layout.leftMargin: 2
+                        }
 
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: 12
-                            anchors.rightMargin: 12
-                            spacing: 11
+                        Repeater {
+                            model: seccion.modelData.opciones
 
-                            IconGlyph {
-                                text: String.fromCodePoint(opcion.modelData.glifo)
-                                color: opcion.activa ? Theme.ink : Theme.dim
-                                font.pixelSize: 15
-                                Layout.preferredWidth: 18
-                                Layout.alignment: Qt.AlignVCenter
-                            }
+                            delegate: Rectangle {
+                                id: opcion
+                                required property var modelData
+                                readonly property bool activa: Settings.valor(modelData.id)
 
-                            ColumnLayout {
+                                // Algunas opciones no pintan nada si su interruptor
+                                // maestro está apagado: se atenúan y dejan de
+                                // responder, en vez de mentir sobre lo que hacen.
+                                readonly property bool disponible: !modelData.requiere
+                                    || Settings.valor(modelData.requiere)
+
+                                opacity: disponible ? 1 : 0.4
+                                Behavior on opacity { NumberAnimation { duration: 140 } }
+
                                 Layout.fillWidth: true
-                                Layout.alignment: Qt.AlignVCenter
-                                spacing: 0
+                                Layout.preferredHeight: 40
+                                radius: 10
+                                color: filaMouse.containsMouse ? Theme.surfaceHi : Theme.surface
 
-                                IslandLabel {
-                                    text: opcion.modelData.nombre
-                                    font.pixelSize: 12
-                                    font.weight: Font.DemiBold
-                                }
+                                Behavior on color { ColorAnimation { duration: 120 } }
 
-                                IslandLabel {
-                                    text: opcion.modelData.desc
-                                    color: Theme.muted
-                                    font.pixelSize: 9
-                                    elide: Text.ElideRight
-                                    Layout.fillWidth: true
-                                }
-                            }
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 12
+                                    anchors.rightMargin: 12
+                                    spacing: 11
 
-                            IslandSwitch {
-                                visible: opcion.modelData.tipo !== "eleccion"
-                                checked: opcion.activa
-                                onToggled: if (opcion.disponible) Settings.alternar(opcion.modelData.id)
-                                Layout.alignment: Qt.AlignVCenter
-                            }
+                                    IconGlyph {
+                                        text: String.fromCodePoint(opcion.modelData.glifo)
+                                        color: opcion.activa ? Theme.ink : Theme.dim
+                                        font.pixelSize: 15
+                                        Layout.preferredWidth: 18
+                                        Layout.alignment: Qt.AlignVCenter
+                                    }
 
-                            // ── opciones de varias respuestas
-                            //  Las alternativas las da el servicio. Aquí estaba
-                            //  `de === "idiomas"` a fuego y cualquier otra cosa
-                            //  devolvía una lista vacía, así que añadir una
-                            //  elección obligaba a tocar esta pantalla.
-                            RowLayout {
-                                visible: opcion.modelData.tipo === "eleccion"
-                                Layout.fillWidth: false
-                                Layout.alignment: Qt.AlignVCenter
-                                spacing: 5
-
-                                Repeater {
-                                    model: Settings.opcionesDe(opcion.modelData.de)
-
-                                    delegate: Rectangle {
-                                        id: eleccion
-                                        required property var modelData
-                                        readonly property bool puesta:
-                                            Settings.valor(opcion.modelData.id) === modelData.codigo
-
-                                        Layout.preferredWidth: textoEleccion.implicitWidth + 20
-                                        Layout.preferredHeight: 24
-                                        radius: 12
-                                        color: puesta ? Theme.blue
-                                            : (eleccionRaton.containsMouse
-                                               ? Theme.surfaceHi : Theme.track)
-
-                                        Behavior on color { ColorAnimation { duration: 120 } }
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        Layout.alignment: Qt.AlignVCenter
+                                        spacing: 0
 
                                         IslandLabel {
-                                            id: textoEleccion
-                                            anchors.centerIn: parent
-                                            text: eleccion.modelData.nombre
-                                            color: eleccion.puesta ? Theme.ink : Theme.muted
-                                            font.pixelSize: 10
-                                            font.weight: eleccion.puesta
-                                                ? Font.DemiBold : Font.Normal
+                                            text: opcion.modelData.nombre
+                                            font.pixelSize: 12
+                                            font.weight: Font.DemiBold
                                         }
 
-                                        MouseArea {
-                                            id: eleccionRaton
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: Settings.poner(opcion.modelData.id,
-                                                                      eleccion.modelData.codigo)
+                                        IslandLabel {
+                                            text: opcion.modelData.desc
+                                            color: Theme.muted
+                                            font.pixelSize: 9
+                                            elide: Text.ElideRight
+                                            Layout.fillWidth: true
+                                        }
+                                    }
+
+                                    IslandSwitch {
+                                        visible: opcion.modelData.tipo !== "eleccion"
+                                        checked: opcion.activa
+                                        onToggled: if (opcion.disponible) Settings.alternar(opcion.modelData.id)
+                                        Layout.alignment: Qt.AlignVCenter
+                                    }
+
+                                    // ── opciones de varias respuestas
+                                    //  Las alternativas las da el servicio. Aquí estaba
+                                    //  `de === "idiomas"` a fuego y cualquier otra cosa
+                                    //  devolvía una lista vacía, así que añadir una
+                                    //  elección obligaba a tocar esta pantalla.
+                                    RowLayout {
+                                        visible: opcion.modelData.tipo === "eleccion"
+                                        Layout.fillWidth: false
+                                        Layout.alignment: Qt.AlignVCenter
+                                        spacing: 5
+
+                                        Repeater {
+                                            model: Settings.opcionesDe(opcion.modelData.de)
+
+                                            delegate: Rectangle {
+                                                id: eleccion
+                                                required property var modelData
+                                                readonly property bool puesta:
+                                                    Settings.valor(opcion.modelData.id) === modelData.codigo
+
+                                                Layout.preferredWidth: textoEleccion.implicitWidth + 20
+                                                Layout.preferredHeight: 24
+                                                radius: 12
+                                                color: puesta ? Theme.blue
+                                                    : (eleccionRaton.containsMouse
+                                                       ? Theme.surfaceHi : Theme.track)
+
+                                                Behavior on color { ColorAnimation { duration: 120 } }
+
+                                                IslandLabel {
+                                                    id: textoEleccion
+                                                    anchors.centerIn: parent
+                                                    text: eleccion.modelData.nombre
+                                                    color: eleccion.puesta ? Theme.ink : Theme.muted
+                                                    font.pixelSize: 10
+                                                    font.weight: eleccion.puesta
+                                                        ? Font.DemiBold : Font.Normal
+                                                }
+
+                                                MouseArea {
+                                                    id: eleccionRaton
+                                                    anchors.fill: parent
+                                                    hoverEnabled: true
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onClicked: Settings.poner(opcion.modelData.id,
+                                                                              eleccion.modelData.codigo)
+                                                }
+                                            }
                                         }
                                     }
                                 }
-                            }
-                        }
 
-                        //  Toda la fila conmuta, no solo el interruptor: son
-                        //  objetivos de 40 px de alto, sería absurdo obligar a
-                        //  apuntar al de 24.
-                        //
-                        //  Pero solo en las filas de interruptor. En las de varias
-                        //  respuestas esta área va POR ENCIMA de los chips —se
-                        //  declara después— y les comía el clic: el margen de 54
-                        //  px por la derecha deja pasar el último y nada más, así
-                        //  que en el selector de idioma solo se podía elegir
-                        //  «English». Llevaba ahí desde que existe la pantalla.
-                        MouseArea {
-                            id: filaMouse
-                            enabled: opcion.modelData.tipo !== "eleccion"
-                            anchors.fill: parent
-                            anchors.rightMargin: 54     // deja pasar el interruptor
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: if (opcion.disponible)
-                                    Settings.alternar(opcion.modelData.id)
+                                //  Toda la fila conmuta, no solo el interruptor: son
+                                //  objetivos de 40 px de alto, sería absurdo obligar a
+                                //  apuntar al de 24.
+                                //
+                                //  Pero solo en las filas de interruptor. En las de varias
+                                //  respuestas esta área va POR ENCIMA de los chips —se
+                                //  declara después— y les comía el clic: el margen de 54
+                                //  px por la derecha deja pasar el último y nada más, así
+                                //  que en el selector de idioma solo se podía elegir
+                                //  «English». Llevaba ahí desde que existe la pantalla.
+                                MouseArea {
+                                    id: filaMouse
+                                    enabled: opcion.modelData.tipo !== "eleccion"
+                                    anchors.fill: parent
+                                    anchors.rightMargin: 54     // deja pasar el interruptor
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: if (opcion.disponible)
+                                            Settings.alternar(opcion.modelData.id)
+                                }
+                            }
                         }
                     }
                 }
             }
         }
 
-        // Sin espaciador flexible: se quedaba todo el hueco sobrante en un
-        // solo sitio —justo encima de la zona peligrosa— y ahí cantaba. Sin
-        // él, los bloques van a distancia pareja y lo que sobra queda abajo,
-        // que es donde no molesta.
         // ── zona peligrosa
         //
         //  Va en dos tiempos a propósito: el primer toque arma y el segundo

@@ -23,9 +23,16 @@ K4Plugin {
     property var panel: null
 
     islandWidth: 600
-    // Sube al entrar la zona peligrosa: con 320 el bloque de reinicio quedaba
-    // fuera, que en un botón destructivo es peor que no tenerlo.
-    islandHeight: 516
+    //  El contenido ya no cabe en una pantalla y se recorre, así que esto no es
+    //  «lo que mide» sino «cuánto se enseña de una vez». 640 deja ver cinco filas
+    //  y media, que es bastante para no sentir que estás mirando por una rendija,
+    //  y no se acerca al techo de 880 de la superficie.
+    //
+    //  Antes eran 516 y los ajustes eran tres grupos. Al añadir captura,
+    //  grabación y editor el contenido pasó de novecientos píxeles y el reparto lo
+    //  aplastó: el grupo del editor no llegaba a verse. Lo que faltaba no era
+    //  alto, era poder desplazar.
+    islandHeight: 640
 
     handlesBackgroundTap: true
     onBackgroundTapped: {}

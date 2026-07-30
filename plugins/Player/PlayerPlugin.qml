@@ -21,8 +21,12 @@ K4Plugin {
     islandWidth: 340 + (Tray.count > 0 ? Math.min(Tray.count, 4) * 24 + 8 : 0)
         + (Game.cargado ? 46 : 0)
     // crece para dejar sitio a las notificaciones recientes
+    //  El base ya lleva sus márgenes de 14 arriba y abajo. La tira añade lo que
+    //  mide más el espaciado de 13 del reparto y los 2 de su propio topMargin.
+    readonly property int alturaTira: Settings.notificacionesAlPasar
+        ? Notifs.stripHeight(3) : 0
     islandHeight: (Media.hasTimeline ? 140 : 115)
-        + (Settings.notificacionesAlPasar ? Notifs.stripHeight(3) : 0)
+        + (alturaTira > 0 ? alturaTira + 15 : 0)
 
     view: Component {
         PlayerView { panel: self.panel; tray: self.tray; juego: self.juego }

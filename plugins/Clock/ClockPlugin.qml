@@ -32,7 +32,12 @@ K4Plugin {
     islandWidth: 92 + 2 * ladoAncho + 44
         + (Game.cargado ? 52 : 0)
     // crece para dejar sitio a las notificaciones recientes
-    islandHeight: 68 + (Settings.notificacionesAlPasar ? Notifs.stripHeight(3) : 0)
+    //  68 de la zona del reloj, y si hay notificaciones lo que mida la tira más
+    //  el hueco de 6 y los 12 de aire de abajo que pone la vista. Esos 18 son los
+    //  que faltaban: sin ellos el reparto aplastaba las filas contra el borde.
+    readonly property int alturaTira: Settings.notificacionesAlPasar
+        ? Notifs.stripHeight(3) : 0
+    islandHeight: 68 + (alturaTira > 0 ? alturaTira + 18 : 0)
 
     view: Component {
         ClockView { tray: self.tray; juego: self.juego }
