@@ -353,6 +353,18 @@ Singleton {
         return nueva.id
     }
 
+    //  Resaltar dónde se ha pulsado.
+    //
+    //  No crea ninguna capa: los clics ya están apuntados en el rastro de la
+    //  grabación, con su instante, así que esto es solo un interruptor. Un
+    //  vídeo abierto del disco no tiene rastro y la lista sale vacía sin que
+    //  haya que avisar de nada.
+    function alternarClics() {
+        clicsActivos = !clicsActivos
+        persistir()
+        recalcular.restart()
+    }
+
     //  Tapar o destacar un trozo del fotograma.
     //
     //  No tiene fichero detrás: se hace con la propia imagen, así que es la
@@ -789,6 +801,15 @@ Singleton {
     //  coinciden por construcción.
     property var camara: []
 
+    //  Los clics del rastro, ya en tiempo de línea y en píxeles del lienzo.
+    //
+    //  Los calcula python junto con la trayectoria porque los dos dependen del
+    //  rastro Y del mapa de clips: al cortar un trozo, los clics que caían ahí
+    //  desaparecen solos y los de después se recolocan.
+    property var clics: []
+    property bool clicsActivos: false
+    property string colorClics: "#ffd60a"
+
     //  Las pistas de audio del vídeo, con su volumen y su silencio.
     //  [{ i, titulo, volumen, mudo }]
     property var pistasAudio: []
@@ -850,6 +871,7 @@ Singleton {
         momentos = []
         pistasAudio = []
         camara = []
+        clics = []
         posicionEditor = 0
         progreso = 0
     }
@@ -861,6 +883,8 @@ Singleton {
         clips = d.clips || []
         capas = d.capas || []
         transcripcion = d.transcripcion || []
+        clicsActivos = !!(d.clics && d.clics.activo)
+        colorClics = (d.clics && d.clics.color) || "#ffd60a"
         estadoTranscripcion = ""
         pistasAudio = (d.fuentes && d.fuentes.length > 0
                        ? d.fuentes[0].pistas : d.audio) || []
@@ -1039,11 +1063,14 @@ Singleton {
             //  habría forma de quitar la última.
             "p['capas']=d['capas']; " +
             "p['transcripcion']=d['transcripcion']; " +
+            "p['clics']=d['clics']; " +
             "json.dump(p, open(sys.argv[1],'w'), ensure_ascii=False, indent=1)",
             rutaPlan,
             JSON.stringify({ momentos: momentos, pistas: pistasAudio,
                              clips: clips, capas: capas,
-                             transcripcion: transcripcion })]
+                             transcripcion: transcripcion,
+                             clics: { activo: clicsActivos,
+                                      color: colorClics } })]
         escritorPlan.running = true
     }
 
@@ -1076,6 +1103,7 @@ Singleton {
                     const d = JSON.parse(this.text)
                     if (d.ok) {
                         editor.camara = d.camara || []
+                        editor.clics = d.clics || []
                         editor.anchoVideo = d.w || editor.anchoVideo
                         editor.altoVideo = d.h || editor.altoVideo
                         if (d.fuentes && d.fuentes.length > 0)

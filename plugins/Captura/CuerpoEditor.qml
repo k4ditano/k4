@@ -1397,6 +1397,52 @@ Item {
                 }
             }
 
+            //  Un destello donde has pulsado.
+            //
+            //  Es un interruptor y no un botón de añadir: los clics ya están en
+            //  el rastro de la grabación con su instante, así que no hay nada
+            //  que crear. Solo aparece si el vídeo trae rastro; uno abierto del
+            //  disco no tiene clics que resaltar y el botón sobraría.
+            Rectangle {
+                visible: Editor.fuentes.length > 0
+                         && String(Editor.fuentes[0].rastro || "").length > 0
+                Layout.preferredWidth: clicsTexto.implicitWidth + 26
+                Layout.preferredHeight: 26
+                radius: 13
+                color: Editor.clicsActivos ? Theme.blue
+                     : clicsRaton.containsMouse ? Theme.surfaceHi : Theme.surface
+                border.width: 1
+                border.color: Editor.clicsActivos ? "transparent"
+                                                  : Qt.rgba(1, 1, 1, 0.14)
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 5
+
+                    IconGlyph {
+                        text: String.fromCodePoint(0xF0CFD)   // md-cursor_default_click
+                        color: Editor.clicsActivos ? "#ffffff" : Theme.ink
+                        font.pixelSize: 13
+                    }
+
+                    IslandLabel {
+                        id: clicsTexto
+                        text: Idioma.t("Resaltar clics")
+                        color: Editor.clicsActivos ? "#ffffff" : Theme.ink
+                        font.pixelSize: 10
+                        font.weight: Font.DemiBold
+                    }
+                }
+
+                MouseArea {
+                    id: clicsRaton
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Editor.alternarClics()
+                }
+            }
+
             //  Tapar algo que no debería salir, o destacar dónde mirar.
             //
             //  Un solo botón para los tres modos: nace desenfoque, que es para

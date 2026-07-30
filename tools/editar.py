@@ -472,13 +472,17 @@ def capas_de(plan, tipo=None):
     return sorted(capas, key=lambda c: c.get("banda", 1))
 
 
-def entradas(plan):
+def entradas(plan, carpeta=None):
     """Los ficheros que hay que abrir, y en qué orden se los pasamos a ffmpeg.
 
     Un fichero se abre UNA vez aunque aparezca en seis clips o en tres capas:
     referenciar `[0:v]` varias veces es legal y ffmpeg mete el `split` por su
     cuenta. Devuelve las rutas y, para cada fuente y cada capa, qué entrada le
-    toca.
+    toca; y de propina el índice del anillo de los clics, o -1 si no hay.
+
+    `carpeta` solo hace falta para el anillo, que es un fichero que se fabrica
+    aquí y no lo trae el usuario. Quien renderiza tiene que pasar la MISMA
+    carpeta que le pase al grafo, o los índices no cuadrarían.
     """
     rutas, indice = [], {}
 
@@ -491,7 +495,18 @@ def entradas(plan):
     de_fuente = {f["id"]: apuntar(f["ruta"]) for f in plan["fuentes"]}
     de_capa = {c["id"]: apuntar(c["ruta"])
                for c in capas_de(plan) if c.get("ruta")}
-    return rutas, de_fuente, de_capa
+
+    idx_anillo = -1
+    if carpeta and plan.get("clics", {}).get("activo"):
+        anillo = dibujar_anillo(carpeta, plan)
+        if anillo:
+            idx_anillo = apuntar(anillo)
+    return rutas, de_fuente, de_capa, idx_anillo
+
+
+def carpeta_de(ruta_plan):
+    """La carpeta adjunta de un plan: `<vídeo>.k4/` para `<vídeo>.k4.json`."""
+    return ruta_plan[:-5] if ruta_plan.endswith(".json") else ruta_plan + ".k4"
 
 
 def cadena_atempo(v):
@@ -803,6 +818,129 @@ def rama_zona(n, capa, ancho, alto, entra):
     ], sale)
 
 
+#  Cuánto dura el destello de un clic y de qué tamaño es.
+#
+#  0,35 s es lo que tarda en verse sin llegar a molestar; más corto se pierde en
+#  un vídeo a 30 fps y más largo se solapa con el clic siguiente al hacer doble
+#  clic. El diámetro va en fracción del ancho para que en 4K se vea igual.
+CLIC_DUR = 0.35
+CLIC_DIAMETRO = 0.055
+
+
+def dibujar_anillo(carpeta, plan):
+    """El PNG del destello, dibujado una vez y reusado por todos los clics.
+
+    Dos círculos concéntricos y nada de relleno: un disco opaco tapa justo lo
+    que quieres enseñar, que es dónde has pulsado. Se hace con `magick` porque
+    ffmpeg no sabe dibujar un círculo sin montar un `geq` ilegible.
+
+    Devuelve la ruta, o "" si no se pudo dibujar; el render sigue sin él.
+    """
+    #  La carpeta se crea aquí y no se da por hecha.
+    #
+    #  `entradas` corre ANTES que `escribir_grafo`, que es quien la creaba, así
+    #  que en la primera ejecución de un plan nuevo el anillo no se dibujaba
+    #  —magick no puede escribir en un directorio que no existe— pero el grafo
+    #  sí lo referenciaba. Los índices de entrada dejaban de cuadrar y ffmpeg se
+    #  caía. Solo pasaba la primera vez, que es la peor forma de que pase.
+    try:
+        os.makedirs(carpeta, exist_ok=True)
+    except OSError:
+        return ""
+
+    ajustes = plan.get("clics", {})
+    color = str(ajustes.get("color", "#ffd60a"))
+    lado = max(16, int(round(plan["w"] * CLIC_DIAMETRO)))
+    #  El nombre lleva el color y el lado: cambiar el color no puede reusar el
+    #  anillo viejo, y dos vídeos de distinto tamaño tampoco comparten el suyo.
+    ruta = os.path.join(carpeta, "clic-%s-%d.png"
+                        % (color.lstrip("#").lower(), lado))
+    if os.path.exists(ruta):
+        return ruta
+
+    #  En `-draw circle cx,cy px,py` el SEGUNDO punto está en la circunferencia,
+    #  no es un radio. Poniéndolo como si lo fuera salían dos puntos diminutos:
+    #  medido, un anillo de 22 px donde tocaban 35.
+    r = lado / 2.0
+    grosor = max(2, int(round(lado / 12.0)))
+    borde = r - grosor / 2.0            # el aro de fuera, pegado al canto
+    dentro = r * 0.42                   # y un punto en el centro del clic
+    orden = ["magick", "-size", "%dx%d" % (lado, lado), "xc:none",
+             "-fill", "none", "-stroke", color, "-strokewidth", str(grosor),
+             "-draw", "circle %.1f,%.1f %.1f,%.1f" % (r, r, r, r - borde),
+             "-strokewidth", str(max(1, grosor // 2)),
+             "-draw", "circle %.1f,%.1f %.1f,%.1f" % (r, r, r, r - dentro),
+             ruta]
+    try:
+        p = subprocess.run(orden, capture_output=True, text=True)
+    except OSError:
+        return ""
+    return ruta if p.returncode == 0 and os.path.exists(ruta) else ""
+
+
+def clics_de(plan):
+    """Los clics del rastro, en tiempo de LÍNEA y en píxeles del lienzo.
+
+    El rastro apunta el instante de cada clic en tiempo de FUENTE, así que hay
+    que pasarlo por el mapa. De regalo sale gratis lo que se querría: los clics
+    de un trozo que has cortado desaparecen solos, y los de un trozo repetido
+    salen las dos veces.
+
+    La posición no la trae el clic —el rastro solo guarda el instante—: se saca
+    de la muestra del cursor más cercana, que es lo que se hace también para
+    seguir al cursor con el zoom.
+    """
+    if not plan.get("clics", {}).get("activo"):
+        return []
+
+    ancho, alto = plan["w"], plan["h"]
+    cache = {}
+    salida = []
+    for a, b, clip, fuente in mapa(plan):
+        ident = fuente["id"]
+        if ident not in cache:
+            cache[ident] = leer_rastro(fuente.get("rastro", ""))
+        _, muestras, clics = cache[ident]
+        if not clics or not muestras:
+            continue
+        v = velocidad_de(clip)
+        for tc in clics:
+            if not (clip["desde"] <= tc < clip["hasta"]):
+                continue
+            pos = posicion_en(muestras, tc)
+            if pos is None:
+                continue
+            x, y = a_lienzo(fuente, pos[0], pos[1], ancho, alto)
+            salida.append((a + (tc - clip["desde"]) / v, x, y))
+    salida.sort()
+    return salida
+
+
+def ramas_clics(plan, idx_anillo, entra):
+    """Un destello por clic. (líneas, etiqueta de salida).
+
+    Un `overlay` por clic, encadenados. Referenciar la misma entrada muchas
+    veces es legal —ffmpeg mete el `split` por su cuenta— y el grafo va por
+    fichero desde el primer día justo para no chocar con el límite de 128 KB
+    por argumento.
+    """
+    if idx_anillo < 0:
+        return [], entra
+    puntos = clics_de(plan)
+    if not puntos:
+        return [], entra
+
+    lineas = []
+    for n, (t, x, y) in enumerate(puntos):
+        sale = "clic%d" % n
+        lineas.append(
+            "[%s][%d:v]overlay=x=%.2f-w/2:y=%.2f-h/2:"
+            "enable='between(t,%.4f,%.4f)'[%s]"
+            % (entra, idx_anillo, x, y, t, t + CLIC_DUR, sale))
+        entra = sale
+    return lineas, entra
+
+
 def grafo(plan, sin_audio=False, carpeta=None):
     """El filter_complex entero. Devuelve (texto, nodos de la cámara).
 
@@ -818,11 +956,13 @@ def grafo(plan, sin_audio=False, carpeta=None):
     """
     ancho, alto, fps = plan["w"], plan["h"], plan["fps"]
     tramos = mapa(plan)
-    _, idx_de, idx_capa = entradas(plan)
-    norma = norma_video(ancho, alto, fps)
+    #  La carpeta primero: el anillo de los clics se dibuja ahí y entra como una
+    #  entrada más, así que `entradas` la necesita.
     if carpeta is None:
         carpeta = tempfile.mkdtemp(prefix="k4-grafo-")
     os.makedirs(carpeta, exist_ok=True)
+    _, idx_de, idx_capa, idx_anillo = entradas(plan, carpeta)
+    norma = norma_video(ancho, alto, fps)
 
     lineas = []
 
@@ -857,8 +997,14 @@ def grafo(plan, sin_audio=False, carpeta=None):
         % (expresion(puntos, 1), expresion(puntos, 2), expresion(puntos, 3),
            ancho, alto, fps))
 
-    # ── 4. las capas, después del zoom para que no se amplíen con él
-    entra = "zoom"
+    # ── 4. los clics, antes que las capas
+    #
+    #  Antes a propósito: si tapas una zona con un desenfoque, lo que pasara
+    #  ahí debajo no tiene que asomar por encima, ni siquiera un destello.
+    lineas_clic, entra = ramas_clics(plan, idx_anillo, "zoom")
+    lineas += lineas_clic
+
+    # ── 5. las capas, después del zoom para que no se amplíen con él
     for n, capa in enumerate(capas_de(plan)):
         tipo = capa.get("tipo")
         if tipo == "texto":
@@ -885,7 +1031,7 @@ def grafo(plan, sin_audio=False, carpeta=None):
 
     lineas.append("[%s]format=yuv420p[v]" % entra)
 
-    # ── 5. el audio añadido, encima de lo que ya suena
+    # ── 6. el audio añadido, encima de lo que ya suena
     lineas += ramas_audio_extra(plan, idx_capa, sin_audio)
 
     return ";\n".join(lineas), len(puntos)
@@ -1219,10 +1365,15 @@ def orden_camara(args):
     tramos = mapa(plan)
     duracion = tramos[-1][1] if tramos else 0.0
     puntos = adelgazar(trayectoria(plan))
+    #  Los clics salen por aquí y no con el plan a propósito: hay que leer el
+    #  rastro y pasarlo por el mapa, así que cambian con cada corte igual que la
+    #  trayectoria. Recalcularlos juntos es recalcularlos cuando toca.
     salir(ok=True, w=plan["w"], h=plan["h"], duracion=round(duracion, 3),
           audio=pistas_de(plan), fuentes=plan["fuentes"], clips=plan["clips"],
           camara=[[round(t, 3), round(z, 4), round(x, 1), round(y, 1)]
-                  for t, z, x, y in puntos])
+                  for t, z, x, y in puntos],
+          clics=[[round(t, 3), round(x, 1), round(y, 1)]
+                 for t, x, y in clics_de(plan)])
 
 
 def escribir_grafo(plan, ruta_plan, sin_audio=False, nombre="grafo.txt"):
@@ -1239,7 +1390,7 @@ def escribir_grafo(plan, ruta_plan, sin_audio=False, nombre="grafo.txt"):
     #  El plan es `<vídeo>.k4.json` y su carpeta adjunta es `<vídeo>.k4/`, así
     #  que solo hay que quitarle el `.json`. Con `splitext` + ".k4" salía
     #  `<vídeo>.k4.k4`, que funcionaba pero era un sitio que nadie esperaba.
-    carpeta = ruta_plan[:-5] if ruta_plan.endswith(".json") else ruta_plan + ".k4"
+    carpeta = carpeta_de(ruta_plan)
     os.makedirs(carpeta, exist_ok=True)
     texto, nodos = grafo(plan, sin_audio, carpeta)
     ruta = os.path.join(carpeta, nombre)
@@ -1251,7 +1402,7 @@ def escribir_grafo(plan, ruta_plan, sin_audio=False, nombre="grafo.txt"):
 def orden_render(args):
     plan = cargar(args.plan)
     duracion = duracion_linea(plan)
-    rutas, _, _ = entradas(plan)
+    rutas, _, _, _ = entradas(plan, carpeta_de(args.plan))
     ruta_grafo, nodos = escribir_grafo(plan, args.plan)
 
     orden = ["ffmpeg", "-v", "error", "-y"]
@@ -1287,7 +1438,7 @@ def orden_render(args):
 
 def orden_previa(args):
     plan = cargar(args.plan)
-    rutas, _, _ = entradas(plan)
+    rutas, _, _, _ = entradas(plan, carpeta_de(args.plan))
     ruta_grafo, _ = escribir_grafo(plan, args.plan, sin_audio=True,
                                    nombre="grafo-previa.txt")
 

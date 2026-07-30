@@ -236,7 +236,7 @@ def prueba_a_lienzo():
 def prueba_grafo_una_entrada_por_fichero():
     p = plan([{"id": 1, "fuente": 1, "desde": 0,  "hasta": 5},
               {"id": 2, "fuente": 1, "desde": 12, "hasta": 14}])
-    rutas, idx, _ = editar.entradas(p)
+    rutas, idx, _, _ = editar.entradas(p)
     igual("el mismo fichero se abre una vez", rutas, ["/tmp/a.mp4"])
     igual("y todos los clips apuntan a esa entrada", idx[1], 0)
 
@@ -333,13 +333,13 @@ def prueba_capas_en_orden_de_lista():
     texto, _ = editar.grafo(p)
     igual("la primera de la lista se encadena primero",
           texto.index("ov0") < texto.index("ov1"), True)
-    rutas, _, de_capa = editar.entradas(p)
+    rutas, _, de_capa, _ = editar.entradas(p)
     igual("y es la de abajo", rutas[de_capa[2]], fichero("abajo.png"))
 
     # Y al revés, para que no pase por casualidad.
     q = con_capas([capa(id=1, ruta=fichero("arriba.png")),
                    capa(id=2, ruta=fichero("abajo.png"))])
-    rutas, _, de_capa = editar.entradas(q)
+    rutas, _, de_capa, _ = editar.entradas(q)
     igual("dando la vuelta a la lista, cambia quién va debajo",
           rutas[de_capa[1]], fichero("arriba.png"))
 
@@ -351,7 +351,7 @@ def prueba_bandas_manda_la_banda():
     orden = [c["id"] for c in editar.capas_de(p)]
     igual("la banda 1 va debajo aunque esté después en la lista", orden, [2, 1])
 
-    rutas, _, de_capa = editar.entradas(p)
+    rutas, _, de_capa, _ = editar.entradas(p)
     igual("y es la que se abre primero",
           rutas[de_capa[2]], fichero("abajo.png"))
 
@@ -423,6 +423,89 @@ def prueba_grafo_sin_audio_no_deja_nada_colgando():
     igual("y no queda etiqueta [a] suelta", texto.endswith("[a]"), False)
 
 
+# ── clics ─────────────────────────────────────────────────────────
+def con_rastro(clips, clics_t, activo=True):
+    """Un plan con un rastro de mentira en disco y clics en instantes dados."""
+    ruta = os.path.join(BORRADOR, "r%s.jsonl" % "-".join(map(str, clics_t)))
+    if not os.path.exists(ruta):
+        import json as _j
+        with open(ruta, "w") as f:
+            f.write(_j.dumps({"meta": {"w": 1920, "h": 1080}}) + "\n")
+            t = 0.0
+            while t < 20.0:
+                # el cursor va en diagonal, así que cada instante tiene su sitio
+                f.write(_j.dumps({"t": round(t, 3), "x": t * 50, "y": t * 30})
+                        + "\n")
+                t += 0.1
+            for tc in clics_t:
+                f.write(_j.dumps({"t": tc, "tipo": "clic", "boton": 272}) + "\n")
+    p = plan(clips)
+    p["fuentes"][0]["rastro"] = ruta
+    p["clics"] = {"activo": activo, "color": "#ffd60a"}
+    return p
+
+
+def prueba_clics_a_tiempo_de_linea():
+    p = con_rastro([{"id": 1, "fuente": 1, "desde": 0, "hasta": 10}],
+                   [2.0, 5.0])
+    c = editar.clics_de(p)
+    igual("los dos clics", len(c), 2)
+    cerca("el primero en su sitio", c[0][0], 2.0)
+    cerca("el segundo también", c[1][0], 5.0)
+    #  La posición sale del rastro: en t=2 el cursor iba por (100, 60).
+    cerca("y con la posición del cursor", c[0][1], 100.0, tol=6)
+    cerca("en las dos coordenadas", c[0][2], 60.0, tol=6)
+
+
+def prueba_clics_apagados():
+    p = con_rastro([{"id": 1, "fuente": 1, "desde": 0, "hasta": 10}],
+                   [2.0], activo=False)
+    igual("apagado no devuelve nada", editar.clics_de(p), [])
+
+
+def prueba_clics_de_un_trozo_cortado_desaparecen():
+    """Es lo que se quiere y sale gratis del mapa: si quitas el trozo, se va."""
+    p = con_rastro([{"id": 1, "fuente": 1, "desde": 0, "hasta": 3},
+                    {"id": 2, "fuente": 1, "desde": 6, "hasta": 10}],
+                   [2.0, 5.0, 7.0])
+    c = editar.clics_de(p)
+    igual("el del trozo quitado no está", len(c), 2)
+    cerca("el primero se queda donde estaba", c[0][0], 2.0)
+    #  El de t=7 del fichero cae en el segundo trozo, que empieza en el 3 de la
+    #  línea: 3 + (7 - 6) = 4.
+    cerca("y el otro se recoloca", c[1][0], 4.0)
+
+
+def prueba_clics_con_velocidad():
+    p = con_rastro([{"id": 1, "fuente": 1, "desde": 0, "hasta": 10,
+                     "velocidad": 2.0}], [4.0])
+    c = editar.clics_de(p)
+    cerca("un clip a 2x adelanta el clic", c[0][0], 2.0)
+
+
+def prueba_clics_sin_rastro():
+    """Un vídeo abierto del disco no tiene clics, y eso no es un fallo."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8}])
+    p["clics"] = {"activo": True}
+    igual("sin rastro, ningún clic", editar.clics_de(p), [])
+
+
+def prueba_clics_en_el_grafo():
+    p = con_rastro([{"id": 1, "fuente": 1, "desde": 0, "hasta": 10}],
+                   [2.0, 5.0])
+    lineas, sale = editar.ramas_clics(p, 3, "zoom")
+    igual("un overlay por clic", len(lineas), 2)
+    igual("encadenados", "[clic0][3:v]overlay" in lineas[1], True)
+    igual("y la salida es el último", sale, "clic1")
+    igual("cada uno en su ventana",
+          "enable='between(t,2.0000,2.3500)'" in lineas[0], True)
+
+    #  Sin anillo no se pinta nada: el destello es un PNG y si no se pudo
+    #  dibujar, el render tiene que salir igual sin él.
+    igual("sin anillo, sin ramas", editar.ramas_clics(p, -1, "zoom"),
+          ([], "zoom"))
+
+
 # ── zonas ─────────────────────────────────────────────────────────
 def zona(**campos):
     d = {"id": 9, "tipo": "zona", "modo": "desenfoque", "banda": 1,
@@ -490,7 +573,7 @@ def prueba_zona_no_se_sale_del_fotograma():
 def prueba_zona_no_necesita_fichero():
     """Es la única capa que se hace con la propia imagen, sin abrir nada."""
     p = con_capas([zona()])
-    rutas, _, de_capa = editar.entradas(p)
+    rutas, _, de_capa, _ = editar.entradas(p)
     igual("no añade una entrada", len(rutas), 1)
     igual("ni le toca índice", 9 in de_capa, False)
 

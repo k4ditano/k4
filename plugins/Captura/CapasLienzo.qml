@@ -43,6 +43,59 @@ Item {
         source: "file:///usr/share/fonts/Adwaita/AdwaitaSans-Regular.ttf"
     }
 
+    //  Los destellos de los clics.
+    //
+    //  Van los PRIMEROS, o sea debajo de las capas, igual que en el grafo: si
+    //  tapas una zona con un desenfoque, lo que pasara ahí debajo no tiene que
+    //  asomar por encima ni siquiera un destello.
+    //
+    //  La lista la calcula python —hay que leer el rastro y pasarlo por el mapa
+    //  de clips—, así que aquí solo se pintan. Las coordenadas vienen en píxeles
+    //  del vídeo de salida: la regla de tres con el marco es la de siempre.
+    Repeater {
+        model: Editor.clicsActivos ? Editor.clics : []
+
+        delegate: Item {
+            id: destello
+            required property var modelData
+
+            readonly property real t: modelData[0]
+            readonly property real px: modelData[1]
+            readonly property real py: modelData[2]
+            //  El mismo 0,35 s que `CLIC_DUR` en tools/editar.py, y el mismo
+            //  0,055 del ancho que `CLIC_DIAMETRO`.
+            readonly property real lado: lienzo.width * 0.055
+            readonly property real factor: lienzo.width
+                / Math.max(1, Editor.anchoVideo)
+
+            visible: lienzo.segundos >= t && lienzo.segundos < t + 0.35
+            width: lado
+            height: lado
+            x: px * factor - lado / 2
+            y: py * factor - lado / 2
+
+            Rectangle {
+                anchors.fill: parent
+                radius: width / 2
+                color: "transparent"
+                border.width: Math.max(2, Math.round(parent.lado / 12))
+                border.color: Editor.colorClics
+            }
+
+            //  0,42 es el RADIO del círculo de dentro en `dibujar_anillo`, así
+            //  que aquí el diámetro es 0,42 del lado y no 0,84.
+            Rectangle {
+                anchors.centerIn: parent
+                width: parent.lado * 0.42
+                height: width
+                radius: width / 2
+                color: "transparent"
+                border.width: Math.max(1, Math.round(parent.lado / 24))
+                border.color: Editor.colorClics
+            }
+        }
+    }
+
     Repeater {
         //  En el orden de APILADO, no en el de la lista.
         //
