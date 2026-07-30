@@ -423,6 +423,93 @@ def prueba_grafo_sin_audio_no_deja_nada_colgando():
     igual("y no queda etiqueta [a] suelta", texto.endswith("[a]"), False)
 
 
+# ── fundidos y color ──────────────────────────────────────────────
+def prueba_color_solo_sale_si_se_toca():
+    limpio = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8}])
+    g, _ = editar.grafo(limpio)
+    igual("sin color no hay eq", "eq=" in g, False)
+
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8,
+               "color": {"brillo": 0.2}}])
+    g, _ = editar.grafo(p)
+    igual("con color sí", "eq=brightness=0.2000" in g, True)
+
+
+def prueba_color_saturacion_cero():
+    """El cero es falso en python: `x or 1` lo convertía en 1 y no hacía nada."""
+    f = editar.filtro_color({"color": {"saturacion": 0.0}})
+    igual("saturación cero llega al filtro", "saturation=0.0000" in f, True)
+    #  Y lo mismo con el contraste, que también tiene el uno por defecto.
+    f = editar.filtro_color({"color": {"contraste": 0.0}})
+    igual("contraste cero también", "contrast=0.0000" in f, True)
+
+
+def prueba_color_se_acota():
+    f = editar.filtro_color({"color": {"brillo": 9, "contraste": -4,
+                                       "saturacion": 99}})
+    igual("brillo al tope", "brightness=1.0000" in f, True)
+    igual("contraste al suelo", "contrast=0.0000" in f, True)
+    igual("saturación al tope", "saturation=3.0000" in f, True)
+    igual("un color con basura no rompe",
+          editar.filtro_color({"color": {"brillo": "x"}}), "")
+
+
+def prueba_color_va_por_clip():
+    """Dos trozos, uno tocado: el otro no se entera."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 4,
+               "color": {"saturacion": 0.0}},
+              {"id": 2, "fuente": 1, "desde": 4, "hasta": 8}])
+    g, _ = editar.grafo(p)
+    igual("solo un eq", g.count("eq=brightness"), 1)
+
+
+def prueba_fundido_primero_y_ultimo():
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 4},
+              {"id": 2, "fuente": 1, "desde": 4, "hasta": 8}])
+    p["fundidos"] = {"entrada": 1.0, "salida": 0.5, "entre": 0}
+    g, _ = editar.grafo(p)
+    igual("entra por el primero", "fade=t=in:st=0:d=1.0000" in g, True)
+    igual("y sale por el último", "fade=t=out:st=3.5000:d=0.5000" in g, True)
+    igual("el audio también", "afade=t=in:st=0:d=1.0000" in g, True)
+    igual("dos fundidos de vídeo y ya", g.count("fade=t=") - g.count("afade=t="), 2)
+
+
+def prueba_fundido_entre_reparte_a_los_dos_lados():
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 4},
+              {"id": 2, "fuente": 1, "desde": 4, "hasta": 8}])
+    p["fundidos"] = {"entrada": 0, "salida": 0, "entre": 0.4}
+    v0, _ = editar.filtros_fundido(0, 2, 4.0, p)
+    v1, _ = editar.filtros_fundido(1, 2, 4.0, p)
+    igual("el primero solo se va", "t=in" in v0, False)
+    igual("y se va con medio «entre»", "d=0.2000" in v0, True)
+    igual("el segundo entra", "t=in:st=0:d=0.2000" in v1, True)
+    igual("y no sale", "t=out" in v1, False)
+
+
+def prueba_fundido_no_cabe_en_un_trozo_corto():
+    """Un trozo de 0,2 s con un segundo de fundido se quedaría negro entero."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 1}])
+    p["fundidos"] = {"entrada": 1.0, "salida": 1.0, "entre": 0}
+    v, _ = editar.filtros_fundido(0, 1, 0.2, p)
+    igual("se reparte a la mitad", "d=0.1000" in v, True)
+    igual("y no se solapan", v.count("d=0.1000"), 2)
+
+
+def prueba_fundido_sobre_la_duracion_de_linea():
+    """Con velocidad, el fundido va sobre lo que OCUPA, no sobre el original."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8, "velocidad": 2.0}])
+    p["fundidos"] = {"entrada": 0, "salida": 1.0, "entre": 0}
+    g, _ = editar.grafo(p)
+    # 8 s a 2× son 4 de línea, así que la salida empieza en el 3.
+    igual("el fundido de salida cuenta desde los 4 s",
+          "fade=t=out:st=3.0000:d=1.0000" in g, True)
+
+
+def prueba_sin_fundidos_no_ensucia():
+    g, _ = editar.grafo(plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8}]))
+    igual("sin fundidos no hay fade", "fade" in g, False)
+
+
 # ── clics ─────────────────────────────────────────────────────────
 def con_rastro(clips, clics_t, activo=True):
     """Un plan con un rastro de mentira en disco y clics en instantes dados."""

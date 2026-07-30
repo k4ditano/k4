@@ -529,7 +529,7 @@ def cadena_atempo(v):
     return ",".join("atempo=%.6f" % t for t in trozos)
 
 
-def rama_audio(i, idx, clip, fuente, dur):
+def rama_audio(i, idx, clip, fuente, dur, fundido=""):
     """La rama de audio de un clip, ya mezclada y a volumen.
 
     Devuelve las líneas del grafo. Las pistas mudas no entran; si no queda
@@ -542,8 +542,13 @@ def rama_audio(i, idx, clip, fuente, dur):
         #  Silencio del mismo largo que el trozo. Sin esto, un clip sacado de un
         #  vídeo mudo tumba el `concat` entero, y con él todo el render.
         #  `dur` ya viene en tiempo de línea, o sea con la velocidad aplicada.
+        #  Y no lleva fundido: fundir silencio no es nada.
         return ["anullsrc=r=48000:cl=stereo,atrim=0:%.4f,asetpts=PTS-STARTPTS[a%d]"
                 % (dur, i)]
+
+    #  El fundido va al final de todo, después de la norma: si fuera antes del
+    #  `amix` habría que aplicarlo a cada pista y sonaría dos veces.
+    cola = ("," + fundido) if fundido else ""
 
     # Con una sola pista no hay nada que mezclar, así que su rama ya es la
     # salida del clip y se etiqueta directamente como tal.
@@ -560,9 +565,10 @@ def rama_audio(i, idx, clip, fuente, dur):
         et = "a%d" % i if una else "c%dp%d" % (i, p["i"])
         lineas.append(
             "[%d:a:%d]atrim=start=%.4f:end=%.4f,asetpts=PTS-STARTPTS,"
-            "volume=%.3f,%s%s[%s]"
+            "volume=%.3f,%s%s%s[%s]"
             % (idx, p["i"], clip["desde"], clip["hasta"],
-               float(p.get("volumen", 1.0)), tempo, NORMA_AUDIO, et))
+               float(p.get("volumen", 1.0)), tempo, NORMA_AUDIO,
+               cola if una else "", et))
         etiquetas.append("[%s]" % et)
 
     if una:
@@ -570,8 +576,8 @@ def rama_audio(i, idx, clip, fuente, dur):
 
     #  `normalize=0`: sin esto amix baja el volumen de todas al sumarlas, y
     #  subir una acabaría bajando la otra sin que nadie lo haya pedido.
-    lineas.append("%samix=inputs=%d:normalize=0[a%d]"
-                  % ("".join(etiquetas), len(etiquetas), i))
+    lineas.append("%samix=inputs=%d:normalize=0%s[a%d]"
+                  % ("".join(etiquetas), len(etiquetas), cola, i))
     return lineas
 
 
@@ -772,6 +778,86 @@ def caja_zona(capa, ancho, alto):
     x = par(ancho * float(capa.get("x", 0.5)) - an / 2.0, 0)
     y = par(alto * float(capa.get("y", 0.5)) - al / 2.0, 0)
     return an, al, min(x, ancho - an), min(y, alto - al)
+
+
+def filtro_color(clip):
+    """`eq` con el brillo, contraste y saturación del clip, o "" si no toca.
+
+    Va dentro de la normalización de cada trozo, o sea antes del `concat`: es
+    del trozo, no de la línea, y así se pueden juntar dos grabaciones que no
+    casan de color sin tocar la otra.
+    """
+    c = clip.get("color") or {}
+
+    #  Nada de `x or por_defecto`: **el cero es falso en python**, así que
+    #  `saturacion: 0` —quitar el color, que es justo lo que uno pide— se
+    #  convertía en 1 y el filtro no salía. Medido: el fotograma con saturación
+    #  cero era idéntico al original.
+    def leer(clave, por_defecto, minimo, maximo):
+        v = c.get(clave)
+        if v is None:
+            v = por_defecto
+        try:
+            return encaja(float(v), minimo, maximo)
+        except (TypeError, ValueError):
+            return por_defecto
+
+    brillo = leer("brillo", 0.0, -1.0, 1.0)
+    contraste = leer("contraste", 1.0, 0.0, 3.0)
+    saturacion = leer("saturacion", 1.0, 0.0, 3.0)
+    if (abs(brillo) < 1e-4 and abs(contraste - 1.0) < 1e-4
+            and abs(saturacion - 1.0) < 1e-4):
+        return ""
+    return ("eq=brightness=%.4f:contrast=%.4f:saturation=%.4f"
+            % (brillo, contraste, saturacion))
+
+
+def fundidos_de(plan):
+    """(entrada, salida, entre) en segundos, saneados."""
+    f = plan.get("fundidos") or {}
+    def leer(clave):
+        try:
+            return max(0.0, float(f.get(clave, 0.0) or 0.0))
+        except (TypeError, ValueError):
+            return 0.0
+    return leer("entrada"), leer("salida"), leer("entre")
+
+
+def filtros_fundido(i, total, dur, plan):
+    """Los `fade` de vídeo y audio de un trozo, en tiempo LOCAL del trozo.
+
+    Local y no de línea: van dentro de la rama del clip, antes del `concat`, y
+    ahí cada trozo empieza en cero. Y después del `setpts` de la velocidad, o
+    sea sobre la duración que el trozo ocupa en la LÍNEA — que es la que se ve.
+
+    Nada de `xfade`: un encadenado de verdad solapa los trozos y acorta la
+    línea, y eso descolocaría el mapa y con él todos los rótulos y zooms. Aquí
+    «entre» es fundir a negro al final de uno y desde negro al principio del
+    siguiente, que cabe dentro del trozo y no mueve nada.
+    """
+    entrada, salida, entre = fundidos_de(plan)
+    dentro = entre / 2.0 if entre > 0 else 0.0
+
+    #  Al primero le toca el fundido de entrada; al último, el de salida; y
+    #  entre medias, medio «entre» por cada lado del corte.
+    ini = entrada if i == 0 else dentro
+    fin = salida if i == total - 1 else dentro
+
+    #  Dos fundidos no pueden solaparse dentro de un trozo corto: si la suma se
+    #  pasa de lo que dura, se reparte a partes iguales. Sin esto, un trozo de
+    #  0,2 s con un segundo de fundido se queda en negro entero.
+    if ini + fin > dur and dur > 0:
+        factor = dur / (ini + fin)
+        ini, fin = ini * factor, fin * factor
+
+    v, a = [], []
+    if ini > 0.001:
+        v.append("fade=t=in:st=0:d=%.4f" % ini)
+        a.append("afade=t=in:st=0:d=%.4f" % ini)
+    if fin > 0.001:
+        v.append("fade=t=out:st=%.4f:d=%.4f" % (max(0.0, dur - fin), fin))
+        a.append("afade=t=out:st=%.4f:d=%.4f" % (max(0.0, dur - fin), fin))
+    return ",".join(v), ",".join(a)
 
 
 def rama_zona(n, capa, ancho, alto, entra):
@@ -976,10 +1062,22 @@ def grafo(plan, sin_audio=False, carpeta=None):
         #  saltos: se descartan fotogramas, que es lo que toca.
         pts = ("setpts=(PTS-STARTPTS)/%.6f" % v) if abs(v - 1.0) > 1e-6 \
             else "setpts=PTS-STARTPTS"
+
+        #  El color va DENTRO de la normalización de cada trozo, o sea antes del
+        #  `concat`: es del trozo y no de la línea, que es lo que hace falta para
+        #  juntar dos grabaciones que no casan.
+        #
+        #  Y el fundido, el último de la cadena y sobre la duración de LÍNEA:
+        #  después del `setpts` de la velocidad, un trozo de 8 s a 2× ocupa 4 y
+        #  el fundido tiene que caber en esos 4.
+        color = filtro_color(clip)
+        fv, fa = filtros_fundido(i, len(tramos), b - a, plan)
+        cadena = ",".join(x for x in (pts, norma, color, fv) if x)
+
         lineas.append(
-            "[%d:v]trim=start=%.4f:end=%.4f,%s,%s[v%d]"
-            % (idx, clip["desde"], clip["hasta"], pts, norma, i))
-        lineas += rama_audio(i, idx, clip, fuente, b - a)
+            "[%d:v]trim=start=%.4f:end=%.4f,%s[v%d]"
+            % (idx, clip["desde"], clip["hasta"], cadena, i))
+        lineas += rama_audio(i, idx, clip, fuente, b - a, fa)
 
     # ── 2. pegarlos
     if len(tramos) == 1:

@@ -60,16 +60,6 @@ Singleton {
         return fuentes.length > 0 ? fuentes[0].ruta : ""
     }
 
-    //  Dónde cae cada trozo en la línea.
-    //
-    //  Es la misma cuenta que hace `mapa()` en tools/editar.py, y sí, están las
-    //  dos. La alternativa era esperar a que python contestara para poder
-    //  dibujar, y arrastrar el borde de un clip a cinco fotogramas por segundo
-    //  no es editar. Esta cuenta es la DEFINICIÓN del modelo —los trozos van en
-    //  orden y la línea es su suma—, no un algoritmo con parámetros que puedan
-    //  separarse: para que discrepen habría que cambiar la definición en un
-    //  sitio y no en el otro. La easing de la cámara, que sí podría irse, sigue
-    //  calculándose en un solo lado.
     //  La velocidad de un clip, acotada a lo que sabe hacer el audio.
     //
     //  El mismo rango que `velocidad_de()` en tools/editar.py: `atempo`
@@ -81,6 +71,16 @@ Singleton {
         return Math.max(0.25, Math.min(4, v))
     }
 
+    //  Dónde cae cada trozo en la línea.
+    //
+    //  Es la misma cuenta que hace `mapa()` en tools/editar.py, y sí, están las
+    //  dos. La alternativa era esperar a que python contestara para poder
+    //  dibujar, y arrastrar el borde de un clip a cinco fotogramas por segundo
+    //  no es editar. Esta cuenta es la DEFINICIÓN del modelo —los trozos van en
+    //  orden y la línea es su suma—, no un algoritmo con parámetros que puedan
+    //  separarse: para que discrepen habría que cambiar la definición en un
+    //  sitio y no en el otro. La easing de la cámara, que sí podría irse, sigue
+    //  calculándose en un solo lado.
     readonly property var tramos: {
         let t = 0
         const r = []
@@ -351,6 +351,43 @@ Singleton {
         persistir()
         seleccionar("capa", nueva.id)
         return nueva.id
+    }
+
+    //  Cuánto dura un fundido. `cual` es "entrada", "salida" o "entre".
+    function ponerFundido(cual, segundos) {
+        const v = Math.max(0, Math.min(5, Number(segundos) || 0))
+        if (cual === "entrada")      fundidoEntrada = v
+        else if (cual === "salida")  fundidoSalida = v
+        else                         fundidoEntre = v
+        persistir()
+    }
+
+    //  El color de UN trozo: brillo, contraste y saturación.
+    //
+    //  Por clip y no por línea a propósito: sirve para que dos grabaciones que
+    //  no casan se junten sin que se note, y eso es cosa de cada trozo.
+    function ponerColor(id, campos) {
+        const i = indiceDeClip(id)
+        if (i < 0)
+            return
+        const antes = clips[i].color || {}
+        clips = clips.map(function (c, j) {
+            return j === i
+                ? Object.assign({}, c, { color: Object.assign({}, antes, campos) })
+                : c
+        })
+        persistir()
+    }
+
+    //  Los tres valores de color de un clip, con sus valores de fábrica.
+    //  Ojo con el cero: `x || 1` lo convertiría en 1, que es justo lo que se
+    //  quiere evitar al pedir saturación cero.
+    function colorDe(clip, clave) {
+        const d = clave === "brillo" ? 0 : 1
+        if (!clip || !clip.color)
+            return d
+        const v = Number(clip.color[clave])
+        return isFinite(v) ? v : d
     }
 
     //  Resaltar dónde se ha pulsado.
@@ -808,6 +845,17 @@ Singleton {
     //  desaparecen solos y los de después se recolocan.
     property var clics: []
     property bool clicsActivos: false
+
+    //  Fundidos de la línea: al entrar, al salir y en cada corte.
+    //
+    //  Van en el plan y no por clip porque son una decisión del montaje entero.
+    //  «Entre» no es un encadenado de verdad: es fundir a negro al final de un
+    //  trozo y desde negro al principio del siguiente. Un `xfade` solaparía los
+    //  trozos y ACORTARÍA la línea, y eso descolocaría el mapa y con él todos
+    //  los rótulos y los zooms.
+    property real fundidoEntrada: 0
+    property real fundidoSalida: 0
+    property real fundidoEntre: 0
     property string colorClics: "#ffd60a"
 
     //  Las pistas de audio del vídeo, con su volumen y su silencio.
@@ -884,6 +932,9 @@ Singleton {
         capas = d.capas || []
         transcripcion = d.transcripcion || []
         clicsActivos = !!(d.clics && d.clics.activo)
+        fundidoEntrada = (d.fundidos && d.fundidos.entrada) || 0
+        fundidoSalida = (d.fundidos && d.fundidos.salida) || 0
+        fundidoEntre = (d.fundidos && d.fundidos.entre) || 0
         colorClics = (d.clics && d.clics.color) || "#ffd60a"
         estadoTranscripcion = ""
         pistasAudio = (d.fuentes && d.fuentes.length > 0
@@ -1064,13 +1115,17 @@ Singleton {
             "p['capas']=d['capas']; " +
             "p['transcripcion']=d['transcripcion']; " +
             "p['clics']=d['clics']; " +
+            "p['fundidos']=d['fundidos']; " +
             "json.dump(p, open(sys.argv[1],'w'), ensure_ascii=False, indent=1)",
             rutaPlan,
             JSON.stringify({ momentos: momentos, pistas: pistasAudio,
                              clips: clips, capas: capas,
                              transcripcion: transcripcion,
                              clics: { activo: clicsActivos,
-                                      color: colorClics } })]
+                                      color: colorClics },
+                             fundidos: { entrada: fundidoEntrada,
+                                         salida: fundidoSalida,
+                                         entre: fundidoEntre } })]
         escritorPlan.running = true
     }
 

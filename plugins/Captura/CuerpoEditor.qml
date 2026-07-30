@@ -809,6 +809,118 @@ Item {
                         }
                     }
 
+                    IslandLabel {
+                        text: Idioma.t("Color")
+                        color: Theme.dim
+                        font.pixelSize: 9
+                        font.capitalization: Font.AllUppercase
+                        font.weight: Font.DemiBold
+                    }
+
+                    //  Del TROZO, no de la línea: sirve para juntar dos
+                    //  grabaciones que no casan sin tocar la otra.
+                    //
+                    //  La previa no lo enseña —`VideoOutput` no tiene un `eq`
+                    //  que aplicarle—, así que aquí abajo se dice y para verlo
+                    //  de verdad está «previa exacta».
+                    Repeater {
+                        model: [
+                            { clave: "brillo",     nombre: Idioma.t("Brillo"),
+                              min: -0.5, max: 0.5, def: 0 },
+                            { clave: "contraste",  nombre: Idioma.t("Contraste"),
+                              min: 0.0,  max: 2.0, def: 1 },
+                            { clave: "saturacion", nombre: Idioma.t("Saturación"),
+                              min: 0.0,  max: 2.0, def: 1 }
+                        ]
+
+                        delegate: RowLayout {
+                            id: filaColor
+                            required property var modelData
+
+                            readonly property real valor: Editor.colorDe(
+                                Editor.clipSel, filaColor.modelData.clave)
+                            readonly property real recorrido:
+                                filaColor.modelData.max - filaColor.modelData.min
+
+                            Layout.fillWidth: true
+                            spacing: 6
+
+                            IslandLabel {
+                                Layout.preferredWidth: 58
+                                text: filaColor.modelData.nombre
+                                color: Theme.muted
+                                font.pixelSize: 9
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 4
+                                radius: 2
+                                color: Theme.track
+
+                                Rectangle {
+                                    width: parent.width * Math.max(0, Math.min(1,
+                                        (filaColor.valor - filaColor.modelData.min)
+                                        / filaColor.recorrido))
+                                    height: parent.height
+                                    radius: parent.radius
+                                    color: Theme.green
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    anchors.topMargin: -8
+                                    anchors.bottomMargin: -8
+                                    cursorShape: Qt.PointingHandCursor
+
+                                    function poner(x) {
+                                        if (!Editor.clipSel)
+                                            return
+                                        const u = Math.max(0, Math.min(1,
+                                            x / Math.max(1, width)))
+                                        const v = filaColor.modelData.min
+                                            + u * filaColor.recorrido
+                                        const campos = {}
+                                        campos[filaColor.modelData.clave] =
+                                            Math.round(v * 20) / 20
+                                        Editor.ponerColor(Editor.idSel, campos)
+                                    }
+                                    onPressed: function (ev) { poner(ev.x) }
+                                    onPositionChanged: function (ev) {
+                                        if (pressed) poner(ev.x)
+                                    }
+                                    //  Doble clic devuelve el valor de fábrica:
+                                    //  con un deslizador tan corto, volver al
+                                    //  centro exacto a mano es una pelea.
+                                    onDoubleClicked: {
+                                        if (!Editor.clipSel)
+                                            return
+                                        const campos = {}
+                                        campos[filaColor.modelData.clave] =
+                                            filaColor.modelData.def
+                                        Editor.ponerColor(Editor.idSel, campos)
+                                    }
+                                }
+                            }
+
+                            IslandLabel {
+                                Layout.preferredWidth: 26
+                                horizontalAlignment: Text.AlignRight
+                                text: filaColor.valor.toFixed(2)
+                                color: Theme.dim
+                                font.pixelSize: 9
+                            }
+                        }
+                    }
+
+                    IslandLabel {
+                        Layout.fillWidth: true
+                        text: Idioma.t("El color solo se ve al renderizar")
+                        color: Theme.dim
+                        font.pixelSize: 9
+                        wrapMode: Text.WordWrap
+                    }
+
                     Repeater {
                         model: [
                             { texto: Idioma.t("Cortar aquí"), icono: 0xF0190,             // md-content_cut
@@ -870,6 +982,103 @@ Item {
                 //  su instante al pulsarla y se convierte en rótulo con el botón:
                 //  ese puente es lo que hace que la transcripción sirva para algo
                 //  más que subtitular.
+                // ── los fundidos ──────────────────────────────────
+                //
+                //  De la línea entera y no de un trozo, así que siempre
+                //  visibles: no hay nada que seleccionar para llegar a ellos.
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 8
+                    spacing: 4
+
+                    IslandLabel {
+                        text: Idioma.t("Fundidos")
+                        color: Theme.dim
+                        font.pixelSize: 9
+                        font.capitalization: Font.AllUppercase
+                        font.weight: Font.DemiBold
+                    }
+
+                    Repeater {
+                        model: [
+                            { cual: "entrada", nombre: Idioma.t("Al entrar") },
+                            { cual: "salida",  nombre: Idioma.t("Al salir") },
+                            { cual: "entre",   nombre: Idioma.t("En los cortes") }
+                        ]
+
+                        delegate: RowLayout {
+                            id: filaFundido
+                            required property var modelData
+
+                            readonly property real valor:
+                                filaFundido.modelData.cual === "entrada"
+                                    ? Editor.fundidoEntrada
+                              : filaFundido.modelData.cual === "salida"
+                                    ? Editor.fundidoSalida
+                                    : Editor.fundidoEntre
+
+                            //  Hasta 2 s: más que eso en un corte es que se te
+                            //  ha ido la mano, y el trozo se queda en negro.
+                            readonly property real tope: 2.0
+
+                            Layout.fillWidth: true
+                            //  «En los cortes» no pinta nada con un solo trozo.
+                            visible: filaFundido.modelData.cual !== "entre"
+                                     || Editor.tramos.length > 1
+                            spacing: 6
+
+                            IslandLabel {
+                                Layout.preferredWidth: 58
+                                text: filaFundido.modelData.nombre
+                                color: Theme.muted
+                                font.pixelSize: 9
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 4
+                                radius: 2
+                                color: Theme.track
+
+                                Rectangle {
+                                    width: parent.width * Math.max(0, Math.min(1,
+                                        filaFundido.valor / filaFundido.tope))
+                                    height: parent.height
+                                    radius: parent.radius
+                                    color: Theme.green
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    anchors.topMargin: -8
+                                    anchors.bottomMargin: -8
+                                    cursorShape: Qt.PointingHandCursor
+
+                                    function poner(x) {
+                                        const u = Math.max(0, Math.min(1,
+                                            x / Math.max(1, width)))
+                                        Editor.ponerFundido(
+                                            filaFundido.modelData.cual,
+                                            Math.round(u * filaFundido.tope * 20) / 20)
+                                    }
+                                    onPressed: function (ev) { poner(ev.x) }
+                                    onPositionChanged: function (ev) {
+                                        if (pressed) poner(ev.x)
+                                    }
+                                }
+                            }
+
+                            IslandLabel {
+                                Layout.preferredWidth: 30
+                                horizontalAlignment: Text.AlignRight
+                                text: filaFundido.valor.toFixed(2) + " s"
+                                color: Theme.dim
+                                font.pixelSize: 9
+                            }
+                        }
+                    }
+                }
+
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
