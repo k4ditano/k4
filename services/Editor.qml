@@ -95,9 +95,14 @@ Singleton {
             const d = Math.max(0, c.hasta - c.desde) / v
             if (d <= 0)
                 continue
-            r.push({ clip: c.id, fuente: c.fuente, ruta: rutaDe(c.fuente),
+            const ruta = rutaDe(c.fuente)
+            r.push({ clip: c.id, fuente: c.fuente, ruta: ruta,
                      inicio: t, fin: t + d, desde: c.desde, hasta: c.hasta,
-                     velocidad: v, indice: i })
+                     velocidad: v, indice: i,
+                     //  Un trozo puede ser una imagen —un congelado, una
+                     //  portada—, y eso el reproductor tiene que saberlo: un
+                     //  `MediaPlayer` no reproduce un PNG.
+                     imagen: esImagen(ruta) })
             t += d
         }
         return r
@@ -358,6 +363,44 @@ Singleton {
         persistir()
         seleccionar("capa", nueva.id)
         return nueva.id
+    }
+
+    // ── congelar ──────────────────────────────────────────────────
+    //
+    //  Parar la imagen unos segundos sin parar de hablar. El fotograma se saca
+    //  a un PNG, se da de alta como fuente y se mete como un trozo más: una
+    //  imagen es una fuente igual que un vídeo desde que existen los clips de
+    //  imagen, así que aquí no hay ningún caso especial.
+    //
+    //  Lo hace python entero —sacar el fotograma, partir y recolocar— porque es
+    //  aritmética de tiempos, y de eso hay un solo dueño.
+    property bool congelando: false
+
+    function congelar(t, segundos) {
+        if (rutaPlan.length === 0 || congelando)
+            return
+        congelando = true
+        congelador.command = ["python3", guion, "congelar", rutaPlan,
+                              String(t), "--dur", String(segundos || 2)]
+        congelador.running = true
+    }
+
+    Process {
+        id: congelador
+        stdout: StdioCollector {
+            onStreamFinished: {
+                editor.congelando = false
+                let d = null
+                try { d = JSON.parse(this.text) } catch (e) { }
+                if (!d || !d.ok) {
+                    editor.fallo(d && d.motivo ? d.motivo : "congelar")
+                    return
+                }
+                //  El plan lo ha cambiado python, así que hay que releerlo: lo
+                //  que hay en memoria se ha quedado viejo.
+                editor.abrir(editor.rutaVideo, "")
+            }
+        }
     }
 
     // ── silencios ─────────────────────────────────────────────────

@@ -117,6 +117,14 @@ Item {
         enTregua = true
         tregua.restart()
 
+        //  Un trozo que es una imagen no pasa por el medio: se pinta y punto, y
+        //  al reloj lo lleva el `Timer` de abajo. Y se para lo que estuviera
+        //  sonando, que si no el vídeo anterior seguiría oyéndose por debajo.
+        if (tr.imagen) {
+            mp.pause()
+            return
+        }
+
         const fuente = "file://" + tr.ruta
         if (mp.source !== fuente) {
             pendiente = enFuente(limpio, tr)
@@ -217,6 +225,16 @@ Item {
             if (repro.enTregua)
                 return
 
+            //  Y si lo que toca es una imagen, el medio no pinta nada aquí.
+            //
+            //  Al entrar en un congelado se le da `pause()`, pero todavía llega
+            //  algún aviso de posición del vídeo anterior. Como el tramo ya es
+            //  el de la imagen, ese instante se comparaba con el `hasta` de la
+            //  imagen —que es otro número, de otro fichero— y disparaba el «se
+            //  acabó»: el congelado se saltaba entero sin llegar a verse.
+            if (repro.enImagen)
+                return
+
             const s = ms / 1000
 
             //  ¿Se acabó el trozo? Al siguiente.
@@ -262,6 +280,44 @@ Item {
         id: salida
         anchors.fill: parent
         fillMode: VideoOutput.PreserveAspectFit
+        visible: !repro.enImagen
+    }
+
+    readonly property bool enImagen: tramo && tramo.imagen === true
+
+    //  El trozo que es una imagen, pintado tal cual.
+    //
+    //  `PreserveAspectFit` como el vídeo: en el render la imagen pasa por la
+    //  misma normalización —escalar sin deformar y rellenar con negro— así que
+    //  aquí hay que hacer lo mismo o la previa mentiría sobre el encuadre.
+    Image {
+        anchors.fill: parent
+        visible: repro.enImagen
+        source: repro.enImagen ? "file://" + repro.tramo.ruta : ""
+        fillMode: Image.PreserveAspectFit
+        smooth: true
+        asynchronous: true
+    }
+
+    //  Quien mueve el cabezal mientras se ve una imagen.
+    //
+    //  Un `MediaPlayer` avisa de que avanza y por eso el resto del tiempo no
+    //  hace falta reloj. Una imagen no avanza sola: sin esto, la reproducción se
+    //  quedaba clavada al entrar en un congelado y no salía nunca.
+    Timer {
+        id: relojImagen
+        interval: 33
+        repeat: true
+        running: repro.enImagen && repro.sonando && !repro.rascando
+        onTriggered: {
+            const t = repro.cabezal + interval / 1000
+            if (repro.tramo && t >= repro.tramo.fin - 0.001) {
+                repro.avanzar()
+                return
+            }
+            repro.cabezal = t
+            Editor.posicionEditor = t
+        }
     }
 
     //  Arrancar por donde se dejó.

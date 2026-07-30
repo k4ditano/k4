@@ -423,6 +423,50 @@ def prueba_grafo_sin_audio_no_deja_nada_colgando():
     igual("y no queda etiqueta [a] suelta", texto.endswith("[a]"), False)
 
 
+# ── clips de imagen ───────────────────────────────────────────────
+def con_imagen():
+    """Un plan con un trozo de vídeo y otro que es una imagen fija."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 4},
+              {"id": 2, "fuente": 2, "desde": 0, "hasta": 2}])
+    p["fuentes"].append({"id": 2, "ruta": fichero("congelado.png"),
+                         "rastro": "", "tipo": "imagen", "w": 1920, "h": 1080,
+                         "fps": 30.0, "dur": 2.0, "pistas": []})
+    return p
+
+
+def prueba_imagen_es_un_clip_mas():
+    tramos = editar.mapa(con_imagen())
+    igual("dos tramos", len(tramos), 2)
+    cerca("la línea suma los dos", tramos[-1][1], 6.0)
+
+
+def prueba_imagen_entra_en_bucle():
+    p = con_imagen()
+    rutas, _, _, _ = editar.entradas(p)
+    args = editar.abrir_entradas(p, rutas)
+    igual("la imagen se repite", "-loop" in args, True)
+    #  Con un segundo de propina sobre el clip más largo: si se queda corta, el
+    #  trozo sale más breve de lo que dice el plan y descoloca la línea.
+    igual("y con duración de sobra", "3.000" in args, True)
+    #  El vídeo no: ponerle `-loop` a un mp4 lo dejaría girando sin fin.
+    igual("un solo -loop", args.count("-loop"), 1)
+
+
+def prueba_imagen_no_trae_audio():
+    """Sin pistas, la rama de silencio que ya existe se encarga."""
+    g, _ = editar.grafo(con_imagen())
+    igual("hay un anullsrc", "anullsrc" in g, True)
+    igual("y el concat sigue teniendo sus dos ramas",
+          "concat=n=2:v=1:a=1" in g, True)
+
+
+def prueba_es_imagen():
+    for r in ("/x/a.png", "/x/A.JPG", "/x/b.webp", "/x/c.gif"):
+        igual("%s es imagen" % r, editar.es_imagen(r), True)
+    for r in ("/x/a.mp4", "/x/a.mkv", "/x/pngs/v.webm", "/x/sin"):
+        igual("%s no lo es" % r, editar.es_imagen(r), False)
+
+
 # ── censura ───────────────────────────────────────────────────────
 def prueba_censura_calla_el_tramo():
     p = con_capas([{"id": 1, "tipo": "censura", "modo": "silencio",

@@ -457,6 +457,13 @@ K4Plugin {
             Editor.crearImagen(ruta, t >= 0 ? t : Editor.posicionEditor)
         }
 
+        //  Parar la imagen unos segundos. `t` en segundos de la línea; con -1
+        //  va por donde vaya la reproducción.
+        function congelar(t: real, dur: real): void {
+            Editor.congelar(t >= 0 ? t : Editor.posicionEditor,
+                            dur > 0 ? dur : 2)
+        }
+
         //  Buscar los trozos callados y marcarlos. No borra nada: para eso está
         //  `quitarSilencios`, que se pide aparte a propósito.
         function silencios(): void { Editor.buscarSilencios() }

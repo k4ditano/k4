@@ -509,6 +509,37 @@ def carpeta_de(ruta_plan):
     return ruta_plan[:-5] if ruta_plan.endswith(".json") else ruta_plan + ".k4"
 
 
+def abrir_entradas(plan, rutas):
+    """Los argumentos de apertura de cada entrada, en orden.
+
+    Casi todas son un `-i` y ya. Una fuente que es una IMAGEN necesita además
+    `-loop 1 -t <segundos>`: sin el bucle es un flujo de un fotograma que se
+    acaba al instante, y `trim` no tendría de dónde sacar los demás.
+
+    El `-t` sale del clip más largo que la use, con un segundo de propina: si se
+    queda corto el trozo sale más breve de lo que dice el plan, y eso descolocaría
+    la línea entera.
+    """
+    #  Qué ruta corresponde a una fuente imagen y hasta dónde hay que estirarla.
+    hasta = {}
+    for f in plan.get("fuentes", []):
+        if f.get("tipo") != "imagen":
+            continue
+        largo = float(f.get("dur", 3.0))
+        for c in plan.get("clips", []):
+            if c.get("fuente") == f["id"]:
+                largo = max(largo, float(c.get("hasta", 0)))
+        hasta[os.path.abspath(f["ruta"])] = largo + 1.0
+
+    args = []
+    for r in rutas:
+        t = hasta.get(os.path.abspath(r))
+        if t is not None:
+            args += ["-loop", "1", "-t", "%.3f" % t]
+        args += ["-i", r]
+    return args
+
+
 def cadena_atempo(v):
     """Los `atempo` que hacen falta para un factor cualquiera, o "" si es 1.
 
@@ -1297,7 +1328,40 @@ def sondear(video):
 VERSION = 2
 
 
+#  Lo que ffmpeg va a abrir como imagen fija y no como vídeo.
+#
+#  La misma lista que `extensionesImagen` en services/Editor.qml. Se mira la
+#  extensión y no el contenido porque hay que decidirlo antes de abrir nada.
+EXT_IMAGEN = (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".avif")
+
+
+def es_imagen(ruta):
+    return str(ruta).lower().endswith(EXT_IMAGEN)
+
+
+def describir_imagen(ruta, ident=1, dur=3.0):
+    """Una imagen como fuente de la pista base: un vídeo de un solo fotograma.
+
+    No tiene duración propia —una imagen dura lo que tú quieras— así que la trae
+    puesta y el clip la recorta. Y no tiene pistas de audio: la rama de silencio
+    que ya existe para los vídeos mudos se encarga.
+    """
+    ancho, alto = 1920, 1080
+    p = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v:0",
+         "-show_entries", "stream=width,height", "-of", "csv=p=0", ruta],
+        capture_output=True, text=True)
+    partes = p.stdout.strip().split(",")
+    if len(partes) >= 2 and partes[0].isdigit() and partes[1].isdigit():
+        ancho, alto = int(partes[0]), int(partes[1])
+    return {"id": ident, "ruta": os.path.abspath(ruta), "rastro": "",
+            "tipo": "imagen", "w": ancho, "h": alto, "fps": 30.0,
+            "dur": round(dur, 3), "pistas": []}
+
+
 def describir_fuente(ruta, rastro="", ident=1):
+    if es_imagen(ruta):
+        return describir_imagen(ruta, ident)
     ancho, alto, fps, dur, _ = sondear(ruta)
     # Rutas absolutas siempre: el plan se guarda y se reabre desde otro sitio,
     # y una ruta relativa dentro de él apunta a donde estuviera quien lo hizo.
@@ -1564,9 +1628,7 @@ def orden_render(args):
     rutas, _, _, _ = entradas(plan, carpeta_de(args.plan))
     ruta_grafo, nodos = escribir_grafo(plan, args.plan)
 
-    orden = ["ffmpeg", "-v", "error", "-y"]
-    for r in rutas:
-        orden += ["-i", r]
+    orden = ["ffmpeg", "-v", "error", "-y"] + abrir_entradas(plan, rutas)
     orden += ["-filter_complex_script", ruta_grafo,
               "-map", "[v]", "-map", "[a]",
               "-c:v", "hevc_nvenc" if args.codec == "hevc" else "h264_nvenc",
@@ -1593,6 +1655,76 @@ def orden_render(args):
     if p.returncode != 0 or not os.path.exists(args.salida):
         salir(ok=False, motivo="fallo")
     salir(ok=True, estado="fin", ruta=args.salida)
+
+
+def sacar_fotograma(plan, ruta_plan, t, destino):
+    """Un fotograma de la LÍNEA a un PNG. True si salió."""
+    carpeta = carpeta_de(ruta_plan)
+    rutas, _, _, _ = entradas(plan, carpeta)
+    ruta_grafo, _ = escribir_grafo(plan, ruta_plan, sin_audio=True,
+                                   nombre="grafo-congelar.txt")
+    orden = (["ffmpeg", "-v", "error", "-y"] + abrir_entradas(plan, rutas)
+             + ["-filter_complex_script", ruta_grafo, "-map", "[v]",
+                "-ss", "%.4f" % t, "-frames:v", "1", destino])
+    p = subprocess.run(orden, capture_output=True, text=True)
+    return p.returncode == 0 and os.path.exists(destino)
+
+
+def orden_congelar(args):
+    """Parar la imagen unos segundos sin parar de hablar.
+
+    Se saca el fotograma que hay bajo el cabezal, se da de alta como fuente
+    —una imagen es una fuente más desde que existen los clips de imagen— y se
+    parte el trozo en ese punto para meterla en medio.
+
+    El hueco no trae audio, y eso es lo que se quiere: el sonido de debajo sigue
+    porque el resto de la línea no se ha movido, solo se ha metido algo delante.
+    Quien lo rellena es la rama de silencio que ya existe para los vídeos mudos.
+    """
+    plan = cargar(args.plan)
+    tramos = mapa(plan)
+    if not tramos:
+        salir(ok=False, motivo="sin-clips")
+    total = tramos[-1][1]
+    t = encaja(float(args.t), 0.0, max(0.0, total - 0.02))
+
+    carpeta = carpeta_de(args.plan)
+    os.makedirs(carpeta, exist_ok=True)
+    ident = max([f["id"] for f in plan["fuentes"]] or [0]) + 1
+    destino = os.path.join(carpeta, "congelado-%d.png" % ident)
+    if not sacar_fotograma(plan, args.plan, t, destino):
+        salir(ok=False, motivo="sin-fotograma")
+
+    #  El corte, en el mismo sitio que lo haría `cortar` en la interfaz.
+    corte = None
+    for a, b, clip, fuente in tramos:
+        if a <= t < b:
+            corte = (a, clip, velocidad_de(clip))
+    if corte is None:
+        salir(ok=False, motivo="fuera")
+    a, clip, v = corte
+    en_fuente = clip["desde"] + (t - a) * v
+
+    plan["fuentes"].append(describir_imagen(destino, ident, float(args.dur)))
+
+    nuevo_id = max([c["id"] for c in plan["clips"]] or [0]) + 1
+    i = plan["clips"].index(clip)
+    congelado = {"id": nuevo_id + 1, "fuente": ident,
+                 "desde": 0.0, "hasta": float(args.dur)}
+
+    #  Si el corte cae en un borde no se parte nada: la imagen se mete delante o
+    #  detrás y ya. Partir en «todo» y «nada» dejaría un trozo de duración cero.
+    if en_fuente - clip["desde"] < 0.02:
+        plan["clips"].insert(i, congelado)
+    elif clip["hasta"] - en_fuente < 0.02:
+        plan["clips"].insert(i + 1, congelado)
+    else:
+        izq = dict(clip, hasta=en_fuente)
+        der = dict(clip, id=nuevo_id, desde=en_fuente)
+        plan["clips"][i:i + 1] = [izq, congelado, der]
+
+    guardar(plan, args.plan)
+    salir(ok=True, fuente=ident, clip=congelado["id"], ruta=destino)
 
 
 def orden_silencios(args):
@@ -1625,9 +1757,7 @@ def orden_silencios(args):
     with open(ruta_grafo, "w") as f:
         f.write(texto)
 
-    orden = ["ffmpeg", "-hide_banner", "-y"]
-    for r in rutas:
-        orden += ["-i", r]
+    orden = ["ffmpeg", "-hide_banner", "-y"] + abrir_entradas(plan, rutas)
     #  Solo el audio: descodificar el vídeo para tirarlo es tiempo regalado, y
     #  aquí se está esperando a que conteste para poder cortar.
     orden += ["-filter_complex_script", ruta_grafo, "-map", "[adet]",
@@ -1664,9 +1794,7 @@ def orden_previa(args):
     ruta_grafo, _ = escribir_grafo(plan, args.plan, sin_audio=True,
                                    nombre="grafo-previa.txt")
 
-    orden = ["ffmpeg", "-v", "error", "-y"]
-    for r in rutas:
-        orden += ["-i", r]
+    orden = ["ffmpeg", "-v", "error", "-y"] + abrir_entradas(plan, rutas)
     # `-ss` como opción de SALIDA, después del grafo. Delante del `-i` ffmpeg
     # pone los tiempos a cero y todas las expresiones, que van en tiempo de
     # línea, apuntarían al sitio equivocado.
@@ -1706,6 +1834,11 @@ def main():
     d = sub.add_parser("camara")
     d.add_argument("plan")
 
+    n = sub.add_parser("congelar")
+    n.add_argument("plan")
+    n.add_argument("t", type=float)
+    n.add_argument("--dur", type=float, default=2.0)
+
     z = sub.add_parser("silencios")
     z.add_argument("plan")
     #  −35 dB y 0,6 s: medido sobre una locución normal, con −50 se cuela el
@@ -1724,7 +1857,7 @@ def main():
     args = ap.parse_args()
     {"abrir": orden_abrir, "proponer": orden_proponer, "render": orden_render,
      "previa": orden_previa, "camara": orden_camara,
-     "silencios": orden_silencios,
+     "silencios": orden_silencios, "congelar": orden_congelar,
      "medir": orden_medir}[args.orden](args)
 
 

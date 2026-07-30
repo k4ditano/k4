@@ -925,6 +925,11 @@ Item {
                         model: [
                             { texto: Idioma.t("Cortar aquí"), icono: 0xF0190,             // md-content_cut
                               accion: "cortar" },
+                            //  Congelar mete un trozo NUEVO, así que va con los
+                            //  demás botones del trozo y no con los de añadir:
+                            //  lo que congela es el fotograma que estás viendo.
+                            { texto: Idioma.t("Congelar 2 s"), icono: 0xF03E4,            // md-pause
+                              accion: "congelar" },
                             { texto: Idioma.t("Quitar el trozo"), icono: 0xF01B4,
                               accion: "quitar" }
                         ]
@@ -965,8 +970,11 @@ Item {
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    if (botonClip.modelData.accion === "cortar")
+                                    const a = botonClip.modelData.accion
+                                    if (a === "cortar")
                                         Editor.cortar(view.segundos)
+                                    else if (a === "congelar")
+                                        Editor.congelar(view.segundos, 2)
                                     else
                                         Editor.quitarClip(Editor.idSel)
                                 }
