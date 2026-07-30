@@ -1,0 +1,707 @@
+#!/bin/sh
+#  Instala y actualiza k4.
+#
+#  Está en `sh` pelado y no en python por un motivo que no es de gusto: este
+#  guión corre ANTES de que existan las dependencias, así que no puede depender
+#  de ninguna. Ni bash, ni python, ni jq. Solo lo que trae cualquier sistema.
+#
+#      ./instalar             todo: paquetes, atajos, arranque y reinicio
+#      ./instalar --seco      solo mira e informa; no toca nada
+#      ./instalar --si        no pregunta (para guiones)
+#      ./instalar --opcionales  instala también lo opcional
+#      ./instalar --sin-paquetes    salta la parte del gestor de paquetes
+#      ./instalar --sin-reiniciar   no toca la barra que esté corriendo
+#
+#  Lo que necesita k4 no se escribe aquí: está en `dependencias.tsv`, que es la
+#  fuente única y la lee también el README.
+
+set -eu
+
+# ─── Presentación ────────────────────────────────────────────────────────────
+# Color solo si hay terminal delante. Si esto acaba en un fichero de registro,
+# que no se llene de secuencias de escape.
+if [ -t 1 ]; then
+    NEGRITA=$(printf '\033[1m'); APAGADO=$(printf '\033[2m')
+    VERDE=$(printf '\033[32m'); AMBAR=$(printf '\033[33m')
+    ROJO=$(printf '\033[31m'); FIN=$(printf '\033[0m')
+else
+    NEGRITA=''; APAGADO=''; VERDE=''; AMBAR=''; ROJO=''; FIN=''
+fi
+
+titulo() { printf '\n%s%s%s\n' "$NEGRITA" "$1" "$FIN"; }
+bien()   { printf '  %s✓%s %s\n' "$VERDE" "$FIN" "$1"; }
+aviso()  { printf '  %s!%s %s\n' "$AMBAR" "$FIN" "$1"; }
+mal()    { printf '  %s✗%s %s\n' "$ROJO" "$FIN" "$1"; }
+nota()   { printf '    %s%s%s\n' "$APAGADO" "$1" "$FIN"; }
+morir()  { printf '\n%s✗ %s%s\n\n' "$ROJO" "$1" "$FIN" >&2; exit 1; }
+
+# ─── Opciones ────────────────────────────────────────────────────────────────
+SECO=0; SIN_PREGUNTAR=0; OPCIONALES=0; SIN_PAQUETES=0; SIN_REINICIAR=0
+
+# La ayuda es la cabecera de este mismo fichero, para que no puedan discrepar.
+ayuda() {
+    awk 'NR > 1 { if ($0 !~ /^#/) exit; sub(/^#[ ]?/, ""); print }' "$0"
+    exit 0
+}
+
+for arg in "$@"; do
+    case "$arg" in
+        --seco|-n)        SECO=1 ;;
+        --si|-s)          SIN_PREGUNTAR=1 ;;
+        --opcionales|-o)  OPCIONALES=1 ;;
+        --sin-paquetes)   SIN_PAQUETES=1 ;;
+        --sin-reiniciar)  SIN_REINICIAR=1 ;;
+        --ayuda|-h|--help) ayuda ;;
+        *) morir "No conozco la opción «$arg». Prueba con --ayuda." ;;
+    esac
+done
+
+# ─── Dónde está el código ────────────────────────────────────────────────────
+# `$0` es «sh» cuando a esto se le lee por una tubería (curl | sh). En ese caso
+# todavía no hay repositorio y hay que clonarlo antes de nada.
+if [ -f "$0" ] && [ "${0##*/}" = "instalar" ]; then
+    RAIZ=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+else
+    RAIZ=''
+fi
+
+DESTINO=${K4_DESTINO:-$HOME/.config/quickshell/k4}
+TABLA="${RAIZ:-$DESTINO}/dependencias.tsv"
+
+# ─── El gestor de paquetes ───────────────────────────────────────────────────
+# Arch es el caso de primera: instala. En el resto solo se diagnostica, porque
+# los nombres de paquete son orientativos y quickshell ni siquiera está
+# empaquetado fuera de Arch.
+# `K4_GESTOR` fuerza uno; existe para poder probar aquí las ramas de las
+# distribuciones que no tengo delante.
+if [ -n "${K4_GESTOR:-}" ];             then GESTOR=$K4_GESTOR
+elif command -v pacman >/dev/null 2>&1;   then GESTOR=pacman
+elif command -v apt-get >/dev/null 2>&1; then GESTOR=apt
+elif command -v dnf >/dev/null 2>&1;     then GESTOR=dnf
+elif command -v zypper >/dev/null 2>&1;  then GESTOR=zypper
+else                                          GESTOR=ninguno
+fi
+
+# Traducción de nombres para los gestores que no son pacman. Solo lo que cambia;
+# lo que no aparece aquí se deja igual. Es orientativo y se dice como tal.
+#
+# Un `-` significa «esto no está empaquetado en esta distribución». Prefiero
+# decirlo a mandar instalar algo parecido: fonts-firacode no es una Nerd Font,
+# y quien la instale seguirá viendo cuadrados sin entender por qué.
+traducir() {
+    _p=$1
+    [ "$GESTOR" = pacman ] && { printf '%s' "$_p"; return; }
+    case "$GESTOR:$_p" in
+        *:quickshell)            printf '%s' '-' ;;
+        apt:ttf-meslo-nerd|dnf:ttf-meslo-nerd|zypper:ttf-meslo-nerd) printf '%s' '-' ;;
+        apt:python)              printf 'python3' ;;
+        apt:fd)                  printf 'fd-find' ;;
+        apt:libpulse)            printf 'pulseaudio-utils' ;;
+        apt:adwaita-fonts)       printf 'fonts-adwaita' ;;
+        apt:qt6-multimedia)      printf 'qml6-module-qtmultimedia' ;;
+        apt:qt6-multimedia-ffmpeg) printf 'qt6-multimedia-plugin-ffmpeg' ;;
+        apt:libnotify)           printf 'libnotify-bin' ;;
+        apt:networkmanager)      printf 'network-manager' ;;
+        apt:wireplumber)         printf 'wireplumber' ;;
+        dnf:python)              printf 'python3' ;;
+        dnf:fd)                  printf 'fd-find' ;;
+        dnf:libpulse)            printf 'pulseaudio-utils' ;;
+        dnf:imagemagick)         printf 'ImageMagick' ;;
+        dnf:libnotify)           printf 'libnotify' ;;
+        dnf:networkmanager)      printf 'NetworkManager' ;;
+        dnf:qt6-multimedia)      printf 'qt6-qtmultimedia' ;;
+        dnf:qt6-multimedia-ffmpeg) printf 'qt6-qtmultimedia' ;;
+        zypper:python)           printf 'python3' ;;
+        zypper:libpulse)         printf 'pulseaudio-utils' ;;
+        zypper:imagemagick)      printf 'ImageMagick' ;;
+        zypper:qt6-multimedia)   printf 'qt6-multimedia-imports' ;;
+        *)                       printf '%s' "$_p" ;;
+    esac
+}
+
+# ¿Está instalado este paquete? Se pregunta al gestor, para lo que no tiene
+# binario propio: tipografías y módulos de Qt.
+hay_paquete() {
+    case "$GESTOR" in
+        pacman) pacman -Qq "$1" >/dev/null 2>&1 ;;
+        apt)    dpkg -s "$(traducir "$1")" >/dev/null 2>&1 ;;
+        dnf|zypper) rpm -q "$(traducir "$1")" >/dev/null 2>&1 ;;
+        *)      return 1 ;;
+    esac
+}
+
+# ─── Lectura de la tabla ─────────────────────────────────────────────────────
+# Sin arrays: las listas son cadenas separadas por espacios y se consultan con
+# `case`. Es la forma POSIX y evita repetidos (ffmpeg sale dos veces en la
+# tabla, una por `ffmpeg` y otra por `ffprobe`).
+en_lista() { case " $2 " in *" $1 "*) return 0 ;; esac; return 1; }
+
+FALTAN_BASE=''       # paquetes que instalar
+FALTAN_OPC=''
+DETALLE_BASE=''      # líneas «paquete⇥para qué», con \n de verdad
+DETALLE_OPC=''
+SIN_PAQUETE=''       # cosas que faltan y no se pueden instalar
+N_BASE=0; N_OPC=0; N_TOTAL=0
+
+leer_tabla() {
+    [ -f "$TABLA" ] || morir "No encuentro $TABLA. ¿Está completo el repositorio?"
+    while IFS='	' read -r comp paq nivel para || [ -n "$comp" ]; do
+        case "$comp" in ''|\#*) continue ;; esac
+        [ -n "${para:-}" ] || continue
+        N_TOTAL=$((N_TOTAL + 1))
+
+        case "$comp" in
+            pkg:*) hay_paquete "${comp#pkg:}" && continue ;;
+            *)     command -v "$comp" >/dev/null 2>&1 && continue ;;
+        esac
+
+        # Falta. Un `-` en la columna del paquete quiere decir que no está
+        # empaquetado en ningún sitio: se avisa y ahí acaba.
+        if [ "$paq" = '-' ]; then
+            SIN_PAQUETE="$SIN_PAQUETE$comp	$para
+"
+            continue
+        fi
+
+        if [ "$nivel" = base ]; then
+            en_lista "$paq" "$FALTAN_BASE" || {
+                FALTAN_BASE="$FALTAN_BASE $paq"
+                DETALLE_BASE="$DETALLE_BASE$paq	$para
+"
+                N_BASE=$((N_BASE + 1))
+            }
+        else
+            en_lista "$paq" "$FALTAN_OPC" || {
+                FALTAN_OPC="$FALTAN_OPC $paq"
+                DETALLE_OPC="$DETALLE_OPC$paq	$para
+"
+                N_OPC=$((N_OPC + 1))
+            }
+        fi
+    done < "$TABLA"
+
+    # Quitar el espacio de más del principio.
+    FALTAN_BASE=${FALTAN_BASE# }
+    FALTAN_OPC=${FALTAN_OPC# }
+}
+
+pintar_detalle() {
+    printf '%s' "$1" | while IFS='	' read -r paq para; do
+        [ -n "$paq" ] || continue
+        _n=$(traducir "$paq")
+        if [ "$_n" = '-' ]; then
+            printf '      %s%-22s%s %s%s%s\n' "$AMBAR" "$paq" "$FIN" \
+                "$APAGADO" "$para — no empaquetado en $GESTOR, a mano" "$FIN"
+        else
+            printf '      %s%-22s%s %s%s%s\n' "$NEGRITA" "$_n" "$FIN" \
+                "$APAGADO" "$para" "$FIN"
+        fi
+    done
+}
+
+# ─── Diagnóstico ─────────────────────────────────────────────────────────────
+diagnosticar() {
+    titulo "Dependencias"
+    leer_tabla
+
+    if [ "$N_BASE" -eq 0 ]; then
+        bien "Está todo lo necesario ($N_TOTAL comprobaciones)."
+    else
+        mal "Faltan $N_BASE cosas necesarias:"
+        pintar_detalle "$DETALLE_BASE"
+    fi
+
+    if [ "$N_OPC" -gt 0 ]; then
+        aviso "Falta lo opcional ($N_OPC). La barra funciona sin ello:"
+        pintar_detalle "$DETALLE_OPC"
+    fi
+
+    if [ -n "$SIN_PAQUETE" ]; then
+        printf '%s' "$SIN_PAQUETE" | while IFS='	' read -r comp para; do
+            [ -n "$comp" ] || continue
+            aviso "$comp no está empaquetado; instálalo tú si quieres: $para"
+        done
+    fi
+
+    if [ "$GESTOR" != pacman ] && [ "$N_BASE" -gt 0 ]; then
+        printf '\n'
+        aviso "Aquí no hay pacman, así que solo diagnostico."
+        nota "Los nombres de paquete de $GESTOR son ORIENTATIVOS: cámbialos si tu"
+        nota "distribución los llama de otra forma. Y ojo: quickshell no está"
+        nota "empaquetado fuera de Arch, hay que compilarlo."
+    fi
+}
+
+# ─── Preguntar ───────────────────────────────────────────────────────────────
+# Con --si no pregunta. Sin terminal delante tampoco: un instalador que se queda
+# esperando una respuesta que nadie va a escribir es peor que uno que se planta.
+preguntar() {
+    if [ "$SIN_PREGUNTAR" -eq 1 ]; then return 0; fi
+    if [ ! -t 0 ]; then
+        aviso "No hay nadie al teclado, así que no lo hago. Con --si lo haría."
+        return 1
+    fi
+    printf '  %s%s%s [s/N] ' "$NEGRITA" "$1" "$FIN"
+    read -r _r || return 1
+    case "$_r" in s|S|si|Si|SI|y|Y) return 0 ;; *) return 1 ;; esac
+}
+
+# Quién eleva privilegios. Si ya somos root, nadie.
+if [ "$(id -u)" = 0 ];                then SUDO=''
+elif command -v sudo >/dev/null 2>&1;  then SUDO='sudo'
+elif command -v doas >/dev/null 2>&1;  then SUDO='doas'
+else                                        SUDO=''
+fi
+
+# ─── Paso: paquetes ──────────────────────────────────────────────────────────
+paso_paquetes() {
+    titulo "Paquetes"
+
+    if [ "$SIN_PAQUETES" -eq 1 ]; then
+        nota "Saltado, me lo has pedido con --sin-paquetes."
+        return 0
+    fi
+
+    _lista=$FALTAN_BASE
+    if [ "$OPCIONALES" -eq 1 ]; then
+        _lista="$_lista $FALTAN_OPC"
+    elif [ -n "$FALTAN_OPC" ]; then
+        nota "Lo opcional no entra. Si lo quieres: ./instalar --opcionales"
+    fi
+
+    # Fuera lo que en esta distribución no está empaquetado: ya se avisó al
+    # diagnosticar y meterlo en la orden solo consigue que falle entera.
+    _instalables=''
+    for _p in $_lista; do
+        [ -n "$_p" ] || continue
+        _n=$(traducir "$_p")
+        [ "$_n" = '-' ] && continue
+        _instalables="$_instalables $_n"
+    done
+    _instalables=${_instalables# }
+
+    if [ -z "$_instalables" ]; then
+        bien "No hay nada que instalar."
+        return 0
+    fi
+
+    if [ "$GESTOR" != pacman ]; then
+        aviso "No instalo nada fuera de Arch. El mandato, para que lo revises:"
+        case "$GESTOR" in
+            apt)    printf '\n      sudo apt install %s\n\n' "$_instalables" ;;
+            dnf)    printf '\n      sudo dnf install %s\n\n' "$_instalables" ;;
+            zypper) printf '\n      sudo zypper install %s\n\n' "$_instalables" ;;
+            *)      printf '\n      %s\n\n' "$_instalables" ;;
+        esac
+        return 0
+    fi
+
+    if [ -z "$SUDO" ] && [ "$(id -u)" != 0 ]; then
+        mal "No encuentro ni sudo ni doas. Instálalo tú:"
+        printf '\n      pacman -S --needed %s\n\n' "$_instalables"
+        return 0
+    fi
+
+    # `PACMAN=echo` permite probar este paso sin instalar de verdad.
+    _pac=${PACMAN:-pacman}
+    printf '  Voy a lanzar:\n\n      %s%s %s -S --needed %s%s\n\n' \
+        "$NEGRITA" "$SUDO" "$_pac" "$_instalables" "$FIN"
+
+    if preguntar "¿Lo lanzo?"; then
+        printf '\n'
+        # Sin comillas a propósito: `_instalables` son varias palabras y $SUDO
+        # puede estar vacío.
+        # shellcheck disable=SC2086
+        if $SUDO $_pac -S --needed $_instalables; then
+            printf '\n'
+            bien "Instalado."
+        else
+            printf '\n'
+            mal "El gestor de paquetes ha fallado. Sigo con el resto."
+        fi
+    else
+        aviso "No instalo nada. Cópialo de arriba cuando quieras."
+    fi
+    return 0
+}
+
+# ─── Paso: Hyprland ──────────────────────────────────────────────────────────
+# k4 es dueño de UN fichero y añade UNA línea al tuyo. Es el mismo trato que ya
+# hace el módulo del tema con config/k4-theme.lua, y por la misma razón: así
+# revertirlo es borrar dos cosas y no adivinar qué se cambió.
+HYPR=${HYPR_DIR:-$HOME/.config/hypr}
+
+# Normaliza la tecla de una línea de atajo para poder compararlas.
+# En Lua el modificador suele ser una variable (`mainMod`), así que se sustituye
+# por SUPER. Si tu configuración la llama de otra forma, esto se le escapa y lo
+# único que se pierde es un aviso: nunca escribe nada mal por ello.
+teclas_lua() {
+    sed -n 's/^[[:space:]]*hl\.bind(\([^,]*\),.*/\1/p' "$1" 2>/dev/null \
+        | sed -e 's/"//g' -e 's/\.\.//g' -e 's/[[:space:]]//g' \
+        | tr 'a-z' 'A-Z' \
+        | sed -e 's/^MAINMOD/SUPER/' -e 's/^MOD/SUPER/' -e 's/^SUPERMOD/SUPER/' \
+        | sed '/^$/d' | sort -u
+}
+
+teclas_conf() {
+    sed -n 's/^[[:space:]]*bind[lnedmpirst]*[[:space:]]*=[[:space:]]*\([^,]*\),[[:space:]]*\([^,]*\),.*/\1 \2/p' \
+        "$1" 2>/dev/null \
+        | tr 'a-z' 'A-Z' \
+        | sed -e 's/\$[A-Z0-9_]*MOD/SUPER/g' -e 's/[[:space:]]\{1,\}/+/g' \
+              -e 's/^+//' -e 's/+$//' \
+        | sed '/^$/d' | sort -u
+}
+
+paso_hyprland() {
+    titulo "Hyprland"
+
+    if [ ! -d "$HYPR" ]; then
+        aviso "No hay $HYPR: no configuro atajos."
+        nota "La barra arranca igual; solo te faltan las teclas."
+        return 0
+    fi
+
+    # ¿Configuración en Lua (CachyOS/noctalia) o la clásica?
+    if [ -f "$HYPR/hyprland.lua" ]; then
+        FORMA=lua
+        PLANTILLA="$RAIZ/hypr/k4.lua"
+        CFG="$HYPR/config/k4.lua"
+        ENTRADA="$HYPR/hyprland.lua"
+        ENGANCHE='require("config.k4")'
+        MARCA='require("config.k4")'
+    elif [ -f "$HYPR/hyprland.conf" ]; then
+        FORMA=conf
+        PLANTILLA="$RAIZ/hypr/k4.conf"
+        CFG="$HYPR/k4.conf"
+        ENTRADA="$HYPR/hyprland.conf"
+        ENGANCHE="source = $CFG"
+        MARCA="k4.conf"
+    else
+        aviso "En $HYPR no hay ni hyprland.lua ni hyprland.conf."
+        nota "No sé dónde meter los atajos. Créalo y vuelve a pasar."
+        return 0
+    fi
+
+    [ -f "$PLANTILLA" ] || morir "Falta la plantilla $PLANTILLA."
+
+    # 1 · El fichero de k4. Se reescribe siempre: es nuestro.
+    mkdir -p "$(dirname "$CFG")"
+    sed "s|@RAIZ@|$RAIZ|g" "$PLANTILLA" > "$CFG"
+    bien "Escrito $CFG ($FORMA)."
+
+    # 2 · La línea de enganche, solo si no está. Ejecutarlo dos veces no puede
+    #     dejar dos líneas.
+    if grep -qF "$MARCA" "$ENTRADA" 2>/dev/null; then
+        bien "Ya estaba enganchado en $(basename "$ENTRADA")."
+    elif [ "$FORMA" = lua ] && grep -qF 'require("config.k4-theme")' "$ENTRADA"; then
+        # El tema tiene que quedar el último para que sus ajustes manden, así
+        # que los atajos se cuelan justo antes en vez de ir al final.
+        # Se entra por encima del comentario que acompaña al tema, no entre el
+        # comentario y su línea: ahí quedaría huérfano y pareciendo nuestro.
+        _tmp="$ENTRADA.k4nuevo"
+        awk -v linea="$ENGANCHE" '
+            function suelta() { for (i = 1; i <= n; i++) print buf[i]; n = 0 }
+            /^[[:space:]]*(--.*)?$/ { buf[++n] = $0; next }
+            /require\("config\.k4-theme"\)/ && !hecho {
+                print "";
+                print "-- k4: atajos y arranque de la barra";
+                print linea;
+                hecho = 1;
+                suelta(); print; next
+            }
+            { suelta(); print }
+            END { suelta() }
+        ' "$ENTRADA" > "$_tmp" && mv "$_tmp" "$ENTRADA"
+        bien "Enganchado en $(basename "$ENTRADA"), antes del tema."
+    else
+        {
+            printf '\n'
+            if [ "$FORMA" = lua ]; then
+                printf -- '-- k4: atajos y arranque de la barra\n'
+            else
+                printf '# k4: atajos y arranque de la barra\n'
+            fi
+            printf '%s\n' "$ENGANCHE"
+        } >> "$ENTRADA"
+        bien "Enganchado al final de $(basename "$ENTRADA")."
+    fi
+
+    revisar_duplicados
+    revisar_colisiones
+}
+
+# ─── Lo que ya tenías puesto ─────────────────────────────────────────────────
+# Reconocer una línea de k4 no es buscar «call k4»: casi nadie escribe la orden
+# entera en cada atajo, se guarda en una variable y se concatena. En una
+# configuración normal el texto solo sale en las tres definiciones y ninguna de
+# las veintitantas líneas de atajo. Así que primero se averigua cómo se llaman
+# esas variables y luego se buscan también ellas.
+# Los ficheros que Hyprland carga de verdad, y solo esos. Nada de `grep -r`: un
+# `binds.lua.bak` tirado por ahí saldría en todos los avisos sin que Hyprland lo
+# haya leído nunca. Comprobado con mis propias copias de seguridad.
+ficheros_hypr() {
+    for _g in "$HYPR"/*.lua "$HYPR"/*.conf "$HYPR"/config/*.lua "$HYPR"/config/*.conf; do
+        [ -f "$_g" ] || continue
+        [ "$_g" = "$CFG" ] && continue
+        printf '%s\n' "$_g"
+    done
+}
+
+patron_k4() {
+    _vars=$(
+        ficheros_hypr | while IFS= read -r _f; do
+            grep -hE '=[^=]*call k4' "$_f" 2>/dev/null || true
+        done \
+        | sed -E 's/^[[:space:]]*(local[[:space:]]+)?//' \
+        | sed -E 's/[[:space:]]*=.*//' \
+        | grep -E '^\$?[A-Za-z_][A-Za-z0-9_]*$' | sort -u
+    )
+    _pat='call k4|k4:clic|k4:clicDerecho'
+    for _v in $_vars; do
+        # El `$` de las variables de hyprland.conf hay que escaparlo para el ERE.
+        _pat="$_pat|$(printf '%s' "$_v" | sed 's/\$/\\$/')"
+    done
+    printf '%s' "$_pat"
+}
+
+# k4 no borra nada de tus ficheros. Lo que hace es enseñarte lo que sobra, con
+# fichero y línea, para que lo quites tú.
+revisar_duplicados() {
+    PAT_K4=$(patron_k4)
+    _viejos=$(ficheros_hypr | while IFS= read -r _f; do
+        grep -nE -e "$PAT_K4" -e '/arrancar' "$_f" 2>/dev/null \
+            | sed "s|^|$_f:|" || true
+    done)
+    [ -n "$_viejos" ] || return 0
+
+    _atajos=$(printf '%s\n' "$_viejos" | grep -E "$PAT_K4" || true)
+    _arranques=$(printf '%s\n' "$_viejos" | grep '/arrancar' || true)
+
+    if [ -n "$_atajos" ]; then
+        printf '\n'
+        aviso "Tienes atajos de k4 escritos a mano. Ahora sobran: quítalos o"
+        nota  "se dispararán dos veces. No los toco yo, son tus ficheros."
+        pintar_lineas "$_atajos"
+    fi
+
+    if [ -n "$_arranques" ]; then
+        printf '\n'
+        aviso "Y ya lanzabas la barra desde tu configuración:"
+        pintar_lineas "$_arranques"
+        nota "Quítalo: ahora lo hace $(basename "$CFG"). Con dos, island doble."
+    fi
+}
+
+# Las líneas de `grep -n`, agrupadas por fichero y en orden numérico, con la ruta
+# recortada y el contenido acortado. Sin esto son cuarenta rutas absolutas
+# repetidas y ordenadas como texto, que no hay quien las lea.
+pintar_lineas() {
+    printf '%s\n' "$1" | awk -F: -v base="$HYPR/" -v ap="$APAGADO" -v fin="$FIN" '
+        {
+            f = $1; n = $2;
+            sub("^" base, "", f);
+            texto = $0;
+            sub(/^[^:]*:[^:]*:/, "", texto);
+            gsub(/^[[:space:]]+/, "", texto);
+            if (length(texto) > 58) texto = substr(texto, 1, 55) "…";
+            clave[++i] = sprintf("%s\t%06d\t%s", f, n, texto);
+        }
+        END {
+            n = asort_simple(clave, i);
+            for (j = 1; j <= i; j++) {
+                split(clave[j], p, "\t");
+                printf "    %s%-22s%s %s%s%s\n", "", p[1] ":" (p[2] + 0), "", ap, p[3], fin
+            }
+        }
+        function asort_simple(a, n,   x, y, t) {
+            for (x = 2; x <= n; x++) {
+                t = a[x];
+                for (y = x - 1; y >= 1 && a[y] > t; y--) a[y + 1] = a[y];
+                a[y + 1] = t
+            }
+            return n
+        }'
+}
+
+# Teclas que k4 quiere y que tú ya usas para otra cosa. Solo un aviso: quien
+# manda es quien se define el último, y eso no lo decide el instalador.
+revisar_colisiones() {
+    _tmp=$(mktemp -d) || return 0
+
+    if [ "$FORMA" = lua ]; then teclas_lua "$CFG"; else teclas_conf "$CFG"; fi > "$_tmp/mias"
+    [ -s "$_tmp/mias" ] || { rm -rf "$_tmp"; return 0; }
+
+    : > "$_tmp/suyas"
+    ficheros_hypr > "$_tmp/ficheros"
+    while IFS= read -r _f; do
+        # Solo cuentan las líneas que NO son de k4: las suyas ya se avisaron.
+        grep -vE "$PAT_K4" "$_f" > "$_tmp/limpio" 2>/dev/null || true
+        case "$_f" in
+            *.lua)  teclas_lua  "$_tmp/limpio" >> "$_tmp/suyas" ;;
+            *.conf) teclas_conf "$_tmp/limpio" >> "$_tmp/suyas" ;;
+        esac
+    done < "$_tmp/ficheros"
+
+    sort -u "$_tmp/suyas" -o "$_tmp/suyas"
+    _choque=$(comm -12 "$_tmp/mias" "$_tmp/suyas")
+    rm -rf "$_tmp"
+
+    [ -n "$_choque" ] || return 0
+    printf '\n'
+    aviso "Estas teclas ya las usas para otra cosa:"
+    printf '%s\n' "$_choque" | while IFS= read -r t; do
+        [ -n "$t" ] && nota "$t"
+    done
+    nota "Gana la que se defina la última, y la de k4 entra con «$ENGANCHE»."
+    nota "Si prefieres la tuya, vuelve a atarla DESPUÉS de esa línea."
+}
+
+# ─── Paso: el código ─────────────────────────────────────────────────────────
+ORIGEN=${K4_ORIGEN:-https://github.com/k4ditano/k4.git}
+
+# Primera instalación por tubería: aquí todavía no hay repositorio.
+clonar_y_seguir() {
+    titulo "Código"
+    command -v git >/dev/null 2>&1 || morir "Necesito git para clonar k4."
+
+    if [ -e "$DESTINO" ]; then
+        morir "$DESTINO ya existe. Si es una instalación de k4, lánzalo desde ahí:
+    $DESTINO/instalar"
+    fi
+
+    printf '  Clonando en %s…\n' "$DESTINO"
+    mkdir -p "$(dirname "$DESTINO")"
+    git clone --depth 1 "$ORIGEN" "$DESTINO" || morir "No he podido clonar."
+    bien "Clonado."
+
+    # Y se relanza desde el repositorio, que es donde están la tabla y las
+    # plantillas. La entrada estándar viene ocupada por el propio guión (nos
+    # están leyendo por una tubería), así que se recupera el terminal para poder
+    # preguntar; si no lo hay, se sigue sin él.
+    printf '\n%s  Sigo desde %s%s\n' "$APAGADO" "$DESTINO/instalar" "$FIN"
+    # No basta con que /dev/tty exista: sin terminal de control el fichero está
+    # ahí pero no se deja abrir. Hay que intentarlo — y en una subshell, porque
+    # un fallo de redirección sobre un builtin especial mata la shell entera
+    # saltándose el `if`. Comprobado: el relanzamiento moría sin decir nada.
+    if (true < /dev/tty) 2>/dev/null; then
+        exec "$DESTINO/instalar" "$@" < /dev/tty
+    else
+        exec "$DESTINO/instalar" "$@"
+    fi
+}
+
+paso_codigo() {
+    titulo "Código"
+
+    if [ ! -d "$RAIZ/.git" ]; then
+        nota "$RAIZ no es un repositorio git: no hay nada que actualizar."
+        return 0
+    fi
+    if ! command -v git >/dev/null 2>&1; then
+        aviso "Sin git no puedo actualizar. Sigo con lo demás."
+        return 0
+    fi
+
+    # Con cambios sin guardar no se toca nada. Perder trabajo de alguien por
+    # «actualizar» es exactamente lo que no puede pasar.
+    if [ -n "$(git -C "$RAIZ" status --porcelain 2>/dev/null)" ]; then
+        aviso "Tienes cambios sin guardar en $RAIZ: no actualizo el código."
+        nota "Guárdalos o descártalos y vuelve a pasar."
+        return 0
+    fi
+
+    _antes=$(git -C "$RAIZ" rev-parse --short HEAD 2>/dev/null || printf '?')
+    if git -C "$RAIZ" pull --ff-only --quiet 2>/dev/null; then
+        _ahora=$(git -C "$RAIZ" rev-parse --short HEAD 2>/dev/null || printf '?')
+        if [ "$_antes" = "$_ahora" ]; then
+            bien "Ya estaba al día ($_ahora)."
+        else
+            bien "Actualizado: $_antes → $_ahora."
+        fi
+    else
+        aviso "No he podido actualizar (¿sin red, o la rama ha divergido?)."
+        nota "Sigo con el resto: los atajos y los paquetes no dependen de esto."
+    fi
+}
+
+# ─── Paso: reiniciar ─────────────────────────────────────────────────────────
+paso_reiniciar() {
+    titulo "La barra"
+
+    if [ "$SIN_REINICIAR" -eq 1 ]; then
+        nota "No la toco, me lo has pedido con --sin-reiniciar."
+        return 0
+    fi
+
+    if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+        hyprctl reload >/dev/null 2>&1 && bien "Configuración de Hyprland recargada."
+    fi
+
+    command -v quickshell >/dev/null 2>&1 || {
+        aviso "quickshell no está instalado todavía; no puedo arrancar la barra."
+        return 0
+    }
+
+    if pgrep -x quickshell >/dev/null 2>&1; then
+        preguntar "¿Reinicio la barra para que coja los cambios?" || {
+            nota "Vale. Arranca cuando quieras: $RAIZ/arrancar"
+            return 0
+        }
+        # `pkill -x`, nunca `pkill -f`: con -f el patrón encaja también con la
+        # línea de mandato de este mismo guión y se mata a sí mismo. Ya ha
+        # pasado dos veces y el síntoma es una island doble.
+        pkill -x quickshell || true
+        _i=0
+        while pgrep -x quickshell >/dev/null 2>&1 && [ "$_i" -lt 20 ]; do
+            sleep 0.2; _i=$((_i + 1))
+        done
+    fi
+
+    "$RAIZ/arrancar" --no-duplicate -d >/dev/null 2>&1 &
+    _i=0
+    while [ "$_i" -lt 25 ]; do
+        pgrep -x quickshell >/dev/null 2>&1 && break
+        sleep 0.2; _i=$((_i + 1))
+    done
+
+    _n=$(pgrep -c -x quickshell 2>/dev/null || printf '0')
+    case "$_n" in
+        1) bien "La barra está corriendo." ;;
+        0) mal "La barra no ha levantado. Mira qué dice: $RAIZ/arrancar" ;;
+        *) mal "Hay $_n quickshell corriendo: eso es la island doble."
+           nota "Párala entera con «pkill -x quickshell» y arranca una sola." ;;
+    esac
+}
+
+# ─── Aquí empieza ────────────────────────────────────────────────────────────
+printf '\n%sk4%s · instalador\n' "$NEGRITA" "$FIN"
+
+# Sin repositorio debajo (curl | sh) lo primero es traerlo, y esto no vuelve:
+# `clonar_y_seguir` acaba en un `exec` del instalador ya clonado.
+if [ -z "$RAIZ" ]; then
+    [ "$SECO" -eq 1 ] && morir "Con --seco no clono nada. Clona antes:
+    git clone $ORIGEN $DESTINO"
+    clonar_y_seguir "$@"
+fi
+
+diagnosticar
+
+if [ "$SECO" -eq 1 ]; then
+    printf '\n%sModo seco: no he tocado nada.%s\n\n' "$APAGADO" "$FIN"
+    [ "$N_BASE" -eq 0 ] || exit 1
+    exit 0
+fi
+
+paso_codigo
+paso_paquetes
+paso_hyprland
+paso_reiniciar
+
+titulo "Listo"
+if [ "$N_BASE" -gt 0 ]; then
+    aviso "Faltan $N_BASE paquetes de los necesarios; míralos arriba."
+fi
+nota "Los atajos: SUPER+Space lanzador · SUPER+I panel · SUPER+C captura"
+nota "SUPER+SHIFT+C grabar · SUPER+SHIFT+E editor · SUPER+Z ajustes"
+nota "Todos están en $RAIZ/hypr/ y se documentan en el README."
+printf '\n'

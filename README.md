@@ -152,50 +152,137 @@ adivina por IP la primera vez, que es aproximada, así que el buscador de
 ciudades manda: lo que elijas se guarda y es lo que se usa a partir de
 entonces. En el centro de control la tarjeta enseña ya la temperatura.
 
-## Requisitos
-
-| Para | Necesitas |
-|---|---|
-| Base | `quickshell` ≥ 0.3, Hyprland, `Adwaita Sans`, `MesloLGS Nerd Font` |
-| Audio | `wireplumber` (`wpctl`) |
-| Red | NetworkManager (`nmcli`) |
-| Bluetooth | `bluez` |
-| Capturas | `grim`, `slurp`, `wl-clipboard` |
-| Consultas | `codex` autenticado con tu cuenta de ChatGPT |
-| Instalar paquetes | `yay`, `pacman`, `kitty` |
-| Fondo de pantalla | `awww` (o `swww`); si no, `swaybg` sin transiciones |
-| El tiempo | `curl` y conexión a internet |
-
-Todo lo que no sea la base es opcional: la parte correspondiente simplemente no
-aparece o no hace nada.
-
 ## Instalación
 
 ```sh
-git clone git@github.com:k4ditano/k4.git ~/.config/quickshell/k4
-quickshell -p ~/.config/quickshell/k4/shell.qml --no-duplicate -d
+curl -fsSL https://raw.githubusercontent.com/k4ditano/k4/main/instalar | sh
 ```
 
-Para que arranque con la sesión, en la configuración de Hyprland:
+Eso clona k4 en `~/.config/quickshell/k4` y a partir de ahí hace todo lo demás:
+mira qué te falta, te enseña el mandato de `pacman` **antes** de lanzarlo, deja
+los atajos puestos y arranca la barra.
 
-```lua
-hl.exec_cmd("quickshell -p /home/TU_USUARIO/.config/quickshell/k4/shell.qml --no-duplicate -d")
+Para actualizar, el mismo mandato desde el repositorio:
+
+```sh
+~/.config/quickshell/k4/instalar
 ```
+
+Si prefieres ver qué haría sin que toque nada:
+
+```sh
+~/.config/quickshell/k4/instalar --seco
+```
+
+| Opción | Qué hace |
+|---|---|
+| `--seco` | solo diagnostica; no escribe nada |
+| `--si` | no pregunta (para guiones) |
+| `--opcionales` | instala también lo opcional |
+| `--sin-paquetes` | salta el gestor de paquetes |
+| `--sin-reiniciar` | no toca la barra que esté corriendo |
+
+### Qué toca de tu sistema
+
+Poco, y se puede deshacer a mano:
+
+- **Escribe `~/.config/hypr/config/k4.lua`** (o `~/.config/hypr/k4.conf` si usas
+  la configuración clásica) con los atajos y el arranque. Ese fichero es de k4 y
+  se reescribe en cada actualización.
+- **Añade una línea** —`require("config.k4")` o `source = …`— a tu `hyprland.lua`
+  o `hyprland.conf`. Una sola, y solo si no estaba.
+- **No edita ningún otro fichero tuyo.** Si encuentra atajos de k4 que pusiste a
+  mano, te los enumera con fichero y línea para que los quites tú.
+
+Para revertirlo: borra ese fichero y esa línea.
+
+### Arrancar a mano
+
+```sh
+~/.config/quickshell/k4/arrancar
+```
+
+Y no `quickshell -p …/shell.qml`: `arrancar` es quien pone `QML_IMPORT_PATH`
+apuntando a `api/`, sin lo cual los plugins no pueden hacer `import K4` y la
+barra no levanta.
+
+## Requisitos
+
+La lista de verdad está en [`dependencias.tsv`](dependencias.tsv), que es lo que
+lee el instalador. En Arch está todo en los repositorios oficiales; no hace falta
+ningún ayudante de AUR.
+
+| Necesario | Para |
+|---|---|
+| `quickshell` | El motor sobre el que corre la barra |
+| `hyprland` | Compositor: atajos, ventanas, espacios y tema |
+| `git` | Instalar y actualizar k4 |
+| `python` | Todas las herramientas de `tools/` |
+| `qt6-multimedia` · `qt6-multimedia-ffmpeg` | Reproducir vídeo y audio en el editor |
+| `ttf-meslo-nerd` | Los iconos de la interfaz (sin esto, cuadrados) |
+| `adwaita-fonts` | Texto de la interfaz y rótulos del editor |
+| `grim` · `slurp` | Capturas y selección de región |
+| `satty` | Anotar una captura antes de guardarla |
+| `wf-recorder` | Grabar la pantalla en vídeo |
+| `ffmpeg` | Montar y renderizar en el editor |
+| `imagemagick` | Miniaturas y capas de imagen |
+| `zenity` | El diálogo «Examinar…» para abrir un vídeo |
+| `wl-clipboard` | Portapapeles e historial |
+| `fd` | Buscar ficheros en el lanzador y en el editor |
+| `libpulse` · `wireplumber` | Volumen y dispositivos de audio |
+| `networkmanager` · `bluez` | Red y Bluetooth |
+| `libnotify` | Enviar notificaciones |
+| `xdg-utils` · `xdg-user-dirs` · `desktop-file-utils` | Abrir ficheros, carpetas del usuario, índice del lanzador |
+| `curl` | El tiempo y las consultas al asistente |
+
+| Opcional | Para |
+|---|---|
+| `whisper-cpp` | Transcribir el audio de un vídeo en el editor |
+| `kitty` | Terminal donde instalar paquetes desde el lanzador |
+| `uwsm` | Lanzar aplicaciones en su propio ámbito de systemd |
+| `yay` | Buscar e instalar paquetes de AUR desde el lanzador |
+| `swaybg` (o `awww`, `swww`) | Fondo de pantalla; con `swaybg`, sin transiciones |
+| `nvidia-utils` | Temperatura y uso de la GPU NVIDIA |
+| `codex` | El asistente, autenticado con tu cuenta de ChatGPT |
+
+Lo opcional no se instala salvo que se pida con `--opcionales`. Sin ello, esa
+parte concreta no aparece o no hace nada; la barra funciona igual.
 
 ## Atajos
 
-Los atajos se envían por IPC, así que puedes atarlos a la tecla que quieras:
+Los pone el instalador en `hypr/k4.lua` o `hypr/k4.conf`. Ahí están todos, con
+comentarios; esto es un resumen.
+
+| Tecla | Qué hace |
+|---|---|
+| `SUPER + Space` | lanzador de aplicaciones |
+| `SUPER + I` · `SUPER + X` | centro de control |
+| `SUPER + N` · `SUPER + A` | notificaciones |
+| `SUPER + Z` | ajustes de la barra |
+| `SUPER + Tab` | ventanas |
+| `SUPER + V` | portapapeles |
+| `SUPER + B` | ficheros |
+| `SUPER + K` | atajos de teclado |
+| `SUPER + L` · `SUPER + ALT + C` | bloquear · sesión |
+| `SUPER + SHIFT + W` | tema de Hyprland |
+| `SUPER + G` | consulta al asistente |
+| `SUPER + SHIFT/ALT/CONTROL + G` | consulta con pantalla · región · selección |
+| `Print` · `SUPER + C` | capturar una región |
+| `SHIFT + Print` · `CONTROL + Print` | pantalla completa · ventana |
+| `SUPER + Print` | menú de captura |
+| `SUPER + CONTROL + C` | capturar y anotar |
+| `SUPER + SHIFT + C` | empezar o parar la grabación |
+| `SUPER + SHIFT + E` | abrir un vídeo en el editor |
+| `SUPER + ALT + E` | retomar la última edición |
+
+Todo va por IPC, así que puedes atarlo a la tecla que quieras:
 
 ```lua
 local k4 = "quickshell ipc -p /home/TU_USUARIO/.config/quickshell/k4/shell.qml call k4 "
 
 hl.bind("SUPER + Space",       hl.dsp.exec_cmd(k4 .. "toggleLauncher"))
 hl.bind("SUPER + I",           hl.dsp.exec_cmd(k4 .. "togglePanel"))
-hl.bind("SUPER + N",           hl.dsp.exec_cmd(k4 .. "toggleNotifications"))
 hl.bind("SUPER + G",           hl.dsp.exec_cmd(k4 .. "ask"))
-hl.bind("SUPER + SHIFT + G",   hl.dsp.exec_cmd(k4 .. "askScreen"))
-hl.bind("SUPER + ALT + G",     hl.dsp.exec_cmd(k4 .. "askRegion"))
-hl.bind("SUPER + CONTROL + G", hl.dsp.exec_cmd(k4 .. "askSelection"))
 ```
 
 ### Todas las llamadas IPC
@@ -214,6 +301,10 @@ hl.bind("SUPER + CONTROL + G", hl.dsp.exec_cmd(k4 .. "askSelection"))
 | `install <texto>` | buscador de paquetes con esa búsqueda |
 | `search <texto>` | lanzador de apps con esa búsqueda |
 | `togglePlay` | play/pausa del reproductor activo |
+| `nextTrack` / `prevTrack` | siguiente / anterior |
+| `windows` | cambiador de ventanas |
+| `lock` | bloquear la pantalla |
+| `session` | menú de sesión (apagar, reiniciar, salir) |
 | `theme` | módulo de tema de Hyprland |
 | `weather` | módulo del tiempo |
 | `tray` | bandeja del sistema |
@@ -234,6 +325,11 @@ compatibilidad con los atajos ya configurados; en módulos nuevos usa el suyo:
 | `k4.tray` | `toggle` · `close` |
 | `k4.settings` | `toggle` · `close` · `alternar <opción>` |
 | `k4.game` | `toggle` · `close` · `nueva` · `habilidad <0-2>` · `ver <pestaña>` · `cofre <tipo>` · `adelantar <segundos>` · `estado` |
+| `k4.captura` | `menu` · `close` · `pantalla` · `region` · `ventana` · `anotar` · `grabar` · `grabarRegion` · `grabarAlternar` · `parar` · `grande` · `encoger` |
+| `k4.editor` | `abrir` · `editar <ruta>` · `retomar` · `imagen <ruta> <t>` · `imagenEncima <ruta> <t>` · `grande` · `encoger` |
+
+El editor tiene canal propio y no cuelga de `k4.captura` a propósito: llegar a
+él ya no pasa por haber grabado nada.
 
 ## Dentro de la island
 

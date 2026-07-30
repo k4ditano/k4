@@ -1,0 +1,70 @@
+#  Todo lo que k4 necesita del sistema.
+#
+#  Esta tabla es la fuente única: la lee `instalar` para diagnosticar e instalar,
+#  y de aquí sale la tabla de «Requisitos» del README. Si añades una llamada a un
+#  programa externo desde QML o desde tools/, añádelo aquí en el mismo cambio.
+#
+#  Columnas, separadas por TABULADOR:
+#
+#      comprobación   qué mirar para saber si está. Un nombre de binario se busca
+#                     con `command -v`; con el prefijo `pkg:` se pregunta al
+#                     gestor de paquetes, para lo que no trae binario propio
+#                     (tipografías, módulos de Qt).
+#      paquete        cómo se llama en Arch. Un `-` significa que no está
+#                     empaquetado: se avisa, pero no se puede instalar.
+#      nivel          `base`     sin esto la función no existe.
+#                     `opcional` sin esto la barra funciona; algo concreto no.
+#      para qué       una línea, la que ve el usuario cuando le falta.
+#
+#  Comprobado con pacman en julio de 2026: todo lo `base` está en los repos
+#  oficiales de Arch (extra). No hace falta ningún ayudante de AUR.
+
+#  ── El motor ────────────────────────────────────────────────────────────────
+pkg:quickshell	quickshell	base	El motor sobre el que corre la barra
+pkg:hyprland	hyprland	base	Compositor: atajos, ventanas, espacios y tema
+git	git	base	Instalar y actualizar k4
+python	python	base	Todas las herramientas de tools/
+
+#  Qt: quickshell ya arrastra qt6-declarative y qt6-wayland, pero no el
+#  multimedia. Sin estos dos el editor abre y no reproduce nada.
+pkg:qt6-multimedia	qt6-multimedia	base	Reproducir vídeo y audio en el editor
+pkg:qt6-multimedia-ffmpeg	qt6-multimedia-ffmpeg	base	Descodificador de la previa del editor
+
+#  ── Tipografías ─────────────────────────────────────────────────────────────
+#  Sin la Nerd Font media interfaz son cuadrados: los iconos son glifos.
+pkg:ttf-meslo-nerd	ttf-meslo-nerd	base	Los iconos de la interfaz
+pkg:adwaita-fonts	adwaita-fonts	base	Texto de la interfaz y rótulos del editor
+
+#  ── Captura y edición de vídeo ──────────────────────────────────────────────
+grim	grim	base	Hacer capturas de pantalla
+slurp	slurp	base	Elegir una región con el ratón
+satty	satty	base	Anotar una captura antes de guardarla
+wf-recorder	wf-recorder	base	Grabar la pantalla en vídeo
+ffmpeg	ffmpeg	base	Montar y renderizar en el editor
+ffprobe	ffmpeg	base	Sondear duración y resolución de los vídeos
+magick	imagemagick	base	Miniaturas y capas de imagen
+zenity	zenity	base	El diálogo «Examinar…» para abrir un vídeo
+
+#  ── Escritorio ──────────────────────────────────────────────────────────────
+wl-copy	wl-clipboard	base	Copiar al portapapeles
+wl-paste	wl-clipboard	base	Vigilar el portapapeles para el historial
+fd	fd	base	Buscar ficheros en el lanzador y en el editor
+pactl	libpulse	base	Volumen y dispositivos de audio
+wpctl	wireplumber	base	Volumen por aplicación (PipeWire)
+nmcli	networkmanager	base	Estado de la red y conexión a redes Wi-Fi
+pkg:bluez	bluez	base	Dispositivos Bluetooth en el centro de control
+notify-send	libnotify	base	Enviar notificaciones
+xdg-open	xdg-utils	base	Abrir un fichero con su programa
+xdg-user-dir	xdg-user-dirs	base	Encontrar tus carpetas de Vídeos e Imágenes
+update-desktop-database	desktop-file-utils	base	Mantener el índice del lanzador
+curl	curl	base	El tiempo y las consultas al asistente
+
+#  ── Opcionales ──────────────────────────────────────────────────────────────
+#  Nada de esto se instala salvo que se pida con --opcionales.
+whisper-cli	whisper-cpp	opcional	Transcribir el audio de un vídeo en el editor
+kitty	kitty	opcional	Terminal donde instalar paquetes desde el lanzador
+uwsm	uwsm	opcional	Lanzar aplicaciones en su propio ámbito de systemd
+yay	yay	opcional	Buscar e instalar paquetes de AUR desde el lanzador
+swaybg	swaybg	opcional	Poner el fondo de pantalla (valen swww o awww)
+nvidia-smi	nvidia-utils	opcional	Temperatura y uso de la GPU NVIDIA
+codex	-	opcional	El asistente del plugin Ask
