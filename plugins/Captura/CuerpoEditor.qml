@@ -666,6 +666,61 @@ Item {
                     Layout.topMargin: 6
                     spacing: 6
 
+                    IslandLabel {
+                        text: Idioma.t("Velocidad")
+                        color: Theme.dim
+                        font.pixelSize: 9
+                        font.capitalization: Font.AllUppercase
+                        font.weight: Font.DemiBold
+                    }
+
+                    //  El trozo del fichero no cambia: lo que cambia es cuánto
+                    //  ocupa en la línea. Por eso al tocar esto los zooms y los
+                    //  rótulos que hubiera después se recolocan solos.
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 3
+
+                        Repeater {
+                            model: [0.25, 0.5, 1, 1.5, 2, 4]
+
+                            delegate: Rectangle {
+                                id: chipVel
+                                required property var modelData
+
+                                readonly property bool puesto: Editor.clipSel
+                                    && Math.abs(Editor.velocidadDe(Editor.clipSel)
+                                                - chipVel.modelData) < 0.001
+
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 24
+                                radius: 12
+                                color: chipVel.puesto ? Theme.blue
+                                     : velRaton.containsMouse ? Theme.surfaceHi
+                                                              : Theme.surface
+
+                                IslandLabel {
+                                    anchors.centerIn: parent
+                                    text: "×" + (chipVel.modelData === 1
+                                        ? "1" : String(chipVel.modelData))
+                                    color: chipVel.puesto ? "#ffffff" : Theme.muted
+                                    font.pixelSize: 10
+                                    font.weight: chipVel.puesto ? Font.DemiBold
+                                                                : Font.Normal
+                                }
+
+                                MouseArea {
+                                    id: velRaton
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Editor.ponerVelocidad(
+                                        Editor.idSel, chipVel.modelData)
+                                }
+                            }
+                        }
+                    }
+
                     Repeater {
                         model: [
                             { texto: Idioma.t("Cortar aquí"), icono: 0xF0190,             // md-content_cut

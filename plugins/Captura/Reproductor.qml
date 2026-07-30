@@ -57,9 +57,14 @@ Item {
     }
 
     //  El instante que hay que pedirle al fichero para estar en `t` de la línea.
+    //
+    //  Con velocidad, un segundo de línea vale `velocidad` segundos de fichero.
+    //  El tope sigue siendo el trozo entero en tiempo de FUENTE, que es lo que
+    //  entiende el medio.
     function enFuente(t, tr) {
+        const v = tr.velocidad || 1
         return tr.desde + Math.max(0, Math.min(tr.hasta - tr.desde,
-                                               t - tr.inicio))
+                                               (t - tr.inicio) * v))
     }
 
     //  Lo que se le pidió al medio antes de que estuviera cargado.
@@ -195,6 +200,14 @@ Item {
         videoOutput: salida
         audioOutput: AudioOutput { muted: repro.silenciado }
 
+        //  La previa va a la velocidad del trozo que se esté viendo.
+        //
+        //  Qt hace esto en el reproductor y conserva el tono, igual que hace
+        //  `atempo` en el render; no son el mismo algoritmo, así que la previa
+        //  se parece pero el fichero manda. Enganchado como binding para que
+        //  cambiar la velocidad se note sin tener que volver a saltar.
+        playbackRate: repro.tramo ? (repro.tramo.velocidad || 1) : 1
+
         //  Con parámetro declarado y no usando el `position` que Qt inyecta:
         //  la inyección está en desahucio y avisa por consola en cada carga.
         onPositionChanged: function (ms) {
@@ -218,7 +231,11 @@ Item {
                 return
             }
 
-            repro.cabezal = repro.tramo.inicio + (s - repro.tramo.desde)
+            //  De vuelta a tiempo de línea, deshaciendo la velocidad. Con un
+            //  clip a 2× el fichero avanza el doble de deprisa, y sin dividir
+            //  aquí el cabezal se iría al doble de rápido que el vídeo.
+            repro.cabezal = repro.tramo.inicio
+                + (s - repro.tramo.desde) / (repro.tramo.velocidad || 1)
             Editor.posicionEditor = repro.cabezal
         }
 

@@ -111,6 +111,89 @@ def prueba_mapa_clip_vacio():
     cerca("y no deja hueco", tramos[-1][1], 7.0)
 
 
+def prueba_velocidad_encoge_la_linea():
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8, "velocidad": 2.0}])
+    tramos = editar.mapa(p)
+    cerca("8 s a 2x ocupan 4 de línea", tramos[0][1], 4.0)
+    cerca("y el segundo 1 de línea es el 2 del fichero",
+          editar.donde(tramos, 1.0)[1], 2.0)
+
+
+def prueba_velocidad_estira_la_linea():
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8, "velocidad": 0.5}])
+    tramos = editar.mapa(p)
+    cerca("8 s a la mitad ocupan 16", tramos[0][1], 16.0)
+    cerca("el segundo 4 de línea es el 2 del fichero",
+          editar.donde(tramos, 4.0)[1], 2.0)
+
+
+def prueba_velocidad_mezclada():
+    """Lo que de verdad se rompería: velocidades distintas y un corte en medio."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 0,  "hasta": 4},
+              {"id": 2, "fuente": 1, "desde": 10, "hasta": 14, "velocidad": 4.0},
+              {"id": 3, "fuente": 1, "desde": 4,  "hasta": 6,  "velocidad": 0.5}])
+    tramos = editar.mapa(p)
+    cerca("la línea suma 4 + 1 + 4", tramos[-1][1], 9.0)
+    for i in range(1, len(tramos)):
+        cerca("tramo %d pegado" % i, tramos[i][0], tramos[i - 1][1])
+
+    casos = [(0.0, 0.0), (3.9, 3.9),          # el primero, a velocidad normal
+             (4.0, 10.0), (4.5, 12.0),        # el segundo va cuatro veces más
+             (5.0, 4.0), (7.0, 5.0)]          # el tercero, a la mitad
+    for t, esperado in casos:
+        cerca("línea %.1f → fichero %.1f" % (t, esperado),
+              editar.donde(tramos, t)[1], esperado)
+
+
+def prueba_velocidad_ida_y_vuelta():
+    """donde() tiene que ser la inversa exacta de mapa(), no una aproximación."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 2, "hasta": 9, "velocidad": 1.7}])
+    tramos = editar.mapa(p)
+    a, b, clip, _ = tramos[0]
+    for k in range(11):
+        t = a + (b - a) * k / 10.0
+        ts = editar.donde(tramos, min(t, b - 1e-6))[1]
+        # De vuelta a la línea a mano, que es lo que hace mapa() al revés.
+        vuelta = a + (ts - clip["desde"]) / editar.velocidad_de(clip)
+        cerca("ida y vuelta en %.2f" % t, vuelta, min(t, b - 1e-6), tol=0.01)
+
+
+def prueba_velocidad_disparatada_no_rompe():
+    for v, espera in ((0, 1.0), (-3, 0.25), (99, 4.0), ("x", 1.0), (None, 1.0)):
+        igual("velocidad %r se acota" % v,
+              editar.velocidad_de({"velocidad": v}), espera)
+
+
+def prueba_atempo_se_encadena_por_debajo_de_medio():
+    igual("1x no pone nada", editar.cadena_atempo(1.0), "")
+    igual("0,5x cabe en uno", editar.cadena_atempo(0.5), "atempo=0.500000")
+    #  Una sola instancia solo baja a 0,5: con 0,25 ffmpeg contesta «Numerical
+    #  result out of range» y se lleva por delante la orden entera.
+    igual("0,25x necesita dos", editar.cadena_atempo(0.25),
+          "atempo=0.500000,atempo=0.500000")
+    for v in (0.25, 0.3, 0.4, 0.75, 1.5, 4.0):
+        producto = 1.0
+        for trozo in editar.cadena_atempo(v).split(","):
+            if trozo:
+                producto *= float(trozo.split("=")[1])
+        cerca("la cadena de %.2f multiplica a %.2f" % (v, v), producto, v)
+
+
+def prueba_velocidad_en_el_grafo():
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8, "velocidad": 2.0}])
+    g, _ = editar.grafo(p)
+    igual("el vídeo divide los PTS",
+          "setpts=(PTS-STARTPTS)/2.000000" in g, True)
+    igual("el audio pasa por atempo", "atempo=2.000000" in g, True)
+    igual("y no por asetrate, que cambiaría el tono", "asetrate" in g, False)
+
+    normal, _ = editar.grafo(plan([{"id": 1, "fuente": 1,
+                                    "desde": 0, "hasta": 8}]))
+    igual("sin velocidad no se ensucia el grafo", "atempo" in normal, False)
+    igual("y el setpts se queda como estaba",
+          "setpts=PTS-STARTPTS," in normal, True)
+
+
 def prueba_dos_fuentes():
     p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 3},
               {"id": 2, "fuente": 2, "desde": 1, "hasta": 5}],

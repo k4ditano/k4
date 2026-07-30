@@ -494,6 +494,26 @@ def entradas(plan):
     return rutas, de_fuente, de_capa
 
 
+def cadena_atempo(v):
+    """Los `atempo` que hacen falta para un factor cualquiera, o "" si es 1.
+
+    `atempo` acepta de 0,5 a 100 en una instancia —comprobado: 0,25 contesta
+    «Numerical result out of range» y tumba la orden entera—, así que para ir
+    más lento se encadenan dos, que es la forma que documenta ffmpeg. Se usa
+    esto y no `asetrate` porque `atempo` conserva el tono: acelerar con
+    `asetrate` convierte una voz en un pitido.
+    """
+    if abs(v - 1.0) < 1e-6:
+        return ""
+    trozos = []
+    resto = v
+    while resto < 0.5 - 1e-9:
+        trozos.append(0.5)
+        resto /= 0.5
+    trozos.append(resto)
+    return ",".join("atempo=%.6f" % t for t in trozos)
+
+
 def rama_audio(i, idx, clip, fuente, dur):
     """La rama de audio de un clip, ya mezclada y a volumen.
 
@@ -506,6 +526,7 @@ def rama_audio(i, idx, clip, fuente, dur):
     if not vivas:
         #  Silencio del mismo largo que el trozo. Sin esto, un clip sacado de un
         #  vídeo mudo tumba el `concat` entero, y con él todo el render.
+        #  `dur` ya viene en tiempo de línea, o sea con la velocidad aplicada.
         return ["anullsrc=r=48000:cl=stereo,atrim=0:%.4f,asetpts=PTS-STARTPTS[a%d]"
                 % (dur, i)]
 
@@ -513,14 +534,20 @@ def rama_audio(i, idx, clip, fuente, dur):
     # salida del clip y se etiqueta directamente como tal.
     una = len(vivas) == 1
 
+    #  La velocidad va DESPUÉS del recorte y del volumen y ANTES de la norma:
+    #  `atrim` corta en segundos del fichero, que es donde el usuario eligió el
+    #  trozo, y a `amix` hay que darle todo ya al mismo formato.
+    tempo = cadena_atempo(velocidad_de(clip))
+    tempo = tempo + "," if tempo else ""
+
     lineas, etiquetas = [], []
     for p in vivas:
         et = "a%d" % i if una else "c%dp%d" % (i, p["i"])
         lineas.append(
             "[%d:a:%d]atrim=start=%.4f:end=%.4f,asetpts=PTS-STARTPTS,"
-            "volume=%.3f,%s[%s]"
+            "volume=%.3f,%s%s[%s]"
             % (idx, p["i"], clip["desde"], clip["hasta"],
-               float(p.get("volumen", 1.0)), NORMA_AUDIO, et))
+               float(p.get("volumen", 1.0)), tempo, NORMA_AUDIO, et))
         etiquetas.append("[%s]" % et)
 
     if una:
@@ -723,9 +750,16 @@ def grafo(plan, sin_audio=False, carpeta=None):
     # ── 1. cada trozo, recortado y normalizado
     for i, (a, b, clip, fuente) in enumerate(tramos):
         idx = idx_de[fuente["id"]]
+        v = velocidad_de(clip)
+        #  La velocidad del vídeo es dividir los PTS, y va en el mismo `setpts`
+        #  que ya recolocaba el trozo al origen. El `fps` de la norma viene
+        #  después y vuelve a repartir los fotogramas, así que a 4× no salen
+        #  saltos: se descartan fotogramas, que es lo que toca.
+        pts = ("setpts=(PTS-STARTPTS)/%.6f" % v) if abs(v - 1.0) > 1e-6 \
+            else "setpts=PTS-STARTPTS"
         lineas.append(
-            "[%d:v]trim=start=%.4f:end=%.4f,setpts=PTS-STARTPTS,%s[v%d]"
-            % (idx, clip["desde"], clip["hasta"], norma, i))
+            "[%d:v]trim=start=%.4f:end=%.4f,%s,%s[v%d]"
+            % (idx, clip["desde"], clip["hasta"], pts, norma, i))
         lineas += rama_audio(i, idx, clip, fuente, b - a)
 
     # ── 2. pegarlos
@@ -953,12 +987,33 @@ def fuente_de(plan, ident):
 #
 #  Todo lo que necesite saber «qué se ve en el segundo 12» pasa por aquí, y por
 #  eso no hay dos sitios que puedan discrepar sobre dónde cae un rótulo.
+def velocidad_de(clip):
+    """La velocidad de un clip, saneada.
+
+    Se acota por arriba y por abajo a lo que sabe hacer el audio: `atempo`
+    encadenado cubre de 0,25× a 4×, y más allá el sonido no es que suene mal, es
+    que deja de ser reconocible. Un valor absurdo en el plan no debe tumbar el
+    render.
+    """
+    try:
+        v = float(clip.get("velocidad", 1.0) or 1.0)
+    except (TypeError, ValueError):
+        return 1.0
+    return encaja(v, 0.25, 4.0)
+
+
 def mapa(plan):
-    """[(inicio, fin, clip, fuente)] en tiempo de línea."""
+    """[(inicio, fin, clip, fuente)] en tiempo de línea.
+
+    Aquí es donde entra la velocidad, y en ningún otro sitio: un trozo de 4
+    segundos a 2× ocupa 2 segundos de línea. Como todo lo que quiere saber «qué
+    se ve en el segundo 12» pregunta a este mapa, el zoom, los rótulos y las
+    capas se recolocan solos al cambiar la velocidad de un clip.
+    """
     t = 0.0
     tramos = []
     for c in plan.get("clips", []):
-        d = max(0.0, c["hasta"] - c["desde"])
+        d = max(0.0, c["hasta"] - c["desde"]) / velocidad_de(c)
         # Un clip de duración cero no es un clip, es el resto de un corte mal
         # hecho. Ni sale en la línea ni entra en el grafo, donde `trim` con
         # start == end deja una rama vacía que tumba el concat.
@@ -973,7 +1028,9 @@ def donde(tramos, t):
     """(fuente, segundo de esa fuente) en el instante t de la línea."""
     for a, b, c, f in tramos:
         if a <= t < b:
-            return f, c["desde"] + (t - a)
+            # Multiplicar y no sumar: el segundo de línea vale `velocidad`
+            # segundos de fichero. Es la vuelta exacta de lo que hace `mapa`.
+            return f, c["desde"] + (t - a) * velocidad_de(c)
     if tramos:
         a, b, c, f = tramos[-1]
         return f, c["hasta"]

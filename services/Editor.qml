@@ -70,17 +70,29 @@ Singleton {
     //  separarse: para que discrepen habría que cambiar la definición en un
     //  sitio y no en el otro. La easing de la cámara, que sí podría irse, sigue
     //  calculándose en un solo lado.
+    //  La velocidad de un clip, acotada a lo que sabe hacer el audio.
+    //
+    //  El mismo rango que `velocidad_de()` en tools/editar.py: `atempo`
+    //  encadenado cubre de 0,25× a 4× y más allá la voz deja de ser una voz.
+    function velocidadDe(c) {
+        const v = Number(c && c.velocidad)
+        if (!isFinite(v) || v <= 0)
+            return 1
+        return Math.max(0.25, Math.min(4, v))
+    }
+
     readonly property var tramos: {
         let t = 0
         const r = []
         for (let i = 0; i < clips.length; ++i) {
             const c = clips[i]
-            const d = Math.max(0, c.hasta - c.desde)
+            const v = velocidadDe(c)
+            const d = Math.max(0, c.hasta - c.desde) / v
             if (d <= 0)
                 continue
             r.push({ clip: c.id, fuente: c.fuente, ruta: rutaDe(c.fuente),
                      inicio: t, fin: t + d, desde: c.desde, hasta: c.hasta,
-                     indice: i })
+                     velocidad: v, indice: i })
             t += d
         }
         return r
@@ -126,7 +138,8 @@ Singleton {
         const tr = tramoEn(t)
         if (!tr)
             return false
-        const enFuente = tr.desde + (t - tr.inicio)
+        // A tiempo de fuente: un segundo de línea vale `velocidad` de fichero.
+        const enFuente = tr.desde + (t - tr.inicio) * tr.velocidad
         if (enFuente - tr.desde < 0.1 || tr.hasta - enFuente < 0.1)
             return false
 
@@ -169,6 +182,23 @@ Singleton {
         const b = Math.max(a + 0.1, Math.min(tope, hasta))
         clips = clips.map(function (c, j) {
             return j === i ? Object.assign({}, c, { desde: a, hasta: b }) : c
+        })
+        persistir()
+    }
+
+    //  Cambiar a qué velocidad se ve un trozo.
+    //
+    //  No se toca `desde` ni `hasta`: el trozo del fichero sigue siendo el
+    //  mismo, lo que cambia es cuánto ocupa en la línea. Por eso todo lo que va
+    //  detrás —zooms, rótulos, capas— se recoloca solo: la línea es la suma de
+    //  las duraciones y `tramos` ya la calcula dividiendo.
+    function ponerVelocidad(id, v) {
+        const i = indiceDeClip(id)
+        if (i < 0)
+            return
+        const limpio = Math.max(0.25, Math.min(4, Number(v) || 1))
+        clips = clips.map(function (c, j) {
+            return j === i ? Object.assign({}, c, { velocidad: limpio }) : c
         })
         persistir()
     }
