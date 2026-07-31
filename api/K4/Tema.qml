@@ -36,4 +36,28 @@ QtObject {
     //  Geometría que a un plugin le puede hacer falta respetar.
     readonly property int altoPlegado: _t ? _t.baseHeight : 34
     readonly property int altoMaximo: _t ? _t.maxIslandHeight : 880
+
+    // ── tinte ─────────────────────────────────────────────────────
+    //
+    //  El ambiente de la barra, prestado: tiñe el andamio neutro —island,
+    //  superficies, carriles— y todo lo que pinta con el tema se recolorea
+    //  solo. La tinta y los colores con significado no se tocan, la fuerza
+    //  se recorta en el host, y al deshabilitar tu plugin se destiñe solo.
+    //
+    //      K4.Tema.tintar("mi-juego", "#2e5c3a", 0.3, 4000)   // 4 s
+    //      K4.Tema.tintar("mi-juego", "#5c2e2e", 0.35, 0)     // hasta...
+    //      K4.Tema.destintar("mi-juego")                       // ...esto
+    //
+    //  Última llamada gana. `fuerza` 0..0.45; `duracionMs` 0 = sin plazo.
+    readonly property string tinteDueno: _t ? _t.tinteDueno : ""
+
+    function tintar(dueno, color, fuerza, duracionMs) {
+        if (_t)
+            _t.tintar(dueno, color, fuerza, duracionMs || 0)
+    }
+
+    function destintar(dueno) {
+        if (_t)
+            _t.destintar(dueno)
+    }
 }

@@ -1,8 +1,9 @@
 # k4
 
 An extensible Dynamic Island-style bar for [Hyprland](https://hyprland.org/),
-built with [Quickshell](https://quickshell.org/). k4 stays compact at the top
-of the screen and expands only when it has something to show.
+built with [Quickshell](https://quickshell.org/). k4 stays compact at the
+edge of the screen — top or bottom, wherever you put it — and expands only
+when it has something to show.
 
 ## Features
 

@@ -9,6 +9,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../core"
 
 Singleton {
     id: manager
@@ -203,6 +204,11 @@ Singleton {
         //  cadáver. Los K4.Ajustes se dan de baja solos al destruirse, pero
         //  eso es diferido y aquí queremos que desaparezcan YA.
         Enganches.quitarDe(id)
+
+        //  Y su tinte y su colocación: una barra teñida o desplazada por un
+        //  plugin apagado no tiene ya quién la devuelva.
+        Theme.destintar(id)
+        Island.soltar(id)
 
         //  Y APAGAR sus IpcHandler, que es lo que desregistra sus targets.
         //

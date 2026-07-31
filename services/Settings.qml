@@ -55,6 +55,14 @@ Singleton {
     property string editorCodec: "h264"         // con qué se renderiza
 
     // ── barra ─────────────────────────────────────────────────────
+    //  En qué borde vive la barra. shell.qml ancla la ventana, voltea la
+    //  silueta y orienta los gestos con esto; los plugins lo leen por
+    //  K4.Isla.posicion para adaptar lo que pinten fuera.
+    property string posicionBarra: "arriba"     // arriba · abajo
+    //  En qué punto del borde se centra la island, en tanto por ciento del
+    //  ancho libre: 50 es el centro de siempre. Un plugin puede desplazarla
+    //  TEMPORALMENTE con K4.Isla.colocar; esto es la base a la que vuelve.
+    property int alineacionBarra: 50            // 15 · 50 · 85
     // widgets/TrayRow.qml: iconos de bandeja en la píldora
     // Apagada de fábrica: en la píldora los iconos de bandeja son ruido casi
     // siempre, y al acercar el ratón la island ya se abre y ahí sí se ven —y
@@ -175,6 +183,14 @@ Singleton {
         {
             grupo: Idioma.t("Island"),
             opciones: [
+                { id: "posicionBarra", tipo: "eleccion", de: "posiciones",
+                  nombre: Idioma.t("Dónde vive la barra"),
+                  desc: Idioma.t("La island y sus alas se voltean solas"),
+                  glifo: 0xF10A9 },
+                { id: "alineacionBarra", tipo: "eleccion", de: "alineaciones",
+                  nombre: Idioma.t("Alineación de la island"),
+                  desc: Idioma.t("En qué punto del borde se coloca"),
+                  glifo: 0xF11C3 },
                 { id: "bandejaEnPildora", nombre: Idioma.t("Bandeja en la píldora"),
                   desc: Idioma.t("Iconos de las aplicaciones en segundo plano"), glifo: 0xF0FB0 },
                 { id: "notificacionesAlPasar", nombre: Idioma.t("Notificaciones al pasar el ratón"),
@@ -216,6 +232,13 @@ Singleton {
         if (de === "fps")
             return [{ codigo: 30, nombre: "30" },
                     { codigo: 60, nombre: "60" }]
+        if (de === "posiciones")
+            return [{ codigo: "arriba", nombre: Idioma.t("Arriba") },
+                    { codigo: "abajo",  nombre: Idioma.t("Abajo") }]
+        if (de === "alineaciones")
+            return [{ codigo: 15, nombre: Idioma.t("Izquierda") },
+                    { codigo: 50, nombre: Idioma.t("Centro") },
+                    { codigo: 85, nombre: Idioma.t("Derecha") }]
         if (de === "niveles")
             //  Etiquetas y no números: «2,5» no le dice nada a nadie, y lo que se
             //  quiere elegir es cuánto se nota.
@@ -262,6 +285,7 @@ Singleton {
         "grabarAudio", "grabarCodec", "grabarFps",
         "grabarCamara", "camaraDispositivo",
         "zoomAuto", "zoomNivel", "editorCodec",
+        "posicionBarra", "alineacionBarra",
         "bandejaEnPildora", "notificacionesAlPasar",
         "accesosDirectos"
     ]

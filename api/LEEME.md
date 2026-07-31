@@ -74,7 +74,7 @@ not be declared inside the view.
 | `K4.MenuBandeja` | Tray application menu |
 | `K4.Pildora` | Small indicators in the folded pill |
 | `K4.Sonido` | Short sound effect (permission `sonido`) |
-| `K4.Tema` | Palette, fonts and island geometry |
+| `K4.Tema` | Palette, fonts, island geometry — and `tintar()` to tint the bar's ambience |
 | `K4.Idioma` | Translation: `t()` and `f()` |
 | `K4.Guardado` | Plugin state as JSON, in its own directory |
 | `K4.Etiqueta` | Text with the bar's defaults |
@@ -94,9 +94,9 @@ not be declared inside the view.
 | `K4.Escritorios` | Hyprland workspaces |
 | `K4.Portapapeles` | Clipboard history (reading needs `portapapeles`) |
 | `K4.Reloj` | The bar's single clock |
-| `K4.Ajustes` | Your own settings inside the bar's Settings |
+| `K4.Ajustes` | Your own settings inside the bar's Settings — switches, choices, free text (`secreto` for keys) |
 | `K4.Lanzador` | Contribute results to the launcher |
-| `K4.Isla` | Island state: open, occupant, maximum height |
+| `K4.Isla` | Island state: open, occupant, maximum height — plus `rect`/`posicion` (geometry), `efecto()` (shake, push, tug) and `colocar()` (slide along the edge) |
 
 ## Catalog and registration
 

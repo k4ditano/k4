@@ -161,6 +161,44 @@ Available operations are `registrar(id, text, glyph, color, order, visible)`,
 the plugin ID (`hello.`). The host removes a plugin's indicators when it is
 disabled.
 
+## Your settings, in Settings
+
+Plugins contribute rows to the bar's Settings screen with `K4.Ajustes`: the
+plugin keeps the values, the bar asks for them (`valores`) and notifies
+(`cambiado`). A switch per option is the default; `tipo` unlocks the rest:
+
+- `"eleccion"`: chips with your own `alternativas: [{ codigo, nombre }]`;
+  `cambiado` delivers the chosen `codigo`.
+- `"texto"`: a free-text field — a URL, a model name, an API key. `pista`
+  is the empty-field hint and `secreto: true` masks the value once typing
+  stops. The value arrives on confirm (Enter or focus out), not per
+  keystroke.
+
+With these, a plugin that talks to a service, an AI or a CLI configures
+itself in Settings like everything else.
+
+## The island as a stage
+
+- `K4.Tema.tintar(id, color, strength, durationMs)` tints the bar's neutral
+  scaffold — island, surfaces, tracks — and everything painted with the
+  theme recolors itself reactively. Ink and semantic colors stay untouched
+  so text stays readable; strength is capped at 0.45 by the host, and
+  `K4.Tema.destintar(id)` — or disabling the plugin — reverts it.
+- `K4.Isla.efecto(id, name, strength)` asks for a physical gesture:
+  `"sacudida"` (a hit), `"empujon"` (something heavy lands), `"tiron"`
+  (something pulls, like a fish on the line). The host animates and
+  rate-limits to one gesture per half second.
+- `K4.Isla.rect` is the island's real screen geometry (`{ x, y, ancho,
+  alto }`); with a transparent `K4.Ventana` above everything you can draw
+  outside the island — a waving hand, a pet peeking over the edge.
+- The bar's edge and alignment belong to the user (Settings: top/bottom,
+  left/center/right). `K4.Isla.posicion` tells you the edge; and
+  `K4.Isla.colocar(id, fraction, durationMs)` slides the island along it
+  for the duration of a scene — a dodge, a paddle, stepping aside — and it
+  springs back on timeout, `soltar(id)`, or disable.
+
+`ejemplos/efectos/` has every piece working, hand included.
+
 ## Current boundaries
 
 Plugin loading is dynamic and isolated: each plugin is created on its own, a

@@ -155,6 +155,18 @@ Update the indicator on milestones or when a reward is available. Global
 persistent options (for example, chaining runs or showing the indicator) belong
 in `services/Settings.qml`, not in the view.
 
+## Stage effects
+
+A game earns a lot of feel from the bar itself. Tint the ambience for a boss
+or a season (`K4.Tema.tintar`), shake the island on a critical hit or tug it
+when a fish bites (`K4.Isla.efecto`), or let something physically peek out
+of the island with a `K4.Ventana` anchored to `K4.Isla.rect` — and slide the
+whole island along its edge for a scene with `K4.Isla.colocar`. Read
+`K4.Isla.posicion` instead of assuming the bar lives at the top.
+
+Spend these at the moments that matter. The bar is sober the rest of the
+time, and that restraint is what makes the effect land.
+
 ## Balance and testing
 
 Keep curves and constants at the top of the service with explicit names and

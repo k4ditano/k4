@@ -208,7 +208,13 @@ Scope {
             id: panelWindow
             required property var modelData
             screen: modelData
-            anchors.top: true
+
+            //  La barra vive en el borde que diga Ajustes. El resto del
+            //  fichero pregunta `abajo` en vez de repetir la comparación.
+            readonly property bool abajo: Settings.posicionBarra === "abajo"
+
+            anchors.top: !abajo
+            anchors.bottom: abajo
             anchors.left: true
             anchors.right: true
             color: "transparent"
@@ -245,7 +251,12 @@ Scope {
             // que hacerlo por frame es lo que hacía parpadear el panel. La
             // superficie crece una vez al empezar y encoge una vez al acabar;
             // entre medias solo se anima la island dentro de ella.
-            readonly property int targetHeight: Math.min(Theme.maxIslandHeight, root.islandHeight + 2)
+            //  El +44 durante un gesto: el empujón baja la island entera y sin
+            //  ese margen los píxeles desplazados se recortan contra el borde
+            //  de la superficie. Crece al empezar el gesto y el encogido lo
+            //  recoge el mismo temporizador de siempre.
+            readonly property int targetHeight: Math.min(Theme.maxIslandHeight,
+                root.islandHeight + 2 + (island.gestoEnCurso ? 44 : 0))
             property int surfaceHeight: targetHeight
 
             onTargetHeightChanged: {
@@ -272,15 +283,28 @@ Scope {
 
             Item {
                 id: island
-                anchors.top: parent.top
+                anchors.top: panelWindow.abajo ? undefined : parent.top
+                anchors.bottom: panelWindow.abajo ? parent.bottom : undefined
 
                 // Ver services/Island.qml: apartarse para las capturas y
                 // mientras haya un diálogo del sistema abierto.
                 opacity: Island.apartada ? 0 : 1
 
-                anchors.horizontalCenter: parent.horizontalCenter
+                //  Ya no siempre al centro: la island vive en el punto del
+                //  borde que digan Ajustes, o donde la coloque temporalmente
+                //  un plugin (services/Island.qml). El OutBack de siempre para
+                //  que moverse se sienta como abrirse.
+                x: (parent.width - width) * Island.colocacion
                 width: Math.min(parent.width, root.islandWidth + Theme.wing * 2)
                 height: root.islandHeight
+
+                Behavior on x {
+                    NumberAnimation {
+                        duration: 440
+                        easing.type: Easing.OutBack
+                        easing.overshoot: 0.42
+                    }
+                }
 
                 readonly property real bodyRadius: Math.min(32, height / 2)
 
@@ -320,6 +344,83 @@ Scope {
                     }
                 }
 
+                // ── geometría publicada, para pintar fuera de la island ──
+                //
+                //  K4.Isla.rect: coordenadas de pantalla, solo la principal.
+                //  Un plugin con K4.Ventana ancla aquí lo que asoma.
+                onXChanged: publicarRect()
+                onWidthChanged: publicarRect()
+                onHeightChanged: publicarRect()
+                Component.onCompleted: publicarRect()
+
+                function publicarRect() {
+                    if (panelWindow.modelData !== Quickshell.screens[0])
+                        return
+                    Island.rect = {
+                        x: island.x,
+                        y: panelWindow.abajo
+                            ? panelWindow.screen.height - island.height : 0,
+                        ancho: island.width, alto: island.height
+                    }
+                }
+
+                Connections {
+                    target: Settings
+                    function onPosicionBarraChanged() { island.publicarRect() }
+                }
+
+                // ── gestos: el plugin pide (services/Island.qml), esto anima ──
+                //
+                //  Un desplazamiento del contenido, nunca de la ventana: mover
+                //  una layer surface reajustaría el escritorio entero.
+                transform: Translate { id: gestoTr }
+
+                readonly property bool gestoEnCurso: aniSacudida.running
+                    || aniEmpujon.running || aniTiron.running
+
+                SequentialAnimation {
+                    id: aniSacudida
+                    property real f: 1
+                    NumberAnimation { target: gestoTr; property: "x"; to: -8 * aniSacudida.f; duration: 40 }
+                    NumberAnimation { target: gestoTr; property: "x"; to: 7 * aniSacudida.f; duration: 70 }
+                    NumberAnimation { target: gestoTr; property: "x"; to: -5 * aniSacudida.f; duration: 70 }
+                    NumberAnimation { target: gestoTr; property: "x"; to: 3 * aniSacudida.f; duration: 60 }
+                    NumberAnimation { target: gestoTr; property: "x"; to: 0; duration: 60; easing.type: Easing.OutQuad }
+                }
+
+                //  Los gestos verticales empujan hacia DENTRO de la pantalla:
+                //  con la barra abajo, el empujón y el tirón van hacia arriba.
+                readonly property real gestoDir: panelWindow.abajo ? -1 : 1
+
+                SequentialAnimation {
+                    id: aniEmpujon
+                    property real f: 1
+                    NumberAnimation { target: gestoTr; property: "y"; to: 26 * aniEmpujon.f * island.gestoDir; duration: 150; easing.type: Easing.OutQuad }
+                    NumberAnimation { target: gestoTr; property: "y"; to: 0; duration: 320; easing.type: Easing.OutBack; easing.overshoot: 1.4 }
+                }
+
+                SequentialAnimation {
+                    id: aniTiron
+                    property real f: 1
+                    NumberAnimation { target: gestoTr; property: "y"; to: 10 * aniTiron.f * island.gestoDir; duration: 90; easing.type: Easing.OutQuad }
+                    NumberAnimation { target: gestoTr; property: "y"; to: 2 * island.gestoDir; duration: 90 }
+                    NumberAnimation { target: gestoTr; property: "y"; to: 12 * aniTiron.f * island.gestoDir; duration: 90 }
+                    NumberAnimation { target: gestoTr; property: "y"; to: 0; duration: 140; easing.type: Easing.OutQuad }
+                }
+
+                Connections {
+                    target: Island
+                    function onGesto(nombre, fuerza) {
+                        //  Corta el que hubiera: dos gestos a la vez son un
+                        //  temblor sin forma.
+                        aniSacudida.stop(); aniEmpujon.stop(); aniTiron.stop()
+                        gestoTr.x = 0; gestoTr.y = 0
+                        if (nombre === "sacudida") { aniSacudida.f = fuerza; aniSacudida.start() }
+                        else if (nombre === "empujon") { aniEmpujon.f = fuerza; aniEmpujon.start() }
+                        else if (nombre === "tiron") { aniTiron.f = fuerza; aniTiron.start() }
+                    }
+                }
+
                 HoverHandler {
                     onHoveredChanged: {
                         if (hovered) {
@@ -344,6 +445,7 @@ Scope {
 
                 // ── la silueta: cuerpo + esquinas invertidas que funden con el borde
                 Shape {
+                    id: silueta
                     anchors.fill: parent
                     // CurveRenderer suaviza mejor, pero descarta las esquinas
                     // invertidas (las alas), así que se antialiasa con MSAA.
@@ -351,6 +453,14 @@ Scope {
                     layer.enabled: true
                     layer.samples: 8
                     layer.smooth: true
+
+                    //  Con la barra abajo, la silueta entera se refleja: las
+                    //  alas pasan a fundirse con el borde inferior sin tocar
+                    //  ni un punto del trazado.
+                    transform: Scale {
+                        origin.y: silueta.height / 2
+                        yScale: panelWindow.abajo ? -1 : 1
+                    }
 
                     ShapePath {
                         id: islandPath

@@ -310,6 +310,50 @@ K4.Lanzador {
 }
 ```
 
+## 3c · La island como escenario
+
+Tres piezas convierten la barra en parte del juego, no solo en su marco.
+
+**Teñir el ambiente.** `K4.Tema.tintar(tuId, color, fuerza, duracionMs)` tiñe
+el andamio neutro entero —island, superficies, carriles— y todo lo que pinta
+con el tema se recolorea solo. La tinta y los colores con significado (verde,
+rojo…) no se tocan, para que el texto se lea y una alerta siga siendo una
+alerta. La fuerza se recorta a 0,45 en el host; `duracionMs` 0 es «hasta que
+llames a `destintar(tuId)`», y al deshabilitar tu plugin se destiñe solo.
+
+```qml
+K4.Tema.tintar("mi-juego", "#26324f", 0.35, 4000)   // abismo, 4 segundos
+```
+
+**Pedirle gestos.** `K4.Isla.efecto(tuId, nombre, fuerza)` mueve la island
+como un objeto físico: `"sacudida"` (un golpe), `"empujon"` (algo pesado le
+cae encima), `"tiron"` (algo tira de ella, como un pez del sedal). El host
+anima y arbitra: un gesto cada medio segundo como mucho. El efecto raro
+impresiona porque la barra es sobria el resto del tiempo — pídelo en el
+momento que importa y déjalo respirar.
+
+**Pintar fuera.** `K4.Isla.rect` da la geometría real de la island en
+pantalla (`{ x, y, ancho, alto }`, la principal si hay varias). Con una
+`K4.Ventana` transparente encima de todo y ese rect, cualquier cosa puede
+asomar por el borde, caerse de la barra o pasearse por encima — una mano que
+saluda, la mascota que se descuelga. `ejemplos/efectos/` trae las tres piezas
+funcionando, mano incluida.
+
+Y como la barra ya no vive solo arriba —en Ajustes se elige el borde—,
+`K4.Isla.posicion` dice cuál es (`"arriba"` o `"abajo"`). El host se encarga
+de lo suyo (anclaje, silueta volteada, gestos hacia dentro de la pantalla);
+lo tuyo es leer `rect` y `posicion` en vez de suponer que arriba es arriba.
+
+**Moverla por el borde.** La island tampoco vive clavada al centro: el
+usuario elige su alineación en Ajustes, y un plugin puede desplazarla
+TEMPORALMENTE con `K4.Isla.colocar(tuId, fraccion, duracionMs)` — 0 pegada a
+la izquierda, 1 a la derecha, animado con el mismo resorte de abrirse.
+Vuelve sola a la base del usuario: por plazo, con `soltar(tuId)`, o al
+deshabilitar tu plugin. Es para lo que dura una escena —la island que
+esquiva un golpe, que hace de pala, que se aparta para enseñar algo detrás—
+no para quedarse: la posición permanente es del usuario. `K4.Isla.colocacion`
+dice la fracción efectiva de ahora mismo.
+
 **Y `K4.Isla`** para saber si estás a la vista: `abierta`, `ocupadaPor`,
 `raton`, `altoMaximo`. Solo lectura — quién ocupa la island lo decide el host
 comparando prioridades, que es la única forma de que dos plugins no se peleen

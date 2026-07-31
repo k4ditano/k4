@@ -25,6 +25,79 @@ Singleton {
     // fuerza un modo concreto; se usa desde IPC para depurar
     property string debugMode: ""
 
+    //  En qué borde vive la barra ahora mismo: "arriba" o "abajo". Lo decide
+    //  el usuario en Ajustes; un plugin que pinte fuera de la island lo lee
+    //  para saber hacia dónde asomar.
+    readonly property string posicion: Settings.posicionBarra
+
+    //  Dónde está la island en la pantalla, en coordenadas de pantalla.
+    //
+    //  Lo publica el host desde la pantalla principal; con varios monitores la
+    //  island se repite y esta es la de la primera. Es lo que necesita un
+    //  plugin que pinte FUERA de la island con una K4.Ventana —una mano que
+    //  asoma, algo que se cae— para anclarse al borde con precisión.
+    property var rect: ({ x: 0, y: 0, ancho: 0, alto: 0 })
+
+    // ── colocación ────────────────────────────────────────────────
+    //
+    //  Dónde está la island a lo largo de su borde, como fracción del ancho
+    //  libre: 0 pegada a la izquierda, 1 a la derecha. La base la pone el
+    //  usuario en Ajustes (alineacionBarra); un plugin puede desplazarla
+    //  TEMPORALMENTE con colocar() — la island que esquiva, que hace de pala,
+    //  que se aparta para enseñar algo — y vuelve sola: por plazo, al soltar,
+    //  o al deshabilitar al dueño (PluginManager llama a soltar al destruir).
+    property string colocacionDueno: ""
+    property real colocacionPedida: -1      // -1 = ninguna, manda Ajustes
+
+    readonly property real colocacion: colocacionPedida >= 0
+        ? colocacionPedida : Settings.alineacionBarra / 100
+
+    function colocar(dueno, fraccion, duracionMs) {
+        if (!dueno)
+            return
+        colocacionDueno = String(dueno)
+        colocacionPedida = Math.max(0, Math.min(1, Number(fraccion) || 0))
+        if (duracionMs > 0)
+            _suelta.armar(duracionMs)
+        else
+            _suelta.stop()
+    }
+
+    function soltar(dueno) {
+        if (colocacionDueno === "" || (dueno && dueno !== colocacionDueno))
+            return
+        colocacionDueno = ""
+        colocacionPedida = -1
+        _suelta.stop()
+    }
+
+    property var _suelta: Timer {
+        onTriggered: isla.soltar(isla.colocacionDueno)
+        function armar(ms) { stop(); interval = ms; start() }
+    }
+
+    // ── gestos ────────────────────────────────────────────────────
+    //
+    //  La island como objeto físico: una sacudida, un empujón, un tirón. El
+    //  plugin lo pide y el host lo anima; aquí solo vive el arbitraje, que es
+    //  deliberadamente simple: un gesto cada medio segundo como mucho, y la
+    //  fuerza recortada. El efecto raro impresiona porque la barra es sobria
+    //  el resto del tiempo — sin el freno, la primera feria lo estropea para
+    //  todos.
+    signal gesto(string nombre, real fuerza)
+
+    property real _ultimoGesto: 0
+
+    function efecto(dueno, nombre, fuerza) {
+        const ahora = Date.now()
+        if (ahora - _ultimoGesto < 500)
+            return
+        _ultimoGesto = ahora
+        const f = fuerza === undefined ? 1
+            : Math.max(0.2, Math.min(1, Number(fuerza) || 0))
+        gesto(String(nombre), f)
+    }
+
     //  Aparta la island un instante, para que no salga en las capturas.
     //
     //  No se esconde la ventana: reserva 34 px de zona exclusiva y ocultarla

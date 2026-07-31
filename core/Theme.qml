@@ -7,23 +7,84 @@ import QtQuick
 import Quickshell
 
 Singleton {
+    id: tema
+
     readonly property string uiFont: "Adwaita Sans"
     readonly property string iconFont: "MesloLGS Nerd Font"
     readonly property var locale: Qt.locale("es_ES")
 
-    readonly property color islandBg: "#000000"
+    //  El andamio neutro sale de estas bases y del tinte de más abajo. La
+    //  tinta, los apagados y los colores con significado (verde, rojo, azul,
+    //  amarillo) no se tiñen: el texto tiene que leerse y un rojo de alerta
+    //  tiene que seguir siendo rojo bajo cualquier ambiente.
+    readonly property color _islandBgBase: "#000000"
+    readonly property color _surfaceBase: "#1c1c1e"
+    readonly property color _surfaceHiBase: "#2c2c2e"
+    readonly property color _trackBase: "#3a3a3c"
+
+    readonly property color islandBg: _tinta(_islandBgBase)
     readonly property color ink: "#ffffff"
     readonly property color muted: "#8e8e93"
     readonly property color dim: "#48484a"
-    readonly property color surface: "#1c1c1e"
-    readonly property color surfaceHi: "#2c2c2e"
-    readonly property color track: "#3a3a3c"
+    readonly property color surface: _tinta(_surfaceBase)
+    readonly property color surfaceHi: _tinta(_surfaceHiBase)
+    readonly property color track: _tinta(_trackBase)
     readonly property color green: "#30d158"
     readonly property color red: "#ff453a"
     readonly property color blue: "#0a84ff"
     // Para el audio añadido. Es el amarillo del sistema en su versión oscura,
     // de la misma familia que el verde y el rojo de arriba.
     readonly property color yellow: "#ffd60a"
+
+    // ── tinte ─────────────────────────────────────────────────────
+    //
+    //  El ambiente de la barra, prestado a los plugins: un juego puede teñir
+    //  el andamio entero —island, superficies, carriles— y todo lo que pinta
+    //  con el tema se recolorea solo, por reactividad. Los límites los pone
+    //  la casa: la fuerza se recorta para que la barra siga siendo la barra,
+    //  el tinte tiene dueño, y al deshabilitar al dueño se destiñe solo
+    //  (PluginManager llama a destintar al destruir).
+    property string tinteDueno: ""
+    property color tinteColor: "transparent"
+    property real tinteFuerza: 0
+
+    //  Suave al entrar y al salir: un cambio de ambiente, no un fogonazo.
+    Behavior on tinteFuerza { NumberAnimation { duration: 420 } }
+    Behavior on tinteColor { ColorAnimation { duration: 420 } }
+
+    function _tinta(base) {
+        return tinteFuerza <= 0 ? base
+            : Qt.tint(base, Qt.rgba(tinteColor.r, tinteColor.g,
+                                    tinteColor.b, tinteFuerza))
+    }
+
+    //  `fuerza` 0..1 se recorta a 0.45; `duracionMs` 0 es «hasta destintar».
+    //  Última llamada gana: el arbitraje fino no compensa aquí, porque teñir
+    //  es cosmético y quien molesta se apaga en Ajustes.
+    function tintar(dueno, color, fuerza, duracionMs) {
+        if (!dueno)
+            return
+        tinteDueno = String(dueno)
+        tinteColor = color
+        tinteFuerza = Math.max(0, Math.min(0.45, Number(fuerza) || 0))
+        if (duracionMs > 0)
+            _destinte.armar(duracionMs)
+        else
+            _destinte.stop()
+    }
+
+    function destintar(dueno) {
+        if (tinteDueno === "" || (dueno && dueno !== tinteDueno))
+            return
+        tinteDueno = ""
+        tinteFuerza = 0
+        _destinte.stop()
+    }
+
+    property var _destinte: Timer {
+        onTriggered: tema.destintar(tema.tinteDueno)
+        function armar(ms) { stop(); interval = ms; start() }
+    }
 
     // Geometría de la island
     readonly property int wing: 16              // radio de la esquina invertida que funde con el borde

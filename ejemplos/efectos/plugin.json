@@ -1,0 +1,9 @@
+{
+  "id": "efectos",
+  "entry": "EfectosPlugin.qml",
+  "version": "1.0.0",
+  "title": "Efectos",
+  "description": "Escaparate del tinte, los gestos y pintar fuera de la island",
+  "host": ">=1.1.0",
+  "permisos": []
+}
