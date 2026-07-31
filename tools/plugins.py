@@ -127,6 +127,70 @@ def validar_repo(plugins, fallos):
     return ids
 
 
+#  Lo que se admite como icono de imagen, y por qué ese mínimo.
+#
+#  64 px es el tamaño al que se pinta en el centro de aplicaciones en una
+#  pantalla normal; por debajo se ve borroso justo donde más se mira. No es
+#  un capricho: un icono pixelado hace que un plugin bueno parezca malo.
+#  SVG no lleva mínimo — escala, para eso está.
+ICONO_MINIMO = 64
+ICONO_MAXIMO_BYTES = 1024 * 1024
+
+
+def medida_png(ruta):
+    """Ancho y alto de un PNG leyendo su cabecera. Nada de dependencias: son
+    veinticuatro bytes y el formato lleva veinte años sin moverse."""
+    with open(ruta, "rb") as f:
+        cab = f.read(24)
+    if len(cab) < 24 or cab[:8] != b"\x89PNG\r\n\x1a\n" or cab[12:16] != b"IHDR":
+        return None
+    return (int.from_bytes(cab[16:20], "big"), int.from_bytes(cab[20:24], "big"))
+
+
+def revisar_icono(carpeta, icono, item):
+    """Valida el icono declarado. Devuelve el motivo del fallo, o None.
+
+    Como efecto, deja en `item` lo que la barra necesita: `icono` si es un
+    códice, `iconoFichero` (ruta absoluta) si es una imagen. Se separan aquí
+    para que el QML no tenga que adivinar de qué clase es.
+    """
+    if not isinstance(icono, str) or not icono:
+        return f"icono debe ser un códice o un fichero, no {icono!r}"
+
+    if re.fullmatch(r"0[xX][0-9a-fA-F]{4,6}", icono):
+        item["icono"] = icono
+        return None
+
+    #  Un fichero de la propia carpeta: nada de rutas absolutas ni de subir
+    #  por ella. El icono de un plugin es SUYO.
+    if "/" in icono or icono.startswith("."):
+        return "el icono debe ser un fichero de tu carpeta, sin rutas"
+    ext = icono.lower().rsplit(".", 1)[-1] if "." in icono else ""
+    if ext not in ("png", "svg"):
+        return f"icono {icono!r}: solo PNG o SVG (o un códice tipo 0xF04E5)"
+
+    ruta = carpeta / icono
+    if not ruta.is_file():
+        return f"no existe el icono {icono}"
+    if ruta.stat().st_size > ICONO_MAXIMO_BYTES:
+        return (f"el icono pesa {ruta.stat().st_size // 1024} KB; el tope es "
+                f"{ICONO_MAXIMO_BYTES // 1024} KB")
+
+    if ext == "png":
+        medida = medida_png(ruta)
+        if medida is None:
+            return f"{icono} no es un PNG válido"
+        ancho, alto = medida
+        if ancho < ICONO_MINIMO or alto < ICONO_MINIMO:
+            return (f"el icono es de {ancho}x{alto} y el mínimo es "
+                    f"{ICONO_MINIMO}x{ICONO_MINIMO}: más pequeño se ve "
+                    f"borroso justo donde más se mira")
+
+    item.pop("icono", None)
+    item["iconoFichero"] = str(ruta)
+    return None
+
+
 def validar_carpeta(d, ids_repo, version_host):
     """El veredicto sobre UNA carpeta de plugin: `{…, cargable, motivo}`.
 
@@ -151,7 +215,8 @@ def validar_carpeta(d, ids_repo, version_host):
     except Exception as exc:
         return mal(f"plugin.json ilegible: {exc}")
 
-    for clave in ("id", "title", "version", "description", "permisos", "host"):
+    for clave in ("id", "title", "version", "description", "permisos", "host",
+                  "aplicacion"):
         if clave in m:
             item[clave] = m[clave]
     ident = m.get("id")
@@ -169,6 +234,14 @@ def validar_carpeta(d, ids_repo, version_host):
         return mal(f"no existe {entrada}")
     if not host_compatible(m.get("host"), version_host):
         return mal(f"pide barra {m.get('host')} y esta es {version_host}")
+
+    #  El icono, que puede ser un códice de la Nerd Font o una imagen propia.
+    #  Se valida aquí para que uno mal puesto sea un error de instalación y no
+    #  un cuadradito vacío en el centro de aplicaciones.
+    if m.get("icono") is not None:
+        fallo = revisar_icono(d, m.get("icono"), item)
+        if fallo:
+            return mal(fallo)
 
     #  El análisis de permisos: lo que el QML usa contra lo declarado.
     declarados = set(m.get("permisos") or [])

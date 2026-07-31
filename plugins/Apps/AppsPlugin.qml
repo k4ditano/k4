@@ -87,6 +87,44 @@ K4.Plugin {
         seleccion = Math.max(0, Math.min(lista.length - 1, n))
     }
 
+    //  Y anunciarse en el lanzador de aplicaciones del escritorio.
+    //
+    //  Los dos cajones se quedan separados a propósito —son preguntas
+    //  distintas: «abre un programa de mi ordenador» son cientos de entradas,
+    //  «abre una parte de la barra» son once, y mezclarlas entierra las
+    //  once—. Pero separarlos deja un agujero: escribir «portapapeles» en
+    //  SUPER+Space y que no salga NADA es exactamente la sensación de que
+    //  algo no funciona, aunque esté a un atajo de distancia.
+    //
+    //  Así que se anuncian: dos cajones, una sola búsqueda que encuentra
+    //  todo. Y lo hace este módulo y no cada plugin, porque el que sabe qué
+    //  es una «aplicación de la barra» es este.
+    property var enElLanzador: K4.Lanzador {
+        plugin: "apps"
+
+        onBuscando: function (texto) {
+            const q = texto.trim().toLowerCase()
+            //  Con una letra sale medio mundo; a partir de dos ya es una
+            //  intención.
+            if (q.length < 2) {
+                resultados = []
+                return
+            }
+            resultados = PluginManager.aplicaciones
+                .filter(function (a) {
+                    return a.habilitado
+                        && a.nombre.toLowerCase().indexOf(q) >= 0
+                })
+                .map(function (a) {
+                    return { id: a.id, titulo: a.nombre,
+                             desc: K4.Idioma.t("Aplicación de la barra"),
+                             icono: a.imagen }
+                })
+        }
+
+        onElegido: function (id) { PluginManager.abrirAplicacion(id) }
+    }
+
     K4.Ipc {
         target: "k4.apps"
         function toggle(): void { self.toggle() }

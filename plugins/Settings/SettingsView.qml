@@ -170,10 +170,14 @@ FadeIn {
                                     anchors.rightMargin: 12
                                     spacing: 11
 
-                                    IconGlyph {
-                                        text: String.fromCodePoint(opcion.modelData.glifo)
+                                    K4.IconoPlugin {
+                                        //  Un plugin puede traer su propia
+                                        //  imagen; el resto de opciones son
+                                        //  glifos y caen por el mismo sitio.
+                                        imagen: opcion.modelData.imagen || ""
+                                        glifo: opcion.modelData.glifo
                                         color: opcion.activa ? Theme.ink : Theme.dim
-                                        font.pixelSize: 15
+                                        tamano: 15
                                         Layout.preferredWidth: 18
                                         Layout.alignment: Qt.AlignVCenter
                                     }

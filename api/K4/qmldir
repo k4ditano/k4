@@ -18,6 +18,7 @@ Etiqueta 1.0 Etiqueta.qml
 #  la barra sin dibujarla a mano. Ninguna importa core/ — están escritas contra
 #  K4.Tema, que es la regla que vigila tools/api.py.
 Glifo 1.0 Glifo.qml
+IconoPlugin 1.0 IconoPlugin.qml
 Interruptor 1.0 Interruptor.qml
 Deslizador 1.0 Deslizador.qml
 Baldosa 1.0 Baldosa.qml

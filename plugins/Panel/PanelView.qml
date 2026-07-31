@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import K4 as K4
 import "../../core"
 import "../../services"
 import "../../widgets"
@@ -480,10 +481,10 @@ FadeIn {
                         anchors.centerIn: parent
                         spacing: 7
 
-                        IconGlyph {
-                            text: String.fromCodePoint(acceso.modelData.glifo)
-                            color: Theme.ink
-                            font.pixelSize: 15
+                        K4.IconoPlugin {
+                            imagen: acceso.modelData.imagen
+                            glifo: acceso.modelData.glifo
+                            tamano: 15
                         }
 
                         IslandLabel {

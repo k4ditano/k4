@@ -400,7 +400,11 @@ Singleton {
                      error: m.cargable === false ? "fijo"
                           : (error.length > 0 ? "recargable" : ""),
                      //  Su icono si lo declara, y si no el genérico: pieza de
-                     //  puzle para los de fuera, enchufe para los de casa.
+                     //  puzle para los de fuera, enchufe para los de casa. Un
+                     //  plugin puede traer su propia imagen en vez de un
+                     //  códice; van en campos distintos para que la vista no
+                     //  tenga que adivinar de qué clase es.
+                     imagen: m.iconoFichero ? "file://" + m.iconoFichero : "",
                      glifo: m.icono ? parseInt(m.icono, 16)
                           : (m.externo ? 0xF0431 : 0xF06A5) }
         })
@@ -415,6 +419,7 @@ Singleton {
         .map(function (m) {
             return { id: m.id,
                      nombre: m.title || m.id,
+                     imagen: m.iconoFichero ? "file://" + m.iconoFichero : "",
                      glifo: m.icono ? parseInt(m.icono, 16) : 0xF0431,
                      externo: m.externo === true,
                      habilitado: estaHabilitado(m.id),

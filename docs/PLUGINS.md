@@ -69,13 +69,26 @@ actualizar uno encendido, `k4 pluginReload <id>` cambia el código que corre
   carpeta**. Si choca con un plugin de la barra, pierde el tuyo.
 - `entry`: el fichero que hereda de `K4.Plugin`, dentro de la propia carpeta.
 - `host`: la versión mínima de barra que necesitas (`>=x.y.z`).
-- `icono`: tu icono, un códice de la Nerd Font en texto (`"0xF011A"`).
-  Búscalo con `python3 tools/glifos.py <palabra>`. Sale en Ajustes y en el
-  centro de aplicaciones.
+- `icono`: tu icono, de una de estas dos clases:
+  - **un códice de la Nerd Font** en texto, `"0xF011A"` — búscalo con
+    `python3 tools/glifos.py <palabra>`. Hereda el color del tema, así que
+    queda como el resto de la barra y se apaga y se tiñe con ella.
+  - **tu propia imagen**, `"icono.png"`: un fichero PNG o SVG **de tu
+    carpeta** (sin rutas: tu icono es tuyo). El PNG tiene que ser de al menos
+    **64×64** —por debajo se ve borroso justo donde más se mira, y un icono
+    pixelado hace que un plugin bueno parezca malo— y pesar menos de 1 MB. El
+    SVG no lleva mínimo, que para eso escala.
+
+  Se valida al instalar: un icono que no existe, demasiado pequeño o en un
+  formato raro es un error de instalación y no un cuadradito vacío en el
+  centro de aplicaciones. Sale en Ajustes, en el centro de aplicaciones y en
+  los accesos directos del centro de control.
 - `aplicacion`: `true` si lo tuyo es algo que se **abre y se usa** —un juego,
   una herramienta— y no un indicador o un servicio. Con eso apareces en el
   centro de aplicaciones (SUPER+SHIFT+Space) y te pueden anclar a la franja
-  del centro de control.
+  del centro de control. Además apareces al escribir en el lanzador
+  (SUPER+Space), que sigue siendo otro cajón —el de las aplicaciones del
+  escritorio— pero encuentra las dos cosas.
 - `permisos`: qué capacidades usas — ver más abajo. Vacío si solo pintas.
 
 ## 2 · El plugin y la vista

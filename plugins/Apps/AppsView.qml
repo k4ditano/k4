@@ -169,10 +169,16 @@ FadeIn {
                             anchors.centerIn: parent
                             spacing: 6
 
-                            IconGlyph {
+                            K4.IconoPlugin {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                text: String.fromCodePoint(celda.modelData.glifo)
-                                font.pixelSize: 30
+                                imagen: celda.modelData.imagen
+                                glifo: celda.modelData.glifo
+                                tamano: 30
+                                //  Apagada en gris, rota en rojo. Una imagen
+                                //  propia no se tiñe —es del autor— pero sí
+                                //  se apaga, que si no una apagada se nota
+                                //  menos que las demás y desconcierta.
+                                opacity: celda.modelData.habilitado ? 1 : 0.35
                                 color: celda.modelData.habilitado
                                     ? (celda.modelData.disponible ? Theme.ink
                                                                   : Theme.red)
