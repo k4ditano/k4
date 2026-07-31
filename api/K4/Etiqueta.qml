@@ -1,11 +1,13 @@
 //  Texto con los defaults de la barra: blanco, Adwaita, 12px.
 //
-//  Es el `IslandLabel` de core/, reexportado para que un plugin de fuera
-//  escriba texto que se vea de la casa sin copiar tres propiedades en cada
-//  sitio — y sin poder importar core/, que no es superficie pública.
-//
-//      K4.Etiqueta { text: "hola"; font.pixelSize: 14 }
+//  El equivalente público del IslandLabel de core/, escrito aparte y no
+//  reexportado: un fichero de este módulo no puede importar core/ por ruta
+//  relativa — ver Puente.qml para el porqué, que costó una tarde.
 
-import "../../core" as Nucleo
+import QtQuick
 
-Nucleo.IslandLabel {}
+Text {
+    color: Tema.tinta
+    font.family: Tema.fuente
+    font.pixelSize: 12
+}

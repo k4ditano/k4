@@ -116,19 +116,23 @@ Singleton {
             registrarError(m.id, "sin entry en el catálogo")
             return null
         }
-        //  Los de casa, resueltos CONTRA ESTE FICHERO y no con file://, y esto
-        //  es de las cosas que solo se ven al pisarlas: Quickshell carga el
-        //  shell con su propio esquema de URL, y un singleton de services/
-        //  cargado por dos URLs distintas —la del esquema y file://— son DOS
-        //  singletons. Con file:// cada plugin traía su propia copia de todos
-        //  los servicios: dos PluginManager, dos arranques, cada IPC registrado
-        //  dos veces. `Qt.resolvedUrl` conserva el esquema del shell y todo
-        //  vuelve a ser uno.
+        //  TODO se resuelve contra este fichero, nunca con file://, y es de
+        //  las cosas que solo se ven al pisarlas: Quickshell sirve el shell
+        //  con su propio esquema de URL, y un singleton cargado por dos URLs
+        //  distintas son DOS singletons. Con file:// cada plugin traía su
+        //  propia copia de la barra entera: dos PluginManager, dos oleadas de
+        //  creación, cada target de IPC registrado dos veces y los toggles
+        //  contestando desde el cadáver equivocado.
         //
-        //  Los de fuera sí van con file://: no importan services/ —no tienen
-        //  ruta— así que no hay singleton que duplicar.
-        const url = ruta.indexOf("/") === 0
-            ? "file://" + ruta
+        //  Los de usuario entran por el enlace `externos/` —que apunta a
+        //  ~/.config/k4/plugins y lo mantiene tools/plugins.py— justamente
+        //  para poder resolverse con el mismo esquema que todo lo demás.
+        //  Y una recarga llega ya con su ruta hecha —`recargas/<id>-<n>/…`,
+        //  la carpeta nueva que da plugins.py— así que se resuelve tal cual.
+        const url = m._recarga ? Qt.resolvedUrl("../" + ruta)
+            : ruta.indexOf("/") === 0
+            ? Qt.resolvedUrl("../externos/" + m.id + "/"
+                             + ruta.split("/").pop())
             : Qt.resolvedUrl("../plugins/" + ruta)
 
         //  `Qt.createComponent` es síncrono con ficheros locales, y el error
@@ -193,6 +197,23 @@ Singleton {
         if (typeof obj.close === "function") {
             try { obj.close() } catch (e) { }
         }
+
+        //  Y APAGAR sus IpcHandler, que es lo que desregistra sus targets.
+        //
+        //  Destruir no desregistra —medido: ni tres segundos después—, así que
+        //  sin esto el target quedaba secuestrado por el cadáver: el plugin
+        //  recreado registraba en vano («another handler is registered») y
+        //  contestaba «Function not found» desde el muerto. Se buscan entre
+        //  los hijos declarados los que tengan target y enabled, que son los
+        //  K4.Ipc. `Component.onDestruction` dentro del propio Ipc habría sido
+        //  más limpio, pero a un IpcHandler no se le puede adjuntar.
+        const hijos = obj.services || []
+        for (let i = 0; i < hijos.length; ++i) {
+            const h = hijos[i]
+            if (h && ("target" in h) && ("enabled" in h)) {
+                try { h.enabled = false } catch (e) { }
+            }
+        }
         const d = Object.assign({}, _porId)
         delete d[id]
         _porId = d
@@ -205,26 +226,79 @@ Singleton {
     //  Volver a intentar un plugin que falló: es lo que hace útil el botón de
     //  «reintentar» de Ajustes. Solo para los que no están cargados; recargar
     //  uno vivo con procesos y vistas es otra historia y queda fuera.
-    property int _rondaRecarga: 0
+    //  Recargar un plugin VIVO: destruirlo y volver a crearlo del disco.
+    //
+    //  Es la herramienta de desarrollo: editas el QML de tu plugin, lanzas
+    //  `k4 pluginReload <id>` y ves el cambio sin reiniciar la barra. Vale
+    //  igual para los de casa que para los de fuera.
+    //
+    //  Si la versión nueva no compila, el plugin queda como roto —con su error
+    //  y su reintentar en Ajustes— pero la barra sigue: es exactamente el
+    //  mismo camino que un fallo en el arranque. Lo que había ya se destruyó y
+    //  no se finge lo contrario.
+    //  Recargar un plugin VIVO, del disco, sin reiniciar la barra.
+    //
+    //  Es la herramienta de desarrollo: editas tu plugin, `k4 pluginReload
+    //  <id>`, y ves el cambio. Vale para los de casa y para los de fuera.
+    //
+    //  Si la versión nueva no compila, el plugin queda como roto —con su error
+    //  y su reintentar en Ajustes— y la barra sigue: el mismo camino que un
+    //  fallo de arranque. Lo que había ya se destruyó y no se finge otra cosa.
+    function recargar(id) {
+        if (!estaHabilitado(id))
+            return
+        const m = metadata(id)
+        if (!m || m.cargable === false)
+            return
+        if (_porId[id])
+            _destruir(id)
+        _publicar()
+        //  Y la creación DESPUÉS, en dos tiempos y por dos motivos distintos:
+        //
+        //  1. `destroy()` es diferido —el objeto muere cuando el control
+        //     vuelve al bucle de eventos— y crear en la misma pasada dejaba el
+        //     IPC viejo aún registrado: el nuevo se descartaba con «another
+        //     handler is registered» y el plugin quedaba vivo pero SORDO.
+        //  2. Hay que pedirle a plugins.py una carpeta nueva. Ponerle `?r1` a
+        //     la entrada recarga la entrada y solo la entrada: los hermanos
+        //     —la vista, que es justo lo que el autor acaba de editar— se
+        //     resuelven contra la misma carpeta y salen de la caché. Se veía
+        //     recrear el plugin... con el contenido de antes.
+        _pendienteRecarga = id
+        procesoRecarga.running = true
+    }
 
+    property string _pendienteRecarga: ""
+
+    property var procesoRecarga: Process {
+        command: ["python3", Quickshell.shellPath("tools/plugins.py"),
+                  "--recargar", manager._pendienteRecarga]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const id = manager._pendienteRecarga
+                const ruta = text.trim()
+                manager._pendienteRecarga = ""
+                if (!id || !ruta)
+                    return
+                const m = manager.metadata(id)
+                if (!m || !manager.estaHabilitado(id))
+                    return
+                manager.limpiarError(id)
+                manager._crear(Object.assign({}, m, { entry: ruta,
+                                                      _recarga: true }))
+                manager._repartir()
+                manager._publicar()
+            }
+        }
+    }
+
+    //  Reintentar es recargar uno que no llegó a existir. Mismo camino: hace
+    //  falta la carpeta nueva igual, porque lo que el autor acaba de arreglar
+    //  puede ser la vista y no la entrada.
     function reintentar(id) {
         if (_porId[id] || !estaHabilitado(id))
             return
-        const m = metadata(id)
-        if (!m)
-            return
-        limpiarError(id)
-        //  Con la caché esquivada: Qt cachea los componentes por URL, así que
-        //  reintentar tras arreglar el fichero devolvía el componente ROTO de
-        //  antes. Una query distinta en cada ronda es otra URL y obliga a
-        //  releer del disco. Solo aquí — en el arranque normal la caché es
-        //  exactamente lo que se quiere.
-        _rondaRecarga += 1
-        if (_crear(Object.assign({}, m,
-                                 { entry: m.entry + "?r" + _rondaRecarga }))) {
-            _repartir()
-            _publicar()
-        }
+        recargar(id)
     }
 
     onCambiado: function (id, valor) {

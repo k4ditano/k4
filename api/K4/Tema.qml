@@ -2,37 +2,38 @@ pragma Singleton
 
 //  La paleta y las fuentes de la barra, para plugins de fuera.
 //
-//  Un plugin de casa llega a `Theme` importando core/ por ruta relativa; uno
-//  instalado en ~/.config/k4/plugins no tiene ese camino, y no debe tenerlo:
-//  su superficie es el módulo K4 y nada más. Esto reexporta el MISMO objeto
-//  —no una copia—, así que si algún día el tema es configurable, los plugins
-//  de fuera lo siguen sin enterarse.
+//  Reexporta el MISMO objeto del tema —no una copia— a través del Puente: si
+//  algún día el tema es configurable, los plugins de fuera lo siguen sin
+//  enterarse. Los fallbacks existen para que la API cargue sola en pruebas;
+//  con la barra delante nunca se usan.
 //
 //      Rectangle { color: K4.Tema.superficie }
 //      Text { color: K4.Tema.tinta; font.family: K4.Tema.fuente }
 
 import QtQuick
-import "../../core" as Nucleo
 
 QtObject {
+    readonly property var _t: Puente.tema
+
     //  Colores, con los nombres en el idioma de la API.
-    readonly property color fondo: Nucleo.Theme.islandBg
-    readonly property color tinta: Nucleo.Theme.ink
-    readonly property color apagado: Nucleo.Theme.muted
-    readonly property color tenue: Nucleo.Theme.dim
-    readonly property color superficie: Nucleo.Theme.surface
-    readonly property color superficieAlta: Nucleo.Theme.surfaceHi
-    readonly property color carril: Nucleo.Theme.track
-    readonly property color verde: Nucleo.Theme.green
-    readonly property color rojo: Nucleo.Theme.red
-    readonly property color azul: Nucleo.Theme.blue
-    readonly property color amarillo: Nucleo.Theme.yellow
+    readonly property color fondo: _t ? _t.islandBg : "#000000"
+    readonly property color tinta: _t ? _t.ink : "#ffffff"
+    readonly property color apagado: _t ? _t.muted : "#8e8e93"
+    readonly property color tenue: _t ? _t.dim : "#48484a"
+    readonly property color superficie: _t ? _t.surface : "#1c1c1e"
+    readonly property color superficieAlta: _t ? _t.surfaceHi : "#2c2c2e"
+    readonly property color carril: _t ? _t.track : "#3a3a3c"
+    readonly property color verde: _t ? _t.green : "#30d158"
+    readonly property color rojo: _t ? _t.red : "#ff453a"
+    readonly property color azul: _t ? _t.blue : "#0a84ff"
+    readonly property color amarillo: _t ? _t.yellow : "#ffd60a"
 
     //  Tipografías.
-    readonly property string fuente: Nucleo.Theme.uiFont
-    readonly property string fuenteIconos: Nucleo.Theme.iconFont
+    readonly property string fuente: _t ? _t.uiFont : "Adwaita Sans"
+    readonly property string fuenteIconos: _t ? _t.iconFont
+                                              : "MesloLGS Nerd Font"
 
     //  Geometría que a un plugin le puede hacer falta respetar.
-    readonly property int altoPlegado: Nucleo.Theme.baseHeight
-    readonly property int altoMaximo: Nucleo.Theme.maxIslandHeight
+    readonly property int altoPlegado: _t ? _t.baseHeight : 34
+    readonly property int altoMaximo: _t ? _t.maxIslandHeight : 880
 }

@@ -9,3 +9,5 @@
 
 # Los .pyc de tools/, que aparecen al importar editar.py desde las pruebas.
 tools/__pycache__/
+externos
+recargas

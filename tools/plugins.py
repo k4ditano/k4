@@ -126,7 +126,7 @@ def cargar_usuario(ids_repo, version_host):
     if not DE_USUARIO.is_dir():
         return salida
     for d in sorted(DE_USUARIO.iterdir()):
-        if not d.is_dir():
+        if not d.is_dir() or d.name.startswith("."):
             continue
         item = {"id": d.name, "title": d.name, "externo": True,
                 "enabledByDefault": False, "cargable": True,
@@ -191,6 +191,25 @@ def cargar_usuario(ids_repo, version_host):
             mal("usa sin declarar: " + ", ".join(sorted(sin_declarar)))
             continue
 
+        #  El qmldir, generado si falta o si envejeció: con el esquema de
+        #  URLs de Quickshell los tipos hermanos no se resuelven solos, y
+        #  pedirle a cada autor que mantenga la lista a mano es pedir un
+        #  «X is not a type» al primer fichero nuevo.
+        reales = sorted(f.stem for f in d.glob("*.qml"))
+        qmldir = d / "qmldir"
+        declarados = (set(re.findall(r"^(\w+) 1\.0", qmldir.read_text(),
+                                     re.MULTILINE))
+                      if qmldir.is_file() else set())
+        if set(reales) - declarados:
+            try:
+                qmldir.write_text(
+                    "#  Generado por k4 (tools/plugins.py): los tipos de esta\n"
+                    "#  carpeta, para que se resuelvan bajo el esquema qs:.\n\n"
+                    + "".join(f"{n} 1.0 {n}.qml\n" for n in reales))
+            except OSError:
+                mal("no puedo escribir el qmldir")
+                continue
+
         #  Cargable. La entrada sale ABSOLUTA: el gestor no tiene por qué
         #  saber dónde viven los de usuario.
         item["entry"] = str(ruta)
@@ -198,7 +217,82 @@ def cargar_usuario(ids_repo, version_host):
     return salida
 
 
+def enlazar_externos():
+    """El puente por el que la barra carga los de usuario: un enlace dentro
+    del árbol del shell.
+
+    No es un capricho: Quickshell sirve su configuración bajo un esquema de
+    URL propio, y un fichero QML cargado por file:// trae SUS PROPIAS copias
+    de todos los singletons — dos PluginManager, dos servicios de todo, cada
+    target de IPC registrado dos veces. Con el enlace, los de usuario viven
+    (a ojos del motor) dentro del árbol y comparten esquema y singletons con
+    el resto. Se paga con un symlink; la alternativa se pagaba con duplicar
+    la barra entera.
+    """
+    DE_USUARIO.mkdir(parents=True, exist_ok=True)
+    enlace = RAIZ / "externos"
+    try:
+        if enlace.is_symlink():
+            if enlace.readlink() != DE_USUARIO:
+                enlace.unlink()
+                enlace.symlink_to(DE_USUARIO)
+        elif not enlace.exists():
+            enlace.symlink_to(DE_USUARIO)
+    except OSError:
+        pass
+
+
+def recargar(ident):
+    """Una carpeta nueva para una recarga en caliente.
+
+    El truco de ponerle `?r1` a la entrada recarga la entrada... y solo la
+    entrada. Los ficheros hermanos —la vista, casi siempre lo que el autor
+    acaba de editar— se resuelven contra la MISMA carpeta y salen calentitos
+    de la caché: el plugin se recreaba enseñando la versión anterior. Muy
+    difícil de ver, porque el plugin sí se recreaba.
+
+    Así que se recarga la carpeta entera: un enlace nuevo en `recargas/` es
+    una URL nueva para TODO lo que hay dentro. Cuesta un symlink por recarga
+    y se limpian los anteriores del mismo plugin.
+    """
+    enlazar_externos()
+    datos, plugins = leer_catalogo()
+    ids_repo = {item.get("id") for item in plugins}
+    todos = list(plugins) + cargar_usuario(ids_repo,
+                                           str(datos.get("version", "1.0.0")))
+    for item in todos:
+        if item.get("id") != ident:
+            continue
+        if not item.get("cargable", True):
+            return 1
+        entrada = str(item.get("entry", ""))
+        origen = (pathlib.Path(entrada) if entrada.startswith("/")
+                  else RAIZ / "plugins" / entrada)
+        carpeta = origen.parent
+        destino = RAIZ / "recargas"
+        destino.mkdir(exist_ok=True)
+        ronda = 1
+        for viejo in destino.glob(ident + "-*"):
+            try:
+                ronda = max(ronda, int(viejo.name.rsplit("-", 1)[1]) + 1)
+                viejo.unlink()
+            except (ValueError, OSError):
+                pass
+        enlace = destino / f"{ident}-{ronda}"
+        enlace.symlink_to(carpeta)
+        print(f"recargas/{enlace.name}/{origen.name}")
+        return 0
+    return 1
+
+
 def listar():
+    enlazar_externos()
+    #  Las carpetas de recarga son de la sesión anterior: al arrancar sobran.
+    for viejo in (RAIZ / "recargas").glob("*"):
+        try:
+            viejo.unlink()
+        except OSError:
+            pass
     datos, plugins = leer_catalogo()
     version_host = str(datos.get("version", "1.0.0"))
     ids_repo = {item.get("id") for item in plugins}
@@ -234,4 +328,7 @@ def main():
 
 
 if __name__ == "__main__":
+    if "--recargar" in sys.argv:
+        i = sys.argv.index("--recargar")
+        sys.exit(recargar(sys.argv[i + 1]) if i + 1 < len(sys.argv) else 2)
     sys.exit(listar() if "--listar" in sys.argv else main())

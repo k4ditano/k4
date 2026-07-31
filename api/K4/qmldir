@@ -10,6 +10,7 @@
 module K4
 
 Plugin 1.0 Plugin.qml
+singleton Puente 1.0 Puente.qml
 singleton Tema 1.0 Tema.qml
 Etiqueta 1.0 Etiqueta.qml
 singleton Idioma 1.0 Idioma.qml

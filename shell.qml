@@ -9,6 +9,7 @@ import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import K4 as K4
 import "core"
 import "services"
 
@@ -66,6 +67,14 @@ Scope {
     // Los singletons de QML son perezosos: sin tocarlos no arrancan sus
     // procesos ni registran nada (el servidor de notificaciones, por ejemplo).
     Component.onCompleted: {
+        //  El puente de la API, lo PRIMERO: los ficheros del módulo K4 no
+        //  pueden importar la barra por ruta relativa —cargarían una segunda
+        //  copia entera de services/, ver api/K4/Puente.qml— así que el host
+        //  les inyecta aquí lo que necesitan.
+        K4.Puente.tema = Theme
+        K4.Puente.idioma = Idioma
+        K4.Puente.indicadores = Indicadores
+
         void Audio.volume
         void Wifi.name
         void Bt.adapter
@@ -119,6 +128,7 @@ Scope {
         function pluginDisable(id: string): void { PluginManager.deshabilitar(id) }
         function pluginToggle(id: string): void { PluginManager.alternar(id) }
         function pluginRetry(id: string): void { PluginManager.reintentar(id) }
+        function pluginReload(id: string): void { PluginManager.recargar(id) }
         function pluginStatus(): void {
             console.log(JSON.stringify(PluginManager.catalogo.map(function (m) {
                 return { id: m.id, enabled: PluginManager.estaHabilitado(m.id),

@@ -27,6 +27,24 @@ import pathlib, re, sys
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 
+
+def revisar_api():
+    """La regla inversa: un fichero de api/K4 no importa la barra.
+
+    El módulo K4 se resuelve por file:// para todo el mundo, así que un import
+    relativo desde dentro carga una SEGUNDA copia de services/ y core/ — dos
+    PluginManager, dos oleadas de plugins, cada IPC registrado dos veces. Lo
+    que necesite la API se inyecta por el Puente (api/K4/Puente.qml).
+    """
+    fallos = []
+    for f in sorted((RAIZ / "api" / "K4").glob("*.qml")):
+        for n, linea in enumerate(f.read_text().split("\n"), 1):
+            limpia = re.sub(r"//.*$", "", linea)
+            if re.search(r'import\s+"\.\./', limpia):
+                fallos.append("api/K4/%s:%d importa la barra por ruta "
+                              "relativa: %s" % (f.name, n, limpia.strip()))
+    return fallos
+
 #  Lo que un plugin puede importar.
 #
 #  La línea se traza donde de verdad está: **Qt es portable, Quickshell no**.
@@ -84,6 +102,18 @@ def main():
     todos = []
     for f in ficheros:
         todos.extend(revisar(f))
+
+    #  La regla inversa, que se paga carísima: ver revisar_api().
+    dobles = revisar_api()
+    if dobles:
+        print("La API importa la barra por ruta relativa:\n")
+        for x in dobles:
+            print("  " + x)
+        print("\nEso carga una SEGUNDA copia de services/ y core/: dos")
+        print("PluginManager, los plugins creados dos veces y cada IPC")
+        print("registrado por duplicado. Lo que necesite la API se inyecta")
+        print("desde shell.qml por api/K4/Puente.qml.")
+        return 1
 
     if not todos:
         print("%d ficheros revisados, ninguno se salta la API." % len(ficheros))

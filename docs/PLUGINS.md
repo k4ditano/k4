@@ -143,6 +143,22 @@ Instalar un plugin es confiar en su autor.
 4. `python3 tools/plugins.py` valida tu manifiesto y tus permisos sin
    arrancar nada.
 
+### Mientras lo escribes
+
+```sh
+quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4 pluginReload hola
+```
+
+Destruye tu plugin y lo vuelve a crear del disco: editas, recargas, miras. No
+reinicia la barra ni toca a los demás. Recarga la carpeta ENTERA —entrada y
+vistas—, así que vale igual para un retoque en la vista. Si la versión nueva
+no compila, tu plugin queda en error con su motivo y el «reintentar» de
+Ajustes; el resto de la barra ni se entera.
+
+Un aviso honesto: recargar destruye tu objeto. Lo que tenga estado en memoria
+y no hayas guardado con `K4.Guardado`, se pierde — que para desarrollar suele
+ser justo lo que quieres.
+
 ## Plugins del repositorio
 
 Para contribuir un plugin a la propia barra el camino es el mismo contrato,
