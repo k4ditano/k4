@@ -448,85 +448,19 @@ FadeIn {
 
         // ── accesos directos ──────────────────────────────────────
         //
-        //  Ya no es una lista a fuego de cinco cosas: son las aplicaciones que
-        //  el usuario haya puesto en `Settings.accesosDirectos`, con su icono
-        //  y su nombre sacados del catálogo. Añadir o quitar se hace con la
-        //  chincheta del centro de aplicaciones, que es donde se ven todas.
-        //
-        //  Y al final, siempre, el botón que abre el centro entero: la franja
-        //  es para las cuatro de siempre, y para el resto está el cajón.
-        RowLayout {
+        //  Los que el usuario haya anclado, con su icono y su nombre sacados
+        //  del catálogo, y al final el botón que abre el cajón entero. Se
+        //  anclan con la chincheta del centro de aplicaciones y se reordenan
+        //  arrastrándolos aquí mismo, que es donde se ven.
+        AccesosDirectos {
             Layout.fillWidth: true
             Layout.fillHeight: false
-            Layout.preferredHeight: 40
+            Layout.preferredHeight: altura
             visible: view.plugin.tab === "controls"
-            spacing: 10
 
-            Repeater {
-                //  Solo las que existen y están encendidas: un acceso directo
-                //  a algo apagado sería un botón que no hace nada.
-                model: PluginManager.aplicaciones.filter(function (a) {
-                    return Settings.esAccesoDirecto(a.id) && a.habilitado
-                })
-
-                delegate: IslandTile {
-                    id: acceso
-                    required property var modelData
-
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    radius: 12
-
-                    RowLayout {
-                        anchors.centerIn: parent
-                        spacing: 7
-
-                        K4.IconoPlugin {
-                            imagen: acceso.modelData.imagen
-                            glifo: acceso.modelData.glifo
-                            tamano: 15
-                        }
-
-                        IslandLabel {
-                            text: acceso.modelData.nombre
-                            font.pixelSize: 11
-                            font.weight: Font.Medium
-                        }
-                    }
-
-                    onPulsada: {
-                        view.plugin.close()
-                        PluginManager.abrirAplicacion(acceso.modelData.id)
-                    }
-                }
-            }
-
-            IslandTile {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                radius: 12
-
-                RowLayout {
-                    anchors.centerIn: parent
-                    spacing: 7
-
-                    IconGlyph {
-                        text: String.fromCodePoint(0xF02C1)   // md-grid
-                        color: Theme.muted
-                        font.pixelSize: 15
-                    }
-
-                    IslandLabel {
-                        text: Idioma.t("Todas")
-                        font.pixelSize: 11
-                        font.weight: Font.Medium
-                    }
-                }
-
-                onPulsada: {
-                    view.plugin.close()
-                    PluginManager.abrirAplicacion("apps")
-                }
+            onAbrir: function (id) {
+                view.plugin.close()
+                PluginManager.abrirAplicacion(id)
             }
         }
 

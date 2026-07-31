@@ -86,7 +86,7 @@ actualizar uno encendido, `k4 pluginReload <id>` cambia el código que corre
 - `aplicacion`: `true` si lo tuyo es algo que se **abre y se usa** —un juego,
   una herramienta— y no un indicador o un servicio. Con eso apareces en el
   centro de aplicaciones (SUPER+SHIFT+Space) y te pueden anclar a la franja
-  del centro de control. Además apareces al escribir en el lanzador
+  del centro de control —donde además se reordenan arrastrándolos—. Además apareces al escribir en el lanzador
   (SUPER+Space), que sigue siendo otro cajón —el de las aplicaciones del
   escritorio— pero encuentra las dos cosas.
 - `permisos`: qué capacidades usas — ver más abajo. Vacío si solo pintas.
