@@ -134,7 +134,8 @@ def validar_repo(plugins, fallos):
 #  un capricho: un icono pixelado hace que un plugin bueno parezca malo.
 #  SVG no lleva mínimo — escala, para eso está.
 ICONO_MINIMO = 64
-ICONO_MAXIMO_BYTES = 1024 * 1024
+ICONO_MAXIMO_MB = 1
+ICONO_MAXIMO_BYTES = ICONO_MAXIMO_MB * 1024 * 1024
 
 
 def medida_png(ruta):

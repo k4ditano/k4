@@ -15,16 +15,22 @@ Esto comprueba lo que se puede comprobar de verdad:
   · los permisos de la guía y los de tools/plugins.py son los mismos;
   · cada orden de IPC citada existe en algún IpcHandler;
   · cada opción `tools/X.py --opcion` la entiende ese guion;
-  · cada fichero del repositorio que se cita existe.
+  · cada fichero del repositorio que se cita existe;
+  · cada ejemplo en QML de la guía COMPILA, con qmllint y la API de verdad;
+  · los números que la guía promete —64 px de icono, 1 MB, el alto máximo—
+    son los que el código usa;
+  · cada atajo que se cita existe en hypr/k4.lua.
 
 Lo que NO comprueba —y conviene decirlo en vez de dar una falsa sensación de
-red— es si una frase describe bien lo que hace el código. Eso solo lo caza
-leerlo.
+red— es si un párrafo en prosa describe bien lo que hace el código. Un ejemplo
+que compila puede seguir estando mal explicado. Eso solo lo caza leerlo.
 """
 from __future__ import annotations
 
 import pathlib
 import re
+import shutil
+import subprocess
 import sys
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
@@ -188,6 +194,110 @@ def revisar_rutas(doc, texto):
     return fallos
 
 
+#  Los números que la guía promete y de dónde salen de verdad. Un número en
+#  prosa es de lo que más envejece: se cambia la constante y la frase se queda
+#  con el valor viejo, tan convincente como el día que era cierto.
+#  Los números que la guía promete y de dónde salen de verdad.
+#
+#  Un número en prosa es de lo que más envejece: se cambia la constante y la
+#  frase se queda con el valor viejo, tan convincente como el día que era
+#  cierto. Cada entrada dice cómo se escribe en la guía y de dónde sale en el
+#  código, y se comparan los dos valores.
+#
+#  Ojo con la dirección: mi primer intento comprobaba «si la guía dice 64 y el
+#  código dice otra cosa», y eso NO caza el caso que importa —la guía diciendo
+#  128 cuando el código dice 64—, porque entonces el 64 ya no aparece y no
+#  compara nada. Se saca el número DE LA GUÍA y se compara con el del código.
+NUMEROS = [
+    (r"\*\*(\d+)×\d+\*\*", "tools/plugins.py", r"ICONO_MINIMO\s*=\s*(\d+)",
+     "el mínimo de un icono PNG"),
+    (r"menos de (\d+) MB", "tools/plugins.py",
+     r"ICONO_MAXIMO_MB\s*=\s*(\d+)", "el peso máximo de un icono"),
+    (r"\((\d+) hoy\)", "core/Theme.qml", r"maxIslandHeight:\s*(\d+)",
+     "el alto máximo de la island"),
+]
+
+
+def revisar_numeros(doc, texto):
+    fallos = []
+    for en_guia, fuente, en_codigo, que in NUMEROS:
+        dicho = re.search(en_guia, texto)
+        if not dicho:
+            continue
+        m = re.search(en_codigo, (RAIZ / fuente).read_text())
+        if not m:
+            fallos.append(f"{doc}: no encuentro {que} en {fuente}")
+            continue
+        if dicho.group(1) != m.group(1):
+            fallos.append(f"{doc}: dice {dicho.group(1)} para {que} y "
+                          f"{fuente} usa {m.group(1)}")
+    return fallos
+
+
+def revisar_atajos(doc, texto):
+    """Los atajos que la guía promete tienen que estar en hypr/k4.lua."""
+    lua = (RAIZ / "hypr" / "k4.lua").read_text()
+    fallos = []
+    for combo in set(re.findall(r"\bSUPER\+((?:SHIFT\+|ALT\+|CONTROL\+)*\w+)",
+                                texto)):
+        partes = combo.split("+")
+        tecla = partes[-1]
+        mods = partes[:-1]
+        #  En el lua se escribe `mod .. " + SHIFT + Space"`.
+        esperado = " + ".join(mods + [tecla])
+        if not re.search(r'mod \.\. " \+ %s"' % re.escape(esperado), lua):
+            fallos.append(f"{doc}: promete el atajo SUPER+{combo} y "
+                          f"hypr/k4.lua no lo ata")
+    return fallos
+
+
+#  qmllint se muere EN SILENCIO —sale con 255 y sin una palabra— en cuanto ve
+#  una función con tipo de retorno, `function toggle(): void`. Y esas no son
+#  opcionales: el IPC de Quickshell las exige. Así que se le quitan antes de
+#  pasárselo. Costó un rato descubrirlo porque no dice nada.
+RE_TIPADA = re.compile(r"function (\w+)\(([^)]*)\):\s*\w+")
+
+
+def revisar_ejemplos(doc, texto):
+    """Que los ejemplos en QML de la guía compilen de verdad."""
+    if not shutil.which("qmllint"):
+        return []
+    fallos = []
+    bloques = re.findall(r"```qml\n(.*?)```", texto, re.S)
+    for i, bloque in enumerate(bloques, 1):
+        cuerpo = RE_TIPADA.sub(r"function \1(\2)", bloque)
+        sin_comentarios = "\n".join(
+            l for l in cuerpo.split("\n") if not l.strip().startswith("//"))
+        primera = next((l for l in sin_comentarios.split("\n") if l.strip()), "")
+        #  Solo los que son un objeto completo. Un trozo suelto de propiedades
+        #  no se puede compilar solo y envolverlo sería inventarse contexto.
+        if not re.match(r"^[A-Z]\w*(\.\w+)?\s*\{", primera.strip()):
+            continue
+        #  Ni los que llevan puntos suspensivos: `{ ... }` es «aquí va lo
+        #  tuyo», no código. Exigirle que compile sería exigirle que deje de
+        #  ser un ejemplo.
+        if re.search(r"(^|\s)\.\.\.($|\s)", sin_comentarios):
+            continue
+        #  Ni los que enseñan dos objetos sueltos para comparar: eso no es un
+        #  fichero.
+        if len(re.findall(r"^[A-Z]\w*(?:\.\w+)?\s*\{", sin_comentarios,
+                          re.M)) > 1:
+            continue
+        if "import " not in cuerpo:
+            cuerpo = "import QtQuick\nimport QtQuick.Layouts\nimport K4 as K4\n\n" + cuerpo
+        tmp = RAIZ / "tools" / ".guia_tmp.qml"
+        tmp.write_text(cuerpo)
+        r = subprocess.run(["qmllint", "-I", str(RAIZ / "api"), str(tmp)],
+                           capture_output=True, text=True)
+        tmp.unlink(missing_ok=True)
+        if r.returncode != 0:
+            aviso = (r.stdout + r.stderr).strip().split("\n")
+            aviso = next((l for l in aviso if l.strip()), "qmllint salió %d"
+                         % r.returncode)
+            fallos.append(f"{doc}: el ejemplo {i} no compila: {aviso[:120]}")
+    return fallos
+
+
 def main():
     fallos = []
     for doc in DOCUMENTOS:
@@ -201,6 +311,9 @@ def main():
         fallos += revisar_ipc(doc, texto)
         fallos += revisar_opciones(doc, texto)
         fallos += revisar_rutas(doc, texto)
+        fallos += revisar_numeros(doc, texto)
+        fallos += revisar_atajos(doc, texto)
+        fallos += revisar_ejemplos(doc, texto)
 
     if not fallos:
         print("%d documentos revisados, no le mienten al código."
