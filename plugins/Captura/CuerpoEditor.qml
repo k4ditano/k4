@@ -732,7 +732,7 @@ Item {
                                 spacing: 5
 
                                 IconGlyph {
-                                    text: String.fromCodePoint(0xF03EB) // md-crop
+                                    text: String.fromCodePoint(0xF019E) // md-crop
                                     color: Editor.recortandoCapa ? "#ffffff"
                                                                   : Theme.muted
                                     font.pixelSize: 12

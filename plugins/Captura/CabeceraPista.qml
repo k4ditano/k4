@@ -155,7 +155,7 @@ Rectangle {
 
         IconGlyph {
             visible: !cabecera.esVideo
-            text: String.fromCodePoint(0xF0400) // md-star
+            text: String.fromCodePoint(0xF04CE) // md-star
             color: cabecera.solo ? Theme.yellow : Theme.dim
             font.pixelSize: 10
             MouseArea {
