@@ -88,11 +88,23 @@ Singleton {
     })
 
     function arrancar() {
-        if (listo)
+        //  Hacen falta las dos patas: el estado del usuario —qué tiene apagado—
+        //  y el catálogo combinado. Llegan en asíncrono y en cualquier orden;
+        //  quien llega segundo dispara la creación.
+        if (listo || !cargado || !catalogoListo)
             return
-        for (let i = 0; i < catalogo.length; ++i)
-            if (estaHabilitado(catalogo[i].id))
-                _crear(catalogo[i])
+        for (let i = 0; i < catalogo.length; ++i) {
+            const m = catalogo[i]
+            //  Un plugin no cargable —manifiesto roto, versión incompatible,
+            //  permisos sin declarar— ni se intenta: su motivo ya viene del
+            //  listado y Ajustes lo enseña.
+            if (m.cargable === false) {
+                registrarError(m.id, m.motivo || "no cargable")
+                continue
+            }
+            if (estaHabilitado(m.id))
+                _crear(m)
+        }
         _repartir()
         _publicar()
         listo = true
@@ -304,29 +316,35 @@ Singleton {
             }
         }
         cargado = true
-        //  Y con el estado en la mano, los plugins. Arrancar desde aquí y no
-        //  desde shell.qml evita la carrera: el estado llega en asíncrono
-        //  —espera al mkdir— y crear antes de saberlo instanciaría plugins que
-        //  el usuario tiene apagados.
+        //  Y con el estado en la mano, los plugins — si el catálogo ya llegó.
+        //  Arrancar desde aquí y no desde shell.qml evita la carrera: el
+        //  estado espera al mkdir y el catálogo al listador, y crear antes de
+        //  tener los dos instanciaría plugins apagados o se perdería los de
+        //  usuario.
         arrancar()
     }
 
-    function cargarCatalogo() {
-        const bruto = catalogoFile.text()
-        if (!bruto || bruto.length === 0)
-            return
+    //  El catálogo lo emite `tools/plugins.py --listar`: los del repo más los
+    //  de ~/.config/k4/plugins, ya validados y con su veredicto. La validación
+    //  vive en UN sitio —python— y aquí solo se consume; un manifiesto roto
+    //  llega como `cargable: false` con su motivo, nunca como una barra que no
+    //  arranca.
+    property bool catalogoListo: false
+
+    function recibirCatalogo(bruto) {
         try {
             const d = JSON.parse(bruto)
-            if (!d.plugins || !Array.isArray(d.plugins))
-                return
-            catalogo = d.plugins.map(function (m) {
-                return Object.assign({}, m, {
-                    enabled: m.enabledByDefault !== false
+            if (d.plugins && Array.isArray(d.plugins) && d.plugins.length > 0)
+                catalogo = d.plugins.map(function (m) {
+                    return Object.assign({}, m, {
+                        enabled: m.enabledByDefault !== false
+                    })
                 })
-            })
         } catch (e) {
             // Se conserva el catálogo de emergencia embebido.
         }
+        catalogoListo = true
+        arrancar()
     }
 
     function guardar() {
@@ -341,11 +359,20 @@ Singleton {
         blockLoading: true
     }
 
-    FileView {
-        id: catalogoFile
-        path: manager.rutaCatalogo
-        blockLoading: true
-        onLoaded: manager.cargarCatalogo()
+    Process {
+        id: listador
+        command: ["python3", Quickshell.shellPath("tools/plugins.py"),
+                  "--listar"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: manager.recibirCatalogo(String(this.text))
+        }
+        //  Si python falla, el catálogo de emergencia embebido sigue ahí: la
+        //  barra arranca con los de casa y sin los de usuario.
+        onExited: function (codigo) {
+            if (codigo !== 0 && !manager.catalogoListo)
+                manager.recibirCatalogo("")
+        }
     }
 
     Process {

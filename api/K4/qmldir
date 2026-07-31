@@ -13,6 +13,7 @@ Plugin 1.0 Plugin.qml
 singleton Tema 1.0 Tema.qml
 Etiqueta 1.0 Etiqueta.qml
 singleton Idioma 1.0 Idioma.qml
+Guardado 1.0 Guardado.qml
 
 singleton Paths 1.0 Paths.qml
 singleton Pildora 1.0 Pildora.qml
