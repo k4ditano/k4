@@ -65,6 +65,10 @@ Singleton {
 
     // Cambia el valor de una opción que no es un interruptor.
     function poner(id, valor) {
+        if (String(id).indexOf("ext_") === 0) {
+            Enganches.ponerAjuste(id, valor)
+            return
+        }
         ajustes[id] = valor
         guardar()
     }
@@ -156,7 +160,10 @@ Singleton {
             grupo: Idioma.t("Plugins"),
             opciones: PluginManager.opcionesAjustes
         }
-    ]
+    //  Y al final, lo que aporten los plugins con K4.Ajustes. Van los
+    //  últimos a propósito: lo de la barra primero, y lo instalado después,
+    //  que es el orden en que la gente busca.
+    ].concat(Enganches.gruposAjustes)
 
     //  Las alternativas de cada opción de varias respuestas.
     //
@@ -198,6 +205,13 @@ Singleton {
             PluginManager.alternarAjuste(id)
             return
         }
+        //  Los de un plugin no se guardan aquí: los guarda él. Nosotros solo
+        //  le decimos que el usuario ha tocado, y él contesta con el valor
+        //  nuevo en su `valores` — así lo que se ve es siempre lo guardado.
+        if (String(id).indexOf("ext_") === 0) {
+            Enganches.alternarAjuste(id)
+            return
+        }
         ajustes[id] = !ajustes[id]
         guardar()
     }
@@ -205,6 +219,8 @@ Singleton {
     function valor(id) {
         if (String(id).indexOf("plugin_") === 0)
             return PluginManager.valorAjuste(id)
+        if (String(id).indexOf("ext_") === 0)
+            return Enganches.valorAjuste(id)
         return ajustes[id]
     }
 

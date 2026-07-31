@@ -15,6 +15,13 @@ Singleton {
     // ¿el ratón está encima de la island?
     property bool hovered: false
 
+    //  Quién tiene la island ahora mismo y si está desplegada. Lo pone
+    //  shell.qml —que es quien lo decide, comparando prioridades— y lo leen
+    //  los plugins a través de K4.Isla, para no gastar en animaciones y
+    //  sondeos que nadie va a ver.
+    property string ocupante: ""
+    property bool abierta: false
+
     // fuerza un modo concreto; se usa desde IPC para depurar
     property string debugMode: ""
 

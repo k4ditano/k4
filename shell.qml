@@ -51,6 +51,18 @@ Scope {
         return best
     }
 
+    //  Lo que decide el reparto, publicado para que lo lean los plugins por
+    //  K4.Isla: quién la tiene y si está desplegada.
+    onActivePluginChanged: {
+        Island.ocupante = activePlugin ? activePlugin.name : ""
+        //  «Abierta» es DESPLEGADA, no «hay alguien»: la píldora también
+        //  ocupa la island y siempre está, así que con `activePlugin !== null`
+        //  esto valía true a todas horas y no le servía a nadie. Desplegada es
+        //  pedir más alto que la píldora.
+        Island.abierta = activePlugin !== null
+            && activePlugin.islandHeight > Theme.baseHeight
+    }
+
     readonly property int islandWidth: activePlugin ? activePlugin.islandWidth : 176
     readonly property int islandHeight: activePlugin ? activePlugin.islandHeight : Theme.baseHeight
 
@@ -82,6 +94,8 @@ Scope {
         K4.Puente.escritorios = Workspaces
         K4.Puente.portapapeles = Clipboard
         K4.Puente.reloj = Clock
+        K4.Puente.enganches = Enganches
+        K4.Puente.isla = Island
 
         void Audio.volume
         void Wifi.name

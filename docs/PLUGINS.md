@@ -182,6 +182,53 @@ Para un juego: `K4.Guardado` es la partida y el récord, `grabKeyboard: true`
 mientras se juega te da el teclado entero, y un `Timer` es el tick. La
 Mazmorra del repo (`plugins/Game/`) es la referencia de que da para mucho.
 
+## 3b · Salir en sitios que no son tuyos
+
+Un plugin no tiene por qué vivir solo dentro de su island.
+
+**Tus ajustes, en Ajustes.** Sin esto, dos opciones te obligaban a inventarte
+una pantalla, un botón para abrirla y una forma de guardarlas — y el usuario
+tenía que aprender un sitio nuevo por cada plugin.
+
+```qml
+K4.Ajustes {
+    plugin: "hola"
+    grupo: K4.Idioma.t("Hola")
+    opciones: [{ id: "saludar", nombre: K4.Idioma.t("Saludar al abrir"),
+                 desc: K4.Idioma.t("Si no, solo enseña el contador"),
+                 glifo: 0xF1821 }]
+    valores: ({ saludar: self.saludar })
+    onCambiado: function (id, valor) { self.saludar = valor; self.apuntar() }
+}
+```
+
+Los valores los guardas TÚ: la barra pregunta por `valores` y avisa por
+`cambiado`. Así lo que se enseña es siempre lo que de verdad tienes guardado
+y no una copia que se desincroniza al primer fallo de escritura.
+
+**Tus resultados, en el lanzador.** Contestas cuando puedes; si lo tuyo cuesta
+—una consulta por red— no bloqueas a nadie.
+
+```qml
+K4.Lanzador {
+    plugin: "hola"
+    onBuscando: function (texto) {
+        resultados = texto.length < 2 ? []
+            : [{ id: "abrir", titulo: K4.Idioma.t("Abrir Hola"), desc: "…" }]
+    }
+    onElegido: function (id) { self.abierto = true }
+}
+```
+
+**Y `K4.Isla`** para saber si estás a la vista: `abierta`, `ocupadaPor`,
+`raton`, `altoMaximo`. Solo lectura — quién ocupa la island lo decide el host
+comparando prioridades, que es la única forma de que dos plugins no se peleen
+por la pantalla. Úsalo para no animar ni sondear cuando no te ve nadie.
+
+Los tres se dan de baja solos cuando tu plugin se destruye —apagarlo,
+recargarlo, desinstalarlo—, y el gestor barre además por id: una fila de
+Ajustes que llame a un plugin muerto no puede existir.
+
 ## 4 · Permisos
 
 El manifiesto declara lo que usas; la barra lo comprueba **antes de listar**:

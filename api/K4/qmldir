@@ -40,6 +40,11 @@ singleton Red 1.0 Red.qml
 singleton Escritorios 1.0 Escritorios.qml
 singleton Portapapeles 1.0 Portapapeles.qml
 singleton Reloj 1.0 Reloj.qml
+
+#  Puntos de enganche: salir en sitios de la barra que no son tuyos.
+Ajustes 1.0 Ajustes.qml
+Lanzador 1.0 Lanzador.qml
+singleton Isla 1.0 Isla.qml
 Process 1.0 Process.qml
 Ipc 1.0 Ipc.qml
 singleton Sistema 1.0 Sistema.qml

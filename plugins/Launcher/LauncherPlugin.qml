@@ -256,11 +256,28 @@ K4Plugin {
                 list.push(installEntry)
         }
 
-        matches = list
+        //  Y lo que aporten los plugins, arriba del todo: quien se molesta en
+        //  enganchar algo al lanzador es porque es más específico que «una
+        //  aplicación que se llama parecido», y enterrarlo bajo cuarenta
+        //  entradas sería no tenerlo.
+        const extras = (Enganches.resultados || []).map(function (r) {
+            return { name: r.titulo || "", genericName: r.desc || "",
+                     icon: r.icono || "", _enganche: r }
+        })
+        matches = extras.concat(list)
         if (conservarSeleccion === true)
             index = Math.max(0, Math.min(index, list.length - 1))
         else
             index = 0
+    }
+
+    //  Avisar a los plugins de lo que se está escribiendo, y repintar cuando
+    //  contesten — que puede ser más tarde, si lo suyo cuesta.
+    onQueryChanged: Enganches.buscar(query)
+
+    property Connections _aportes: Connections {
+        target: Enganches
+        function onResultadosChanged() { self.rebuild(true) }
     }
 
     function refreshApplications() {
@@ -304,6 +321,13 @@ K4Plugin {
             return
 
         const entry = matches[index]
+
+        //  Uno aportado por un plugin: se lo devolvemos y él sabrá.
+        if (entry && entry._enganche) {
+            close()
+            Enganches.elegir(entry._enganche)
+            return
+        }
 
         if (entry && entry.isInstall === true) {
             enterPackageMode()

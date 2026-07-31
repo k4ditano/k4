@@ -1,0 +1,54 @@
+//  Aportar resultados al lanzador de la barra.
+//
+//  El lanzador es lo que la gente abre con un atajo y donde escribe sin
+//  pensar. Poder poner ahí lo tuyo —tus notas, tus servidores, lo que sea—
+//  es lo que convierte un plugin en parte de la barra y no en otra ventana
+//  más que hay que ir a buscar.
+//
+//  Contestas cuando puedes: la barra avisa por `buscando` y tú dejas lo que
+//  tengas en `resultados`. Si tardas —una consulta por red, un proceso— no
+//  bloqueas a nadie: cuando llegue, se pinta.
+//
+//      K4.Lanzador {
+//          plugin: "hola"
+//          onBuscando: function (texto) {
+//              resultados = texto.length < 2 ? [] : [{
+//                  id: "saludo", titulo: "Saludar a " + texto,
+//                  desc: "Del plugin de ejemplo", glifo: 0xF02FC
+//              }]
+//          }
+//          onElegido: function (id) { ... }
+//      }
+
+import QtQuick
+
+QtObject {
+    id: aporte
+
+    required property string plugin
+
+    //  `[{ id, titulo, desc, glifo }]` — lo que se pinta ahora mismo.
+    property var resultados: []
+
+    //  El usuario está escribiendo. Llega con cada tecla, así que si lo tuyo
+    //  cuesta, mira la longitud antes de ponerte.
+    signal buscando(string texto)
+
+    //  Ha elegido uno de los tuyos, por su `id`.
+    signal elegido(string id)
+
+    property Connections _puente: Connections {
+        target: Puente.enganches
+        function onBuscando(texto) { aporte.buscando(texto) }
+    }
+
+    Component.onCompleted: {
+        if (Puente.enganches)
+            Puente.enganches.registrarLanzador(aporte)
+    }
+
+    Component.onDestruction: {
+        if (Puente.enganches)
+            Puente.enganches.quitarDe(aporte.plugin)
+    }
+}

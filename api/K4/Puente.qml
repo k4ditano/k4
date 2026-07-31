@@ -35,4 +35,9 @@ QtObject {
     property var escritorios: null
     property var portapapeles: null
     property var reloj: null
+
+    //  El registro donde los plugins se apuntan para salir en sitios de la
+    //  barra que no son suyos, y el estado de la island.
+    property var enganches: null
+    property var isla: null
 }

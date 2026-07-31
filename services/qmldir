@@ -11,6 +11,7 @@ singleton Tray 1.0 Tray.qml
 singleton Game 1.0 Game.qml
 singleton Items 1.0 Items.qml
 singleton Settings 1.0 Settings.qml
+singleton Enganches 1.0 Enganches.qml
 singleton Logros 1.0 Logros.qml
 singleton Tokens 1.0 Tokens.qml
 singleton Clipboard 1.0 Clipboard.qml

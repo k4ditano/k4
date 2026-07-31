@@ -22,7 +22,8 @@ Item {
 
             K4.Etiqueta {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: K4.Idioma.t("Hola desde un plugin de fuera")
+                text: plugin.saludar ? K4.Idioma.t("Hola desde un plugin de fuera")
+                                     : K4.Idioma.t("Contando visitas")
                 font.pixelSize: 14
                 font.weight: Font.DemiBold
             }

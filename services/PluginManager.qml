@@ -198,6 +198,12 @@ Singleton {
             try { obj.close() } catch (e) { }
         }
 
+        //  Y sus enganches fuera: una fila de Ajustes o un resultado del
+        //  lanzador que apunte a un plugin destruido es una llamada a un
+        //  cadáver. Los K4.Ajustes se dan de baja solos al destruirse, pero
+        //  eso es diferido y aquí queremos que desaparezcan YA.
+        Enganches.quitarDe(id)
+
         //  Y APAGAR sus IpcHandler, que es lo que desregistra sus targets.
         //
         //  Destruir no desregistra —medido: ni tres segundos después—, así que
