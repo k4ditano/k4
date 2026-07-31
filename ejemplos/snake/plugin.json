@@ -1,0 +1,9 @@
+{
+  "id": "snake",
+  "entry": "SnakePlugin.qml",
+  "version": "1.0.0",
+  "title": "Snake",
+  "description": "La serpiente de siempre, jugable en la island",
+  "host": ">=1.1.0",
+  "permisos": []
+}
