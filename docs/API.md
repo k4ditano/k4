@@ -163,7 +163,18 @@ disabled.
 
 ## Current boundaries
 
-Plugin loading is intentionally static: a plugin is registered in `shell.qml`
-and `plugins/catalog.json`. k4 does not execute downloaded QML automatically.
-Plugins can launch local processes, so only reviewed plugins should be used and
-new dependencies must be declared in `dependencias.tsv`.
+Plugin loading is dynamic and isolated: each plugin is created on its own, a
+failure is recorded with its error, and the rest start. Disabled means not
+instantiated. Third-party plugins load from `~/.config/k4/plugins/<id>/`.
+
+What that does **not** mean is a sandbox. QML runs inside the bar's process and
+a loaded plugin can do whatever the bar can do. The declared permissions are
+informed consent — you see them before enabling — plus a static analysis that
+turns carelessness and simple deception into an installation error. Installing
+a plugin is trusting its author.
+
+Two doors stay shut on purpose: connecting to networks and pairing Bluetooth
+devices are read-only for plugins, with no permission that opens them.
+
+The full guide, in Spanish and kept current by `tools/api.py`, is
+`docs/PLUGINS.md`. New dependencies still go in `dependencias.tsv`.

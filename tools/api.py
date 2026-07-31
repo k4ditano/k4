@@ -28,6 +28,35 @@ import pathlib, re, sys
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 
 
+def revisar_documentacion():
+    """Que todo lo que la API ofrece esté en la guía.
+
+    Una API pública con tipos que no aparecen en ninguna documentación no
+    existe para quien la va a usar: la comprobación es porque pasó — doce
+    tipos llevaban tiempo ahí sin una línea que los mencionara, algunos de
+    ellos citados como disponibles. Esto lo convierte en un fallo de las
+    herramientas en vez de en algo que hay que acordarse de mirar.
+
+    `Puente` se salta a propósito: es fontanería entre el host y la API, no
+    algo que un plugin deba tocar.
+    """
+    qmldir = (RAIZ / "api" / "K4" / "qmldir").read_text()
+    tipos = [t for t in re.findall(r"^(?:singleton )?([A-Z]\w+) 1\.0",
+                                   qmldir, re.M)
+             if t != "Puente"]
+    fallos = []
+    #  Dos guías y las dos cuentan: la larga en castellano para quien escribe
+    #  un plugin, y la tabla en inglés de api/LEEME.md, que es lo primero que
+    #  mira quien llega al repositorio. Una API que solo está en una de las dos
+    #  acaba contándose distinto en cada sitio.
+    for doc in ("docs/PLUGINS.md", "api/LEEME.md"):
+        texto = (RAIZ / doc).read_text()
+        for t in tipos:
+            if not re.search(r"\bK4\.%s\b" % t, texto):
+                fallos.append("api/K4/%s.qml no se menciona en %s" % (t, doc))
+    return fallos
+
+
 def revisar_api():
     """La regla inversa: un fichero de api/K4 no importa la barra.
 
@@ -102,6 +131,15 @@ def main():
     todos = []
     for f in ficheros:
         todos.extend(revisar(f))
+
+    sin_doc = revisar_documentacion()
+    if sin_doc:
+        print("La API ofrece cosas que la guía no cuenta:\n")
+        for x in sin_doc:
+            print("  " + x)
+        print("\nUn tipo público que no está documentado no existe para quien")
+        print("va a usarlo.")
+        return 1
 
     #  La regla inversa, que se paga carísima: ver revisar_api().
     dobles = revisar_api()

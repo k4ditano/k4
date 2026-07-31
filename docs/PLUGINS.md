@@ -189,6 +189,30 @@ necesitas otra cosa —por ejemplo abrir siempre en vez de alternar.
 | `K4.Fichero` | leer y escribir ficheros — requiere `ficheros` |
 | `K4.Pildora` | un indicador en la píldora plegada |
 | `K4.Paths` | rutas: `estadoDe(id)` es tu directorio de estado |
+| `K4.IconoPlugin` | el icono de un plugin: su imagen si trae, y si no su glifo |
+
+Y lo que hace falta cuando lo tuyo se sale de la island:
+
+| Tipo | Para qué |
+|---|---|
+| `K4.Ventana` | una ventana propia, aparte de la island: un selector a pantalla completa, un editor, algo a lo que dedicarle sitio de verdad |
+| `K4.PorPantalla` | una copia de lo tuyo por cada monitor — con dos pantallas casi nada quiere existir una sola vez |
+| `K4.Cargador` | carga lo caro solo cuando hace falta y lo suelta al dejar de hacer falta |
+| `K4.Atajo` | un atajo global, de los que funcionan tenga el foco quien lo tenga. Aquí declaras el nombre; atarlo a una tecla es cosa de la configuración del compositor |
+| `K4.Apps` | las aplicaciones instaladas: nombre, icono, cómo se lanzan |
+| `K4.Sistema` | lo suelto: lanzar cosas, mirar el entorno, encontrar iconos |
+| `K4.MenuBandeja` | el menú que publica un icono de la bandeja |
+| `K4.BloqueoSesion` | bloquear la sesión de verdad (`ext-session-lock`) |
+| `K4.SuperficieBloqueo` | lo que se dibuja mientras está bloqueada, una por monitor |
+| `K4.Autenticacion` | comprobar que quien está delante es quien dice ser, vía PAM |
+
+Las cuatro últimas son para reemplazar piezas de la barra —una pantalla de
+bloqueo propia, otra bandeja— más que para un plugin corriente. Están aquí
+porque los módulos de casa las usan y la regla es la misma para todos: si un
+plugin del repositorio puede, uno de fuera también.
+
+(`K4.Puente` también existe y **no es para ti**: es por donde la barra le pasa
+a la API lo que necesita. Solo lo toca quien implemente la API en otro host.)
 
 Y los datos vivos del sistema:
 

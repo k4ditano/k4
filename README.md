@@ -170,9 +170,11 @@ not import each other; references are injected by `shell.qml`.
 - [API quick reference](api/LEEME.md): the exported `K4` types and implementation
   notes.
 
-The current host intentionally loads plugins statically. A plugin must be
-registered in both `shell.qml` and `plugins/catalog.json`; k4 does not execute
-downloaded QML automatically.
+Plugins are loaded dynamically and in isolation: a broken one is recorded with
+its error and the bar starts without it. Your own plugins live in
+`~/.config/k4/plugins/<id>/` with a `plugin.json` manifest, arrive disabled,
+and declare the permissions they use — informed consent plus static analysis,
+not a sandbox. Install one with `python3 tools/plugins.py --instalar <url>`.
 
 Before opening a pull request, run:
 
