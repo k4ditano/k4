@@ -2,7 +2,7 @@
 //
 //  Aquí no hay lógica de ningún módulo: esto monta la superficie, dibuja la
 //  silueta y decide qué plugin se queda la island. Añadir un módulo es crear
-//  una carpeta en plugins/ y sumarlo a la lista de abajo.
+//  una carpeta en plugins/ y darla de alta en plugins/catalog.json.
 
 import QtQuick
 import QtQuick.Shapes
@@ -403,7 +403,11 @@ Scope {
                         height: root.islandHeight
 
                         Repeater {
-                            model: root.plugins
+                            //  Las instancias vivas del gestor. Cuando esto
+                            //  era `root.plugins` y la lista se fue, el modelo
+                            //  quedó indefinido y la island se abría NEGRA:
+                            //  cero delegates, cero vistas, sin un solo error.
+                            model: PluginManager.instancias
 
                             delegate: Loader {
                                 required property var modelData
