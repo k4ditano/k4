@@ -17,7 +17,7 @@ K4Plugin {
     // Por encima del lanzador: si los dos están abiertos, mandas tú con el
     // que acabas de pedir, y este se pide siempre a propósito.
     priority: 82
-    active: open || closing
+    active: habilitado && (open || closing)
     viewLoaded: open
     grabKeyboard: open
 

@@ -53,7 +53,14 @@ Pista {
             linea.saltar(c.t0 + Math.min(0.3, (c.t1 - c.t0) / 2))
     }
 
-    onEditar: function (id, a, b) { Editor.fijarCapa(id, { t0: a, t1: b }) }
+    onEditar: function (id, a, b) {
+        const c = Editor.capaPorId(id)
+        if (Editor.capaBloqueada(c))
+            return
+        const dur = Math.max(0.05, b - a)
+        const na = Editor.ajustarTiempo(a, id)
+        Editor.fijarCapa(id, { t0: na, t1: Math.min(linea.total, na + dur) })
+    }
 
     //  Sacar una cosa de su capa y llevarla a otra.
     //
@@ -64,6 +71,8 @@ Pista {
     porFilas: true
     pasoFila: linea.altoPista + linea.hueco
     onMoverFila: function (id, filas) {
+        if (Editor.bandaBloqueada(banda.banda))
+            return
         Editor.ponerCapaEnBanda(id, banda.banda - filas)
     }
 }

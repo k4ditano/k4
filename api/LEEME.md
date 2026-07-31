@@ -1,28 +1,14 @@
-# Escribir un plugin para k4
+# Writing a k4 plugin
 
-> Un plugin importa `QtQuick` y `K4`. Nada más.
+This is the quick reference. For complete guides see:
 
-Esa es la regla, y `tools/api.py` la comprueba. Si te hace falta algo que `K4`
-no da, se añade a la API o se baja a un servicio — no se importa a pelo.
+- [Public API](../docs/API.md)
+- [Creating a plugin](../docs/PLUGINS.md)
+- [Creating a game plugin](../docs/GAMES.md)
 
-## Por qué
+> A plugin imports `QtQuick` and `K4`. Nothing else from the host.
 
-Todo lo que un plugin importe de Quickshell solo existe donde existe Quickshell:
-Linux con Wayland. El día que haya un host propio para Windows o Mac, lo escrito
-contra `Quickshell.Io` hay que reescribirlo; lo escrito contra `K4` se porta
-reescribiendo únicamente esta carpeta.
-
-Pero el beneficio se nota ya, sin esperar a ningún host: en vez de aprenderte
-Quickshell entero tienes una API pequeña y documentada en un sitio. Menos
-superficie, menos formas de romperse.
-
-La línea se traza donde de verdad está: **Qt es portable, Quickshell no**.
-`QtQuick`, `QtMultimedia`, `QtQml`, `Timer`, `Canvas`, animaciones, `Shape`…
-existen igual en los tres sistemas y se usan tal cual. No hay nada que envolver.
-
-## Lo mínimo
-
-Una carpeta en `plugins/` con un fichero que herede de `K4Plugin`:
+## Minimal plugin
 
 ```qml
 import QtQuick
@@ -31,10 +17,10 @@ import "../../core"
 
 K4Plugin {
     id: self
-
-    name: "saludo"
+    name: "hello"
+    title: "Hello"
     priority: 70
-    active: abierto
+    active: habilitado && abierto
     islandWidth: 300
     islandHeight: 120
 
@@ -42,93 +28,74 @@ K4Plugin {
 
     view: Component {
         Item {
-            IslandLabel { anchors.centerIn: parent; text: "hola" }
+            IslandLabel { anchors.centerIn: parent; text: "Hello" }
         }
     }
 
     K4.Ipc {
-        target: "k4.saludo"
+        target: "k4.hello"
         function toggle(): void { self.abierto = !self.abierto }
     }
 }
 ```
 
-`K4Plugin` (en `core/`) es el contrato: cuándo quieres la island, qué tamaño
-necesitas, qué pintas dentro y si quieres el teclado. Está documentado arriba
-del propio fichero.
-
-Los `Process`, `Timer` e `IpcHandler` van como **hijos sueltos del plugin**, no
-dentro de la vista: la vista solo existe mientras tu módulo tiene la island, y
-casi todo lo que hace un plugin tiene que seguir vivo con la island cerrada.
-
-## Al tocar la API, reiniciar
-
-Quickshell recarga la configuración sola en cuanto guardas un fichero, pero **el
-módulo `K4` no**: el motor QML cachea los módulos y se queda con la versión que
-cargó al arrancar. Si cambias algo de `api/` y no ves el efecto —o ves un error
-que ya has arreglado—, no es tu edición: hay que reiniciar la barra.
-
-```
-qs -c k4 kill && ./arrancar
-```
-
-## Qué ofrece `K4`
-
-| | Para qué |
-|---|---|
-| `K4.Process` | Lanzar algo y leer su salida |
-| `K4.Ipc` | Recibir órdenes de fuera, normalmente de un atajo |
-| `K4.Fichero` | Leer y escribir un fichero de texto |
-| `K4.Paths` | `estado`, `guion(nombre)`, `enRaiz(ruta)` |
-| `K4.Sistema` | `lanzar`, `abrir`, `avisar`, `copiar`, `entorno` |
-| `K4.Apps` | Las aplicaciones instaladas y sus iconos |
-| `K4.Icono` | Pintar un icono del tema |
-| `K4.Ventana` | Una superficie propia, aparte de la island |
-| `K4.PorPantalla` | Una copia de algo por cada monitor |
-| `K4.Cargador` | Cargar algo caro solo cuando hace falta |
-| `K4.Atajo` | Un atajo global |
-| `K4.Autenticacion` | Comprobar la contraseña del usuario |
-| `K4.BloqueoSesion` | Bloquear la sesión de verdad |
-| `K4.MenuBandeja` | El menú que publica un icono de bandeja |
-
-Cada uno está documentado en su fichero, con las trampas que ya se han pagado.
-
-### Procesos
-
-Dos formas de leer la salida, y solo dos, porque son las que hacen falta:
+`K4Plugin` is the contract: it declares when the plugin wants the island, its
+requested size, the view to render and keyboard behavior. The host binds
+`habilitado` to `PluginManager`; it is different from `active`:
 
 ```qml
-// una línea cada vez, mientras trabaja
-K4.Process {
-    command: ["python3", K4.Paths.guion("sistema.py")]
-    running: mirando
-    porLineas: true
-    onLinea: function (l) { const d = JSON.parse(l); ... }
-}
-
-// todo de golpe, al terminar
-K4.Process {
-    command: ["pacman", "-Qq"]
-    running: true
-    onSalida: function (texto) { ... }
-}
+K4.Process { running: self.habilitado && self.abierto }
+Timer { running: self.habilitado && self.abierto }
 ```
 
-Para pararlo, `parar()`, que manda SIGINT. Importa: matar a secas algo que esté
-escribiendo un fichero lo deja a medias — un vídeo sin su índice no lo abre
-nadie.
+Processes, timers and IPC handlers are direct children of the plugin. A view is
+mounted only while the host gives the plugin the island, so long-lived work must
+not be declared inside the view.
 
-## Lo que todavía no está
+## Exported types
 
-- **Presencia en la píldora.** Hoy el indicador del juego se inyecta a mano en
-  las vistas del reloj y del reproductor; un plugin externo no puede. Falta un
-  `K4.Pildora` para registrar un indicador con su acción de clic. Es lo que hace
-  que un plugin se sienta vivo sin estar abierto.
-- **El kit de widgets.** `IslandTile`, `IslandSlider`, `IconGlyph`… existen en
-  `core/` y son puros; publicarlos haría que un plugin de fuera se vea nativo en
-  vez de traer su propia estética.
-- **Ajustes de plugin**, para que declares tus opciones y salgan en el módulo de
-  Ajustes en vez de inventarte una pantalla.
-- **Permisos.** Hoy cualquier plugin puede lanzar cualquier proceso. Antes de
-  que exista un directorio público de plugins hay que decidir si eso sigue así o
-  se declara en un manifiesto.
+| Type | Use |
+|---|---|
+| `K4.Process` | Run a process and read line or complete output |
+| `K4.Ipc` | Expose commands to Hyprland and other clients |
+| `K4.Fichero` | Read/write a small text or JSON file |
+| `K4.Paths` | Installation, tools and state paths |
+| `K4.Sistema` | Launch, open, notify, copy and read environment |
+| `K4.Apps` | Installed applications and icons |
+| `K4.Icono` | Theme-aware application icon |
+| `K4.Ventana` | Full-screen layer-shell surface |
+| `K4.PorPantalla` | One instance per monitor |
+| `K4.Cargador` | Lazy-load expensive content |
+| `K4.Atajo` | Global shortcut |
+| `K4.Autenticacion` | PAM authentication |
+| `K4.BloqueoSesion` | Real session lock surface |
+| `K4.MenuBandeja` | Tray application menu |
+| `K4.Pildora` | Small indicators in the folded pill |
+
+## Catalog and registration
+
+The host still loads plugins statically. A new plugin must be:
+
+1. placed under `plugins/` with a `qmldir` file;
+2. imported and instantiated in `shell.qml`;
+3. added to `plugins/catalog.json`;
+4. documented with its IPC commands and dependencies.
+
+Validate the result with:
+
+```sh
+python3 tools/plugins.py
+python3 tools/api.py
+```
+
+The catalog is intentionally not a code loader. k4 does not execute downloaded
+QML, and plugins can launch local processes, so only reviewed code should be
+installed.
+
+## API changes
+
+If a plugin needs a capability that is missing, add it under `api/K4/` rather
+than importing a private Quickshell type in the plugin. Keep the wrapper small,
+document its signals and properties, and update `docs/API.md` with an example.
+Restart the bar after changing the `K4` module because QML caches imported
+modules.

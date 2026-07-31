@@ -23,7 +23,7 @@ K4Plugin {
     name: "session"
     title: Idioma.t("Sesión")
     priority: 86
-    active: open
+    active: habilitado && open
     viewLoaded: open
     grabKeyboard: open
 

@@ -426,6 +426,7 @@ paso_hyprland() {
         bien "Enganchado al final de $(basename "$ENTRADA")."
     fi
 
+    migrar_duplicados
     revisar_duplicados
     revisar_colisiones
 }
@@ -464,13 +465,76 @@ patron_k4() {
     printf '%s' "$_pat"
 }
 
-# k4 no borra nada de tus ficheros. Lo que hace es enseñarte lo que sobra, con
-# fichero y línea, para que lo quites tú.
+# Antes de avisar, se retiran las líneas antiguas que el instalador puede
+# identificar sin ambigüedad. Se guarda una copia al lado de cada fichero: si
+# alguien tenía una acción propia que se parece a k4, puede recuperarla desde
+# ahí. Las líneas de comentario nunca se tocan.
+migrar_duplicados() {
+    PAT_K4=$(patron_k4)
+    [ -n "$PAT_K4" ] || return 0
+
+    _cambios=0
+    _ficheros=$(ficheros_hypr)
+    [ -n "$_ficheros" ] || return 0
+
+    while IFS= read -r _f; do
+        [ -n "$_f" ] || continue
+        _tmp=$(mktemp) || continue
+
+        # El patrón incluye las variables que apuntan a «call k4», así que
+        # también cubre las líneas de bind que concatenan k4Call. Se conserva
+        # todo comentario y todo lo que no sea una línea completa de k4.
+        awk -v patron="$PAT_K4" -v raiz="$RAIZ" -v destino="$DESTINO" '
+            /^[[:space:]]*(--|#)/ { print; next }
+            (index($0, raiz "/arrancar") || index($0, destino "/arrancar") || $0 ~ /k4\/arrancar/) { quitadas++; next }
+            $0 ~ patron { quitadas++; next }
+            { print }
+            END { if (quitadas) printf "%d\n", quitadas > "/dev/stderr" }
+        ' "$_f" > "$_tmp" 2>"$_tmp.n"
+        _quitadas=$(cat "$_tmp.n" 2>/dev/null || printf '0')
+        rm -f "$_tmp.n"
+        # `mktemp` crea 0600; conserva los permisos del fichero original al
+        # sustituirlo para no convertir una configuración compartida en una
+        # privada por accidente.
+        if ! chmod --reference="$_f" "$_tmp" 2>/dev/null; then
+            _modo=$(ls -ld "$_f" 2>/dev/null | awk '{print $1}' | cut -c2- || true)
+            [ -n "${_modo:-}" ] && chmod "$_modo" "$_tmp" 2>/dev/null || true
+        fi
+
+        if [ "${_quitadas:-0}" -eq 0 ] || cmp -s "$_f" "$_tmp"; then
+            rm -f "$_tmp"
+            continue
+        fi
+
+        _copia="$_f.k4.bak"
+        if [ -e "$_copia" ]; then
+            _copia="$_f.k4.bak.$(date +%Y%m%d-%H%M%S)"
+        fi
+        cp -p "$_f" "$_copia"
+        mv "$_tmp" "$_f"
+        _cambios=$((_cambios + 1))
+        bien "Migradas $_quitadas líneas antiguas de k4 en $(basename "$_f")."
+        nota "Copia de seguridad: $_copia"
+    done <<EOF
+$_ficheros
+EOF
+
+    if [ "$_cambios" -gt 0 ]; then
+        nota "Los atajos y el arranque nuevos quedan centralizados en $(basename "$CFG")."
+    fi
+}
+
+# Si quedara alguna línea que no parezca una línea completa, se enseña para que
+# no pase inadvertida. En una instalación normal no debería quedar nada.
 revisar_duplicados() {
     PAT_K4=$(patron_k4)
     _viejos=$(ficheros_hypr | while IFS= read -r _f; do
-        grep -nE -e "$PAT_K4" -e '/arrancar' "$_f" 2>/dev/null \
-            | sed "s|^|$_f:|" || true
+        awk -v f="$_f" -v patron="$PAT_K4" -v raiz="$RAIZ" -v destino="$DESTINO" '
+            /^[[:space:]]*(--|#)/ { next }
+            (index($0, raiz "/arrancar") || index($0, destino "/arrancar") || $0 ~ /k4\/arrancar/ || $0 ~ patron) {
+                printf "%s:%d:%s\n", f, NR, $0
+            }
+        ' "$_f" 2>/dev/null || true
     done)
     [ -n "$_viejos" ] || return 0
 
@@ -480,7 +544,7 @@ revisar_duplicados() {
     if [ -n "$_atajos" ]; then
         printf '\n'
         aviso "Tienes atajos de k4 escritos a mano. Ahora sobran: quítalos o"
-        nota  "se dispararán dos veces. No los toco yo, son tus ficheros."
+        nota  "se dispararán dos veces. Revisa esas líneas antes de borrarlas."
         pintar_lineas "$_atajos"
     fi
 

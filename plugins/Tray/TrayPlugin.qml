@@ -16,7 +16,7 @@ K4Plugin {
     name: "tray"
     title: Idioma.t("Bandeja")
     priority: 63
-    active: open
+    active: habilitado && open
     tecladoOpcional: open
 
     property bool open: false

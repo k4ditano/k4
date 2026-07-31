@@ -7,6 +7,7 @@
 //      K4Plugin {
 //          name: "hyprtheme"
 //          priority: 60
+//          habilitado: true
 //          active: open
 //          islandWidth: 720
 //          islandHeight: 480
@@ -28,6 +29,11 @@ QtObject {
 
     // Nombre legible, por si algún día hay un menú de módulos.
     property string title: name
+
+    // El host lo enlaza con PluginManager. No se llama `active`: activo es
+    // ocupar la island ahora; habilitado significa que el usuario permite que
+    // el módulo participe en la barra.
+    property bool habilitado: true
 
     // Quién se queda la island cuando varios plugins la piden a la vez.
     // Referencia de los actuales: idle 0 · volume 40 · clock 50 · player 55 ·

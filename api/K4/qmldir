@@ -10,6 +10,7 @@
 module K4
 
 singleton Paths 1.0 Paths.qml
+singleton Pildora 1.0 Pildora.qml
 Process 1.0 Process.qml
 Ipc 1.0 Ipc.qml
 singleton Sistema 1.0 Sistema.qml

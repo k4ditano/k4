@@ -12,7 +12,7 @@ K4Plugin {
     name: "weather"
     title: Idioma.t("El tiempo")
     priority: 62
-    active: open
+    active: habilitado && open
 
     property bool open: false
     property bool searchOpen: false

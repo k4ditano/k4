@@ -10,7 +10,7 @@ K4Plugin {
     name: "toast"
     title: Idioma.t("Notificación")
     priority: 70
-    active: Notifs.toastOpen
+    active: habilitado && Notifs.toastOpen
 
     islandWidth: 440
 

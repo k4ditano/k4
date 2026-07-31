@@ -3,8 +3,8 @@
 -- Todo lo que k4 necesita de Hyprland: los atajos y el arranque.
 --
 -- Para revertirlo: borra este fichero y la línea `require("config.k4")` de
--- hyprland.lua. No hay nada más que deshacer; el instalador no toca ningún
--- otro fichero tuyo.
+-- hyprland.lua. Al actualizar, el instalador puede retirar líneas antiguas de
+-- k4 de tus ficheros de Hyprland; antes deja una copia *.k4.bak al lado.
 --
 -- Si alguno de estos atajos choca con uno tuyo, gana el tuyo si lo defines
 -- después. La forma limpia de quitar uno es comentarlo en TU configuración y

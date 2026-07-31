@@ -53,6 +53,98 @@ Singleton {
     property var clips: []
     property var fuentes: []
 
+    // Historial del plan. Se guardan instantáneas JSON pequeñas y se agrupan
+    // los eventos rápidos (arrastrar una capa o escribir un rótulo) para que
+    // Ctrl+Z sea útil y no recorra cada píxel del gesto.
+    property var historial: []
+    property var rehacerHistorial: []
+    property bool restaurandoHistorial: false
+    property string ultimoHistorial: ""
+    property var marcadores: []
+
+    function instantanea() {
+        return JSON.stringify({ clips: clips, capas: capas, bandas: bandas,
+                                momentos: momentos, pistasAudio: pistasAudio,
+                                transcripcion: transcripcion,
+                                marcadores: marcadores,
+                                clicsActivos: clicsActivos,
+                                colorClics: colorClics,
+                                fundidoEntrada: fundidoEntrada,
+                                fundidoSalida: fundidoSalida,
+                                fundidoEntre: fundidoEntre })
+    }
+
+    function iniciarHistorial() {
+        const s = instantanea()
+        historial = [s]
+        rehacerHistorial = []
+        ultimoHistorial = s
+    }
+
+    function registrarHistorial() {
+        if (restaurandoHistorial)
+            return
+        const s = instantanea()
+        if (s === ultimoHistorial)
+            return
+        const h = historial.slice()
+        h.push(s)
+        while (h.length > 80)
+            h.shift()
+        historial = h
+        ultimoHistorial = s
+        rehacerHistorial = []
+    }
+
+    readonly property bool puedeDeshacer: historial.length > 1
+    readonly property bool puedeRehacer: rehacerHistorial.length > 0
+
+    function restaurarInstantanea(s) {
+        if (!s)
+            return
+        let d = null
+        try { d = JSON.parse(s) } catch (e) { return }
+        restaurandoHistorial = true
+        clips = d.clips || []
+        capas = d.capas || []
+        bandas = d.bandas || []
+        momentos = d.momentos || []
+        pistasAudio = d.pistasAudio || []
+        transcripcion = d.transcripcion || []
+        marcadores = d.marcadores || []
+        clicsActivos = !!d.clicsActivos
+        colorClics = d.colorClics || "#ffd60a"
+        fundidoEntrada = d.fundidoEntrada || 0
+        fundidoSalida = d.fundidoSalida || 0
+        fundidoEntre = d.fundidoEntre || 0
+        restaurandoHistorial = false
+        ultimoHistorial = s
+        persistir()
+        recalcular.restart()
+    }
+
+    function deshacer() {
+        if (!puedeDeshacer)
+            return
+        const h = historial.slice()
+        const actual = h.pop()
+        rehacerHistorial = rehacerHistorial.concat([actual])
+        historial = h
+        restaurarInstantanea(h[h.length - 1])
+        seleccionar("", 0)
+    }
+
+    function rehacer() {
+        if (!puedeRehacer)
+            return
+        const r = rehacerHistorial.slice()
+        const s = r.pop()
+        rehacerHistorial = r
+        historial = historial.concat([s])
+        restaurarInstantanea(s)
+        seleccionar("", 0)
+    }
+
     function rutaDe(idFuente) {
         for (let i = 0; i < fuentes.length; ++i)
             if (fuentes[i].id === idFuente)
@@ -254,6 +346,12 @@ Singleton {
     //  CENTRO. Así el plan no depende de la resolución.
     property var capas: []
 
+    // Bandas persistentes: una puede existir aunque todavía no tenga ningún
+    // elemento. Así se puede preparar la organización del montaje antes de
+    // traer imágenes, rótulos o vídeos a ella.
+    // [{ banda: 2, nombre: "Presentación" }, ...]
+    property var bandas: []
+
     //  Una capa sin banda va a la 2, que es la primera que le corresponde: la
     //  1 es del vídeo. Un plan de los de antes se sube entero al abrirlo, así
     //  que aquí no llegan capas en la 1 salvo que alguien edite el JSON a mano.
@@ -273,6 +371,8 @@ Singleton {
         let n = 2
         for (let i = 0; i < capas.length; ++i)
             n = Math.max(n, bandaDe(capas[i]))
+        for (let i = 0; i < bandas.length; ++i)
+            n = Math.max(n, Number(bandas[i].banda) || 0)
         return n
     }
 
@@ -282,6 +382,117 @@ Singleton {
     // Las capas de una banda, en el orden en que se apilan dentro de ella.
     function capasDeBanda(b) {
         return capas.filter(function (c) { return bandaDe(c) === b })
+    }
+
+    function infoBanda(b) {
+        for (let i = 0; i < bandas.length; ++i)
+            if (Number(bandas[i].banda) === b)
+                return bandas[i]
+        return null
+    }
+
+    function bandaVisible(b) {
+        const info = infoBanda(b)
+        return !info || info.visible !== false
+    }
+
+    function bandaBloqueada(b) {
+        const info = infoBanda(b)
+        return !!(info && info.bloqueada)
+    }
+
+    function haySolo() {
+        for (let i = 0; i < bandas.length; ++i)
+            if (bandas[i].solo)
+                return true
+        return false
+    }
+
+    function capaVisible(c) {
+        if (!c)
+            return false
+        const info = infoBanda(bandaDe(c))
+        if (info && info.visible === false)
+            return false
+        if (haySolo() && !(info && info.solo))
+            return false
+        return c.visible !== false
+    }
+
+    function capaBloqueada(c) {
+        return !!(c && (c.bloqueada || bandaBloqueada(bandaDe(c))))
+    }
+
+    function alternarVisibilidadCapa(id) {
+        const c = capaPorId(id)
+        if (!c) return
+        fijarCapa(id, { visible: c.visible === false })
+    }
+
+    function alternarBloqueoCapa(id) {
+        const c = capaPorId(id)
+        if (!c) return
+        fijarCapa(id, { bloqueada: !c.bloqueada })
+    }
+
+    function alternarVisibilidadBanda(b) {
+        const info = infoBanda(b) || { banda: b, nombre: nombreBanda(b) }
+        if (infoBanda(b) === null)
+            bandas = bandas.concat([info])
+        fijarBanda(b, { visible: info.visible === false })
+    }
+
+    function alternarBloqueoBanda(b) {
+        const info = infoBanda(b) || { banda: b, nombre: nombreBanda(b) }
+        if (infoBanda(b) === null)
+            bandas = bandas.concat([info])
+        fijarBanda(b, { bloqueada: !info.bloqueada })
+    }
+
+    function alternarSoloBanda(b) {
+        const info = infoBanda(b) || { banda: b, nombre: nombreBanda(b) }
+        if (infoBanda(b) === null)
+            bandas = bandas.concat([info])
+        fijarBanda(b, { solo: !info.solo })
+    }
+
+    function nombreBanda(b) {
+        const info = infoBanda(b)
+        return info && info.nombre
+            ? info.nombre
+            : Idioma.t("Capa ") + (b - primeraBandaLibre + 1)
+    }
+
+    function crearBanda(nombre) {
+        let b = primeraBandaLibre
+        while (b <= cuantasBandas
+               && (infoBanda(b) !== null || capasDeBanda(b).length > 0))
+            b += 1
+        bandas = bandas.concat([{ banda: b,
+                                  nombre: nombre || nombreBanda(b) }])
+        bandaObjetivo = b
+        bandaSeleccionada = b
+        persistir()
+        seleccionar("", 0)
+        return b
+    }
+
+    function fijarBanda(b, campos) {
+        bandas = bandas.map(function (x) {
+            return Number(x.banda) === b ? Object.assign({}, x, campos) : x
+        })
+        persistir()
+    }
+
+    // El destino de la siguiente capa: el grupo elegido, o el primer hueco
+    // temporal disponible. Si no queda sitio se crea un grupo nuevo.
+    function bandaParaNueva(t0, t1) {
+        let b = bandaObjetivo > 0 ? bandaObjetivo : bandaLibre(t0, t1)
+        if (b > cuantasBandas) {
+            bandas = bandas.concat([{ banda: b, nombre: nombreBanda(b) }])
+        }
+        bandaObjetivo = 0
+        return b
     }
 
     //  Las capas en el orden en que se PINTAN: por banda, y dentro de una banda
@@ -367,13 +578,12 @@ Singleton {
             //  seguidos en instantes distintos comparten fila, que es lo que se
             //  espera. Salvo que se haya pedido una capa nueva, y entonces va
             //  encima de todo.
-            banda: proximaEnBandaNueva ? cuantasBandas + 1 : bandaLibre(a, b),
+            banda: bandaParaNueva(a, b),
             // Arriba a la derecha y a un cuarto de ancho: es donde va un logo, y
             // desde ahí se mueve con el ratón en un gesto.
-            x: 0.8, y: 0.15, escala: 0.25, opacidad: 1.0
+            x: 0.8, y: 0.15, escala: 0.25, opacidad: 1.0, rotacion: 0
         }
         capas = capas.concat([nueva])
-        proximaEnBandaNueva = false
         persistir()
         seleccionar("capa", nueva.id)
         return nueva.id
@@ -608,10 +818,9 @@ Singleton {
             tipo: "censura",
             modo: modo || "silencio",
             t0: a, t1: b,
-            banda: proximaEnBandaNueva ? cuantasBandas + 1 : bandaLibre(a, b)
+            banda: bandaParaNueva(a, b)
         }
         capas = capas.concat([nueva])
-        proximaEnBandaNueva = false
         persistir()
         seleccionar("capa", nueva.id)
         return nueva.id
@@ -714,13 +923,12 @@ Singleton {
             tipo: "zona",
             modo: modo || "desenfoque",
             t0: a, t1: b,
-            banda: proximaEnBandaNueva ? cuantasBandas + 1 : bandaLibre(a, b),
+            banda: bandaParaNueva(a, b),
             // En medio y de buen tamaño: desde ahí se coloca en un gesto.
             x: 0.5, y: 0.5, an: 0.3, al: 0.25,
             fuerza: 0.6
         }
         capas = capas.concat([nueva])
-        proximaEnBandaNueva = false
         persistir()
         seleccionar("capa", nueva.id)
         return nueva.id
@@ -793,7 +1001,7 @@ Singleton {
             t0: a,
             t1: b,
             dur: medida.dur,
-            banda: proximaEnBandaNueva ? cuantasBandas + 1 : bandaLibre(a, b)
+            banda: bandaParaNueva(a, b)
         }
         if (tipo === "audio") {
             nueva.volumen = 0.8
@@ -803,6 +1011,7 @@ Singleton {
             nueva.y = 0.74
             nueva.escala = 0.3
             nueva.opacidad = 1.0
+            nueva.rotacion = 0
             nueva.w = medida.w
             nueva.h = medida.h
             //  De qué parte del fichero se coge. Empieza siendo todo, y se
@@ -811,7 +1020,6 @@ Singleton {
             nueva.recorte = [0, medida.dur]
         }
         capas = capas.concat([nueva])
-        proximaEnBandaNueva = false
         persistir()
         seleccionar("capa", nueva.id)
     }
@@ -830,7 +1038,7 @@ Singleton {
             texto: Idioma.t("Escribe aquí"),
             t0: a,
             t1: b,
-            banda: proximaEnBandaNueva ? cuantasBandas + 1 : bandaLibre(a, b),
+            banda: bandaParaNueva(a, b),
             // Abajo y centrado, que es donde va un rótulo.
             x: 0.5, y: 0.85, tam: 0.06,
             color: "#ffffff",
@@ -839,7 +1047,6 @@ Singleton {
             fondo: 0.5, colorFondo: "#000000"
         }
         capas = capas.concat([nueva])
-        proximaEnBandaNueva = false
         persistir()
         seleccionar("capa", nueva.id)
         return nueva.id
@@ -892,6 +1099,11 @@ Singleton {
     }
 
     function fijarCapa(id, campos) {
+        const actual = capaPorId(id)
+        const esControl = campos && (Object.prototype.hasOwnProperty.call(campos, "visible")
+                                     || Object.prototype.hasOwnProperty.call(campos, "bloqueada"))
+        if (actual && capaBloqueada(actual) && !esControl)
+            return
         capas = capas.map(function (c) {
             if (c.id !== id)
                 return c
@@ -900,11 +1112,85 @@ Singleton {
         persistir()
     }
 
+    function ponerTransformacion(id, campos) {
+        const c = capaPorId(id)
+        if (!c || capaBloqueada(c))
+            return
+        fijarCapa(id, campos)
+    }
+
+    function crearKeyframe(id, t) {
+        const c = capaPorId(id)
+        if (!c || capaBloqueada(c)) return
+        const k = { t: Math.max(0, Math.min(duracionLinea, Number(t) || 0)),
+                    x: c.x !== undefined ? c.x : 0.5,
+                    y: c.y !== undefined ? c.y : 0.5,
+                    escala: c.escala !== undefined ? c.escala : 0.3,
+                    tam: c.tam !== undefined ? c.tam : 0.06,
+                    rotacion: c.rotacion !== undefined ? c.rotacion : 0,
+                    opacidad: c.opacidad !== undefined ? c.opacidad : 1 }
+        const ks = (c.keyframes || []).filter(function (x) {
+            return Math.abs(Number(x.t) - k.t) > 0.02
+        }).concat([k]).sort(function (a, b) { return a.t - b.t })
+        fijarCapa(id, { keyframes: ks })
+    }
+
+    function quitarKeyframe(id, t) {
+        const c = capaPorId(id)
+        if (!c) return
+        fijarCapa(id, { keyframes: (c.keyframes || []).filter(function (x) {
+            return Math.abs(Number(x.t) - Number(t)) > 0.02
+        }) })
+    }
+
+    function ajustarTiempo(v, excluirId) {
+        let t = Math.max(0, Math.min(duracionLinea, Number(v) || 0))
+        const puntos = [0, duracionLinea]
+        for (let i = 0; i < tramos.length; ++i) {
+            puntos.push(tramos[i].inicio, tramos[i].fin)
+        }
+        for (let i = 0; i < marcadores.length; ++i)
+            puntos.push(Number(marcadores[i].t) || 0)
+        let mejor = t
+        let distancia = 0.08
+        for (let i = 0; i < puntos.length; ++i) {
+            const d = Math.abs(puntos[i] - t)
+            if (d < distancia) {
+                distancia = d
+                mejor = puntos[i]
+            }
+        }
+        return mejor
+    }
+
+    function crearMarcador(t, nombre) {
+        const a = Math.max(0, Math.min(duracionLinea, Number(t) || 0))
+        let mayor = 0
+        for (let i = 0; i < marcadores.length; ++i)
+            mayor = Math.max(mayor, Number(marcadores[i].id) || 0)
+        marcadores = marcadores.concat([{ id: mayor + 1, t: a,
+                                          nombre: nombre || "Marcador" }])
+            .sort(function (x, y) { return x.t - y.t })
+        persistir()
+        return mayor + 1
+    }
+
+    function quitarMarcador(id) {
+        marcadores = marcadores.filter(function (m) { return m.id !== id })
+        persistir()
+    }
+
+    function fijarMarcador(id, campos) {
+        marcadores = marcadores.map(function (m) {
+            return m.id === id ? Object.assign({}, m, campos) : m
+        })
+        persistir()
+    }
+
     function quitarCapa(id) {
         capas = capas.filter(function (c) { return c.id !== id })
-        // Quitar la última de una banda deja la banda vacía; que no se quede.
-        compactarBandas()
         seleccionar("", 0)
+        persistir()
     }
 
     //  Llevar una capa a otra banda.
@@ -924,6 +1210,10 @@ Singleton {
         //  abajo el tope es la 2: la 1 es del vídeo y no admite inquilinos.
         const b = Math.max(primeraBandaLibre,
                            Math.min(cuantasBandas + 1, banda))
+        if (bandaBloqueada(b))
+            return
+        if (b > cuantasBandas)
+            bandas = bandas.concat([{ banda: b, nombre: nombreBanda(b) }])
         if (b === bandaDe(capas[i]))
             return
         const d = b - bandaDe(capas[i])
@@ -941,29 +1231,11 @@ Singleton {
         else
             nuevas.unshift(capa)
         capas = nuevas
-        compactarBandas()
+        persistir()
     }
 
-    //  Quitar las bandas que se hayan quedado vacías.
-    //
-    //  Sin esto, mover la única capa de la banda 2 a la 3 deja la 2 como una fila
-    //  vacía para siempre, y a los cuatro movimientos la línea de tiempo es un
-    //  paisaje de filas en blanco.
+    //  Las bandas vacías son válidas y se conservan como grupos organizativos.
     function compactarBandas() {
-        const usadas = []
-        for (let i = 0; i < capas.length; ++i) {
-            const b = bandaDe(capas[i])
-            if (usadas.indexOf(b) < 0)
-                usadas.push(b)
-        }
-        usadas.sort(function (a, b) { return a - b })
-
-        //  `+ 2` y no `+ 1`: la banda 1 es la del vídeo, así que la primera
-        //  que puede ocupar una capa es la 2.
-        capas = capas.map(function (c) {
-            return Object.assign({}, c,
-                                 { banda: usadas.indexOf(bandaDe(c)) + 2 })
-        })
         persistir()
     }
 
@@ -980,7 +1252,8 @@ Singleton {
         const n = cuantasBandas
         const primera = primeraBandaLibre
         const d = Math.max(primera, Math.min(n, destino))
-        if (b < primera || b > n || d === b)
+        if (b < primera || b > n || d === b || bandaBloqueada(b)
+                || bandaBloqueada(d))
             return
 
         const orden = []
@@ -996,17 +1269,16 @@ Singleton {
         capas = capas.map(function (c) {
             return Object.assign({}, c, { banda: nueva[bandaDe(c)] })
         })
+        bandas = bandas.map(function (x) {
+            return Object.assign({}, x, { banda: nueva[Number(x.banda)] })
+        })
         persistir()
     }
 
-    //  «Añadir una capa» es añadir algo en una banda nueva encima.
-    //
-    //  Estuve a punto de hacer bandas vacías que se pudieran crear a mano, y no
-    //  tiene sentido: en este modelo una banda sin nada dentro no existe en el
-    //  plan, así que sería una fila fantasma que se pierde al cerrar. Lo que de
-    //  verdad se quiere al preguntar «¿cómo añado una capa?» es poner algo
-    //  ENCIMA de lo que ya hay sin tener que colocarlo después.
-    property bool proximaEnBandaNueva: false
+    // Banda objetivo para el siguiente elemento que se añada desde el panel,
+    // y banda que se ha dejado seleccionada cuando está vacía.
+    property int bandaObjetivo: 0
+    property int bandaSeleccionada: 0
 
     // ── la transcripción ──────────────────────────────────────────
     //
@@ -1145,10 +1417,38 @@ Singleton {
     //  pistas «el elegido» tiene que decir también de qué es.
     property string tipoSel: ""             // "" · clip · momento
     property int idSel: 0
+    property bool recortandoCapa: false
 
     function seleccionar(tipo, id) {
+        if (tipo === "capa") {
+            for (let i = 0; i < capas.length; ++i)
+                if (capas[i].id === id) {
+                    bandaSeleccionada = bandaDe(capas[i])
+                    break
+                }
+        }
+        // Si el usuario abandona el panel y selecciona otra cosa, no debe
+        // quedarse una preparación pendiente para la siguiente capa.
+        if (tipo !== "")
+            bandaObjetivo = 0
+        if (tipo !== "capa")
+            recortandoCapa = false
         tipoSel = tipo
         idSel = id
+    }
+
+    function seleccionarBanda(b) {
+        const n = Number(b)
+        if (n < primeraBandaLibre || n > cuantasBandas)
+            return
+        if (infoBanda(n) === null)
+            bandas = bandas.concat([{ banda: n, nombre: nombreBanda(n) }])
+        bandaSeleccionada = n
+        bandaObjetivo = n
+        recortandoCapa = false
+        tipoSel = ""
+        idSel = 0
+        persistir()
     }
 
     readonly property var momentoSel: {
@@ -1170,6 +1470,29 @@ Singleton {
             if (tipoSel === "capa" && capas[i].id === idSel)
                 return capas[i]
         return null
+    }
+
+    function alternarRecorte() {
+        if (!capaSel || capaSel.tipo !== "video") {
+            recortandoCapa = false
+            return
+        }
+        recortandoCapa = !recortandoCapa
+    }
+
+    function fijarRecorteFuente(id, rect) {
+        if (!rect || rect.length !== 4)
+            return
+        const x = Math.max(0, Math.min(0.99, Number(rect[0]) || 0))
+        const y = Math.max(0, Math.min(0.99, Number(rect[1]) || 0))
+        const w = Math.max(0.01, Math.min(1 - x, Number(rect[2]) || 1))
+        const h = Math.max(0.01, Math.min(1 - y, Number(rect[3]) || 1))
+        const base = capaSel && capaSel.id === id && capaSel.recorteFuente
+            && capaSel.recorteFuente.length === 4
+            ? capaSel.recorteFuente : [0, 0, 1, 1]
+        fijarCapa(id, { recorteFuente: [base[0] + x * base[2],
+                                         base[1] + y * base[3],
+                                         w * base[2], h * base[3]] })
     }
 
     property var momentos: []
@@ -1281,8 +1604,12 @@ Singleton {
         pistasAudio = []
         camara = []
         clics = []
+        marcadores = []
         posicionEditor = 0
         progreso = 0
+        bandas = []
+        bandaObjetivo = 0
+        bandaSeleccionada = 0
     }
 
     function recibirPlan(d) {
@@ -1291,6 +1618,9 @@ Singleton {
         fuentes = d.fuentes || []
         clips = d.clips || []
         capas = d.capas || []
+        bandas = d.bandas || []
+        bandaObjetivo = 0
+        bandaSeleccionada = 0
         transcripcion = d.transcripcion || []
         clicsActivos = !!(d.clics && d.clics.activo)
         fundidoEntrada = (d.fundidos && d.fundidos.entrada) || 0
@@ -1301,6 +1631,7 @@ Singleton {
         pistasAudio = (d.fuentes && d.fuentes.length > 0
                        ? d.fuentes[0].pistas : d.audio) || []
         momentos = d.momentos || []
+        marcadores = d.marcadores || []
         //  El editor se abre SIEMPRE, haya momentos o no.
         //
         //  Antes solo se abría si el rastro del cursor había propuesto alguno,
@@ -1308,6 +1639,7 @@ Singleton {
         //  media razón para grabar— no se podía ni abrir. El zoom es una cosa
         //  que se le hace a un vídeo, no el motivo de que exista el editor.
         estado = "editando"
+        iniciarHistorial()
         recalcular.restart()
         planListo()
     }
@@ -1437,7 +1769,16 @@ Singleton {
     //  Con rebote: arrastrar un bloque son sesenta eventos por segundo, y cada
     //  uno lanzaba un `python3`. Con esto son cinco por segundo como mucho, y
     //  solo se escribe el último estado, que es el único que importa.
-    function persistir() { persistidor.restart() }
+    function persistir() {
+        historializador.restart()
+        persistidor.restart()
+    }
+
+    Timer {
+        id: historializador
+        interval: 260
+        onTriggered: editor.registrarHistorial()
+    }
 
     Timer {
         id: persistidor
@@ -1474,14 +1815,17 @@ Singleton {
             //  otras: no tener ninguna es un estado legítimo, y con el `or` no
             //  habría forma de quitar la última.
             "p['capas']=d['capas']; " +
+            "p['bandas']=d['bandas']; " +
             "p['transcripcion']=d['transcripcion']; " +
             "p['clics']=d['clics']; " +
             "p['fundidos']=d['fundidos']; " +
+            "p['marcadores']=d['marcadores']; " +
             "json.dump(p, open(sys.argv[1],'w'), ensure_ascii=False, indent=1)",
             rutaPlan,
             JSON.stringify({ momentos: momentos, pistas: pistasAudio,
-                             clips: clips, capas: capas,
+                             clips: clips, capas: capas, bandas: bandas,
                              transcripcion: transcripcion,
+                             marcadores: marcadores,
                              clics: { activo: clicsActivos,
                                       color: colorClics },
                              fundidos: { entrada: fundidoEntrada,

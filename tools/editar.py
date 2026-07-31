@@ -468,8 +468,19 @@ def capas_de(plan, tipo=None):
     El orden se saca con `sorted`, que en python es estable: dentro de la misma
     banda se conserva el orden de la lista. No hace falta más.
     """
-    capas = [c for c in plan.get("capas", [])
-             if tipo is None or c.get("tipo") == tipo]
+    bandas = {int(b.get("banda", 0)): b for b in plan.get("bandas", [])}
+    solo = {b for b, info in bandas.items() if info.get("solo")}
+    capas = []
+    for c in plan.get("capas", []):
+        if tipo is not None and c.get("tipo") != tipo:
+            continue
+        b = int(c.get("banda", 2))
+        info = bandas.get(b, {})
+        if c.get("visible", True) is False or info.get("visible", True) is False:
+            continue
+        if solo and b not in solo:
+            continue
+        capas.append(c)
     return sorted(capas, key=lambda c: c.get("banda", 2))
 
 
@@ -653,6 +664,26 @@ def color_ffmpeg(css, opacidad=1.0):
     return "0x%s@%.3f" % (s, max(0.0, min(1.0, opacidad)))
 
 
+def expresion_animada(capa, campo, defecto):
+    """Expresión ffmpeg lineal para los fotogramas clave de una capa."""
+    ks = sorted(capa.get("keyframes", []) or [], key=lambda x: float(x.get("t", 0)))
+    if not ks:
+        return "%.6f" % float(capa.get(campo, defecto))
+    puntos = [(float(k.get("t", 0)), float(k.get(campo, defecto))) for k in ks]
+    if len(puntos) == 1:
+        return "%.6f" % puntos[0][1]
+    def tramo(i):
+        t0, v0 = puntos[i]
+        t1, v1 = puntos[i + 1]
+        if abs(t1 - t0) < 1e-6:
+            return "%.6f" % v1
+        return "(%.6f+(%.6f)*(t-%.6f))" % (v0, (v1 - v0) / (t1 - t0), t0)
+    expr = "%.6f" % puntos[-1][1]
+    for i in range(len(puntos) - 2, -1, -1):
+        expr = "if(lt(t,%.6f),%s,%s)" % (puntos[i + 1][0], tramo(i), expr)
+    return expr
+
+
 def rama_texto(n, capa, ancho, alto, carpeta, entra):
     """Un rótulo. Devuelve (líneas, etiqueta de salida).
 
@@ -671,12 +702,17 @@ def rama_texto(n, capa, ancho, alto, carpeta, entra):
     partes = ["drawtext=fontfile=%s" % citar(FUENTE),
               "textfile=%s" % citar(ruta),
               "expansion=none",
-              "fontsize=%d" % tam,
+              ("fontsize='%s*h'" % expresion_animada(capa, "tam", 0.06)
+               if capa.get("keyframes") else "fontsize=%d" % tam),
               "fontcolor=%s" % color_ffmpeg(capa.get("color", "#ffffff")),
               #  Centrado en (x, y) como las demás capas: `text_w` y `text_h` son
               #  lo que mide el rótulo ya compuesto.
-              "x=%.4f*w-text_w/2" % float(capa.get("x", 0.5)),
-              "y=%.4f*h-text_h/2" % float(capa.get("y", 0.85)),
+              ("x='%s*w-text_w/2'" % expresion_animada(capa, "x", 0.5)
+               if capa.get("keyframes") else
+               "x=%.4f*w-text_w/2" % float(capa.get("x", 0.5))),
+              ("y='%s*h-text_h/2'" % expresion_animada(capa, "y", 0.85)
+               if capa.get("keyframes") else
+               "y=%.4f*h-text_h/2" % float(capa.get("y", 0.85))),
               "enable='between(t,%.4f,%.4f)'"
               % (float(capa.get("t0", 0)), float(capa.get("t1", 0)))]
 
@@ -710,12 +746,21 @@ def rama_pip(n, idx, capa, ancho, alto, entra):
     lineas = []
     et = "pip%d" % n
     ancho_capa = max(2, int(round(ancho * float(capa.get("escala", 0.3)))))
+    escala_expr = expresion_animada(capa, "escala", 0.3)
 
     recorte = capa.get("recorte") or [0, 0]
     filtros = []
     if float(recorte[1]) > float(recorte[0]):
         filtros.append("trim=start=%.4f:end=%.4f"
                        % (float(recorte[0]), float(recorte[1])))
+    # Recorte espacial de la fuente, antes de escalarla y colocarla. Las
+    # coordenadas son fracciones del vídeo original para que el plan no dependa
+    # de la resolución.
+    an, al, px, py = caja_recorte_fuente(capa)
+    fuente_w = int(round(float(capa.get("w", an))))
+    fuente_h = int(round(float(capa.get("h", al))))
+    if an < fuente_w or al < fuente_h:
+        filtros.append("crop=%d:%d:%d:%d" % (an, al, px, py))
     #  `setpts` SIEMPRE, aunque no haya recorte: pone los tiempos del clip a cero
     #  y luego lo empuja hasta su instante.
     filtros.append("setpts=PTS-STARTPTS+%.4f/TB" % float(capa.get("t0", 0)))
@@ -737,21 +782,50 @@ def rama_pip(n, idx, capa, ancho, alto, entra):
                                  0.0, 1.0)))
         filtros.append("despill=type=green")
 
-    filtros.append("scale=%d:-1" % ancho_capa)
+    rotacion = float(capa.get("rotacion", 0.0))
+    hay_rotacion = abs(rotacion) > 0.01 or any(
+        abs(float(k.get("rotacion", 0))) > 0.01
+        for k in (capa.get("keyframes") or []))
+    if hay_rotacion:
+        filtros.append("format=rgba")
+        if capa.get("keyframes"):
+            filtros.append("rotate='%s*PI/180':fillcolor=none" %
+                           expresion_animada(capa, "rotacion", rotacion))
+        else:
+            filtros.append("rotate=%.6f*PI/180:fillcolor=none" % rotacion)
+
+    if capa.get("keyframes"):
+        filtros.append("scale=w='round(%d*%s)':h=-1:eval=frame" % (ancho, escala_expr))
+    else:
+        filtros.append("scale=%d:-1" % ancho_capa)
     filtros.append("setsar=1")
 
     opacidad = float(capa.get("opacidad", 1.0))
     if opacidad < 0.999:
-        filtros.append("format=rgba,colorchannelmixer=aa=%.3f" % opacidad)
+        if capa.get("keyframes"):
+            filtros.append("format=rgba,colorchannelmixer=aa='%s'" %
+                           expresion_animada(capa, "opacidad", opacidad))
+        else:
+            filtros.append("format=rgba,colorchannelmixer=aa=%.3f" % opacidad)
 
     lineas.append("[%d:v]%s[%s]" % (idx, ",".join(filtros), et))
 
     sale = "ov%d" % n
-    lineas.append(
-        "[%s][%s]overlay=x=%.4f*W-w/2:y=%.4f*H-h/2:"
-        "enable='between(t,%.4f,%.4f)':eof_action=pass[%s]"
-        % (entra, et, float(capa.get("x", 0.75)), float(capa.get("y", 0.75)),
-           float(capa.get("t0", 0)), float(capa.get("t1", 0)), sale))
+    if capa.get("keyframes"):
+        linea_overlay = (
+            "[%s][%s]overlay=x='%s*W-w/2':y='%s*H-h/2':"
+            "enable='between(t,%.4f,%.4f)':eof_action=pass[%s]"
+            % (entra, et, expresion_animada(capa, "x", 0.75),
+               expresion_animada(capa, "y", 0.75),
+               float(capa.get("t0", 0)), float(capa.get("t1", 0)), sale))
+    else:
+        linea_overlay = (
+            "[%s][%s]overlay=x=%.4f*W-w/2:y=%.4f*H-h/2:"
+            "enable='between(t,%.4f,%.4f)':eof_action=pass[%s]"
+            % (entra, et, float(capa.get("x", 0.75)),
+               float(capa.get("y", 0.75)), float(capa.get("t0", 0)),
+               float(capa.get("t1", 0)), sale))
+    lineas.append(linea_overlay)
     return lineas, sale
 
 
@@ -770,13 +844,33 @@ def rama_capa(n, idx, capa, ancho, alto, entra):
     lineas = []
     et = "cap%d" % n
     ancho_capa = max(2, int(round(ancho * float(capa.get("escala", 0.25)))))
+    escala_expr = expresion_animada(capa, "escala", 0.25)
 
-    filtros = ["scale=%d:-1" % ancho_capa]
+    filtros = []
+    rotacion = float(capa.get("rotacion", 0.0))
+    hay_rotacion = abs(rotacion) > 0.01 or any(
+        abs(float(k.get("rotacion", 0))) > 0.01
+        for k in (capa.get("keyframes") or []))
+    if hay_rotacion:
+        filtros.append("format=rgba")
+        if capa.get("keyframes"):
+            filtros.append("rotate='%s*PI/180':fillcolor=none" %
+                           expresion_animada(capa, "rotacion", rotacion))
+        else:
+            filtros.append("rotate=%.6f*PI/180:fillcolor=none" % rotacion)
+    if capa.get("keyframes"):
+        filtros.append("scale=w='round(%d*%s)':h=-1:eval=frame" % (ancho, escala_expr))
+    else:
+        filtros.append("scale=%d:-1" % ancho_capa)
     opacidad = float(capa.get("opacidad", 1.0))
     if opacidad < 0.999:
         #  El alfa hay que tenerlo antes de poder tocarlo: un JPEG llega sin
         #  canal alfa y `colorchannelmixer=aa=` no haría nada, sin quejarse.
-        filtros.append("format=rgba,colorchannelmixer=aa=%.3f" % opacidad)
+        if capa.get("keyframes"):
+            filtros.append("format=rgba,colorchannelmixer=aa='%s'" %
+                           expresion_animada(capa, "opacidad", opacidad))
+        else:
+            filtros.append("format=rgba,colorchannelmixer=aa=%.3f" % opacidad)
 
     lineas.append("[%d:v]%s[%s]" % (idx, ",".join(filtros), et))
 
@@ -792,11 +886,21 @@ def rama_capa(n, idx, capa, ancho, alto, entra):
     #  Y no hace falta protegerse de que la salida se trunque, porque `shortest`
     #  es 0 de fábrica: manda la duración de la entrada principal.
     sale = "ov%d" % n
-    lineas.append(
-        "[%s][%s]overlay=x=%.4f*W-w/2:y=%.4f*H-h/2:"
-        "enable='between(t,%.4f,%.4f)'[%s]"
-        % (entra, et, float(capa.get("x", 0.5)), float(capa.get("y", 0.5)),
-           float(capa.get("t0", 0.0)), float(capa.get("t1", 0.0)), sale))
+    if capa.get("keyframes"):
+        linea_overlay = (
+            "[%s][%s]overlay=x='%s*W-w/2':y='%s*H-h/2':"
+            "enable='between(t,%.4f,%.4f)'[%s]"
+            % (entra, et, expresion_animada(capa, "x", 0.5),
+               expresion_animada(capa, "y", 0.5),
+               float(capa.get("t0", 0.0)), float(capa.get("t1", 0.0)), sale))
+    else:
+        linea_overlay = (
+            "[%s][%s]overlay=x=%.4f*W-w/2:y=%.4f*H-h/2:"
+            "enable='between(t,%.4f,%.4f)'[%s]"
+            % (entra, et, float(capa.get("x", 0.5)),
+               float(capa.get("y", 0.5)), float(capa.get("t0", 0.0)),
+               float(capa.get("t1", 0.0)), sale))
+    lineas.append(linea_overlay)
     return lineas, sale
 
 
@@ -833,6 +937,27 @@ def caja_zona(capa, ancho, alto):
     x = par(ancho * float(capa.get("x", 0.5)) - an / 2.0, 0)
     y = par(alto * float(capa.get("y", 0.5)) - al / 2.0, 0)
     return an, al, min(x, ancho - an), min(y, alto - al)
+
+
+def caja_recorte_fuente(capa):
+    """El recorte rectangular de una capa de vídeo, en píxeles de su fuente."""
+    def par(v, minimo=2):
+        return max(minimo, int(round(v)) & ~1)
+
+    fuente_w = max(2, int(round(float(capa.get("w", 1920)))))
+    fuente_h = max(2, int(round(float(capa.get("h", 1080)))))
+    r = capa.get("recorteFuente") or [0, 0, 1, 1]
+    if not isinstance(r, (list, tuple)) or len(r) != 4:
+        r = [0, 0, 1, 1]
+    x = encaja(float(r[0]), 0.0, 0.99)
+    y = encaja(float(r[1]), 0.0, 0.99)
+    w = encaja(float(r[2]), 0.01, 1.0 - x)
+    h = encaja(float(r[3]), 0.01, 1.0 - y)
+    ancho = min(par(fuente_w), par(fuente_w * w))
+    alto = min(par(fuente_h), par(fuente_h * h))
+    px = min(par(fuente_w * x, 0), fuente_w - ancho)
+    py = min(par(fuente_h * y, 0), fuente_h - alto)
+    return ancho, alto, px, py
 
 
 def filtro_color(clip):
@@ -1452,6 +1577,8 @@ def plan_nuevo(video, rastro="", momentos=None, camara="", desfase=0.0):
             "clips": [{"id": 1, "fuente": 1, "desde": 0.0, "hasta": f["dur"]}],
             "momentos": momentos or [],
             "capas": [],
+            "bandas": [],
+            "marcadores": [],
             # Lo que se dice en el vídeo, cuando alguien lo pida. Va en el plan
             # para no tener que volver a transcribir al reabrir, que es lo caro.
             "transcripcion": []}

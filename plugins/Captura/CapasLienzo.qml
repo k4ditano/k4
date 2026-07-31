@@ -117,7 +117,8 @@ Item {
             //  faena.
             readonly property bool dentro: lienzo.segundos >= modelData.t0
                 && lienzo.segundos <= modelData.t1
-            visible: visual && (dentro || moviendo || escalando)
+            visible: Editor.capaVisible(modelData)
+                && visual && (dentro || moviendo || escalando)
 
             // ── el gesto en curso, en local ───────────────────────
             property bool moviendo: false
@@ -128,14 +129,40 @@ Item {
             // Una zona se estira por los dos lados, así que lleva su propio alto.
             property real vAl: 0
 
-            readonly property real ex: moviendo ? vX : modelData.x
-            readonly property real ey: moviendo ? vY : modelData.y
-            readonly property real eEscala: escalando ? vEscala : modelData.escala
+            function animado(campo, defecto) {
+                const ks = modelData.keyframes || []
+                if (ks.length === 0 || modelData.tipo === "zona")
+                    return modelData[campo] !== undefined
+                        ? Number(modelData[campo]) : defecto
+                if (lienzo.segundos <= Number(ks[0].t))
+                    return ks[0][campo] !== undefined ? Number(ks[0][campo]) : defecto
+                for (let i = 1; i < ks.length; ++i) {
+                    if (lienzo.segundos <= Number(ks[i].t)) {
+                        const a = ks[i - 1], b = ks[i]
+                        const u = (lienzo.segundos - a.t) / Math.max(0.001, b.t - a.t)
+                        const av = a[campo] !== undefined ? Number(a[campo]) : defecto
+                        const bv = b[campo] !== undefined ? Number(b[campo]) : av
+                        return av + (bv - av) * u
+                    }
+                }
+                const ultimo = ks[ks.length - 1]
+                return ultimo[campo] !== undefined ? Number(ultimo[campo]) : defecto
+            }
+
+            readonly property real ex: moviendo ? vX : animado("x", 0.5)
+            readonly property real ey: moviendo ? vY : animado("y", 0.5)
+            readonly property real eEscala: escalando ? vEscala
+                : animado("escala", 0.3)
 
             readonly property bool esTexto: modelData.tipo === "texto"
             readonly property bool esPip: modelData.tipo === "video"
             readonly property bool esZona: modelData.tipo === "zona"
             readonly property string modoZona: modelData.modo || "desenfoque"
+            readonly property var recorteFuente: modelData.recorteFuente
+                && modelData.recorteFuente.length === 4
+                ? modelData.recorteFuente : [0, 0, 1, 1]
+            readonly property bool recortando: elegida && Editor.recortandoCapa
+                && esPip
             //  El audio no se pinta: no tiene sitio en el fotograma. Su bloque
             //  vive en la línea de tiempo y su volumen en la ficha.
             readonly property bool visual: modelData.tipo === "texto"
@@ -150,7 +177,10 @@ Item {
             //  conserva la proporción al renderizar, y si la previa la inventara
             //  enseñaría un recuadro que no es el que va a salir.
             readonly property real relacion: esPip
-                ? (modelData.w > 0 ? modelData.h / modelData.w : 0.5625)
+                ? (modelData.w > 0
+                   ? modelData.h * recorteFuente[3]
+                     / Math.max(1, modelData.w * recorteFuente[2])
+                   : 0.5625)
                 : (imagen.implicitWidth > 0
                    ? imagen.implicitHeight / imagen.implicitWidth : 0.5625)
 
@@ -180,11 +210,12 @@ Item {
 
             // El mismo `boxborderw` que le pasa el grafo a ffmpeg.
             readonly property real tamTexto: lienzo.height
-                * (modelData.tam !== undefined ? modelData.tam : 0.06)
+                * animado("tam", 0.06)
             readonly property real relleno: esTexto && modelData.fondo > 0.001
                 ? Math.max(2, Math.round(tamTexto * 0.28)) : 0
 
-            opacity: modelData.opacidad !== undefined ? modelData.opacidad : 1
+            opacity: animado("opacidad", 1)
+            rotation: animado("rotacion", 0)
 
             //  El vídeo de dentro, reproduciéndose.
             //
@@ -221,10 +252,28 @@ Item {
                     audioOutput: AudioOutput { muted: true }
                 }
 
-                VideoOutput {
-                    id: salidaPip
+                // VideoOutput no permite asignar sourceRect. Se recorta con
+                // un contenedor y se escala dentro para que la previsualización
+                // use exactamente las mismas fracciones que el render.
+                Item {
+                    id: marcoPip
                     anchors.fill: parent
-                    fillMode: VideoOutput.Stretch
+                    clip: true
+
+                    Item {
+                        x: -capa.recorteFuente[0] / capa.recorteFuente[2]
+                           * marcoPip.width
+                        y: -capa.recorteFuente[1] / capa.recorteFuente[3]
+                           * marcoPip.height
+                        width: marcoPip.width / capa.recorteFuente[2]
+                        height: marcoPip.height / capa.recorteFuente[3]
+
+                        VideoOutput {
+                            id: salidaPip
+                            anchors.fill: parent
+                            fillMode: VideoOutput.Stretch
+                        }
+                    }
                 }
             }
 
@@ -387,6 +436,70 @@ Item {
                 border.color: Theme.blue
             }
 
+            // ── recorte espacial de un vídeo superpuesto ─────────
+            property real recorteX0: 0
+            property real recorteY0: 0
+            property real recorteX1: 0
+            property real recorteY1: 0
+
+            onRecortandoChanged: if (recortando) {
+                recorteX0 = 0
+                recorteY0 = 0
+                recorteX1 = width
+                recorteY1 = height
+            }
+
+            Rectangle {
+                z: 30
+                visible: capa.recortando && Math.abs(capa.recorteX1
+                                                       - capa.recorteX0) > 2
+                    && Math.abs(capa.recorteY1 - capa.recorteY0) > 2
+                x: Math.min(capa.recorteX0, capa.recorteX1)
+                y: Math.min(capa.recorteY0, capa.recorteY1)
+                width: Math.abs(capa.recorteX1 - capa.recorteX0)
+                height: Math.abs(capa.recorteY1 - capa.recorteY0)
+                color: Qt.rgba(0.2, 0.8, 0.4, 0.16)
+                border.width: 2
+                border.color: Theme.green
+            }
+
+            MouseArea {
+                z: 31
+                anchors.fill: parent
+                visible: capa.recortando && !Editor.capaBloqueada(capa.modelData)
+                preventStealing: true
+                enabled: !Editor.capaBloqueada(capa.modelData)
+                cursorShape: Qt.CrossCursor
+
+                onPressed: function (ev) {
+                    capa.recorteX0 = Math.max(0, Math.min(capa.width, ev.x))
+                    capa.recorteY0 = Math.max(0, Math.min(capa.height, ev.y))
+                    capa.recorteX1 = capa.recorteX0
+                    capa.recorteY1 = capa.recorteY0
+                }
+
+                onPositionChanged: function (ev) {
+                    if (!pressed)
+                        return
+                    capa.recorteX1 = Math.max(0, Math.min(capa.width, ev.x))
+                    capa.recorteY1 = Math.max(0, Math.min(capa.height, ev.y))
+                }
+
+                onReleased: {
+                    const x = Math.min(capa.recorteX0, capa.recorteX1)
+                    const y = Math.min(capa.recorteY0, capa.recorteY1)
+                    const w = Math.abs(capa.recorteX1 - capa.recorteX0)
+                    const h = Math.abs(capa.recorteY1 - capa.recorteY0)
+                    if (w > 4 && h > 4)
+                        Editor.fijarRecorteFuente(capa.modelData.id,
+                            [x / Math.max(1, capa.width),
+                             y / Math.max(1, capa.height),
+                             w / Math.max(1, capa.width),
+                             h / Math.max(1, capa.height)])
+                    Editor.recortandoCapa = false
+                }
+            }
+
             // ── mover ─────────────────────────────────────────────
             MouseArea {
                 anchors.fill: parent
@@ -418,14 +531,23 @@ Item {
                     if (!pressed)
                         return
                     const p = enLienzo(ev)
-                    capa.vX = Math.max(0, Math.min(1, capa.modelData.x
+                    let nx = Math.max(0, Math.min(1, capa.modelData.x
                         + (p.x - xIni) / Math.max(1, lienzo.width)))
-                    capa.vY = Math.max(0, Math.min(1, capa.modelData.y
+                    let ny = Math.max(0, Math.min(1, capa.modelData.y
                         + (p.y - yIni) / Math.max(1, lienzo.height)))
+                    // Ajuste magnético al centro y a los bordes del lienzo.
+                    const puntosX = [0.05, 0.5, 0.95]
+                    const puntosY = [0.05, 0.5, 0.95]
+                    for (let k = 0; k < puntosX.length; ++k)
+                        if (Math.abs(nx - puntosX[k]) < 0.018) nx = puntosX[k]
+                    for (let k = 0; k < puntosY.length; ++k)
+                        if (Math.abs(ny - puntosY[k]) < 0.018) ny = puntosY[k]
+                    capa.vX = nx
+                    capa.vY = ny
                 }
 
                 onReleased: {
-                    Editor.fijarCapa(capa.modelData.id,
+                    Editor.ponerTransformacion(capa.modelData.id,
                                      { x: capa.vX, y: capa.vY })
                     capa.moviendo = false
                 }
@@ -438,6 +560,7 @@ Item {
                 x: capa.width - 12
                 y: capa.height - 12
                 visible: capa.elegida
+                    && !Editor.capaBloqueada(capa.modelData)
                 preventStealing: true
                 cursorShape: Qt.SizeFDiagCursor
 

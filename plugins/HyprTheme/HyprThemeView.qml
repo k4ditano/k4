@@ -505,17 +505,31 @@ FadeIn {
             Layout.preferredHeight: 22
             spacing: 10
 
+            readonly property bool fondo: view.plugin.tab === "fondo"
+            readonly property bool fondoAplicado: view.plugin.wallpaper.length > 0
+            readonly property bool fondoDisponible: view.plugin.wallTool.length > 0
+
             IconGlyph {
-                text: view.plugin.isPersisted() ? Theme.ico.check : Theme.ico.alert
-                color: view.plugin.isPersisted() ? Theme.green : Theme.muted
+                text: parent.fondo
+                    ? (parent.fondoDisponible && parent.fondoAplicado ? Theme.ico.check : Theme.ico.alert)
+                    : (view.plugin.isPersisted() ? Theme.ico.check : Theme.ico.alert)
+                color: parent.fondo
+                    ? (parent.fondoDisponible && parent.fondoAplicado ? Theme.green : Theme.muted)
+                    : (view.plugin.isPersisted() ? Theme.green : Theme.muted)
                 font.pixelSize: 12
                 Layout.alignment: Qt.AlignVCenter
             }
 
             IslandLabel {
-                text: view.plugin.isPersisted()
-                    ? Idioma.t("Guardado en config/k4-theme.lua · sobrevive al reinicio")
-                    : Idioma.t("Aplicado solo en esta sesión · pulsa Guardar para que persista")
+                text: parent.fondo
+                    ? (parent.fondoDisponible
+                        ? (parent.fondoAplicado
+                            ? Idioma.t("Fondo aplicado y guardado automáticamente")
+                            : Idioma.t("Selecciona una imagen para cambiar el fondo"))
+                        : Idioma.t("Instala awww, swww o swaybg para aplicar fondos"))
+                    : (view.plugin.isPersisted()
+                        ? Idioma.t("Guardado en config/k4-theme.lua · sobrevive al reinicio")
+                        : Idioma.t("Aplicado solo en esta sesión · pulsa Guardar para que persista"))
                 color: Theme.muted
                 font.pixelSize: 10
                 Layout.alignment: Qt.AlignVCenter
@@ -524,6 +538,7 @@ FadeIn {
             Item { Layout.fillWidth: true }
 
             Rectangle {
+                visible: !parent.fondo
                 Layout.preferredWidth: saveLabel.implicitWidth + 26
                 Layout.preferredHeight: 24
                 Layout.alignment: Qt.AlignVCenter

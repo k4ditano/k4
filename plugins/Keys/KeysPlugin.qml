@@ -11,7 +11,7 @@ K4Plugin {
     name: "keys"
     title: Idioma.t("Atajos")
     priority: 65
-    active: open || closing
+    active: habilitado && (open || closing)
     viewLoaded: open
     grabKeyboard: open
 

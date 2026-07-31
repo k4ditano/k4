@@ -14,7 +14,7 @@ K4Plugin {
     name: "clock"
     title: Idioma.t("Reloj")
     priority: 50
-    active: Island.hovered
+    active: habilitado && Island.hovered
 
     // el módulo de bandeja; lo inyecta el host
     property var tray: null

@@ -15,7 +15,7 @@ K4Plugin {
     name: "system"
     title: Idioma.t("Sistema")
     priority: 62
-    active: open || closing
+    active: habilitado && (open || closing)
     viewLoaded: open
     tecladoOpcional: open
 
