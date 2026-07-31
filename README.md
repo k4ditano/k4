@@ -181,6 +181,8 @@ Before opening a pull request, run:
 ```sh
 python3 tools/plugins.py
 python3 tools/api.py
+python3 tools/guia.py
+python3 tools/glifos.py
 python3 tools/prueba_editar.py
 git diff --check
 ```
