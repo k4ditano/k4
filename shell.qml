@@ -246,14 +246,21 @@ Scope {
             }
 
             implicitHeight: surfaceHeight
-            mask: Region { item: island }
+            //  Sin la island, la ventana no acepta ni un clic.
+            //
+            //  No basta con dejar de dibujarla: la región de entrada seguía
+            //  siendo la suya, así que un selector de ficheros que le quedara
+            //  debajo perdía todos los clics de esa franja sin que se viera por
+            //  qué. Con la región vacía, el ratón pasa de largo.
+            mask: Region { item: Island.apartada ? null : island }
 
             Item {
                 id: island
                 anchors.top: parent.top
 
-                // Ver services/Island.qml: apartarse para las capturas.
-                opacity: Island.escondida ? 0 : 1
+                // Ver services/Island.qml: apartarse para las capturas y
+                // mientras haya un diálogo del sistema abierto.
+                opacity: Island.apartada ? 0 : 1
 
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: Math.min(parent.width, root.islandWidth + Theme.wing * 2)

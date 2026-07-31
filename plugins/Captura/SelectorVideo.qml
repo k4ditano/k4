@@ -89,6 +89,11 @@ FadeIn {
     //  sale el mismo selector que en cualquier otra aplicación.
     K4.Process {
         id: examinador
+        //  Mientras el diálogo esté abierto, la island se aparta: va en una capa
+        //  por encima de todo y el selector le sale por debajo, donde no se ve
+        //  ni se puede pulsar.
+        onArrancado: Island.abrirDialogo()
+        onTerminado: Island.cerrarDialogo()
         onSalida: function (texto) {
             const ruta = String(texto).trim()
             // Sale vacío si le has dado a cancelar, que no es un fallo.

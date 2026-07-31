@@ -174,6 +174,11 @@ K4Plugin {
 
     K4.Process {
         id: selectorImagen
+        //  Mientras el diálogo esté abierto, la island se aparta: va en una capa
+        //  por encima de todo y el selector le sale por debajo, donde no se ve
+        //  ni se puede pulsar.
+        onArrancado: Island.abrirDialogo()
+        onTerminado: Island.cerrarDialogo()
         command: ["zenity", "--file-selection",
                   "--title=" + Idioma.t("Elegir imagen"),
                   "--file-filter=" + Idioma.t("Imagen")
@@ -200,6 +205,11 @@ K4Plugin {
 
     K4.Process {
         id: selectorAudio
+        //  Mientras el diálogo esté abierto, la island se aparta: va en una capa
+        //  por encima de todo y el selector le sale por debajo, donde no se ve
+        //  ni se puede pulsar.
+        onArrancado: Island.abrirDialogo()
+        onTerminado: Island.cerrarDialogo()
         command: ["zenity", "--file-selection",
                   "--title=" + Idioma.t("Elegir audio"),
                   "--file-filter=" + Idioma.t("Audio")
@@ -222,6 +232,11 @@ K4Plugin {
 
     K4.Process {
         id: selectorPip
+        //  Mientras el diálogo esté abierto, la island se aparta: va en una capa
+        //  por encima de todo y el selector le sale por debajo, donde no se ve
+        //  ni se puede pulsar.
+        onArrancado: Island.abrirDialogo()
+        onTerminado: Island.cerrarDialogo()
         command: ["zenity", "--file-selection",
                   "--title=" + Idioma.t("Elegir vídeo para encima"),
                   "--file-filter=" + Idioma.t("Vídeo")
@@ -449,6 +464,10 @@ K4Plugin {
 
         // Elegir un vídeo del disco y editarlo.
         function abrir(): void { self.pedirVideo() }
+
+        //  El diálogo del sistema, directamente: el mismo que abre el botón
+        //  «Examinar…» del selector.
+        function examinar(): void { self.pedirImagen(Editor.posicionEditor) }
 
         // Editar un vídeo concreto, sin pasar por el selector.
         function editar(ruta: string): void { self.abrirVideo(ruta) }
