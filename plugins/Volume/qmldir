@@ -1,0 +1,7 @@
+#  Generado: los tipos de esta carpeta, para que se resuelvan
+#  también cargando el plugin por URL (esquema qs:), donde la
+#  resolución implícita de hermanos no existe.
+#  `python3 tools/plugins.py` comprueba que esté completo.
+
+VolumePlugin 1.0 VolumePlugin.qml
+VolumeView 1.0 VolumeView.qml

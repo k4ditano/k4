@@ -1,0 +1,8 @@
+#  Generado: los tipos de esta carpeta, para que se resuelvan
+#  también cargando el plugin por URL (esquema qs:), donde la
+#  resolución implícita de hermanos no existe.
+#  `python3 tools/plugins.py` comprueba que esté completo.
+
+BloqueoSurface 1.0 BloqueoSurface.qml
+SessionPlugin 1.0 SessionPlugin.qml
+SessionView 1.0 SessionView.qml

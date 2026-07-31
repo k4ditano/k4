@@ -11,91 +11,38 @@ import Quickshell.Io
 import Quickshell.Wayland
 import "core"
 import "services"
-import "plugins/Idle"
-import "plugins/Volume"
-import "plugins/Clock"
-import "plugins/Player"
-import "plugins/Toast"
-import "plugins/Panel"
-import "plugins/Launcher"
-import "plugins/Ask"
-import "plugins/HyprTheme"
-import "plugins/Weather"
-import "plugins/Tray"
-import "plugins/Game"
-import "plugins/Settings"
-import "plugins/Clipboard"
-import "plugins/System"
-import "plugins/Files"
-import "plugins/Keys"
-import "plugins/Windows"
-import "plugins/Session"
-import "plugins/Captura"
 
 Scope {
     id: root
 
     // ── los módulos ───────────────────────────────────────────────
-    // Las referencias cruzadas se inyectan aquí, así ningún plugin importa a
-    // otro: sabe que le pasan "un panel", no de qué carpeta sale.
-    IdlePlugin   { id: idlePlugin; habilitado: PluginManager.estaHabilitado("idle"); tray: trayPlugin }
-    VolumePlugin { id: volumePlugin; habilitado: PluginManager.estaHabilitado("volume") }
-    ClockPlugin  { id: clockPlugin; habilitado: PluginManager.estaHabilitado("clock"); tray: trayPlugin; juego: gamePlugin }
-    PlayerPlugin { id: playerPlugin; habilitado: PluginManager.estaHabilitado("player"); panel: panelPlugin; tray: trayPlugin; juego: gamePlugin }
-    ToastPlugin  { id: toastPlugin; habilitado: PluginManager.estaHabilitado("toast") }
-    PanelPlugin  { id: panelPlugin; habilitado: PluginManager.estaHabilitado("panel"); launcher: launcherPlugin; theme: themePlugin; weather: weatherPlugin; ajustes: settingsPlugin; juego: gamePlugin; sistema: systemPlugin }
-    LauncherPlugin { id: launcherPlugin; habilitado: PluginManager.estaHabilitado("launcher"); panel: panelPlugin }
-    AskPlugin    { id: askPlugin; habilitado: PluginManager.estaHabilitado("ask"); panel: panelPlugin; launcher: launcherPlugin }
-    HyprThemePlugin { id: themePlugin; habilitado: PluginManager.estaHabilitado("hyprtheme"); panel: panelPlugin }
-    WeatherPlugin { id: weatherPlugin; habilitado: PluginManager.estaHabilitado("weather"); panel: panelPlugin }
-    TrayPlugin   { id: trayPlugin; habilitado: PluginManager.estaHabilitado("tray"); panel: panelPlugin }
-    GamePlugin   { id: gamePlugin; habilitado: PluginManager.estaHabilitado("game"); panel: panelPlugin }
-    SettingsPlugin { id: settingsPlugin; habilitado: PluginManager.estaHabilitado("settings"); panel: panelPlugin }
-    ClipboardPlugin { id: clipboardPlugin; habilitado: PluginManager.estaHabilitado("clipboard"); panel: panelPlugin }
-    SystemPlugin { id: systemPlugin; habilitado: PluginManager.estaHabilitado("system"); panel: panelPlugin }
-    FilesPlugin { id: filesPlugin; habilitado: PluginManager.estaHabilitado("files"); panel: panelPlugin }
-    KeysPlugin { id: keysPlugin; habilitado: PluginManager.estaHabilitado("keys"); panel: panelPlugin }
-    WindowsPlugin { id: windowsPlugin; habilitado: PluginManager.estaHabilitado("windows"); panel: panelPlugin }
-    SessionPlugin { id: sessionPlugin; habilitado: PluginManager.estaHabilitado("session"); panel: panelPlugin }
-    CapturaPlugin { id: capturaPlugin; habilitado: PluginManager.estaHabilitado("captura"); panel: panelPlugin }
-
-    readonly property var plugins: [
-        idlePlugin,
-        volumePlugin,
-        clockPlugin,
-        playerPlugin,
-        toastPlugin,
-        panelPlugin,
-        launcherPlugin,
-        askPlugin,
-        themePlugin,
-        weatherPlugin,
-        trayPlugin,
-        gamePlugin,
-        settingsPlugin,
-        clipboardPlugin,
-        systemPlugin,
-        filesPlugin,
-        keysPlugin,
-        windowsPlugin,
-        sessionPlugin,
-        capturaPlugin
-    ]
+    //
+    //  Ya no se instancian aquí: los crea PluginManager desde el catálogo,
+    //  cada uno en su try. La diferencia no es de estilo — con la
+    //  instanciación estática, un plugin con un error de sintaxis dejaba
+    //  «Type X unavailable» y CERO barras, y pasó esta semana. Con la carga
+    //  dinámica, el roto se apunta en Ajustes y los demás arrancan.
+    //
+    //  Las referencias cruzadas (`panel`, `tray`, `juego`…) también las
+    //  reparte el gestor: cualquier plugin que declare la propiedad la
+    //  recibe, venga del repo o de ~/.config/k4/plugins.
 
     // ── quién se queda la island ──────────────────────────────────
     // Gana el activo de mayor prioridad. El binding se recalcula solo cuando
     // cualquier plugin cambia su `active`.
     readonly property var activePlugin: {
         if (Island.debugMode.length > 0) {
-            for (let i = 0; i < plugins.length; ++i) {
-                if (plugins[i].name === Island.debugMode)
-                    return plugins[i]
+            const l = PluginManager.instancias
+            for (let i = 0; i < l.length; ++i) {
+                if (l[i].name === Island.debugMode)
+                    return l[i]
             }
         }
 
         let best = null
-        for (let i = 0; i < plugins.length; ++i) {
-            const p = plugins[i]
+        const lista = PluginManager.instancias
+        for (let i = 0; i < lista.length; ++i) {
+            const p = lista[i]
             if (p.habilitado && p.active
                     && (best === null || p.priority > best.priority))
                 best = p
@@ -106,23 +53,6 @@ Scope {
     readonly property int islandWidth: activePlugin ? activePlugin.islandWidth : 176
     readonly property int islandHeight: activePlugin ? activePlugin.islandHeight : Theme.baseHeight
 
-    // Deshabilitar un plugin también cierra su estado interactivo. No se
-    // destruye el objeto QML —las referencias entre módulos siguen siendo
-    // estables—, pero deja de pedir la island y libera su vista.
-    Connections {
-        target: PluginManager
-        function onCambiado(id, habilitado) {
-            if (habilitado)
-                return
-            for (let i = 0; i < root.plugins.length; ++i) {
-                const p = root.plugins[i]
-                if (p.name === id && typeof p.close === "function") {
-                    try { p.close() } catch (e) { PluginManager.registrarError(id, e) }
-                }
-            }
-        }
-    }
-
     // Clic en el fondo: lo atiende el plugin activo si lo pide; si no, abre el
     // centro de control.
     function backgroundTap() {
@@ -130,7 +60,7 @@ Scope {
         if (p && p.handlesBackgroundTap)
             p.backgroundTapped()
         else
-            panelPlugin.toggle()
+            PluginManager.abrirPanel()
     }
 
     // Los singletons de QML son perezosos: sin tocarlos no arrancan sus
@@ -160,23 +90,31 @@ Scope {
     // Cada módulo publica su propio target (k4.panel, k4.ask, k4.launcher).
     // Esto es la capa de compatibilidad: mantiene el target `k4` con los
     // nombres de siempre para no romper los atajos ya configurados.
+    //  Atajo del registro: el plugin vivo con ese id, o null si está
+    //  deshabilitado o roto. Con `?.` detrás, llamar a uno apagado no hace
+    //  nada, que es exactamente lo que debe hacer.
+    function _p(id) { return PluginManager.instancia(id) }
+
     IpcHandler {
         target: "k4"
-        function toggleLauncher(): void { launcherPlugin.toggle() }
-        function clipboard(): void { clipboardPlugin.toggle() }
-        function system(): void { systemPlugin.toggle() }
-        function files(): void { filesPlugin.toggle() }
-        function keys(): void { keysPlugin.toggle() }
-        function windows(): void { windowsPlugin.toggle() }
-        function install(query: string): void { launcherPlugin.openPackageSearch(query) }
+        function toggleLauncher(): void { _p("launcher")?.toggle() }
+        function clipboard(): void { _p("clipboard")?.toggle() }
+        function system(): void { _p("system")?.toggle() }
+        function files(): void { _p("files")?.toggle() }
+        function keys(): void { _p("keys")?.toggle() }
+        function windows(): void { _p("windows")?.toggle() }
+        function install(query: string): void { _p("launcher")?.openPackageSearch(query) }
         function search(query: string): void {
-            if (!launcherPlugin.open)
-                launcherPlugin.toggle()
-            launcherPlugin.query = query
-            launcherPlugin.rebuild()
+            const l = _p("launcher")
+            if (!l)
+                return
+            if (!l.open)
+                l.toggle()
+            l.query = query
+            l.rebuild()
         }
-        function togglePanel(): void { panelPlugin.toggle("controls") }
-        function toggleNotifications(): void { panelPlugin.toggle("notifications") }
+        function togglePanel(): void { _p("panel")?.toggle("controls") }
+        function toggleNotifications(): void { _p("panel")?.toggle("notifications") }
         function pluginEnable(id: string): void { PluginManager.habilitar(id) }
         function pluginDisable(id: string): void { PluginManager.deshabilitar(id) }
         function pluginToggle(id: string): void { PluginManager.alternar(id) }
@@ -186,36 +124,45 @@ Scope {
                          error: PluginManager.errores[m.id] || "" }
             })))
         }
-        function wifi(): void { panelPlugin.openTab("wifi") }
-        function bluetooth(): void { panelPlugin.openTab("bluetooth") }
+        function wifi(): void { _p("panel")?.openTab("wifi") }
+        function bluetooth(): void { _p("panel")?.openTab("bluetooth") }
         function clearNotifications(): void { Notifs.clear() }
         function ask(): void {
-            if (askPlugin.open) askPlugin.close()
-            else askPlugin.openAsk(false)
+            const a = _p("ask")
+            if (!a)
+                return
+            if (a.open) a.close()
+            else a.openAsk(false)
         }
-        function askSelection(): void { askPlugin.openAsk(true) }
+        function askSelection(): void { _p("ask")?.openAsk(true) }
         function askNow(question: string): void {
-            askPlugin.openAsk(false)
-            askPlugin.query = question
-            askPlugin.send()
+            const a = _p("ask")
+            if (!a)
+                return
+            a.openAsk(false)
+            a.query = question
+            a.send()
         }
         function askFollowUp(question: string): void {
-            if (!askPlugin.open)
-                askPlugin.openAsk(false)
-            askPlugin.query = question
-            askPlugin.send()
+            const a = _p("ask")
+            if (!a)
+                return
+            if (!a.open)
+                a.openAsk(false)
+            a.query = question
+            a.send()
         }
-        function askScreen(): void { askPlugin.withScreenshot() }
-        function askRegion(): void { askPlugin.withRegion() }
+        function askScreen(): void { _p("ask")?.withScreenshot() }
+        function askRegion(): void { _p("ask")?.withRegion() }
         function togglePlay(): void { Media.togglePlaying() }
         function nextTrack(): void { Media.siguiente() }
         function prevTrack(): void { Media.anterior() }
-        function theme(): void { themePlugin.toggle() }
-        function weather(): void { weatherPlugin.toggle() }
-        function tray(): void { trayPlugin.toggle() }
-        function game(): void { gamePlugin.toggle() }
-        function settings(): void { settingsPlugin.toggle() }
-        function session(): void { sessionPlugin.toggle() }
+        function theme(): void { _p("hyprtheme")?.toggle() }
+        function weather(): void { _p("weather")?.toggle() }
+        function tray(): void { _p("tray")?.toggle() }
+        function game(): void { _p("game")?.toggle() }
+        function settings(): void { _p("settings")?.toggle() }
+        function session(): void { _p("session")?.toggle() }
         function lock(): void { Sesion.bloquear() }
         function setMode(mode: string): void { Island.debugMode = mode }
     }

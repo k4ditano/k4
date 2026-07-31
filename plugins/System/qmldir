@@ -1,0 +1,8 @@
+#  Generado: los tipos de esta carpeta, para que se resuelvan
+#  también cargando el plugin por URL (esquema qs:), donde la
+#  resolución implícita de hermanos no existe.
+#  `python3 tools/plugins.py` comprueba que esté completo.
+
+Grafica 1.0 Grafica.qml
+SystemPlugin 1.0 SystemPlugin.qml
+SystemView 1.0 SystemView.qml

@@ -1,0 +1,7 @@
+#  Generado: los tipos de esta carpeta, para que se resuelvan
+#  también cargando el plugin por URL (esquema qs:), donde la
+#  resolución implícita de hermanos no existe.
+#  `python3 tools/plugins.py` comprueba que esté completo.
+
+LauncherPlugin 1.0 LauncherPlugin.qml
+LauncherView 1.0 LauncherView.qml

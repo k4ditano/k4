@@ -1,0 +1,22 @@
+#  Generado: los tipos de esta carpeta, para que se resuelvan
+#  también cargando el plugin por URL (esquema qs:), donde la
+#  resolución implícita de hermanos no existe.
+#  `python3 tools/plugins.py` comprueba que esté completo.
+
+AperturaCofre 1.0 AperturaCofre.qml
+CeldaObjeto 1.0 CeldaObjeto.qml
+Combatiente 1.0 Combatiente.qml
+Crisol 1.0 Crisol.qml
+EfectoGolpe 1.0 EfectoGolpe.qml
+EfectoHabilidad 1.0 EfectoHabilidad.qml
+Fondo 1.0 Fondo.qml
+GamePlugin 1.0 GamePlugin.qml
+GameView 1.0 GameView.qml
+NumeroFlotante 1.0 NumeroFlotante.qml
+ObjetoFila 1.0 ObjetoFila.qml
+PanelAltar 1.0 PanelAltar.qml
+PanelBolsa 1.0 PanelBolsa.qml
+PanelGrupo 1.0 PanelGrupo.qml
+PanelLogros 1.0 PanelLogros.qml
+PanelLucha 1.0 PanelLucha.qml
+PanelPlantilla 1.0 PanelPlantilla.qml
