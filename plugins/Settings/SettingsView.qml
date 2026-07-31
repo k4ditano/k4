@@ -89,6 +89,25 @@ FadeIn {
             ScrollBar.vertical: ScrollBar { policy: rodillo.contentHeight > rodillo.height
                 ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff }
 
+            //  La rueda, en un área que solo escucha la rueda.
+            //
+            //  Sin esto la lista solo se movía arrastrando: cada fila lleva su
+            //  MouseArea con hover y un MouseArea acepta la rueda tenga o no
+            //  manejador, así que el Flickable no la veía nunca. Es la misma
+            //  trampa —y el mismo arreglo— que la línea de tiempo del editor.
+            MouseArea {
+                anchors.fill: parent
+                z: 10
+                acceptedButtons: Qt.NoButton
+                onWheel: function (ev) {
+                    const paso = ev.angleDelta.y
+                    rodillo.contentY = Math.max(0, Math.min(
+                        rodillo.contentHeight - rodillo.height,
+                        rodillo.contentY - paso))
+                    ev.accepted = true
+                }
+            }
+
         ColumnLayout {
             id: grupos
             width: rodillo.width
@@ -172,15 +191,40 @@ FadeIn {
 
                                         IslandLabel {
                                             text: opcion.modelData.desc
-                                            color: Theme.muted
+                                            //  El motivo de un plugin roto va
+                                            //  en rojo: es la diferencia entre
+                                            //  «apagado» y «no puede».
+                                            color: opcion.modelData.error
+                                                ? Theme.red : Theme.muted
                                             font.pixelSize: 9
                                             elide: Text.ElideRight
                                             Layout.fillWidth: true
                                         }
                                     }
 
+                                    //  Un plugin que no puede cargar no lleva
+                                    //  interruptor: encender lo imposible es
+                                    //  mentir. Si el fallo fue al cargar, la
+                                    //  fila entera reintenta.
+                                    IslandLabel {
+                                        visible: opcion.modelData.error === "recargable"
+                                        text: Idioma.t("reintentar")
+                                        color: Theme.blue
+                                        font.pixelSize: 10
+                                        Layout.alignment: Qt.AlignVCenter
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            anchors.margins: -6
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: PluginManager.reintentar(
+                                                opcion.modelData.pluginId)
+                                        }
+                                    }
+
                                     IslandSwitch {
                                         visible: opcion.modelData.tipo !== "eleccion"
+                                                 && opcion.modelData.error !== "fijo"
                                         checked: opcion.activa
                                         onToggled: if (opcion.disponible) Settings.alternar(opcion.modelData.id)
                                         Layout.alignment: Qt.AlignVCenter

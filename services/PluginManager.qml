@@ -205,6 +205,8 @@ Singleton {
     //  Volver a intentar un plugin que falló: es lo que hace útil el botón de
     //  «reintentar» de Ajustes. Solo para los que no están cargados; recargar
     //  uno vivo con procesos y vistas es otra historia y queda fuera.
+    property int _rondaRecarga: 0
+
     function reintentar(id) {
         if (_porId[id] || !estaHabilitado(id))
             return
@@ -212,7 +214,14 @@ Singleton {
         if (!m)
             return
         limpiarError(id)
-        if (_crear(m)) {
+        //  Con la caché esquivada: Qt cachea los componentes por URL, así que
+        //  reintentar tras arreglar el fichero devolvía el componente ROTO de
+        //  antes. Una query distinta en cada ronda es otra URL y obliga a
+        //  releer del disco. Solo aquí — en el arranque normal la caché es
+        //  exactamente lo que se quiere.
+        _rondaRecarga += 1
+        if (_crear(Object.assign({}, m,
+                                 { entry: m.entry + "?r" + _rondaRecarga }))) {
             _repartir()
             _publicar()
         }
@@ -286,14 +295,31 @@ Singleton {
         errores = d
     }
 
+    //  Las filas del grupo «Plugins» de Ajustes. Para uno de fuera, la
+    //  descripción enseña QUÉ es y QUÉ permisos pide antes del interruptor —
+    //  eso es el consentimiento—; para uno con error, el motivo en rojo y la
+    //  fila entera como botón de reintentar.
     readonly property var opcionesAjustes: catalogo
         .filter(function (m) { return m.configurable !== false })
         .map(function (m) {
+            const error = errores[m.id] || ""
+            let desc = "Activar o desactivar este plugin"
+            if (m.externo) {
+                desc = m.description || "Plugin de usuario"
+                if (m.permisos && m.permisos.length > 0)
+                    desc += "  ·  pide: " + m.permisos.join(", ")
+            }
+            if (m.cargable === false)
+                desc = m.motivo || "no cargable"
+            else if (error.length > 0)
+                desc = error
             return { id: "plugin_" + m.id,
                      pluginId: m.id,
-                     nombre: m.title,
-                     desc: "Activar o desactivar este plugin",
-                     glifo: 0xF04E5 }
+                     nombre: m.title + (m.externo ? "  ·  " + (m.version || "") : ""),
+                     desc: desc,
+                     error: m.cargable === false ? "fijo"
+                          : (error.length > 0 ? "recargable" : ""),
+                     glifo: m.externo ? 0xF0431 : 0xF06A5 }   // md-puzzle · md-power_plug
         })
 
     function valorAjuste(id) {
