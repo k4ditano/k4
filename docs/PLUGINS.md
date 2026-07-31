@@ -306,6 +306,14 @@ El manifiesto declara lo que usas; la barra lo comprueba **antes de listar**:
 | `red` | `XMLHttpRequest`, `WebSocket` |
 | `ficheros` | `K4.Fichero` |
 | `sonido` | `K4.Sonido` |
+| `audio` | `K4.Audio.ponerVolumen`, `K4.Audio.alternarSilencio` |
+| `medios` | `K4.Medios.alternarPausa`, `.siguiente`, `.anterior`, `.buscar` |
+| `notificaciones` | `K4.Notificaciones.limpiar` |
+| `portapapeles` | `K4.Portapapeles` — **también solo leerlo** |
+
+Los ocho, y fíjate dónde cae la línea: se vigila `ponerVolumen` y no
+`K4.Audio`, porque mirar el volumen no le hace nada a nadie y cambiarlo sí. El
+portapapeles es el único al revés, porque ahí lo delicado es leer.
 
 Usar algo sin declararlo hace el plugin **no cargable**, con el motivo en
 Ajustes. Y lo honesto: esto **no es un sandbox**. QML corre en el proceso de
