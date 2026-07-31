@@ -444,7 +444,54 @@ Singleton {
             // Se conserva el catálogo de emergencia embebido.
         }
         catalogoListo = true
-        arrancar()
+        if (listo)
+            _sincronizar()
+        else
+            arrancar()
+    }
+
+    //  Releer el catálogo con la barra en marcha: lo que hace que instalar o
+    //  quitar un plugin desde el terminal se note sin reiniciar.
+    function releerCatalogo() {
+        listador.running = false
+        listador.running = true
+    }
+
+    //  Casar lo que hay vivo con lo que dice el catálogo nuevo.
+    //
+    //  Solo actúa sobre las diferencias: un plugin que desapareció del disco
+    //  se destruye, uno nuevo y habilitado se crea. A los que siguen igual no
+    //  se les toca — releer el catálogo no puede costar un parpadeo a los
+    //  veinte plugins que no han cambiado.
+    function _sincronizar() {
+        const vistos = {}
+        let cambios = false
+        for (let i = 0; i < catalogo.length; ++i) {
+            const m = catalogo[i]
+            vistos[m.id] = true
+            if (m.cargable === false) {
+                if (_porId[m.id]) { _destruir(m.id); cambios = true }
+                registrarError(m.id, m.motivo || "no cargable")
+                continue
+            }
+            if (estaHabilitado(m.id) && !_porId[m.id]) {
+                if (_crear(m))
+                    cambios = true
+            }
+        }
+        //  Y el que ya no está en el catálogo: se lo llevaron del disco.
+        const ids = Object.keys(_porId)
+        for (let j = 0; j < ids.length; ++j) {
+            if (!vistos[ids[j]]) {
+                _destruir(ids[j])
+                limpiarError(ids[j])
+                cambios = true
+            }
+        }
+        if (cambios) {
+            _repartir()
+            _publicar()
+        }
     }
 
     function guardar() {

@@ -129,6 +129,7 @@ Scope {
         function pluginToggle(id: string): void { PluginManager.alternar(id) }
         function pluginRetry(id: string): void { PluginManager.reintentar(id) }
         function pluginReload(id: string): void { PluginManager.recargar(id) }
+        function pluginRefresh(): void { PluginManager.releerCatalogo() }
         function pluginStatus(): void {
             console.log(JSON.stringify(PluginManager.catalogo.map(function (m) {
                 return { id: m.id, enabled: PluginManager.estaHabilitado(m.id),

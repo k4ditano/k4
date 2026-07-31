@@ -13,6 +13,35 @@ quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4 pluginEnable hola
 quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4.hola toggle
 ```
 
+## 0 · Instalar uno que ya existe
+
+Si alguien publicó un plugin en un repositorio:
+
+```sh
+python3 tools/plugins.py --instalar https://github.com/quien/su-plugin
+```
+
+Clona a un temporal, lo valida entero ahí, y **solo entonces** enseña qué
+dice ser y qué permisos declara, y pregunta. Nada llega a tu directorio de
+plugins sin haber pasado el mismo examen que pasan los ya instalados: no
+existe el «medio instalado y roto». Si el QML usa algo que el manifiesto no
+declara, se rechaza antes de tocar el disco.
+
+Llega **apagado**. Encenderlo es otra decisión y se toma en Ajustes, viendo
+esos mismos permisos.
+
+```sh
+python3 tools/plugins.py --instalados        # qué tienes y de dónde vino
+python3 tools/plugins.py --actualizar snake  # reinstala desde su origen
+python3 tools/plugins.py --quitar snake      # desinstala (--con-estado borra
+                                             # también lo que guardó)
+```
+
+Con la barra en marcha, `k4 pluginRefresh` le hace releer el catálogo: lo
+recién instalado aparece y lo quitado desaparece sin reiniciar nada. Y tras
+actualizar uno encendido, `k4 pluginReload <id>` cambia el código que corre
+—en la barra sigue vivo el de antes hasta que se lo digas.
+
 ## 1 · La carpeta y el manifiesto
 
 ```text
