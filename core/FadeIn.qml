@@ -1,7 +1,5 @@
-import QtQuick
+//  Capa fina sobre K4.Aparicion — ver core/IconGlyph.qml.
 
-Item {
-    opacity: 0
-    Component.onCompleted: opacity = 1
-    Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-}
+import K4 as K4
+
+K4.Aparicion {}

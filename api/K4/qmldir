@@ -13,6 +13,18 @@ Plugin 1.0 Plugin.qml
 singleton Puente 1.0 Puente.qml
 singleton Tema 1.0 Tema.qml
 Etiqueta 1.0 Etiqueta.qml
+
+#  Piezas visuales: para que un plugin de fuera pueda tener la misma cara que
+#  la barra sin dibujarla a mano. Ninguna importa core/ — están escritas contra
+#  K4.Tema, que es la regla que vigila tools/api.py.
+Glifo 1.0 Glifo.qml
+Interruptor 1.0 Interruptor.qml
+Deslizador 1.0 Deslizador.qml
+Baldosa 1.0 Baldosa.qml
+Boton 1.0 Boton.qml
+Aparicion 1.0 Aparicion.qml
+Rodillo 1.0 Rodillo.qml
+FocoInicial 1.0 FocoInicial.qml
 singleton Idioma 1.0 Idioma.qml
 Guardado 1.0 Guardado.qml
 

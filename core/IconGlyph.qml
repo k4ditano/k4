@@ -1,9 +1,9 @@
-import QtQuick
+//  El glifo de siempre, ahora una capa fina sobre K4.Glifo.
+//
+//  La pieza de verdad vive en la API porque un plugin de fuera la necesita, y
+//  aquí queda el nombre en inglés que usan los veinte de casa. Una sola
+//  implementación: dos copias del mismo control acaban separándose siempre.
 
-Text {
-    color: Theme.ink
-    font.family: Theme.iconFont
-    font.pixelSize: 16
-    horizontalAlignment: Text.AlignHCenter
-    verticalAlignment: Text.AlignVCenter
-}
+import K4 as K4
+
+K4.Glifo {}

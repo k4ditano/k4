@@ -132,6 +132,15 @@ Reglas que la barra hace cumplir:
 | `K4.Plugin` | el contrato: island, prioridad, teclado, vista |
 | `K4.Tema` | la paleta (`tinta`, `superficie`, `apagado`…) y las fuentes |
 | `K4.Etiqueta` | texto con los defaults de la barra |
+| `K4.Glifo` | un icono de la Nerd Font (búscalos con `tools/glifos.py`) |
+| `K4.Icono` | un icono del tema del escritorio, por nombre |
+| `K4.Interruptor` | el switch de la barra; avisa, no cambia solo |
+| `K4.Deslizador` | deslizador con etiqueta y valor |
+| `K4.Baldosa` | la tarjeta pulsable del centro de control |
+| `K4.Boton` | botón redondo de un glifo |
+| `K4.Rodillo` | zona con scroll **que sí obedece a la rueda** |
+| `K4.Aparicion` | entra con un fundido en vez de dar un salto |
+| `K4.FocoInicial` | lleva el cursor a tu campo de texto al abrir |
 | `K4.Idioma` | `t()` y `f()` — sin diccionario devuelven el texto tal cual |
 | `K4.Guardado` | tu estado en JSON, en TU directorio, con `cargado`/`guardar` |
 | `K4.Ipc` | tu target de IPC (`k4.<id>`) |
@@ -139,6 +148,13 @@ Reglas que la barra hace cumplir:
 | `K4.Fichero` | leer y escribir ficheros — requiere `ficheros` |
 | `K4.Pildora` | un indicador en la píldora plegada |
 | `K4.Paths` | rutas: `estadoDe(id)` es tu directorio de estado |
+
+Con esas piezas tu plugin tiene la MISMA cara que la barra sin dibujar un
+rectángulo: `ejemplos/piezas/` es el muestrario, copiable y ejecutable. Y una
+advertencia que te ahorra una tarde: si metes tu lista en un `Flickable`
+normal y sus filas tienen hover o clic, **la rueda no funcionará** —un
+MouseArea acepta la rueda tenga o no manejador— y no dará ningún error. Por
+eso existe `K4.Rodillo`.
 
 Para un juego: `K4.Guardado` es la partida y el récord, `grabKeyboard: true`
 mientras se juega te da el teclado entero, y un `Timer` es el tick. La
