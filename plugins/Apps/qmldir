@@ -1,0 +1,4 @@
+#  Los tipos de esta carpeta, para que se resuelvan bajo el esquema qs:.
+
+AppsPlugin 1.0 AppsPlugin.qml
+AppsView 1.0 AppsView.qml

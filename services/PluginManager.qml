@@ -399,8 +399,38 @@ Singleton {
                      desc: desc,
                      error: m.cargable === false ? "fijo"
                           : (error.length > 0 ? "recargable" : ""),
-                     glifo: m.externo ? 0xF0431 : 0xF06A5 }   // md-puzzle · md-power_plug
+                     //  Su icono si lo declara, y si no el genérico: pieza de
+                     //  puzle para los de fuera, enchufe para los de casa.
+                     glifo: m.icono ? parseInt(m.icono, 16)
+                          : (m.externo ? 0xF0431 : 0xF06A5) }
         })
+
+    //  Las aplicaciones: lo que sale en el centro de aplicaciones y en los
+    //  accesos directos. Se declara en el catálogo o en el manifiesto
+    //  (`aplicacion: true`), no en el código, para que se sepa qué es antes
+    //  de cargar nada — y para que un plugin apagado siga saliendo, en gris,
+    //  en vez de desaparecer sin explicación.
+    readonly property var aplicaciones: catalogo
+        .filter(function (m) { return m.aplicacion === true })
+        .map(function (m) {
+            return { id: m.id,
+                     nombre: m.title || m.id,
+                     glifo: m.icono ? parseInt(m.icono, 16) : 0xF0431,
+                     externo: m.externo === true,
+                     habilitado: estaHabilitado(m.id),
+                     disponible: m.cargable !== false
+                                 && !(errores[m.id] || "").length }
+        })
+
+    //  Abrir una por su id. Aquí y no en la vista: quien tiene las instancias
+    //  es este gestor, y una aplicación apagada no se abre —se dice.
+    function abrirAplicacion(id) {
+        const p = _porId[id]
+        if (!p)
+            return false
+        p.abrir()
+        return true
+    }
 
     function valorAjuste(id) {
         return estaHabilitado(String(id).replace(/^plugin_/, ""))

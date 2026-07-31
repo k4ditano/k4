@@ -63,6 +63,31 @@ Singleton {
     // widgets/NotifStrip.qml: notificaciones recientes al pasar el ratón
     property bool notificacionesAlPasar: true
 
+    // ── accesos directos ──────────────────────────────────────────
+    //  Qué aplicaciones salen en la franja del centro de control, por id de
+    //  plugin. plugins/Panel/PanelView.qml la pinta y el centro de
+    //  aplicaciones la edita con la chincheta de cada tarjeta.
+    //
+    //  Ids y no una copia de nombres e iconos: así al renombrar un plugin o
+    //  cambiarle el icono el acceso directo se entera solo, y uno que apunte a
+    //  un plugin desinstalado simplemente no se pinta.
+    property var accesosDirectos: ["game", "hyprtheme", "system", "clipboard"]
+
+    function esAccesoDirecto(id) {
+        return (accesosDirectos || []).indexOf(id) >= 0
+    }
+
+    function alternarAcceso(id) {
+        const l = (accesosDirectos || []).slice()
+        const i = l.indexOf(id)
+        if (i >= 0)
+            l.splice(i, 1)
+        else
+            l.push(id)
+        accesosDirectos = l
+        guardar()
+    }
+
     // Cambia el valor de una opción que no es un interruptor.
     function poner(id, valor) {
         if (String(id).indexOf("ext_") === 0) {
@@ -237,7 +262,8 @@ Singleton {
         "grabarAudio", "grabarCodec", "grabarFps",
         "grabarCamara", "camaraDispositivo",
         "zoomAuto", "zoomNivel", "editorCodec",
-        "bandejaEnPildora", "notificacionesAlPasar"
+        "bandejaEnPildora", "notificacionesAlPasar",
+        "accesosDirectos"
     ]
 
     function guardar() {

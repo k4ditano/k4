@@ -18,6 +18,7 @@ local raiz = "@RAIZ@"
 local k4 = "quickshell ipc -p " .. raiz .. "/shell.qml call k4 "
 local captura = "quickshell ipc -p " .. raiz .. "/shell.qml call k4.captura "
 local editor = "quickshell ipc -p " .. raiz .. "/shell.qml call k4.editor "
+local apps = "quickshell ipc -p " .. raiz .. "/shell.qml call k4.apps "
 
 ----------------------------------------------------------------------------
 -- Arranque
@@ -33,6 +34,11 @@ end)
 -- La island
 ----------------------------------------------------------------------------
 hl.bind(mod .. " + Space",       hl.dsp.exec_cmd(k4 .. "toggleLauncher"))
+-- El cajón de aplicaciones de la barra: lo que la propia k4 sabe abrir.
+-- Justo al lado del lanzador y a propósito: Space lanza las aplicaciones del
+-- escritorio, SHIFT+Space las de la barra. (SUPER+D, que era lo primero que
+-- se me ocurrió, ya es «pantalla completa» en la configuración de CachyOS.)
+hl.bind(mod .. " + SHIFT + Space", hl.dsp.exec_cmd(apps .. "toggle"))
 hl.bind(mod .. " + I",           hl.dsp.exec_cmd(k4 .. "togglePanel"))
 hl.bind(mod .. " + X",           hl.dsp.exec_cmd(k4 .. "togglePanel"))
 hl.bind(mod .. " + N",           hl.dsp.exec_cmd(k4 .. "toggleNotifications"))

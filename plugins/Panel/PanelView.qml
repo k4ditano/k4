@@ -445,36 +445,35 @@ FadeIn {
             }
         }
 
-        // ── accesos directos, en rejilla ──────────────────────────
-        // Cuatro filas apiladas ocupaban una columna entera; en dos por dos
-        // caben en una franja y se leen de un vistazo.
+        // ── accesos directos ──────────────────────────────────────
+        //
+        //  Ya no es una lista a fuego de cinco cosas: son las aplicaciones que
+        //  el usuario haya puesto en `Settings.accesosDirectos`, con su icono
+        //  y su nombre sacados del catálogo. Añadir o quitar se hace con la
+        //  chincheta del centro de aplicaciones, que es donde se ven todas.
+        //
+        //  Y al final, siempre, el botón que abre el centro entero: la franja
+        //  es para las cuatro de siempre, y para el resto está el cajón.
         RowLayout {
             Layout.fillWidth: true
-            // altura propia: con fillHeight se aplastaban y los rótulos se
-            // salían de la tarjeta
             Layout.fillHeight: false
             Layout.preferredHeight: 40
             visible: view.plugin.tab === "controls"
             spacing: 10
 
             Repeater {
-                model: [
-                    { id: "apps",  nombre: Idioma.t("Buscar apps"), glifo: Theme.ico.search,  color: Theme.muted },
-                    { id: "juego", nombre: Idioma.t("Mazmorra"),    glifo: 0xF04E5,           color: "#ff9f0a" },
-                    { id: "tema",  nombre: Idioma.t("Tema"),        glifo: Theme.ico.palette, color: "#c78fff" },
-                    { id: "sistema", nombre: Idioma.t("Sistema"),   glifo: 0xF035B,           color: "#0a84ff" },
-                    { id: "ajustes", nombre: Idioma.t("Ajustes"),   glifo: Theme.ico.cog,     color: Theme.muted }
-                ]
+                //  Solo las que existen y están encendidas: un acceso directo
+                //  a algo apagado sería un botón que no hace nada.
+                model: PluginManager.aplicaciones.filter(function (a) {
+                    return Settings.esAccesoDirecto(a.id) && a.habilitado
+                })
 
                 delegate: IslandTile {
                     id: acceso
                     required property var modelData
 
-                    visible: acceso.modelData.id !== "juego" || Settings.juegoActivo
-
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-
                     radius: 12
 
                     RowLayout {
@@ -482,10 +481,8 @@ FadeIn {
                         spacing: 7
 
                         IconGlyph {
-                            text: typeof acceso.modelData.glifo === "number"
-                                ? String.fromCodePoint(acceso.modelData.glifo)
-                                : acceso.modelData.glifo
-                            color: acceso.modelData.color
+                            text: String.fromCodePoint(acceso.modelData.glifo)
+                            color: Theme.ink
                             font.pixelSize: 15
                         }
 
@@ -498,18 +495,36 @@ FadeIn {
 
                     onPulsada: {
                         view.plugin.close()
-                        const cual = acceso.modelData.id
-                        if (cual === "apps" && view.plugin.launcher)
-                            view.plugin.launcher.toggle()
-                        else if (cual === "juego" && view.plugin.juego)
-                            view.plugin.juego.toggle()
-                        else if (cual === "tema" && view.plugin.theme)
-                            view.plugin.theme.toggle()
-                        else if (cual === "sistema" && view.plugin.sistema)
-                            view.plugin.sistema.toggle()
-                        else if (cual === "ajustes" && view.plugin.ajustes)
-                            view.plugin.ajustes.toggle()
+                        PluginManager.abrirAplicacion(acceso.modelData.id)
                     }
+                }
+            }
+
+            IslandTile {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                radius: 12
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 7
+
+                    IconGlyph {
+                        text: String.fromCodePoint(0xF02C1)   // md-grid
+                        color: Theme.muted
+                        font.pixelSize: 15
+                    }
+
+                    IslandLabel {
+                        text: Idioma.t("Todas")
+                        font.pixelSize: 11
+                        font.weight: Font.Medium
+                    }
+                }
+
+                onPulsada: {
+                    view.plugin.close()
+                    PluginManager.abrirAplicacion("apps")
                 }
             }
         }

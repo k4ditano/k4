@@ -69,6 +69,13 @@ actualizar uno encendido, `k4 pluginReload <id>` cambia el código que corre
   carpeta**. Si choca con un plugin de la barra, pierde el tuyo.
 - `entry`: el fichero que hereda de `K4.Plugin`, dentro de la propia carpeta.
 - `host`: la versión mínima de barra que necesitas (`>=x.y.z`).
+- `icono`: tu icono, un códice de la Nerd Font en texto (`"0xF011A"`).
+  Búscalo con `python3 tools/glifos.py <palabra>`. Sale en Ajustes y en el
+  centro de aplicaciones.
+- `aplicacion`: `true` si lo tuyo es algo que se **abre y se usa** —un juego,
+  una herramienta— y no un indicador o un servicio. Con eso apareces en el
+  centro de aplicaciones (SUPER+SHIFT+Space) y te pueden anclar a la franja
+  del centro de control.
 - `permisos`: qué capacidades usas — ver más abajo. Vacío si solo pintas.
 
 ## 2 · El plugin y la vista
@@ -138,6 +145,10 @@ Reglas que la barra hace cumplir:
   contrato que no se te rompe al actualizar.
 - El id raíz conviene que sea `self`: una vista con `required property var
   plugin` puede tapar un id que se llame igual.
+Si te declaras `aplicacion`, la barra te abrirá llamando a `abrir()`. Por
+defecto usa tu `toggle()`, que es lo que ya tienen casi todos; redefínela si
+necesitas otra cosa —por ejemplo abrir siempre en vez de alternar.
+
 - Procesos, timers e IPC van como hijos del `K4.Plugin`, no de la vista: la
   vista se destruye cada vez que pierdes la island.
 

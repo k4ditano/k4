@@ -68,6 +68,17 @@ QtObject {
 
     // Clic en el fondo de la island. Si el plugin no lo marca, el host aplica
     // lo de siempre: abrir el centro de control.
+    //  Abrirte desde fuera: el centro de aplicaciones y los accesos directos
+    //  del centro de control llaman a esto. Por defecto usa tu `toggle()`, que
+    //  es lo que ya tienen casi todos; redefínela si necesitas otra cosa —por
+    //  ejemplo abrir siempre en vez de alternar.
+    function abrir() {
+        if (typeof toggle === "function")
+            toggle()
+        else
+            active = true
+    }
+
     property bool handlesBackgroundTap: false
     signal backgroundTapped()
 

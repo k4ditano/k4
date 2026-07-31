@@ -36,7 +36,8 @@
       "entry": "Toast/ToastPlugin.qml",
       "version": "1.0.0",
       "title": "Notificación",
-      "enabledByDefault": true
+      "enabledByDefault": true,
+      "icono": "0xF0369"
     },
     {
       "id": "panel",
@@ -64,28 +65,35 @@
       "entry": "HyprTheme/HyprThemePlugin.qml",
       "version": "1.0.0",
       "title": "Tema de Hyprland",
-      "enabledByDefault": true
+      "enabledByDefault": true,
+      "icono": "0xF03D8",
+      "aplicacion": true
     },
     {
       "id": "weather",
       "entry": "Weather/WeatherPlugin.qml",
       "version": "1.0.0",
       "title": "El tiempo",
-      "enabledByDefault": true
+      "enabledByDefault": true,
+      "icono": "0xF0595",
+      "aplicacion": true
     },
     {
       "id": "tray",
       "entry": "Tray/TrayPlugin.qml",
       "version": "1.0.0",
       "title": "Bandeja",
-      "enabledByDefault": true
+      "enabledByDefault": true,
+      "icono": "0xF1296"
     },
     {
       "id": "game",
       "entry": "Game/GamePlugin.qml",
       "version": "1.0.0",
       "title": "Mazmorra",
-      "enabledByDefault": true
+      "enabledByDefault": true,
+      "icono": "0xF011A",
+      "aplicacion": true
     },
     {
       "id": "settings",
@@ -93,56 +101,80 @@
       "version": "1.0.0",
       "title": "Ajustes",
       "enabledByDefault": true,
-      "configurable": false
+      "configurable": false,
+      "icono": "0xF0493",
+      "aplicacion": true
     },
     {
       "id": "clipboard",
       "entry": "Clipboard/ClipboardPlugin.qml",
       "version": "1.0.0",
       "title": "Portapapeles",
-      "enabledByDefault": true
+      "enabledByDefault": true,
+      "icono": "0xF014D",
+      "aplicacion": true
     },
     {
       "id": "system",
       "entry": "System/SystemPlugin.qml",
       "version": "1.0.0",
       "title": "Sistema",
-      "enabledByDefault": true
+      "enabledByDefault": true,
+      "icono": "0xF061A",
+      "aplicacion": true
     },
     {
       "id": "files",
       "entry": "Files/FilesPlugin.qml",
       "version": "1.0.0",
       "title": "Archivos",
-      "enabledByDefault": true
+      "enabledByDefault": true,
+      "icono": "0xF024B",
+      "aplicacion": true
     },
     {
       "id": "keys",
       "entry": "Keys/KeysPlugin.qml",
       "version": "1.0.0",
       "title": "Atajos",
-      "enabledByDefault": true
+      "enabledByDefault": true,
+      "icono": "0xF030C",
+      "aplicacion": true
     },
     {
       "id": "windows",
       "entry": "Windows/WindowsPlugin.qml",
       "version": "1.0.0",
       "title": "Ventanas",
-      "enabledByDefault": true
+      "enabledByDefault": true,
+      "icono": "0xF05B2",
+      "aplicacion": true
     },
     {
       "id": "session",
       "entry": "Session/SessionPlugin.qml",
       "version": "1.0.0",
       "title": "Sesión",
-      "enabledByDefault": true
+      "enabledByDefault": true,
+      "icono": "0xF0425",
+      "aplicacion": true
     },
     {
       "id": "captura",
       "entry": "Captura/CapturaPlugin.qml",
       "version": "1.0.0",
       "title": "Captura",
-      "enabledByDefault": true
+      "enabledByDefault": true,
+      "icono": "0xF0FCE",
+      "aplicacion": true
+    },
+    {
+      "id": "apps",
+      "entry": "Apps/AppsPlugin.qml",
+      "version": "1.0.0",
+      "title": "Aplicaciones",
+      "enabledByDefault": true,
+      "icono": "0xF02C1"
     }
   ],
   "version": "1.1.0"
