@@ -47,6 +47,7 @@ PERMISOS = {
                          r"(alternarPausa|siguiente|anterior|buscar)\b"),
     "notificaciones": re.compile(r"\bK4\.Notificaciones\.limpiar\b"),
     "portapapeles": re.compile(r"\bK4\.Portapapeles\b"),
+    "sonido": re.compile(r"\bK4\.Sonido\b"),
 }
 
 

@@ -115,6 +115,22 @@ Item {
 }
 ```
 
+### El tamaño es tuyo
+
+`islandWidth` e `islandHeight` los pides tú, y **puedes cambiarlos en vivo**:
+un plugin puede ser una tira de 200×150 y convertirse en una pantalla grande
+según lo que esté haciendo. El editor de vídeo de la barra hace justo eso.
+
+```qml
+islandWidth:  modo === "mini" ? 200 : 980
+islandHeight: modo === "mini" ? 150 : K4.Isla.altoMaximo
+```
+
+El tope de alto es `K4.Isla.altoMaximo` (880 hoy). Pedir más no rompe nada
+pero tampoco crece: lo que sobra se recorta, y una pantalla que no se puede
+ver entera es peor que una más pequeña. Si tu contenido puede crecer sin
+límite, mételo en un `K4.Rodillo` y deja el alto fijo.
+
 Reglas que la barra hace cumplir:
 
 - **Un plugin importa QtQuick y K4. Nada más.** Desde tu carpeta no hay ruta
@@ -145,6 +161,7 @@ Reglas que la barra hace cumplir:
 | `K4.Guardado` | tu estado en JSON, en TU directorio, con `cargado`/`guardar` |
 | `K4.Ipc` | tu target de IPC (`k4.<id>`) |
 | `K4.Process` | procesos externos — requiere el permiso `procesos` |
+| `K4.Sonido` | un sonido corto — requiere el permiso `sonido` |
 | `K4.Fichero` | leer y escribir ficheros — requiere `ficheros` |
 | `K4.Pildora` | un indicador en la píldora plegada |
 | `K4.Paths` | rutas: `estadoDe(id)` es tu directorio de estado |
@@ -238,6 +255,7 @@ El manifiesto declara lo que usas; la barra lo comprueba **antes de listar**:
 | `procesos` | `K4.Process` |
 | `red` | `XMLHttpRequest`, `WebSocket` |
 | `ficheros` | `K4.Fichero` |
+| `sonido` | `K4.Sonido` |
 
 Usar algo sin declararlo hace el plugin **no cargable**, con el motivo en
 Ajustes. Y lo honesto: esto **no es un sandbox**. QML corre en el proceso de
