@@ -1,0 +1,9 @@
+{
+  "id": "hola",
+  "entry": "HolaPlugin.qml",
+  "version": "1.0.0",
+  "title": "Hola",
+  "description": "El plugin de ejemplo de la documentación",
+  "host": ">=1.1.0",
+  "permisos": []
+}
