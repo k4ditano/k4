@@ -22,4 +22,17 @@ QtObject {
     property var idioma: null
     //  El servicio de indicadores de la píldora.
     property var indicadores: null
+
+    //  Y los datos vivos del sistema, que los plugins leen a través de sus
+    //  envoltorios (K4.Audio, K4.Medios…). Van uno a uno y no como un saco:
+    //  así se ve de un vistazo qué le presta el host a la API, y añadir algo
+    //  es una decisión y no un descuido.
+    property var audio: null
+    property var medios: null
+    property var notificaciones: null
+    property var wifi: null
+    property var bluetooth: null
+    property var escritorios: null
+    property var portapapeles: null
+    property var reloj: null
 }

@@ -30,6 +30,16 @@ Guardado 1.0 Guardado.qml
 
 singleton Paths 1.0 Paths.qml
 singleton Pildora 1.0 Pildora.qml
+
+#  Los datos vivos del sistema. Leer suele ser libre; lo que cambia algo pide
+#  su permiso declarado — y el portapapeles pide permiso hasta para leerlo.
+singleton Audio 1.0 Audio.qml
+singleton Medios 1.0 Medios.qml
+singleton Notificaciones 1.0 Notificaciones.qml
+singleton Red 1.0 Red.qml
+singleton Escritorios 1.0 Escritorios.qml
+singleton Portapapeles 1.0 Portapapeles.qml
+singleton Reloj 1.0 Reloj.qml
 Process 1.0 Process.qml
 Ipc 1.0 Ipc.qml
 singleton Sistema 1.0 Sistema.qml

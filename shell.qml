@@ -74,6 +74,14 @@ Scope {
         K4.Puente.tema = Theme
         K4.Puente.idioma = Idioma
         K4.Puente.indicadores = Indicadores
+        K4.Puente.audio = Audio
+        K4.Puente.medios = Media
+        K4.Puente.notificaciones = Notifs
+        K4.Puente.wifi = Wifi
+        K4.Puente.bluetooth = Bt
+        K4.Puente.escritorios = Workspaces
+        K4.Puente.portapapeles = Clipboard
+        K4.Puente.reloj = Clock
 
         void Audio.volume
         void Wifi.name

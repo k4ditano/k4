@@ -34,10 +34,19 @@ RE_ID = re.compile(r"[a-z0-9][a-z0-9-]*")
 #  hacer lo que la barra pueda hacer. Es consentimiento informado — el usuario
 #  ve qué declara el plugin antes de encenderlo — más un análisis que convierte
 #  el descuido y el engaño simple en un error de instalación.
+#  La línea la marca el efecto, no el módulo: mirar el volumen no le hace nada
+#  a nadie y cambiarlo sí, así que se vigila `ponerVolumen`, no `K4.Audio`. El
+#  portapapeles es la excepción y va al revés — ahí lo delicado es LEER, que
+#  guarda contraseñas y tokens, así que basta con nombrarlo.
 PERMISOS = {
     "procesos": re.compile(r"\bK4\.Process\b|\bexecDetached\b"),
     "red": re.compile(r"\bXMLHttpRequest\b|\bWebSocket\b"),
     "ficheros": re.compile(r"\bK4\.Fichero\b"),
+    "audio": re.compile(r"\bK4\.Audio\.(ponerVolumen|alternarSilencio)\b"),
+    "medios": re.compile(r"\bK4\.Medios\."
+                         r"(alternarPausa|siguiente|anterior|buscar)\b"),
+    "notificaciones": re.compile(r"\bK4\.Notificaciones\.limpiar\b"),
+    "portapapeles": re.compile(r"\bK4\.Portapapeles\b"),
 }
 
 

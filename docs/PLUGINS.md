@@ -149,6 +149,28 @@ Reglas que la barra hace cumplir:
 | `K4.Pildora` | un indicador en la píldora plegada |
 | `K4.Paths` | rutas: `estadoDe(id)` es tu directorio de estado |
 
+Y los datos vivos del sistema:
+
+| Tipo | Qué da | Escribir pide |
+|---|---|---|
+| `K4.Audio` | volumen, silencio | `audio` |
+| `K4.Medios` | qué suena: título, artista, carátula, posición | `medios` |
+| `K4.Notificaciones` | las que llegan, con señal `llego()` | `notificaciones` |
+| `K4.Red` | Wi‑Fi y Bluetooth — **solo lectura, sin excepción** | — |
+| `K4.Escritorios` | cuáles hay y en cuál estás | — |
+| `K4.Portapapeles` | el historial — **leer ya pide** `portapapeles` | `portapapeles` |
+| `K4.Reloj` | la hora, del reloj único de la barra | — |
+
+La línea la marca el efecto, no el módulo: mirar el volumen no le hace nada a
+nadie, subirlo sí. El portapapeles va al revés porque guarda contraseñas y
+tokens — ahí lo delicado es leer. Y conectarse a una red o emparejar un
+aparato no se abre ni con permiso: equivocarse ahí cuesta quedarse sin red o
+entregarle el portátil a un desconocido, y ninguna idea de plugin lo compensa.
+
+`K4.Medios.posicion` solo avanza si alguien la mira: llama a
+`seguirPosicion()` al montar tu vista y a `dejarPosicion()` al soltarla, o el
+temporizador no corre.
+
 Con esas piezas tu plugin tiene la MISMA cara que la barra sin dibujar un
 rectángulo: `ejemplos/piezas/` es el muestrario, copiable y ejecutable. Y una
 advertencia que te ahorra una tarde: si metes tu lista en un `Flickable`
