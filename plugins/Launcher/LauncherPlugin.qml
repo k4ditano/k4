@@ -238,7 +238,18 @@ K4Plugin {
 
         found.sort(function (a, b) { return a.name.localeCompare(b.name) })
 
-        const list = found.slice(0, 40)
+        //  Este panel es el de las aplicaciones DEL SISTEMA y manda eso: lo
+        //  que aporten los plugins va detrás, nunca por delante. Quien abre el
+        //  lanzador y escribe «fire» quiere Firefox, y un aporte por bien
+        //  intencionado que sea no puede colarse encima de lo que la persona
+        //  venía a buscar. Para las cosas de la barra está su propio cajón
+        //  (SUPER+SHIFT+Space); aquí salen para que se puedan ENCONTRAR, no
+        //  para competir.
+        const extras = (Enganches.resultados || []).map(function (r) {
+            return { name: r.titulo || "", genericName: r.desc || "",
+                     icon: r.icono || "", _enganche: r }
+        })
+        const list = found.slice(0, 40).concat(extras)
 
         if (q.length > 0) {
             const installEntry = {
@@ -256,15 +267,7 @@ K4Plugin {
                 list.push(installEntry)
         }
 
-        //  Y lo que aporten los plugins, arriba del todo: quien se molesta en
-        //  enganchar algo al lanzador es porque es más específico que «una
-        //  aplicación que se llama parecido», y enterrarlo bajo cuarenta
-        //  entradas sería no tenerlo.
-        const extras = (Enganches.resultados || []).map(function (r) {
-            return { name: r.titulo || "", genericName: r.desc || "",
-                     icon: r.icono || "", _enganche: r }
-        })
-        matches = extras.concat(list)
+        matches = list
         if (conservarSeleccion === true)
             index = Math.max(0, Math.min(index, list.length - 1))
         else

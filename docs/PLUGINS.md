@@ -248,7 +248,9 @@ Los valores los guardas TÚ: la barra pregunta por `valores` y avisa por
 y no una copia que se desincroniza al primer fallo de escritura.
 
 **Tus resultados, en el lanzador.** Contestas cuando puedes; si lo tuyo cuesta
-—una consulta por red— no bloqueas a nadie.
+—una consulta por red— no bloqueas a nadie. Lo tuyo sale **debajo** de las
+aplicaciones del sistema: ese panel es el de ellas, y estás ahí para que se te
+pueda encontrar, no para competir.
 
 ```qml
 K4.Lanzador {

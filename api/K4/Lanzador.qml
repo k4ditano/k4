@@ -9,6 +9,11 @@
 //  tengas en `resultados`. Si tardas —una consulta por red, un proceso— no
 //  bloqueas a nadie: cuando llegue, se pinta.
 //
+//  Lo tuyo sale DEBAJO de las aplicaciones del sistema, siempre. Ese panel es
+//  el de ellas: quien escribe «fire» quiere Firefox, y un aporte por bien
+//  intencionado que sea no debe colarse encima de lo que la persona venía a
+//  buscar. Estás ahí para que se te pueda ENCONTRAR, no para competir.
+//
 //      K4.Lanzador {
 //          plugin: "hola"
 //          onBuscando: function (texto) {
