@@ -22,8 +22,10 @@ Item {
 
             K4.Etiqueta {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: plugin.saludar ? K4.Idioma.t("Hola desde un plugin de fuera")
-                                     : K4.Idioma.t("Contando visitas")
+                text: !plugin.saludar ? K4.Idioma.t("Contando visitas")
+                    : plugin.aQuien
+                      ? K4.Idioma.f(K4.Idioma.t("Hola, %1"), plugin.aQuien)
+                      : K4.Idioma.t("Hola desde un plugin de fuera")
                 font.pixelSize: 14
                 font.weight: Font.DemiBold
             }

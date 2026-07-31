@@ -20,6 +20,7 @@ K4.Plugin {
     property bool abierto: false
     property int visitas: 0
     property bool saludar: true
+    property string aQuien: ""
 
     view: Component { HolaView { plugin: self } }
 
@@ -29,11 +30,13 @@ K4.Plugin {
         onCargado: function (d) {
             self.visitas = d.visitas || 0
             self.saludar = d.saludar !== false
+            self.aQuien = d.aQuien || ""
         }
     }
 
     function apuntar() {
-        guardado.guardar({ visitas: visitas, saludar: saludar })
+        guardado.guardar({ visitas: visitas, saludar: saludar,
+                           aQuien: aQuien })
     }
 
     //  Mis ajustes, dentro de los Ajustes de la barra. Los valores los guardo
@@ -41,15 +44,24 @@ K4.Plugin {
     property var misAjustes: K4.Ajustes {
         plugin: "hola"
         grupo: K4.Idioma.t("Hola")
-        opciones: [{ id: "saludar", nombre: K4.Idioma.t("Saludar al abrir"),
-                     desc: K4.Idioma.t("Si no, solo enseña el contador"),
-                     glifo: 0xF1821 }]
-        valores: ({ saludar: self.saludar })
+        opciones: [
+            { id: "saludar", nombre: K4.Idioma.t("Saludar al abrir"),
+              desc: K4.Idioma.t("Si no, solo enseña el contador"),
+              glifo: 0xF1821 },
+            //  Un campo libre: aquí un nombre; en un plugin de verdad, la
+            //  URL de un servicio o —con `secreto: true`— su clave.
+            { id: "aQuien", tipo: "texto",
+              nombre: K4.Idioma.t("A quién saludar"),
+              desc: K4.Idioma.t("Sale en el saludo de la island"),
+              pista: K4.Idioma.t("el mundo"), glifo: 0xF17C4 }
+        ]
+        valores: ({ saludar: self.saludar, aQuien: self.aQuien })
         onCambiado: function (id, valor) {
-            if (id === "saludar") {
+            if (id === "saludar")
                 self.saludar = valor
-                self.apuntar()
-            }
+            if (id === "aQuien")
+                self.aQuien = String(valor).trim()
+            self.apuntar()
         }
     }
 

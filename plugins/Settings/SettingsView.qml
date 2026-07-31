@@ -141,6 +141,15 @@ FadeIn {
                                 required property var modelData
                                 readonly property bool activa: Settings.valor(modelData.id)
 
+                                //  El valor de una opción de texto, siempre como
+                                //  cadena: un registro externo contesta `false`
+                                //  cuando todavía no hay nada guardado.
+                                readonly property string valorTexto: {
+                                    const v = Settings.valor(modelData.id)
+                                    return (v === undefined || v === null || v === false)
+                                        ? "" : String(v)
+                                }
+
                                 // Algunas opciones no pintan nada si su interruptor
                                 // maestro está apagado: se atenúan y dejan de
                                 // responder, en vez de mentir sobre lo que hacen.
@@ -227,7 +236,9 @@ FadeIn {
                                     }
 
                                     IslandSwitch {
-                                        visible: opcion.modelData.tipo !== "eleccion"
+                                        //  Solo el tipo por defecto: una elección
+                                        //  lleva chips y un texto lleva campo.
+                                        visible: !opcion.modelData.tipo
                                                  && opcion.modelData.error !== "fijo"
                                         checked: opcion.activa
                                         onToggled: if (opcion.disponible) Settings.alternar(opcion.modelData.id)
@@ -239,6 +250,11 @@ FadeIn {
                                     //  `de === "idiomas"` a fuego y cualquier otra cosa
                                     //  devolvía una lista vacía, así que añadir una
                                     //  elección obligaba a tocar esta pantalla.
+                                    //
+                                    //  Un plugin de fuera no puede añadir su caso al
+                                    //  servicio: trae las suyas en `alternativas`, tal
+                                    //  como promete K4.Ajustes desde el principio —
+                                    //  hasta ahora esa promesa pintaba una fila vacía.
                                     RowLayout {
                                         visible: opcion.modelData.tipo === "eleccion"
                                         Layout.fillWidth: false
@@ -246,7 +262,8 @@ FadeIn {
                                         spacing: 5
 
                                         Repeater {
-                                            model: Settings.opcionesDe(opcion.modelData.de)
+                                            model: opcion.modelData.alternativas
+                                                   || Settings.opcionesDe(opcion.modelData.de)
 
                                             delegate: Rectangle {
                                                 id: eleccion
@@ -284,6 +301,66 @@ FadeIn {
                                             }
                                         }
                                     }
+
+                                    // ── opciones de texto libre
+                                    //  Una URL, un modelo, una clave de API: lo que un
+                                    //  interruptor no puede decir. El valor se entrega
+                                    //  al confirmar —Intro o clic fuera—, no tecla a
+                                    //  tecla: quien guarda escribe un fichero cada vez.
+                                    Rectangle {
+                                        visible: opcion.modelData.tipo === "texto"
+                                        Layout.preferredWidth: 210
+                                        Layout.preferredHeight: 26
+                                        Layout.alignment: Qt.AlignVCenter
+                                        radius: 13
+                                        color: campo.activeFocus ? Theme.surfaceHi : Theme.track
+                                        border.width: campo.activeFocus ? 1 : 0
+                                        border.color: Theme.blue
+
+                                        Behavior on color { ColorAnimation { duration: 120 } }
+
+                                        //  La pista solo con el campo vacío y sin foco:
+                                        //  en cuanto tecleas ya no hace falta.
+                                        IslandLabel {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            anchors.left: parent.left
+                                            anchors.leftMargin: 11
+                                            visible: campo.text.length === 0 && !campo.activeFocus
+                                            text: opcion.modelData.pista || ""
+                                            color: Theme.dim
+                                            font.pixelSize: 10
+                                        }
+
+                                        TextInput {
+                                            id: campo
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 11
+                                            anchors.rightMargin: 11
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            color: Theme.ink
+                                            font.family: Theme.uiFont
+                                            font.pixelSize: 10
+                                            clip: true
+                                            selectByMouse: true
+                                            selectionColor: Theme.blue
+                                            //  Un secreto se ve mientras se teclea y se
+                                            //  tapa al parar: se puede corregir sin que
+                                            //  el token entero quede a la vista.
+                                            echoMode: opcion.modelData.secreto
+                                                ? TextInput.PasswordEchoOnEdit
+                                                : TextInput.Normal
+                                            text: opcion.valorTexto
+                                            onEditingFinished: {
+                                                if (text !== opcion.valorTexto)
+                                                    Settings.poner(opcion.modelData.id, text)
+                                            }
+                                            //  Escape descarta lo tecleado, no lo guarda.
+                                            Keys.onEscapePressed: {
+                                                text = opcion.valorTexto
+                                                focus = false
+                                            }
+                                        }
+                                    }
                                 }
 
                                 //  Toda la fila conmuta, no solo el interruptor: son
@@ -296,9 +373,10 @@ FadeIn {
                                 //  px por la derecha deja pasar el último y nada más, así
                                 //  que en el selector de idioma solo se podía elegir
                                 //  «English». Llevaba ahí desde que existe la pantalla.
+                                //  Y en las de texto igual: el clic es para el campo.
                                 MouseArea {
                                     id: filaMouse
-                                    enabled: opcion.modelData.tipo !== "eleccion"
+                                    enabled: !opcion.modelData.tipo
                                     anchors.fill: parent
                                     anchors.rightMargin: 54     // deja pasar el interruptor
                                     hoverEnabled: true

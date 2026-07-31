@@ -33,8 +33,16 @@ QtObject {
     property string grupo: ""
 
     //  `[{ id, nombre, desc, glifo }]`. `glifo` es un códice de la Nerd Font
-    //  —búscalo con `tools/glifos.py`—. Un interruptor por opción; para una
-    //  elección de varias, añade `tipo: "eleccion"` y `alternativas: [...]`.
+    //  —búscalo con `tools/glifos.py`—. Un interruptor por opción, salvo que
+    //  digas otro `tipo`:
+    //
+    //   · "eleccion": chips de varias respuestas. Trae las tuyas en
+    //     `alternativas: [{ codigo, nombre }]`; lo que llega por `cambiado`
+    //     es el `codigo` elegido.
+    //   · "texto": un campo libre — una URL, un modelo, una clave de API.
+    //     `pista` es el texto gris del campo vacío y `secreto: true` lo
+    //     tapa con puntos en cuanto se deja de teclear. El valor llega por
+    //     `cambiado` al confirmar —Intro o clic fuera—, no tecla a tecla.
     property var opciones: []
 
     //  Lo que vale cada opción AHORA, por su id. La barra lo lee al pintar.

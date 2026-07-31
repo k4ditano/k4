@@ -271,6 +271,29 @@ Los valores los guardas TÚ: la barra pregunta por `valores` y avisa por
 `cambiado`. Así lo que se enseña es siempre lo que de verdad tienes guardado
 y no una copia que se desincroniza al primer fallo de escritura.
 
+Un interruptor por opción es el defecto; `tipo` abre los otros dos:
+
+```qml
+opciones: [
+    { id: "modelo", tipo: "eleccion", nombre: K4.Idioma.t("Modelo"),
+      desc: K4.Idioma.t("Con cuál contesta"), glifo: 0xF06A9,
+      alternativas: [{ codigo: "rapido", nombre: K4.Idioma.t("Rápido") },
+                     { codigo: "capaz",  nombre: K4.Idioma.t("Capaz") }] },
+    { id: "clave", tipo: "texto", secreto: true,
+      nombre: K4.Idioma.t("Clave de API"),
+      desc: K4.Idioma.t("Se guarda donde tú digas; la barra no la retiene"),
+      pista: "sk-…", glifo: 0xF0306 }
+]
+```
+
+Una elección enseña sus `alternativas` como chips y `cambiado` trae el
+`codigo` elegido. Un texto es un campo libre —una URL, un modelo, una clave—:
+`pista` es el gris del campo vacío, `secreto: true` lo tapa con puntos en
+cuanto se deja de teclear, y el valor llega al confirmar —Intro o clic
+fuera—, no tecla a tecla. Con esto un plugin que hable con un servicio, una
+IA o un CLI se configura en Ajustes como todo lo demás, sin inventarse una
+pantalla propia.
+
 **Tus resultados, en el lanzador.** Contestas cuando puedes; si lo tuyo cuesta
 —una consulta por red— no bloqueas a nadie. Lo tuyo sale **debajo** de las
 aplicaciones del sistema: ese panel es el de ellas, y estás ahí para que se te
