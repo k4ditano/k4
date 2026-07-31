@@ -16,7 +16,7 @@ K4Plugin {
     name: "settings"
     title: Idioma.t("Ajustes")
     priority: 66
-    active: open
+    active: habilitado && open
     tecladoOpcional: open
 
     property bool open: false

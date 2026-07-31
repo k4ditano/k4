@@ -13,7 +13,7 @@ K4Plugin {
     name: "idle"
     title: Idioma.t("Píldora")
     priority: 0
-    active: true
+    active: habilitado
 
     // el módulo de bandeja, que se abre al pulsar los iconos; lo inyecta el host
     property var tray: null

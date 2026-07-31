@@ -1,5 +1,6 @@
 Artwork 1.0 Artwork.qml
 TrayRow 1.0 TrayRow.qml
+PluginPildora 1.0 PluginPildora.qml
 NotifStrip 1.0 NotifStrip.qml
 JuegoPildora 1.0 JuegoPildora.qml
 Visualizer 1.0 Visualizer.qml

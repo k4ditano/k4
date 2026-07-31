@@ -40,6 +40,7 @@ grim	grim	base	Hacer capturas de pantalla
 slurp	slurp	base	Elegir una región con el ratón
 satty	satty	base	Anotar una captura antes de guardarla
 wf-recorder	wf-recorder	base	Grabar la pantalla en vídeo
+swaybg	swaybg	base	Poner el fondo de pantalla desde el selector de temas
 ffmpeg	ffmpeg	base	Montar y renderizar en el editor
 ffprobe	ffmpeg	base	Sondear duración y resolución de los vídeos
 magick	imagemagick	base	Miniaturas y capas de imagen
@@ -65,6 +66,5 @@ whisper-cli	whisper-cpp	opcional	Transcribir el audio de un vídeo en el editor
 kitty	kitty	opcional	Terminal donde instalar paquetes desde el lanzador
 uwsm	uwsm	opcional	Lanzar aplicaciones en su propio ámbito de systemd
 yay	yay	opcional	Buscar e instalar paquetes de AUR desde el lanzador
-swaybg	swaybg	opcional	Poner el fondo de pantalla (valen swww o awww)
 nvidia-smi	nvidia-utils	opcional	Temperatura y uso de la GPU NVIDIA
 codex	-	opcional	El asistente del plugin Ask

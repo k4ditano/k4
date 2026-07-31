@@ -38,26 +38,26 @@ Scope {
     // ── los módulos ───────────────────────────────────────────────
     // Las referencias cruzadas se inyectan aquí, así ningún plugin importa a
     // otro: sabe que le pasan "un panel", no de qué carpeta sale.
-    IdlePlugin   { id: idlePlugin; tray: trayPlugin }
-    VolumePlugin { id: volumePlugin }
-    ClockPlugin  { id: clockPlugin; tray: trayPlugin; juego: gamePlugin }
-    PlayerPlugin { id: playerPlugin; panel: panelPlugin; tray: trayPlugin; juego: gamePlugin }
-    ToastPlugin  { id: toastPlugin }
-    PanelPlugin  { id: panelPlugin; launcher: launcherPlugin; theme: themePlugin; weather: weatherPlugin; ajustes: settingsPlugin; juego: gamePlugin; sistema: systemPlugin }
-    LauncherPlugin { id: launcherPlugin; panel: panelPlugin }
-    AskPlugin    { id: askPlugin; panel: panelPlugin; launcher: launcherPlugin }
-    HyprThemePlugin { id: themePlugin; panel: panelPlugin }
-    WeatherPlugin { id: weatherPlugin; panel: panelPlugin }
-    TrayPlugin   { id: trayPlugin; panel: panelPlugin }
-    GamePlugin   { id: gamePlugin; panel: panelPlugin }
-    SettingsPlugin { id: settingsPlugin; panel: panelPlugin }
-    ClipboardPlugin { id: clipboardPlugin; panel: panelPlugin }
-    SystemPlugin { id: systemPlugin; panel: panelPlugin }
-    FilesPlugin { id: filesPlugin; panel: panelPlugin }
-    KeysPlugin { id: keysPlugin; panel: panelPlugin }
-    WindowsPlugin { id: windowsPlugin; panel: panelPlugin }
-    SessionPlugin { id: sessionPlugin; panel: panelPlugin }
-    CapturaPlugin { id: capturaPlugin; panel: panelPlugin }
+    IdlePlugin   { id: idlePlugin; habilitado: PluginManager.estaHabilitado("idle"); tray: trayPlugin }
+    VolumePlugin { id: volumePlugin; habilitado: PluginManager.estaHabilitado("volume") }
+    ClockPlugin  { id: clockPlugin; habilitado: PluginManager.estaHabilitado("clock"); tray: trayPlugin; juego: gamePlugin }
+    PlayerPlugin { id: playerPlugin; habilitado: PluginManager.estaHabilitado("player"); panel: panelPlugin; tray: trayPlugin; juego: gamePlugin }
+    ToastPlugin  { id: toastPlugin; habilitado: PluginManager.estaHabilitado("toast") }
+    PanelPlugin  { id: panelPlugin; habilitado: PluginManager.estaHabilitado("panel"); launcher: launcherPlugin; theme: themePlugin; weather: weatherPlugin; ajustes: settingsPlugin; juego: gamePlugin; sistema: systemPlugin }
+    LauncherPlugin { id: launcherPlugin; habilitado: PluginManager.estaHabilitado("launcher"); panel: panelPlugin }
+    AskPlugin    { id: askPlugin; habilitado: PluginManager.estaHabilitado("ask"); panel: panelPlugin; launcher: launcherPlugin }
+    HyprThemePlugin { id: themePlugin; habilitado: PluginManager.estaHabilitado("hyprtheme"); panel: panelPlugin }
+    WeatherPlugin { id: weatherPlugin; habilitado: PluginManager.estaHabilitado("weather"); panel: panelPlugin }
+    TrayPlugin   { id: trayPlugin; habilitado: PluginManager.estaHabilitado("tray"); panel: panelPlugin }
+    GamePlugin   { id: gamePlugin; habilitado: PluginManager.estaHabilitado("game"); panel: panelPlugin }
+    SettingsPlugin { id: settingsPlugin; habilitado: PluginManager.estaHabilitado("settings"); panel: panelPlugin }
+    ClipboardPlugin { id: clipboardPlugin; habilitado: PluginManager.estaHabilitado("clipboard"); panel: panelPlugin }
+    SystemPlugin { id: systemPlugin; habilitado: PluginManager.estaHabilitado("system"); panel: panelPlugin }
+    FilesPlugin { id: filesPlugin; habilitado: PluginManager.estaHabilitado("files"); panel: panelPlugin }
+    KeysPlugin { id: keysPlugin; habilitado: PluginManager.estaHabilitado("keys"); panel: panelPlugin }
+    WindowsPlugin { id: windowsPlugin; habilitado: PluginManager.estaHabilitado("windows"); panel: panelPlugin }
+    SessionPlugin { id: sessionPlugin; habilitado: PluginManager.estaHabilitado("session"); panel: panelPlugin }
+    CapturaPlugin { id: capturaPlugin; habilitado: PluginManager.estaHabilitado("captura"); panel: panelPlugin }
 
     readonly property var plugins: [
         idlePlugin,
@@ -96,7 +96,8 @@ Scope {
         let best = null
         for (let i = 0; i < plugins.length; ++i) {
             const p = plugins[i]
-            if (p.active && (best === null || p.priority > best.priority))
+            if (p.habilitado && p.active
+                    && (best === null || p.priority > best.priority))
                 best = p
         }
         return best
@@ -104,6 +105,23 @@ Scope {
 
     readonly property int islandWidth: activePlugin ? activePlugin.islandWidth : 176
     readonly property int islandHeight: activePlugin ? activePlugin.islandHeight : Theme.baseHeight
+
+    // Deshabilitar un plugin también cierra su estado interactivo. No se
+    // destruye el objeto QML —las referencias entre módulos siguen siendo
+    // estables—, pero deja de pedir la island y libera su vista.
+    Connections {
+        target: PluginManager
+        function onCambiado(id, habilitado) {
+            if (habilitado)
+                return
+            for (let i = 0; i < root.plugins.length; ++i) {
+                const p = root.plugins[i]
+                if (p.name === id && typeof p.close === "function") {
+                    try { p.close() } catch (e) { PluginManager.registrarError(id, e) }
+                }
+            }
+        }
+    }
 
     // Clic en el fondo: lo atiende el plugin activo si lo pide; si no, abre el
     // centro de control.
@@ -130,6 +148,7 @@ Scope {
         void Game.cargado
         void Idioma.cargado
         void Settings.cargado
+        void PluginManager.cargado
         void Tokens.cargado
         void Clipboard.cargado
         void Ventanas.count
@@ -158,6 +177,15 @@ Scope {
         }
         function togglePanel(): void { panelPlugin.toggle("controls") }
         function toggleNotifications(): void { panelPlugin.toggle("notifications") }
+        function pluginEnable(id: string): void { PluginManager.habilitar(id) }
+        function pluginDisable(id: string): void { PluginManager.deshabilitar(id) }
+        function pluginToggle(id: string): void { PluginManager.alternar(id) }
+        function pluginStatus(): void {
+            console.log(JSON.stringify(PluginManager.catalogo.map(function (m) {
+                return { id: m.id, enabled: PluginManager.estaHabilitado(m.id),
+                         error: PluginManager.errores[m.id] || "" }
+            })))
+        }
         function wifi(): void { panelPlugin.openTab("wifi") }
         function bluetooth(): void { panelPlugin.openTab("bluetooth") }
         function clearNotifications(): void { Notifs.clear() }
@@ -435,6 +463,13 @@ Scope {
                                 anchors.fill: parent
                                 active: modelData === root.activePlugin && modelData.viewLoaded
                                 sourceComponent: modelData.view
+                                onStatusChanged: {
+                                    if (status === Loader.Error)
+                                        PluginManager.registrarError(
+                                            modelData.name, "No se pudo cargar la vista")
+                                    else if (status === Loader.Ready)
+                                        PluginManager.limpiarError(modelData.name)
+                                }
                             }
                         }
                     }

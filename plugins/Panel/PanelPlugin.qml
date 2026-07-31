@@ -12,7 +12,7 @@ K4Plugin {
     name: "panel"
     title: Idioma.t("Centro de control")
     priority: 60
-    active: open
+    active: habilitado && open
 
     // "controls" | "notifications" | "wifi" | "bluetooth"
     property string tab: "controls"

@@ -15,7 +15,7 @@ K4Plugin {
     name: "ask"
     title: Idioma.t("Preguntar")
     priority: 90
-    active: open
+    active: habilitado && open
     grabKeyboard: true
 
     // los aparta al abrirse; los inyecta el host

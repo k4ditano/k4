@@ -11,7 +11,7 @@ K4Plugin {
     name: "player"
     title: Idioma.t("Reproductor")
     priority: 55
-    active: Island.hovered && Media.isPlaying
+    active: habilitado && Island.hovered && Media.isPlaying
 
     // el centro de control y la bandeja; los inyecta el host
     property var panel: null

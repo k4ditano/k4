@@ -20,7 +20,7 @@ K4Plugin {
     name: "hyprtheme"
     title: Idioma.t("Tema de Hyprland")
     priority: 65
-    active: open
+    active: habilitado && open
     tecladoOpcional: open
 
     property bool open: false
@@ -215,6 +215,12 @@ K4Plugin {
         animSpeed = s.animSpeed !== undefined ? s.animSpeed : animSpeed
         wallpaper = s.wallpaper !== undefined ? s.wallpaper : wallpaper
         dirty = s.dirty === true
+
+        // Si el detector del daemon terminó antes de leer el estado, no
+        // habrá cambio de wallTool que dispare la aplicación; cubrimos ese
+        // orden de inicialización también.
+        if (wallTool.length > 0 && wallpaper.length > 0)
+            applyWallpaper(wallpaper)
     }
 
     // ── fondo de pantalla ─────────────────────────────────────────
@@ -231,25 +237,37 @@ K4Plugin {
         "/usr/share/backgrounds"
     ]
 
-    function setWallpaper(path) {
+    function applyWallpaper(path) {
         if (path.length === 0 || wallTool.length === 0)
-            return
-
-        wallpaper = path
+            return false
 
         if (wallTool === "swaybg") {
-            // no sabe recargar: se mata y se levanta otro
+            // swaybg no sabe recargar: se mata y se levanta otro.
             K4.Sistema.lanzar(["sh", "-c",
-                "pkill -x swaybg; swaybg -i " + JSON.stringify(path) + " -m fill >/dev/null 2>&1 &"])
+                "pkill -x swaybg 2>/dev/null || true; swaybg -i "
+                + JSON.stringify(path) + " -m fill >/dev/null 2>&1 &"])
         } else {
+            // awww y swww aceptan la misma orden. Si el daemon aún no está
+            // levantado, se arranca y se reintenta la imagen.
             K4.Sistema.lanzar(["sh", "-c",
                 wallTool + " img " + JSON.stringify(path)
                 + " --transition-type grow --transition-fps 60 >/dev/null 2>&1"
                 + " || { " + wallTool + "-daemon >/dev/null 2>&1 & sleep 1; "
                 + wallTool + " img " + JSON.stringify(path) + " >/dev/null 2>&1; }"])
         }
+        return true
+    }
 
+    function setWallpaper(path) {
+        if (path.length === 0)
+            return
+
+        // El clic es la acción completa: se actualiza la sesión y se escribe
+        // solo el estado del fondo inmediatamente, sin guardar de rebote otros
+        // retoques del tema. onWallToolChanged lo aplicará cuando esté listo.
+        wallpaper = path
         saveState()
+        applyWallpaper(path)
     }
 
     function refreshWallpapers() {
@@ -276,6 +294,8 @@ K4Plugin {
     // igual abriendo desde el panel, por IPC o saltando directo a la pestaña.
     onOpenChanged: if (open) refreshWallpapers()
     onTabChanged: if (tab === "fondo") refreshWallpapers()
+    onWallToolChanged: if (wallTool.length > 0 && wallpaper.length > 0)
+        applyWallpaper(wallpaper)
 
     function close() { open = false }
 

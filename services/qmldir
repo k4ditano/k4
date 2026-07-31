@@ -23,3 +23,5 @@ singleton Sesion 1.0 Sesion.qml
 singleton Captura 1.0 Captura.qml
 singleton Editor 1.0 Editor.qml
 singleton Modulos 1.0 Modulos.qml
+singleton PluginManager 1.0 PluginManager.qml
+singleton Indicadores 1.0 Indicadores.qml

@@ -265,6 +265,35 @@ FadeIn {
             }
         }
 
+        // Estado del cargador: distinguir «desactivado por el usuario» de
+        // «falló al cargar» evita diagnosticar a ciegas desde la terminal.
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 22
+            spacing: 7
+
+            IconGlyph {
+                text: String.fromCodePoint(0xF06A0)
+                color: Object.keys(PluginManager.errores).length > 0
+                    ? Theme.red : Theme.green
+                font.pixelSize: 13
+            }
+
+            IslandLabel {
+                Layout.fillWidth: true
+                text: PluginManager.catalogo.length + Idioma.t(" plugins · ")
+                    + PluginManager.catalogo.filter(function (m) {
+                        return PluginManager.estaHabilitado(m.id)
+                    }).length + Idioma.t(" habilitados")
+                    + (Object.keys(PluginManager.errores).length > 0
+                       ? " · " + Object.keys(PluginManager.errores).length
+                         + Idioma.t(" con errores") : "")
+                color: Theme.dim
+                font.pixelSize: 9
+                elide: Text.ElideRight
+            }
+        }
+
         // ── zona peligrosa
         //
         //  Va en dos tiempos a propósito: el primer toque arma y el segundo

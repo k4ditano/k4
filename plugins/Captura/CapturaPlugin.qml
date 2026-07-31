@@ -18,7 +18,7 @@ K4Plugin {
 
     name: "captura"
     title: Idioma.t("Captura")
-    active: open
+    active: habilitado && open
     viewLoaded: open
     //  También durante la cuenta atrás, o el ESC que la cancela no llega a
     //  ninguna parte. Son tres segundos en los que nadie está escribiendo.
@@ -34,7 +34,7 @@ K4Plugin {
     property var panel: null
 
     property bool open: false
-    property string modo: "menu"      // menu · cuenta · hecha · editor · abrir
+    property string modo: "menu"      // menu · cuenta · hecha · video · editor · abrir
     property int index: 0
 
     readonly property var ambitos: [
@@ -58,7 +58,7 @@ K4Plugin {
     //  de renderizar se salía por la derecha.
     islandWidth: modo === "cuenta" ? 200
         : (modo === "editor" ? 1000 : (modo === "abrir" ? 640
-        : (modo === "hecha" ? 500 : 520)))
+        : (modo === "video" ? 620 : (modo === "hecha" ? 500 : 520))))
     //  El editor crece con las capas.
     //
     //  Cada banda añade una fila a la línea de tiempo. Antes el alto topaba en
@@ -77,7 +77,8 @@ K4Plugin {
         : (modo === "editor"
            ? Math.min(Theme.maxIslandHeight,
                       610 + Math.max(0, Editor.cuantasBandas - 1) * 29)
-        : (modo === "abrir" ? 440 : (modo === "hecha" ? 132 : 208)))
+        : (modo === "abrir" ? 440 : (modo === "video" ? 164
+        : (modo === "hecha" ? 132 : 208))))
 
     view: Component {
         Loader {
@@ -156,6 +157,17 @@ K4Plugin {
         Editor.abrir(ruta, "")
     }
 
+    function editarUltimaGrabacion() {
+        marcharse.stop()
+        Captura.pasarCamaraAlEditor()
+        modo = "editor"
+        open = true
+        if (Editor.zoomAuto)
+            Editor.proponer(Captura.rutaVideo, Captura.rutaRastro)
+        else
+            Editor.abrir(Captura.rutaVideo, Captura.rutaRastro)
+    }
+
     //  Elegir un vídeo por el diálogo del sistema.
     //
     //  Vive aquí y no en la vista del selector, y no es cosmético: la vista se
@@ -194,9 +206,14 @@ K4Plugin {
 
     function pedirImagen(t, enCapaNueva) {
         dondeVaLaImagen = t
-        // Si se pidió desde el «+ Capa» de la columna, va encima de todo; si se
-        // pidió desde el pie, donde haya hueco.
-        Editor.proximaEnBandaNueva = enCapaNueva === true
+        // Si se pidió desde «+ Capa», se prepara una banda nueva; si se pidió
+        // desde el pie, se conserva la banda elegida o se busca un hueco.
+        if (enCapaNueva !== undefined) {
+            if (enCapaNueva === true)
+                Editor.crearBanda()
+            else
+                Editor.bandaObjetivo = 0
+        }
         selectorImagen.running = true
     }
 
@@ -353,9 +370,11 @@ K4Plugin {
         }
 
         function onVideoListo(ruta) {
-            K4.Sistema.lanzar(["notify-send", "-a", "k4",
-                                     Idioma.t("Grabación guardada"),
-                                     ruta.split("/").pop()])
+            // No abrimos el editor por sorpresa: enseñamos primero la misma
+            // tarjeta con preview y acciones que ya usamos para las capturas.
+            self.modo = "video"
+            self.open = true
+            marcharse.restart()
         }
 
         function onVideoFallido(motivo) {
@@ -511,7 +530,7 @@ K4Plugin {
 
         // Lo mismo, pero en una capa nueva encima de todo.
         function imagenEncima(ruta: string, t: real): void {
-            Editor.proximaEnBandaNueva = true
+            Editor.crearBanda()
             Editor.crearImagen(ruta, t >= 0 ? t : Editor.posicionEditor)
         }
 

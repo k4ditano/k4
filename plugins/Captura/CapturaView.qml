@@ -6,6 +6,7 @@
 
 import QtQuick
 import QtQuick.Layouts
+import QtMultimedia
 import "../../core"
 import "../../services"
 
@@ -13,6 +14,19 @@ FadeIn {
     id: view
 
     required property var plugin
+
+    MediaPlayer {
+        id: videoPreview
+        source: view.plugin.modo === "video" && Captura.rutaVideo.length > 0
+            ? "file://" + Captura.rutaVideo : ""
+        videoOutput: videoPreviewOutput
+        audioOutput: AudioOutput { muted: true }
+        onMediaStatusChanged: {
+            if (mediaStatus === MediaPlayer.LoadedMedia
+                    || mediaStatus === MediaPlayer.BufferedMedia)
+                play()
+        }
+    }
 
     focus: true
 
@@ -393,6 +407,111 @@ FadeIn {
                                 else if (a === "carpeta") Captura.abrirCarpeta()
                                 else if (a === "copiar")  Captura.copiar(Captura.ultimaRuta)
                                 view.plugin.close()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ── el asomo de después de grabar un vídeo ────────────────────
+    RowLayout {
+        anchors.fill: parent
+        anchors.margins: 14
+        spacing: 12
+        visible: view.plugin.modo === "video"
+
+        Rectangle {
+            Layout.preferredWidth: 200
+            Layout.preferredHeight: 112
+            Layout.alignment: Qt.AlignVCenter
+            radius: 8
+            color: Theme.surface
+            clip: true
+
+            VideoOutput {
+                id: videoPreviewOutput
+                anchors.fill: parent
+                anchors.margins: 1
+                fillMode: VideoOutput.PreserveAspectFit
+            }
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 4
+
+            IslandLabel {
+                text: Idioma.t("Grabación guardada")
+                color: Theme.ink
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+            }
+
+            IslandLabel {
+                Layout.fillWidth: true
+                text: Captura.rutaVideo.length > 0
+                    ? Captura.rutaVideo.split("/").pop() : ""
+                color: Theme.dim
+                font.pixelSize: 10
+                elide: Text.ElideMiddle
+            }
+
+            Item { Layout.fillHeight: true }
+
+            RowLayout {
+                spacing: 6
+
+                Repeater {
+                    model: [
+                        { texto: Idioma.t("Editor"),  icono: 0xF1122, accion: "editor" },
+                        { texto: Idioma.t("Abrir"),   icono: 0xF03CC, accion: "abrir" },
+                        { texto: Idioma.t("Carpeta"), icono: 0xF024B, accion: "carpeta" }
+                    ]
+
+                    delegate: Rectangle {
+                        id: videoBoton
+                        required property var modelData
+                        readonly property bool util: Captura.rutaVideo.length > 0
+
+                        Layout.preferredWidth: videoBotonFila.implicitWidth + 16
+                        Layout.preferredHeight: 24
+                        radius: 12
+                        opacity: util ? 1 : 0.35
+                        color: videoBotonRaton.containsMouse && util
+                            ? Theme.surfaceHi : Theme.surface
+
+                        RowLayout {
+                            id: videoBotonFila
+                            anchors.centerIn: parent
+                            spacing: 5
+
+                            IconGlyph {
+                                text: String.fromCodePoint(videoBoton.modelData.icono)
+                                color: Theme.muted
+                                font.pixelSize: 12
+                            }
+
+                            IslandLabel {
+                                text: videoBoton.modelData.texto
+                                font.pixelSize: 10
+                            }
+                        }
+
+                        MouseArea {
+                            id: videoBotonRaton
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            enabled: videoBoton.util
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                const a = videoBoton.modelData.accion
+                                if (a === "editor")       view.plugin.editarUltimaGrabacion()
+                                else if (a === "abrir")   Captura.abrir(Captura.rutaVideo)
+                                else if (a === "carpeta") Captura.abrirCarpetaVideos()
+                                if (a !== "editor") view.plugin.close()
                             }
                         }
                     }

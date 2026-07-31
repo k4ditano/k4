@@ -9,7 +9,7 @@ K4Plugin {
     name: "volume"
     title: Idioma.t("Volumen")
     priority: 40
-    active: Audio.overlayOpen
+    active: habilitado && Audio.overlayOpen
 
     islandWidth: 240
     islandHeight: 40

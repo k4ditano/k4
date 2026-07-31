@@ -21,6 +21,10 @@ Rectangle {
     property int glifo: 0
     property color tono: Theme.blue
     property bool elegida: false
+    property bool visiblePista: true
+    property bool bloqueada: false
+    property bool solo: false
+    property bool esVideo: false
 
     // Las pistas fijas —vídeo y zoom— no se reordenan.
     property bool arrastrable: false
@@ -29,6 +33,9 @@ Rectangle {
     signal pulsada()
     // Cuántas filas se ha movido, hacia arriba en negativo.
     signal reordenada(int filas)
+    signal alternarVisible()
+    signal alternarBloqueo()
+    signal alternarSolo()
 
     property bool arrastrando: false
     property real deltaY: 0
@@ -110,11 +117,52 @@ Rectangle {
 
         IslandLabel {
             anchors.verticalCenter: parent.verticalCenter
-            width: parent.width - (cabecera.arrastrable ? 34 : 22)
+            width: parent.width - 58 - (cabecera.arrastrable ? 18 : 0)
             text: cabecera.texto
             color: cabecera.elegida ? Theme.ink : Theme.muted
             font.pixelSize: 10
             elide: Text.ElideMiddle
+        }
+    }
+
+    Row {
+        anchors.right: parent.right
+        anchors.rightMargin: cabecera.arrastrable ? 20 : 5
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: 2
+
+        IconGlyph {
+            text: String.fromCodePoint(cabecera.visiblePista ? 0xF0208 : 0xF0209)
+            color: cabecera.visiblePista ? Theme.muted : Theme.dim
+            font.pixelSize: 11
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: cabecera.alternarVisible()
+            }
+        }
+
+        IconGlyph {
+            text: String.fromCodePoint(cabecera.bloqueada ? 0xF033E : 0xF033F)
+            color: cabecera.bloqueada ? Theme.orange : Theme.muted
+            font.pixelSize: 11
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: cabecera.alternarBloqueo()
+            }
+        }
+
+        IconGlyph {
+            visible: !cabecera.esVideo
+            text: String.fromCodePoint(0xF0400) // md-star
+            color: cabecera.solo ? Theme.yellow : Theme.dim
+            font.pixelSize: 10
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: cabecera.alternarSolo()
+            }
         }
     }
 

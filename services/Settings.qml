@@ -151,6 +151,10 @@ Singleton {
                 { id: "notificacionesAlPasar", nombre: Idioma.t("Notificaciones al pasar el ratón"),
                   desc: Idioma.t("Las recientes, bajo el reloj y el reproductor"), glifo: 0xF009A }
             ]
+        },
+        {
+            grupo: Idioma.t("Plugins"),
+            opciones: PluginManager.opcionesAjustes
         }
     ]
 
@@ -190,11 +194,19 @@ Singleton {
     }
 
     function alternar(id) {
+        if (String(id).indexOf("plugin_") === 0) {
+            PluginManager.alternarAjuste(id)
+            return
+        }
         ajustes[id] = !ajustes[id]
         guardar()
     }
 
-    function valor(id) { return ajustes[id] }
+    function valor(id) {
+        if (String(id).indexOf("plugin_") === 0)
+            return PluginManager.valorAjuste(id)
+        return ajustes[id]
+    }
 
     // ── persistencia ──────────────────────────────────────────────
     //

@@ -226,6 +226,11 @@ Singleton {
     readonly property string audio: Settings.grabarAudio
     readonly property string codec: Settings.grabarCodec
     readonly property int fps: Settings.grabarFps
+    // NVENC no existe en todos los equipos aunque ffmpeg liste el códec: si
+    // se fuerza en una máquina Intel/AMD, wf-recorder muere al arrancar y la
+    // barra solo parece «cerrar» la grabación. Se comprueba el driver real y
+    // se cae a libx264/libx265 cuando no hay NVIDIA.
+    property bool nvencDisponible: false
 
     property int cuentaAtras: 0
 
@@ -315,15 +320,26 @@ Singleton {
     }
 
     function ordenGrabar(ruta) {
-        const orden = ["wf-recorder", "-f", ruta,
-                       "-c", codec === "hevc" ? "hevc_nvenc" : "h264_nvenc",
-                       "-p", "preset=p5", "-p", "rc=vbr", "-p", "cq=23",
-                       "-r", String(fps),
+        const esNvenc = nvencDisponible
+        const codificador = esNvenc
+                ? (codec === "hevc" ? "hevc_nvenc" : "h264_nvenc")
+                : (codec === "hevc" ? "libx265" : "libx264")
+        const orden = ["wf-recorder", "-f", ruta, "-c", codificador]
+
+        if (esNvenc) {
+            orden.push("-p", "preset=p5", "-p", "rc=vbr", "-p", "cq=23")
+        } else {
+            // `cq` y `rc` son opciones de NVENC; libx264/libx265 usan CRF.
+            // veryfast evita que la CPU se quede atrás en grabaciones a 60 Hz.
+            orden.push("-p", "preset=veryfast", "-p", "crf="
+                       + (codec === "hevc" ? "28" : "23"))
+        }
+        orden.push("-r", String(fps),
                        // Fotogramas a ritmo constante. No es opcional: sin
                        // esto wf-recorder solo emite cuando algo cambia, y
                        // entonces el `t` de un vídeo no se corresponde con el
                        // tiempo real. El zoom en posproceso caería descuadrado.
-                       "-D"]
+                       "-D")
 
         if (regionActual.length > 0)
             orden.push("-g", regionActual)
@@ -358,6 +374,17 @@ Singleton {
     // El micrófono por defecto, por el mismo motivo: cambia al enchufar unos
     // auriculares y hay que preguntarlo, no darlo por sabido.
     property string fuenteMicro: "@DEFAULT_SOURCE@"
+
+    Process {
+        id: comprobarNvenc
+        command: ["sh", "-c",
+                  "command -v nvidia-smi >/dev/null 2>&1 && "
+                  + "nvidia-smi -L >/dev/null 2>&1"]
+        running: true
+        onExited: function (codigo) {
+            captura.nvencDisponible = codigo === 0
+        }
+    }
 
     Process {
         command: ["sh", "-c", "echo \"$(pactl get-default-sink).monitor\""]
@@ -609,23 +636,6 @@ Singleton {
         }
     }
 
-    //  Un respiro antes de abrir el editor: el fichero acaba de cerrarse y
-    //  ffprobe sobre un MP4 al que todavía le están escribiendo el índice
-    //  contesta cualquier cosa.
-    Timer {
-        id: abrirEnEditor
-        interval: 700
-        onTriggered: {
-            //  La cámara se entrega antes de cualquiera de los dos caminos:
-            //  quien crea el plan la necesita ya, con su desfase.
-            captura.pasarCamaraAlEditor()
-            if (Editor.zoomAuto)
-                Editor.proponer(captura.rutaVideo, captura.rutaRastro)
-            else
-                Editor.abrir(captura.rutaVideo, captura.rutaRastro)
-        }
-    }
-
     //  Juntar el micro con el vídeo, como pista aparte.
     //
     //  Un respiro antes: ffmpeg acaba de recibir su SIGINT y todavía está
@@ -681,15 +691,14 @@ Singleton {
 
     //  El final de una grabación, una vez el fichero ya está como debe.
     //
-    //  Aquí acaba el trabajo del grabador y empieza el del editor. Se le entrega
-    //  el vídeo y el rastro, y a partir de ese punto esto ya no sabe nada: el
-    //  editor abre también vídeos que no ha grabado nadie de aquí.
+    //  Aquí acaba el trabajo del grabador y se avisa al plugin, que enseña el
+    //  preview y deja elegir si abrirlo, llevarlo al editor o abrir la carpeta.
+    //  El editor sigue pudiendo abrir vídeos que no ha grabado nadie de aquí.
     function rematarGrabacion() {
         grabando = false
         estado = ""
         if (rutaVideo.length > 0) {
             videoListo(rutaVideo)
-            abrirEnEditor.restart()
         } else {
             videoFallido("fallo")
         }
@@ -728,6 +737,11 @@ Singleton {
     function abrirCarpeta() {
         if (carpetaFotos.length > 0)
             Quickshell.execDetached(["xdg-open", carpetaFotos])
+    }
+
+    function abrirCarpetaVideos() {
+        if (carpetaVideos.length > 0)
+            Quickshell.execDetached(["xdg-open", carpetaVideos])
     }
 
     function abrir(ruta) {

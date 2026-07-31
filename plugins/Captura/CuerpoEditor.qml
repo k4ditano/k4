@@ -115,7 +115,14 @@ Item {
     }
 
     Keys.onPressed: function (ev) {
-        if (ev.key === Qt.Key_Space) {
+        if ((ev.modifiers & Qt.ControlModifier) && ev.key === Qt.Key_Z) {
+            if (ev.modifiers & Qt.ShiftModifier) Editor.rehacer()
+            else Editor.deshacer()
+        } else if ((ev.modifiers & Qt.ControlModifier) && ev.key === Qt.Key_Y) {
+            Editor.rehacer()
+        } else if (ev.key === Qt.Key_M) {
+            Editor.crearMarcador(view.segundos)
+        } else if (ev.key === Qt.Key_Space) {
             reproductor.alternar()
         } else if (ev.key === Qt.Key_S) {
             //  Cortar por donde vaya el cabezal. Es la tecla de cortar en
@@ -255,6 +262,22 @@ Item {
                 font.pixelSize: 10
                 elide: Text.ElideMiddle
                 Layout.fillWidth: true
+            }
+
+            MediaButton {
+                glyph: String.fromCodePoint(0xF054C) // undo
+                glyphSize: 13
+                glyphColor: Editor.puedeDeshacer ? Theme.ink : Theme.dim
+                enabledAction: Editor.puedeDeshacer
+                onActivated: Editor.deshacer()
+            }
+
+            MediaButton {
+                glyph: String.fromCodePoint(0xF054D) // redo
+                glyphSize: 13
+                glyphColor: Editor.puedeRehacer ? Theme.ink : Theme.dim
+                enabledAction: Editor.puedeRehacer
+                onActivated: Editor.rehacer()
             }
 
             // Agrandar o encoger, según dónde esté.
@@ -527,6 +550,50 @@ Item {
                             font.weight: Font.DemiBold
                         }
 
+                        IslandLabel {
+                            visible: Editor.bandaSeleccionada >= Editor.primeraBandaLibre
+                            text: Idioma.t("Grupo seleccionado")
+                            color: Theme.dim
+                            font.pixelSize: 9
+                            font.capitalization: Font.AllUppercase
+                            font.weight: Font.DemiBold
+                        }
+
+                        Rectangle {
+                            visible: Editor.bandaSeleccionada >= Editor.primeraBandaLibre
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 28
+                            radius: 7
+                            color: Theme.surface
+                            border.width: 1
+                            border.color: grupoNombre.activeFocus
+                                ? Theme.blue : Qt.rgba(1, 1, 1, 0.1)
+
+                            TextInput {
+                                id: grupoNombre
+                                anchors.fill: parent
+                                anchors.leftMargin: 8
+                                anchors.rightMargin: 8
+                                verticalAlignment: TextInput.AlignVCenter
+                                color: Theme.ink
+                                font.pixelSize: 11
+                                font.family: Theme.uiFont
+                                selectByMouse: true
+                                clip: true
+                                property int deQuien: Editor.bandaSeleccionada
+                                onDeQuienChanged: text = Editor.nombreBanda(
+                                    Editor.bandaSeleccionada)
+                                onTextEdited: if (Editor.bandaSeleccionada >=
+                                                  Editor.primeraBandaLibre)
+                                    Editor.fijarBanda(Editor.bandaSeleccionada,
+                                                      { nombre: text })
+                                Component.onCompleted: text = Editor.bandaSeleccionada
+                                    >= Editor.primeraBandaLibre
+                                    ? Editor.nombreBanda(Editor.bandaSeleccionada)
+                                    : ""
+                            }
+                        }
+
                         GridLayout {
                             Layout.fillWidth: true
                             columns: 2
@@ -594,6 +661,12 @@ Item {
                                 activo: Editor.clicsActivos
                                 onPulsado: Editor.alternarClics()
                             }
+
+                            BotonAccion {
+                                texto: Idioma.t("Marcador")
+                                icono: 0xF05A1
+                                onPulsado: Editor.crearMarcador(view.segundos)
+                            }
                         }
 
                         IslandLabel {
@@ -640,6 +713,49 @@ Item {
                         Layout.fillWidth: true
                         Layout.topMargin: 6
                         spacing: 4
+
+                        Rectangle {
+                            visible: Editor.capaSel
+                                && Editor.capaSel.tipo === "video"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 26
+                            radius: 13
+                            color: Editor.recortandoCapa ? Theme.blue
+                                 : recorteRaton.containsMouse
+                                   ? Theme.surfaceHi : Theme.surface
+                            border.width: 1
+                            border.color: Editor.recortandoCapa
+                                ? Theme.blue : Qt.rgba(1, 1, 1, 0.1)
+
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: 5
+
+                                IconGlyph {
+                                    text: String.fromCodePoint(0xF03EB) // md-crop
+                                    color: Editor.recortandoCapa ? "#ffffff"
+                                                                  : Theme.muted
+                                    font.pixelSize: 12
+                                }
+
+                                IslandLabel {
+                                    text: Editor.recortandoCapa
+                                        ? Idioma.t("Dibuja el recorte en el vídeo")
+                                        : Idioma.t("Recortar vídeo")
+                                    color: Editor.recortandoCapa ? "#ffffff"
+                                                                  : Theme.muted
+                                    font.pixelSize: 10
+                                }
+                            }
+
+                            MouseArea {
+                                id: recorteRaton
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: Editor.alternarRecorte()
+                            }
+                        }
 
                         //  Quitar el fondo verde de un vídeo encima.
                         //
@@ -755,6 +871,148 @@ Item {
                                     }
                                 }
                             }
+                        }
+
+                        // Inspector numérico: permite repetir posiciones y
+                        // tamaños con precisión, sin depender del ratón.
+                        GridLayout {
+                            visible: Editor.capaSel !== null
+                            Layout.fillWidth: true
+                            columns: 2
+                            columnSpacing: 4
+                            rowSpacing: 3
+
+                            Repeater {
+                                model: [
+                                    { k: "x", n: "X", suf: "", dec: 3 },
+                                    { k: "y", n: "Y", suf: "", dec: 3 },
+                                    { k: "tamano", n: "Tamaño", suf: "", dec: 3 },
+                                    { k: "rotacion", n: "Giro", suf: "°", dec: 1 },
+                                    { k: "opacidad", n: "Opac.", suf: "", dec: 2 },
+                                    { k: "t0", n: "Inicio", suf: " s", dec: 2 },
+                                    { k: "t1", n: "Fin", suf: " s", dec: 2 }
+                                ]
+
+                                delegate: RowLayout {
+                                    required property var modelData
+                                    visible: Editor.capaSel !== null
+                                        && (Editor.capaSel.tipo !== "audio"
+                                            || modelData.k === "t0"
+                                            || modelData.k === "t1")
+                                    Layout.fillWidth: true
+                                    spacing: 3
+
+                                    IslandLabel {
+                                        Layout.preferredWidth: 42
+                                        text: parent.modelData.n
+                                        color: Theme.muted
+                                        font.pixelSize: 9
+                                    }
+
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 25
+                                        radius: 6
+                                        color: Theme.surface
+                                        border.width: 1
+                                        border.color: inspectorCampo.activeFocus
+                                            ? Theme.blue : Qt.rgba(1, 1, 1, 0.1)
+
+                                        TextInput {
+                                            id: inspectorCampo
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 6
+                                            anchors.rightMargin: 4
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            color: Theme.ink
+                                            font.pixelSize: 10
+                                            font.family: Theme.uiFont
+                                            selectByMouse: true
+                                            clip: true
+                                            property int deQuien: Editor.idSel
+                                            function valor() {
+                                                const c = Editor.capaSel
+                                                if (!c) return 0
+                                                if (modelData.k === "tamano")
+                                                    return c.tipo === "texto" ? c.tam
+                                                        : c.tipo === "zona" ? c.an
+                                                        : c.escala
+                                                return c[modelData.k] !== undefined
+                                                    ? c[modelData.k] : 0
+                                            }
+                                            onDeQuienChanged: text = valor().toFixed(
+                                                modelData.dec)
+                                            Component.onCompleted: text = valor().toFixed(
+                                                modelData.dec)
+                                            onEditingFinished: {
+                                                if (!Editor.capaSel) return
+                                                let v = Number(text.replace(",", "."))
+                                                if (!isFinite(v)) { text = valor().toFixed(modelData.dec); return }
+                                                let campos = {}
+                                                if (modelData.k === "tamano") {
+                                                    if (Editor.capaSel.tipo === "texto") campos.tam = Math.max(0.005, Math.min(0.4, v))
+                                                    else if (Editor.capaSel.tipo === "zona") campos.an = Math.max(0.01, Math.min(1, v))
+                                                    else campos.escala = Math.max(0.01, Math.min(2, v))
+                                                } else if (modelData.k === "rotacion") {
+                                                    campos.rotacion = v
+                                                } else if (modelData.k === "t0" || modelData.k === "t1") {
+                                                    const c = Editor.capaSel
+                                                    const a = modelData.k === "t0" ? Math.max(0, Math.min(c.t1 - 0.05, v)) : c.t0
+                                                    const b = modelData.k === "t1" ? Math.max(c.t0 + 0.05, Math.min(Editor.duracionLinea, v)) : c.t1
+                                                    campos.t0 = a; campos.t1 = b
+                                                } else {
+                                                    campos[modelData.k] = Math.max(0, Math.min(1, v))
+                                                }
+                                                Editor.ponerTransformacion(Editor.idSel, campos)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            visible: Editor.capaSel !== null
+                            Layout.fillWidth: true
+                            spacing: 3
+                            BotonAccion {
+                                texto: Editor.capaSel && Editor.capaSel.visible === false
+                                    ? Idioma.t("Mostrar") : Idioma.t("Ocultar")
+                                icono: Editor.capaSel && Editor.capaSel.visible === false
+                                    ? 0xF0208 : 0xF0209
+                                onPulsado: Editor.alternarVisibilidadCapa(Editor.idSel)
+                            }
+                            BotonAccion {
+                                texto: Editor.capaSel && Editor.capaSel.bloqueada
+                                    ? Idioma.t("Desbloquear") : Idioma.t("Bloquear")
+                                icono: Editor.capaSel && Editor.capaSel.bloqueada
+                                    ? 0xF033E : 0xF033F
+                                onPulsado: Editor.alternarBloqueoCapa(Editor.idSel)
+                            }
+                        }
+
+                        BotonAccion {
+                            visible: Editor.capaSel !== null
+                                && Editor.capaSel.tipo !== "audio"
+                            texto: Idioma.t("Restablecer transformación")
+                            icono: 0xF0450
+                            onPulsado: {
+                                const c = Editor.capaSel
+                                const p = { x: 0.5, y: 0.5, rotacion: 0 }
+                                if (c.tipo === "texto") p.tam = 0.06
+                                else if (c.tipo === "zona") { p.an = 0.3; p.al = 0.25 }
+                                else p.escala = 0.3
+                                Editor.ponerTransformacion(Editor.idSel, p)
+                            }
+                        }
+
+                        BotonAccion {
+                            visible: Editor.capaSel !== null
+                                && Editor.capaSel.tipo !== "audio"
+                            texto: Idioma.t("Crear fotograma clave")
+                            icono: 0xF05A1
+                            onPulsado: Editor.crearKeyframe(Editor.idSel,
+                                                             view.segundos)
                         }
 
                         //  Lo que dice el rótulo.
@@ -1771,7 +2029,9 @@ Item {
                 cabezal: view.segundos
 
                 onSaltar: function (t) { view.irA(t) }
-                onNuevaCapa: view.plugin.pedirImagen(view.segundos, true)
+                // «Capa» no es sinónimo de «imagen»: primero deja elegir qué
+                // tipo de capa se quiere añadir en la sección «Añadir».
+                onNuevaCapa: Editor.crearBanda()
                 onRascaInicio: reproductor.empezarRasca()
                 onRascaFin: reproductor.terminarRasca()
             }

@@ -17,7 +17,7 @@ K4Plugin {
     // Junto al lanzador y el portapapeles: son los tres que se piden a
     // propósito y ninguno debe quedar tapado por lo que se abre solo.
     priority: 81
-    active: open || closing
+    active: habilitado && (open || closing)
     viewLoaded: open
     grabKeyboard: open
 

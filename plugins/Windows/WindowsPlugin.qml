@@ -15,7 +15,7 @@ K4Plugin {
     name: "windows"
     title: Idioma.t("Ventanas")
     priority: 83
-    active: open
+    active: habilitado && open
     viewLoaded: open
     grabKeyboard: open
 

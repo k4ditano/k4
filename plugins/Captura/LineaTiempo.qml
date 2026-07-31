@@ -22,7 +22,7 @@ RowLayout {
     property real cabezal: 0
 
     signal saltar(real t)
-    // Añadir algo en una banda nueva encima de todo.
+    // Preparar una capa nueva en una banda encima de todo.
     signal nuevaCapa()
 
     //  Empezar y terminar de buscar un instante con el ratón. El reproductor se
@@ -101,7 +101,7 @@ RowLayout {
         spacing: linea.hueco
 
 
-        //  Añadir una capa: algo nuevo, encima de todo.
+        //  Añadir una capa: primero se elige su tipo en el panel «Añadir».
         //
         //  Va aquí arriba y no en el pie porque es donde se busca —la columna de
         //  capas— y porque «encima de todo» se entiende mirando dónde está el
@@ -151,12 +151,16 @@ RowLayout {
                 required property var modelData
                 required property int index
 
-                readonly property bool esVideo: modelData.clips === true
+                readonly property var info: Editor.infoBanda(modelData.banda)
 
                 Layout.fillWidth: true
                 Layout.preferredHeight: esVideo ? linea.altoClips
                                                 : linea.altoPista
                 alto: esVideo ? linea.altoClips : linea.altoPista
+                esVideo: modelData.clips === true
+                visiblePista: esVideo ? true : Editor.bandaVisible(modelData.banda)
+                bloqueada: esVideo ? false : Editor.bandaBloqueada(modelData.banda)
+                solo: esVideo ? false : !!(info && info.solo)
 
                 //  Cómo se llama una banda: por lo que lleva si lleva una cosa,
                 //  y por cuántas si lleva varias. Vacía, por su número — decía
@@ -166,7 +170,7 @@ RowLayout {
                     : modelData.capas.length === 1
                     ? Editor.nombreCapa(modelData.capas[0])
                     : (modelData.capas.length === 0
-                       ? Idioma.t("Capa ") + (modelData.banda - 1)
+                       ? Editor.nombreBanda(modelData.banda)
                        : Idioma.f(Idioma.t("%1 cosas"),
                                   String(modelData.capas.length)))
                 //  El icono dice de qué es la banda cuando lleva una sola cosa.
@@ -177,15 +181,25 @@ RowLayout {
                 tono: esVideo ? Theme.blue : Theme.green
                 elegida: esVideo
                     ? Editor.clipSel !== null
-                    : (Editor.capaSel !== null
-                       && Editor.bandaDe(Editor.capaSel) === modelData.banda)
+                    : Editor.bandaSeleccionada === modelData.banda
 
                 //  El vídeo no se arrastra: es la base y se queda abajo. Un
                 //  vídeo encima de todo taparía el resto y no querría decir nada.
                 arrastrable: !esVideo && linea.bandasVista.length > 2
 
-                onPulsada: if (!esVideo && modelData.capas.length > 0)
-                               Editor.seleccionar("capa", modelData.capas[0].id)
+                onPulsada: if (!esVideo) {
+                    if (modelData.capas.length > 0)
+                        Editor.seleccionar("capa", modelData.capas[0].id)
+                    else
+                        Editor.seleccionarBanda(modelData.banda)
+                }
+
+                onAlternarVisible: if (!esVideo)
+                    Editor.alternarVisibilidadBanda(modelData.banda)
+                onAlternarBloqueo: if (!esVideo)
+                    Editor.alternarBloqueoBanda(modelData.banda)
+                onAlternarSolo: if (!esVideo)
+                    Editor.alternarSoloBanda(modelData.banda)
 
                 //  Bajar en la LISTA es bajar de banda en el plan, y la lista va
                 //  del revés. La vuelta se da aquí y en un solo sitio.
@@ -197,7 +211,7 @@ RowLayout {
                 //  que el sitio más bajo al que puede ir una capa es el
                 //  penúltimo: `length - 2`.
                 onReordenada: function (filas) {
-                    if (esVideo)
+                    if (esVideo || Editor.bandaBloqueada(modelData.banda))
                         return
                     const puesto = Math.max(0, Math.min(
                         linea.bandasVista.length - 2, index + filas))
@@ -308,6 +322,44 @@ RowLayout {
                                 : parent.t + " s"
                             color: Theme.dim
                             font.pixelSize: 8
+                        }
+                    }
+                }
+
+                // Marcadores editables: guías rápidas para cortes, rótulos y
+                // cambios de plano. Se crean con M o desde el botón de la ficha.
+                Repeater {
+                    model: Editor.marcadores
+                    delegate: Item {
+                        required property var modelData
+                        x: regla.width * (Number(modelData.t)
+                            / Math.max(0.001, linea.total))
+                        width: 1
+                        height: regla.height + 260
+                        z: 4
+
+                        Rectangle {
+                            width: 2
+                            height: parent.height
+                            color: Theme.orange
+                            opacity: 0.7
+                        }
+                        IslandLabel {
+                            x: 3
+                            y: 0
+                            text: modelData.nombre || "M"
+                            color: Theme.orange
+                            font.pixelSize: 8
+                        }
+                        MouseArea {
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            height: regla.height
+                            anchors.leftMargin: -6
+                            anchors.rightMargin: -6
+                            cursorShape: Qt.SizeHorCursor
+                            onClicked: Editor.quitarMarcador(modelData.id)
                         }
                     }
                 }
