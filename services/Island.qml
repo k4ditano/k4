@@ -7,8 +7,11 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 
 Singleton {
+    id: isla
+
     // ¿el ratón está encima de la island?
     property bool hovered: false
 
@@ -42,4 +45,34 @@ Singleton {
     function cerrarDialogo() { dialogos = Math.max(0, dialogos - 1) }
 
     readonly property bool apartada: escondida || dialogos > 0
+
+    //  Y un vigilante, porque quedarse sin barra no puede pasar.
+    //
+    //  El contador sube al arrancar el proceso y baja al terminar, y eso basta
+    //  mientras el proceso viva lo suficiente para avisar. Si algo se lo lleva
+    //  por delante —la vista que lo contenía se destruye, el proceso muere de
+    //  malas maneras— el aviso no llega y la island se queda apartada para
+    //  siempre. Sin barra y sin forma de recuperarla salvo reiniciándola.
+    //
+    //  Así que mientras el contador esté arriba se comprueba de vez en cuando
+    //  que de verdad haya algún zenity vivo. Si no lo hay, se baja. Solo corre
+    //  mientras hay un diálogo abierto, así que no cuesta nada el resto del
+    //  tiempo.
+    property var _sonda: Process {
+        command: ["pgrep", "-c", "-x", "zenity"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const n = parseInt(String(this.text).trim(), 10)
+                if (isFinite(n) && n <= 0)
+                    isla.dialogos = 0
+            }
+        }
+    }
+
+    property var _vigilante: Timer {
+        interval: 3000
+        repeat: true
+        running: isla.dialogos > 0
+        onTriggered: isla._sonda.running = true
+    }
 }

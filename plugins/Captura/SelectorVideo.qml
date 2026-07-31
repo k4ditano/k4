@@ -87,28 +87,11 @@ FadeIn {
     //  una capa de layer-shell es justo donde aparecen los líos de foco que ya
     //  se pelean en la island. Por debajo zenity habla con el portal, así que
     //  sale el mismo selector que en cualquier otra aplicación.
-    K4.Process {
-        id: examinador
-        //  Mientras el diálogo esté abierto, la island se aparta: va en una capa
-        //  por encima de todo y el selector le sale por debajo, donde no se ve
-        //  ni se puede pulsar.
-        onArrancado: Island.abrirDialogo()
-        onTerminado: Island.cerrarDialogo()
-        onSalida: function (texto) {
-            const ruta = String(texto).trim()
-            // Sale vacío si le has dado a cancelar, que no es un fallo.
-            if (ruta.length > 0)
-                view.plugin.abrirVideo(ruta)
-        }
-    }
-
-    function examinar() {
-        examinador.command = ["zenity", "--file-selection",
-                              "--title=" + Idioma.t("Elegir vídeo"),
-                              "--file-filter=" + Idioma.t("Vídeo")
-                              + " | *.mp4 *.mkv *.mov *.webm *.avi *.m4v"]
-        examinador.running = true
-    }
+    //
+    //  Y lo lanza el PLUGIN, no esta vista: mientras el diálogo está abierto la
+    //  island se aparta, y si la vista se destruyera con el proceso dentro, el
+    //  aviso de «ha terminado» no llegaría y la barra no volvería nunca.
+    function examinar() { view.plugin.pedirVideoDelDisco() }
 
     ColumnLayout {
         anchors.fill: parent

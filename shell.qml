@@ -211,6 +211,13 @@ Scope {
             //  secuestrado mientras tuvieras cualquiera abierto: no se podía
             //  escribir en ninguna ventana.
             WlrLayershell.keyboardFocus: {
+                //  Con un diálogo del sistema delante, el teclado es suyo.
+                //
+                //  Apartar la island de la vista no bastaba: seguía teniendo el
+                //  foco en exclusiva, así que el selector de ficheros se veía
+                //  pero no se podía ni escribir en él ni cerrarlo con Escape.
+                if (Island.apartada)
+                    return WlrKeyboardFocus.None
                 const p = root.activePlugin
                 if (!p)
                     return WlrKeyboardFocus.None

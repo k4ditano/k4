@@ -156,6 +156,34 @@ K4Plugin {
         Editor.abrir(ruta, "")
     }
 
+    //  Elegir un vídeo por el diálogo del sistema.
+    //
+    //  Vive aquí y no en la vista del selector, y no es cosmético: la vista se
+    //  destruye al cerrarse, y con ella el proceso. Si eso pasa mientras el
+    //  diálogo está abierto, el aviso de «ha terminado» no llega nunca, el
+    //  contador de diálogos se queda arriba y **la island no vuelve**. El
+    //  plugin dura lo que dura la barra.
+    function pedirVideoDelDisco() { selectorVideoDisco.running = true }
+
+    K4.Process {
+        id: selectorVideoDisco
+        //  Mientras el diálogo esté abierto, la island se aparta: va en una capa
+        //  por encima de todo y el selector le sale por debajo, donde no se ve
+        //  ni se puede pulsar.
+        onArrancado: Island.abrirDialogo()
+        onTerminado: Island.cerrarDialogo()
+        command: ["zenity", "--file-selection",
+                  "--title=" + Idioma.t("Elegir vídeo"),
+                  "--file-filter=" + Idioma.t("Vídeo")
+                  + " | *.mp4 *.mkv *.mov *.webm *.avi *.m4v"]
+        onSalida: function (texto) {
+            const ruta = String(texto).trim()
+            // Sale vacío si le has dado a cancelar, que no es un fallo.
+            if (ruta.length > 0)
+                self.abrirVideo(ruta)
+        }
+    }
+
     //  Traer una imagen para ponerla encima del vídeo.
     //
     //  Por el diálogo del sistema y no por un buscador propio: una imagen se
@@ -465,9 +493,9 @@ K4Plugin {
         // Elegir un vídeo del disco y editarlo.
         function abrir(): void { self.pedirVideo() }
 
-        //  El diálogo del sistema, directamente: el mismo que abre el botón
-        //  «Examinar…» del selector.
-        function examinar(): void { self.pedirImagen(Editor.posicionEditor) }
+        //  El diálogo del sistema, directamente: exactamente el mismo camino
+        //  que el botón «Examinar…» del selector.
+        function examinar(): void { self.pedirVideoDelDisco() }
 
         // Editar un vídeo concreto, sin pasar por el selector.
         function editar(ruta: string): void { self.abrirVideo(ruta) }
