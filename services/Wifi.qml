@@ -4,10 +4,14 @@ pragma Singleton
 //
 //  El escáner solo se enciende mientras alguien mira la lista: dejarlo puesto
 //  gasta radio y batería para nada. Quien enseñe las redes pone `scanning`.
+//
+//  Aquí sondeaba antes un `nmcli` cada cuatro segundos solo para saber el
+//  nombre de la red — novecientos procesos por hora para un dato que
+//  `Networking` ya tiene y notifica. El nombre es ahora un cálculo reactivo
+//  sobre las mismas señales que ya alimentaban la lista de redes.
 
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import Quickshell.Networking
 import "../core"
 
@@ -21,7 +25,19 @@ Singleton {
     //  la superficie pública no.
     property alias activada: interruptorWifi.encendida
 
-    property string name: "Buscando Wi‑Fi…"
+    readonly property string name: {
+        const devices = Networking.devices.values
+        for (let i = 0; i < devices.length; ++i) {
+            const dev = devices[i]
+            if (dev.type !== DeviceType.Wifi || !dev.connected)
+                continue
+            const list = dev.networks.values
+            for (let j = 0; j < list.length; ++j)
+                if (list[j].connected)
+                    return list[j].name
+        }
+        return Networking.wifiEnabled ? "Buscando Wi‑Fi…" : "Wi‑Fi apagada"
+    }
     property var pskTarget: null        // red esperando contraseña
     property string pskInput: ""
     property string notice: ""
@@ -51,25 +67,6 @@ Singleton {
             return (b.signalStrength || 0) - (a.signalStrength || 0)
         })
         return list
-    }
-
-    function refresh() {
-        const devices = Networking.devices.values
-        for (let i = 0; i < devices.length; ++i) {
-            const dev = devices[i]
-            if (dev.type !== DeviceType.Wifi || !dev.connected)
-                continue
-
-            const list = dev.networks.values
-            for (let j = 0; j < list.length; ++j) {
-                if (list[j].connected) {
-                    name = list[j].name
-                    return
-                }
-            }
-        }
-
-        name = Networking.wifiEnabled ? "Buscando Wi‑Fi…" : "Wi‑Fi apagada"
     }
 
     function strengthIcon(network) {
@@ -151,49 +148,11 @@ Singleton {
         pskTarget = null
     }
 
-    function updateName(output) {
-        const lines = output.trim().split("\n")
-        for (let i = 0; i < lines.length; ++i) {
-            const fields = lines[i].split(":")
-            if (fields[0] === "yes" && fields.length > 1 && fields[1].length > 0) {
-                name = fields.slice(1).join(":")
-                return
-            }
-        }
-
-        refresh()
-    }
-
-    Component.onCompleted: refresh()
-
-    Process {
-        id: nameProcess
-        command: ["nmcli", "-t", "-f", "active,ssid", "dev", "wifi"]
-        running: true
-
-        stdout: StdioCollector {
-            onStreamFinished: wifi.updateName(this.text)
-        }
-
-        onExited: poll.restart()
-    }
-
-    Timer {
-        id: poll
-        interval: 4000
-        onTriggered: nameProcess.running = true
-    }
-
     Binding {
         target: wifi.device
         property: "scannerEnabled"
         value: wifi.scanning
         when: wifi.device !== null
-    }
-
-    Connections {
-        target: Networking
-        function onWifiEnabledChanged() { wifi.refresh() }
     }
 
     QtObject {

@@ -58,7 +58,12 @@ Singleton {
     //  El orden importa: los primeros son molestos y los últimos cambian cómo
     //  hay que jugar. `ruptura` en particular existe porque el escudo era la
     //  respuesta a todo.
-    readonly property var rasgos: [
+    //  Los catálogos grandes van tras un ternario con juegoActivo: son
+    //  cientos de objetos y de llamadas a Idioma.t() que con la mazmorra
+    //  apagada no se construyen — «apagada no ocupa sitio» tiene que ser
+    //  verdad también en la instanciación. Al encenderla, los bindings se
+    //  reevalúan solos y todo aparece.
+    readonly property var rasgos: !Settings.juegoActivo ? [] : [
         { id: "coraza",  nombre: Idioma.t("Coraza"),  desde: 12, color: "#8e8e93",
           desc: Idioma.t("aguanta mejor los golpes") },
         { id: "furia",   nombre: Idioma.t("Furia"),   desde: 25, color: "#ff453a",
@@ -110,7 +115,7 @@ Singleton {
     // Cuánto encaja un enemigo de cada tipo de daño según su carne. Un bicho
     // acorazado se come el acero pero no la magia, y al revés: es lo que hace
     // que llevar daño mixto importe.
-    readonly property var defensaDe: ({
+    readonly property var defensaDe: !Settings.juegoActivo ? ({}) : ({
         fisica:      { fis: 0.68, mag: 1.18 },
         magica:      { fis: 1.18, mag: 0.68 },
         equilibrada: { fis: 1.0,  mag: 1.0 }
@@ -153,7 +158,7 @@ Singleton {
     //
     //  `potencia` se mide en golpes normales suyos, así escala sola con la
     //  oleada y no hay que retocarla nunca.
-    readonly property var habilidadesEnemigo: [
+    readonly property var habilidadesEnemigo: !Settings.juegoActivo ? [] : [
         { id: "embestida", nombre: Idioma.t("Embestida"), desde: 20, recarga: 9,
           efecto: "granGolpe", potencia: 3.2, forma: "onda" },
         { id: "escupitajo", nombre: Idioma.t("Escupitajo"), desde: 34, recarga: 12,
@@ -196,7 +201,7 @@ Singleton {
     //
     //  `vida` y `daño` son multiplicadores sobre lo que toca en esa oleada, y
     //  se compensan entre sí: lo que aguanta pega poco y al revés.
-    readonly property var especies: [
+    readonly property var especies: !Settings.juegoActivo ? [] : [
         { nombre: Idioma.t("Limo"),              afinidad: "coraza",  vida: 1.35, daño: 0.75, defensa: "fisica", ataque: "fisico" },
         { nombre: Idioma.t("Limo helado"),       afinidad: "coraza",  vida: 1.30, daño: 0.80, defensa: "fisica", ataque: "fisico" },
         { nombre: Idioma.t("Cangrejo rojo"),     afinidad: "coraza",  vida: 1.25, daño: 0.90, defensa: "fisica", ataque: "fisico" },
@@ -221,7 +226,7 @@ Singleton {
 
     // A los jefes se les nombra por bioma y altura, que es lo único que se
     // sabe con certeza del sprite que toca.
-    readonly property var titulosJefe: [
+    readonly property var titulosJefe: !Settings.juegoActivo ? [] : [
         "Guardián", "Tirano", "Devorador", "Heraldo", "Coloso",
         "Verdugo", "Abominación", "Soberano"
     ]
@@ -234,7 +239,7 @@ Singleton {
     }
 
     // ── clases ────────────────────────────────────────────────────
-    readonly property var clases: [
+    readonly property var clases: !Settings.juegoActivo ? [] : [
         {
             id: "tanque", nombre: Idioma.t("Guardián"), sprite: "h00",
             vida: 300, daño: 4, armadura: 6, magia: 0.0, resistencia: 2, papel: Idioma.t("Aguanta los golpes"),
@@ -677,7 +682,7 @@ Singleton {
 
     // El oro dejó de comprar estadísticas —subirlas a mano no era una decisión,
     // era un peaje— y ahora compra cofres: qué te llevas, no cuánto pegas.
-    readonly property var tiendaDef: [
+    readonly property var tiendaDef: !Settings.juegoActivo ? [] : [
         { tipo: 0, nombre: Idioma.t("Cofre corriente"), base: 120,  glifo: 0xF04D6 },
         { tipo: 1, nombre: Idioma.t("Cofre de jefe"),   base: 900,  glifo: 0xF04D7 },
         { tipo: 2, nombre: Idioma.t("Cofre de acto"),   base: 6500, glifo: 0xF0A75 }
@@ -859,7 +864,7 @@ Singleton {
     property var meta: ({ vida: 0, daño: 0, fortuna: 0 })
     readonly property int topeBolsa: 60
 
-    readonly property var metaDef: [
+    readonly property var metaDef: !Settings.juegoActivo ? [] : [
         { id: "vida",    nombre: Idioma.t("Linaje robusto"), desc: Idioma.t("+8% vida del grupo"),     base: 40, glifo: 0xF1076 },
         { id: "daño",    nombre: Idioma.t("Filo ancestral"), desc: Idioma.t("+8% daño del grupo"),     base: 40, glifo: 0xF04E5 },
         { id: "fortuna", nombre: Idioma.t("Fortuna"),        desc: Idioma.t("Mejores rarezas"),        base: 60, glifo: 0xF0BC2 }
@@ -2300,7 +2305,9 @@ Singleton {
 
     Process {
         command: ["mkdir", "-p", Quickshell.env("HOME") + "/.local/state/k4"]
-        running: true
+        //  Con la mazmorra apagada ni se lee la partida: al encenderla en
+        //  Ajustes este binding se enciende solo y la carga llega entonces.
+        running: Settings.juegoActivo
         onExited: game.cargar()
     }
 

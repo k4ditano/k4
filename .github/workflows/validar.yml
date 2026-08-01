@@ -1,0 +1,41 @@
+#  Los validadores de la casa, en cada push y cada PR.
+#
+#  Son los mismos que pide el README antes de abrir un PR — aquí dejan de
+#  depender de que alguien se acuerde. Todo es python de la biblioteca
+#  estándar; qmllint no está en el runner y guia.py salta esa comprobación
+#  (la compilación de ejemplos se cubre en local, donde vive Quickshell).
+
+name: validar
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validadores:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: El catálogo de plugins dice la verdad
+        run: python3 tools/plugins.py
+
+      - name: Ningún plugin se salta la API
+        run: python3 tools/api.py
+
+      - name: La documentación no le miente al código
+        run: python3 tools/guia.py
+
+      - name: Las pruebas del editor
+        run: python3 tools/prueba_editar.py
+
+      - name: Las pruebas del instalador de plugins
+        run: python3 tools/prueba_plugins.py
+
+      - name: Sin restos de conflictos ni espacios colgando
+        run: git diff --check
