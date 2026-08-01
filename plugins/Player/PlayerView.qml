@@ -98,6 +98,17 @@ FadeIn {
                 onAbrir: if (view.juego) view.juego.toggle()
             }
 
+            MascotaPildora {
+                interactive: true
+                Layout.leftMargin: 2
+                Layout.alignment: Qt.AlignVCenter
+                onAbrir: {
+                    const m = PluginManager.instancia("mascota")
+                    if (m)
+                        m.toggle()
+                }
+            }
+
             // Igual que en el reloj: es aquí, con la island ya desplegada,
             // donde los iconos de bandeja se pueden pulsar.
             TrayRow {

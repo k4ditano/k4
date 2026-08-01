@@ -20,6 +20,9 @@ when it has something to show.
 - A screen capture and recording workflow with region/window selection, video
   preview, folder/editor actions and a full non-linear editor.
 - An idle roguelite game implemented as a regular k4 plugin.
+- A virtual pet that lives in the pill and reacts to your real machine — music,
+  CPU heat, weather, AI token spend — with 15 collectible species unlocked by
+  how you actually use your computer, each with three evolution stages.
 - Plugin enable/disable state, plugin indicators and a documented public API.
 - Spanish UI with translation files for additional languages.
 

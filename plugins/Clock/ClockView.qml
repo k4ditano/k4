@@ -74,6 +74,16 @@ FadeIn {
                     onAbrir: if (view.juego) view.juego.toggle()
                 }
 
+                MascotaPildora {
+                    interactive: true
+                    Layout.alignment: Qt.AlignVCenter
+                    onAbrir: {
+                        const m = PluginManager.instancia("mascota")
+                        if (m)
+                            m.toggle()
+                    }
+                }
+
                 // La island ya está desplegada y quieta: aquí sí se pincha.
                 TrayRow {
                     max: 5

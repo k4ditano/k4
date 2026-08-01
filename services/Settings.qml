@@ -31,6 +31,13 @@ Singleton {
     // services/Game.qml: el combate solo avanza con tokens de IA gastados
     property bool juegoPorTokens: false
 
+    // ── mascota ───────────────────────────────────────────────────
+    // services/Mascota.qml y widgets/MascotaPildora.qml los leen.
+    property bool mascotaActiva: true       // apagada no corre ni guarda
+    property bool mascotaEnPildora: true    // el sprite en la píldora
+    property string mascotaNombre: ""       // vacío usa el de la especie
+    property bool mascotaTinte: false       // su humor tiñe la barra (tenue)
+
     // ── captura y grabación ───────────────────────────────────────
     // services/Captura.qml los lee. Estaban a fuego ahí, con un comentario que
     // decía «en la fase 6 los lee de Settings»: esta es la fase 6.
@@ -127,6 +134,26 @@ Singleton {
                   desc: Idioma.t("Oleada actual y aviso de cofres sin abrir"), glifo: 0xF0BC2 },
                 { requiere: "juegoActivo", id: "juegoPorTokens", nombre: Idioma.t("Pelear con tokens"),
                   desc: Idioma.t("Avanza solo mientras gastas en Claude o Codex"), glifo: 0xF0241 }
+            ]
+        },
+        {
+            grupo: Idioma.t("Mascota"),
+            opciones: [
+                { id: "mascotaActiva", nombre: Idioma.t("Mascota activa"),
+                  desc: Idioma.t("Apagada no corre, no siente y no guarda"),
+                  glifo: 0xF0AAF },
+                { requiere: "mascotaActiva", id: "mascotaNombre", tipo: "texto",
+                  nombre: Idioma.t("Su nombre"),
+                  desc: Idioma.t("Vacío usa el de su especie"),
+                  pista: Idioma.t("Pulpi"), glifo: 0xF1821 },
+                { requiere: "mascotaActiva", id: "mascotaEnPildora",
+                  nombre: Idioma.t("Vive en la píldora"),
+                  desc: Idioma.t("Su sprite, siempre a la vista"),
+                  glifo: 0xF0BC2 },
+                { requiere: "mascotaActiva", id: "mascotaTinte",
+                  nombre: Idioma.t("Su humor tiñe la barra"),
+                  desc: Idioma.t("Un ambiente tenue cuando está radiante o mustia"),
+                  glifo: 0xF0E51 }
             ]
         },
         {
@@ -281,6 +308,7 @@ Singleton {
     readonly property var claves: [
         "idioma",
         "juegoActivo", "juegoContinuar", "juegoEnPildora", "juegoPorTokens",
+        "mascotaActiva", "mascotaEnPildora", "mascotaNombre", "mascotaTinte",
         "capturaDestino", "capturaCursor",
         "grabarAudio", "grabarCodec", "grabarFps",
         "grabarCamara", "camaraDispositivo",
