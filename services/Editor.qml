@@ -16,10 +16,13 @@ pragma Singleton
 //  toca. En particular, **este fichero no sabe aritmética de tiempos**: no
 //  traduce entre el tiempo de la línea y el de dentro de cada fichero, porque
 //  entonces habría dos implementaciones de lo mismo que se irían separando.
+//
+//  Y tampoco lanza procesos: los diez que hablan con python viven en
+//  EditorProcesos.qml y contestan por señales. Este fichero decide qué hacer
+//  con cada respuesta, que es lo que le toca a una máquina de estados.
 
 import QtQuick
 import Quickshell
-import Quickshell.Io
 
 Singleton {
     id: editor
@@ -120,7 +123,7 @@ Singleton {
         restaurandoHistorial = false
         ultimoHistorial = s
         persistir()
-        recalcular.restart()
+        procesos.recalcularCamara()
     }
 
     function deshacer() {
@@ -655,33 +658,12 @@ Singleton {
     //
     //  Lo hace python entero —sacar el fotograma, partir y recolocar— porque es
     //  aritmética de tiempos, y de eso hay un solo dueño.
-    property bool congelando: false
+    readonly property bool congelando: procesos.congelando
 
     function congelar(t, segundos) {
         if (rutaPlan.length === 0 || congelando)
             return
-        congelando = true
-        congelador.command = ["python3", guion, "congelar", rutaPlan,
-                              String(t), "--dur", String(segundos || 2)]
-        congelador.running = true
-    }
-
-    Process {
-        id: congelador
-        stdout: StdioCollector {
-            onStreamFinished: {
-                editor.congelando = false
-                let d = null
-                try { d = JSON.parse(this.text) } catch (e) { }
-                if (!d || !d.ok) {
-                    editor.fallo(d && d.motivo ? d.motivo : "congelar")
-                    return
-                }
-                //  El plan lo ha cambiado python, así que hay que releerlo: lo
-                //  que hay en memoria se ha quedado viejo.
-                editor.abrir(editor.rutaVideo, "")
-            }
-        }
+        procesos.congelar(t, segundos)
     }
 
     // ── silencios ─────────────────────────────────────────────────
@@ -703,8 +685,7 @@ Singleton {
         if (rutaPlan.length === 0 || estadoSilencios === "buscando")
             return
         estadoSilencios = "buscando"
-        buscador.command = ["python3", guion, "silencios", rutaPlan]
-        buscador.running = true
+        procesos.buscarSilencios()
     }
 
     //  Partir la lista por un instante de LÍNEA, devolviendo la lista nueva.
@@ -794,21 +775,6 @@ Singleton {
         persistir()
     }
 
-    Process {
-        id: buscador
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let d = null
-                try { d = JSON.parse(this.text) } catch (e) { }
-                if (!d || !d.ok) {
-                    editor.estadoSilencios = "fallo"
-                    return
-                }
-                editor.aplicarSilencios(d.tramos || [])
-            }
-        }
-    }
-
     //  Callar un tramo del sonido, o taparlo con un pitido.
     function crearCensura(t0, modo) {
         const a = Math.max(0, Math.min(t0, Math.max(0, duracionLinea - 0.5)))
@@ -894,7 +860,7 @@ Singleton {
     function alternarClics() {
         clicsActivos = !clicsActivos
         persistir()
-        recalcular.restart()
+        procesos.recalcularCamara()
     }
 
     //  Tapar o destacar un trozo del fotograma.
@@ -951,33 +917,25 @@ Singleton {
         audioPendiente = ruta
         audioPendienteEn = Math.max(0, Math.min(t0, duracionLinea))
         tipoPendiente = tipo
-        medidor.command = ["python3", guion, "medir", ruta]
-        medidor.running = true
+        procesos.medir(ruta)
     }
 
-    Process {
-        id: medidor
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let d = null
-                try { d = JSON.parse(this.text) } catch (e) { }
-                if (!d || !d.ok || editor.audioPendiente.length === 0) {
-                    editor.fallo(d && d.motivo ? d.motivo : "no-se-puede-medir")
-                    editor.audioPendiente = ""
-                    return
-                }
-                if (editor.tipoPendiente === "video" && !d.w) {
-                    // Sin flujo de vídeo no es un vídeo, diga lo que diga el nombre.
-                    editor.fallo("sin-video")
-                    editor.audioPendiente = ""
-                    return
-                }
-                editor.anadirMedio(editor.audioPendiente,
-                                   editor.audioPendienteEn, d,
-                                   editor.tipoPendiente)
-                editor.audioPendiente = ""
-            }
+    //  Lo que contesta el medidor: la medida que faltaba para crear la capa
+    //  que quedó pendiente, o un fallo que la cancela.
+    function recibirMedida(d) {
+        if (!d || !d.ok || audioPendiente.length === 0) {
+            fallo(d && d.motivo ? d.motivo : "no-se-puede-medir")
+            audioPendiente = ""
+            return
         }
+        if (tipoPendiente === "video" && !d.w) {
+            // Sin flujo de vídeo no es un vídeo, diga lo que diga el nombre.
+            fallo("sin-video")
+            audioPendiente = ""
+            return
+        }
+        anadirMedio(audioPendiente, audioPendienteEn, d, tipoPendiente)
+        audioPendiente = ""
     }
 
     function anadirMedio(ruta, t0, medida, tipo) {
@@ -1268,42 +1226,28 @@ Singleton {
     property string faltaTranscripcion: ""    // binario · modelo
     property string comoInstalar: ""
 
-    readonly property string guionTranscribir:
-        Quickshell.shellPath("tools/transcribir.py")
-
     function transcribir() {
         if (rutaVideo.length === 0 || estadoTranscripcion === "transcribiendo")
             return
         estadoTranscripcion = "comprobando"
-        comprobador.running = true
+        procesos.comprobarTranscripcion()
     }
 
-    Process {
-        id: comprobador
-        command: ["python3", editor.guionTranscribir, "comprobar"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let d = null
-                try { d = JSON.parse(this.text) } catch (e) { }
-                if (!d) {
-                    editor.estadoTranscripcion = "fallo"
-                    return
-                }
-                editor.comoInstalar = d.como || ""
-                if (d.falta && d.falta.length > 0) {
-                    editor.faltaTranscripcion = d.falta
-                    editor.estadoTranscripcion = "falta"
-                    return
-                }
-                editor.faltaTranscripcion = ""
-                editor.estadoTranscripcion = "extrayendo"
-                transcriptor.command = ["python3", editor.guionTranscribir,
-                                        "hacer", editor.rutaVideo,
-                                        "--idioma", Idioma.codigo || "es",
-                                        "--salida", editor.carpetaAdjunta]
-                transcriptor.running = true
-            }
+    //  Lo que dice la comprobación: falta algo, o se puede empezar de verdad.
+    function recibirComprobacion(d) {
+        if (!d) {
+            estadoTranscripcion = "fallo"
+            return
         }
+        comoInstalar = d.como || ""
+        if (d.falta && d.falta.length > 0) {
+            faltaTranscripcion = d.falta
+            estadoTranscripcion = "falta"
+            return
+        }
+        faltaTranscripcion = ""
+        estadoTranscripcion = "extrayendo"
+        procesos.transcribir(rutaVideo, Idioma.codigo || "es", carpetaAdjunta)
     }
 
     //  La carpeta que acompaña al plan, donde van los ficheros que hace falta
@@ -1311,29 +1255,24 @@ Singleton {
     readonly property string carpetaAdjunta:
         rutaPlan.length > 5 ? rutaPlan.substring(0, rutaPlan.length - 5) : ""
 
-    Process {
-        id: transcriptor
-        stdout: SplitParser {
-            onRead: function (linea) {
-                let d = null
-                try { d = JSON.parse(linea) } catch (e) { return }
-                if (d.estado && d.estado !== "fin") {
-                    editor.estadoTranscripcion = d.estado
-                    return
-                }
-                if (d.ok === false) {
-                    editor.estadoTranscripcion = d.motivo === "sin-whisper"
-                        || d.motivo === "sin-modelo" ? "falta" : "fallo"
-                    if (d.como)
-                        editor.comoInstalar = d.como
-                    return
-                }
-                if (d.estado === "fin") {
-                    editor.transcripcion = d.segmentos || []
-                    editor.estadoTranscripcion = ""
-                    editor.persistir()
-                }
-            }
+    //  Cada línea del transcriptor: estados intermedios, el fallo con su
+    //  remedio, o el fin con los segmentos.
+    function recibirTranscripcion(d) {
+        if (d.estado && d.estado !== "fin") {
+            estadoTranscripcion = d.estado
+            return
+        }
+        if (d.ok === false) {
+            estadoTranscripcion = d.motivo === "sin-whisper"
+                || d.motivo === "sin-modelo" ? "falta" : "fallo"
+            if (d.como)
+                comoInstalar = d.como
+            return
+        }
+        if (d.estado === "fin") {
+            transcripcion = d.segmentos || []
+            estadoTranscripcion = ""
+            persistir()
         }
     }
 
@@ -1517,8 +1456,6 @@ Singleton {
     signal renderListo(string ruta)
     signal fallo(string motivo)
 
-    readonly property string guion: Quickshell.shellPath("tools/editar.py")
-
     //  La cámara que se grabó a la vez, si la hubo.
     //
     //  Se pasa por argumento y no se busca sola en python porque hace falta
@@ -1547,21 +1484,14 @@ Singleton {
         if (!video || video.length === 0)
             return
         preparar(video)
-        abridor.command = [guion, "abrir", video,
-                           "--rastro", rastro || "",
-                           "--guardar", rutaPlan].concat(argsCamara())
-        abridor.running = true
+        procesos.abrir(video, rastro, argsCamara())
     }
 
     function proponer(video, rastro) {
         if (!video || video.length === 0 || !rastro || rastro.length === 0)
             return
         preparar(video)
-        proponedor.command = [guion, "proponer", rastro,
-                              "--video", video,
-                              "--guardar", rutaPlan,
-                              "--nivel", String(zoomNivel)].concat(argsCamara())
-        proponedor.running = true
+        procesos.proponer(rastro, video, zoomNivel, argsCamara())
     }
 
     //  El plan se llama como el vídeo pero con otra extensión, así que abrir dos
@@ -1612,40 +1542,69 @@ Singleton {
         //  que se le hace a un vídeo, no el motivo de que exista el editor.
         estado = "editando"
         iniciarHistorial()
-        recalcular.restart()
+        procesos.recalcularCamara()
         planListo()
     }
 
-    Process {
-        id: abridor
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let d = null
-                try { d = JSON.parse(this.text) } catch (e) { }
-                if (!d || !d.ok) {
-                    editor.estado = ""
-                    editor.fallo(d && d.motivo ? d.motivo : "fallo")
-                    return
-                }
-                editor.recibirPlan(d)
-            }
-        }
-    }
+    // ── quién habla con python ────────────────────────────────────
+    //
+    //  Todos los procesos viven en EditorProcesos.qml: aquí solo queda decidir
+    //  qué hacer con lo que contestan, que es exactamente lo que un estado
+    //  tiene que decidir. Este bloque es el mapa completo de esa conversación.
+    EditorProcesos {
+        id: procesos
+        rutaPlan: editor.rutaPlan
 
-    Process {
-        id: proponedor
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let d = null
-                try { d = JSON.parse(this.text) } catch (e) { return }
-                if (!d.ok) {
-                    //  Sin rastro no hay zoom que proponer, pero sí vídeo que
-                    //  editar: se abre igual, que para eso está.
-                    editor.abrir(editor.rutaVideo, "")
-                    return
-                }
-                editor.recibirPlan(d)
-            }
+        onPlanRecibido: function (d) { editor.recibirPlan(d) }
+
+        onAbrirFallo: function (motivo) {
+            editor.estado = ""
+            editor.fallo(motivo)
+        }
+
+        //  Sin rastro no hay zoom que proponer, pero sí vídeo que editar: se
+        //  abre igual, que para eso está.
+        onProponerFallo: editor.abrir(editor.rutaVideo, "")
+
+        //  El plan lo ha cambiado python, así que hay que releerlo: lo que hay
+        //  en memoria se ha quedado viejo.
+        onCongelado: editor.abrir(editor.rutaVideo, "")
+        onCongelarFallo: function (motivo) { editor.fallo(motivo) }
+
+        onSilenciosListos: function (tramos) { editor.aplicarSilencios(tramos) }
+        onSilenciosFallo: editor.estadoSilencios = "fallo"
+
+        onMedido: function (d) { editor.recibirMedida(d) }
+
+        onTranscripcionComprobada: function (d) { editor.recibirComprobacion(d) }
+        onTranscripcionLinea: function (d) { editor.recibirTranscripcion(d) }
+
+        onCamaraLista: function (d) {
+            editor.camara = d.camara || []
+            editor.clics = d.clics || []
+            editor.anchoVideo = d.w || editor.anchoVideo
+            editor.altoVideo = d.h || editor.altoVideo
+            if (d.fuentes && d.fuentes.length > 0)
+                editor.fuentes = d.fuentes
+            if (d.audio && editor.pistasAudio.length === 0)
+                editor.pistasAudio = d.audio
+        }
+
+        onRenderProgreso: function (progreso) { editor.progreso = progreso }
+
+        onRenderFin: function (ruta) {
+            editor.estado = ""
+            editor.rutaRenderizada = ruta
+            editor.renderListo(ruta)
+        }
+
+        onRenderFallo: function (motivo) {
+            //  Un render descartado a medias puede seguir muriéndose por
+            //  detrás; su despedida ya no le importa a nadie.
+            if (editor.estado !== "renderizando")
+                return
+            editor.estado = ""
+            editor.fallo(motivo)
         }
     }
 
@@ -1758,42 +1717,19 @@ Singleton {
         onTriggered: {
             // Si el anterior sigue escribiendo, se espera: dos procesos sobre
             // el mismo fichero acaban con uno pisando al otro.
-            if (escritorPlan.running)
+            if (procesos.escribiendo)
                 restart()
             else
                 editor.guardarPlan()
         }
     }
 
+    //  Aquí se arma QUÉ se guarda; el cómo —el parcheo del JSON en disco— es
+    //  cosa de los procesos. Escrito el plan, la trayectoria se rehace sola.
     function guardarPlan() {
         if (rutaPlan.length === 0)
             return
-        escritorPlan.command = ["python3", "-c",
-            //  Se parchean las claves que conocemos y se deja el resto como
-            //  esté: así lo que añada una fase futura no se pierde por pasar
-            //  por aquí. Las pistas de audio cuelgan de la fuente, no del plan,
-            //  y por eso van por su propio camino.
-            "import json,sys; p=json.load(open(sys.argv[1])); " +
-            "d=json.loads(sys.argv[2]); " +
-            "p['momentos']=d['momentos']; " +
-            //  Una lista vacía significa «el plan aún no ha terminado de
-            //  cargarse», no «quítale el audio» ni «quítale los trozos»: no hay
-            //  forma de borrar una pista, solo de silenciarla, ni de dejar la
-            //  línea sin ningún clip. Sin estos `or`, un guardado que llegara
-            //  antes que la carga dejaba el plan vacío para siempre.
-            "p['fuentes'][0]['pistas']=d['pistas'] or p['fuentes'][0]['pistas']; " +
-            "p['clips']=d['clips'] or p['clips']; " +
-            //  Las capas SÍ se escriben aunque estén vacías, al revés que las
-            //  otras: no tener ninguna es un estado legítimo, y con el `or` no
-            //  habría forma de quitar la última.
-            "p['capas']=d['capas']; " +
-            "p['bandas']=d['bandas']; " +
-            "p['transcripcion']=d['transcripcion']; " +
-            "p['clics']=d['clics']; " +
-            "p['fundidos']=d['fundidos']; " +
-            "p['marcadores']=d['marcadores']; " +
-            "json.dump(p, open(sys.argv[1],'w'), ensure_ascii=False, indent=1)",
-            rutaPlan,
+        procesos.escribirPlan(
             JSON.stringify({ momentos: momentos, pistas: pistasAudio,
                              clips: clips, capas: capas, bandas: bandas,
                              transcripcion: transcripcion,
@@ -1802,50 +1738,7 @@ Singleton {
                                       color: colorClics },
                              fundidos: { entrada: fundidoEntrada,
                                          salida: fundidoSalida,
-                                         entre: fundidoEntre } })]
-        escritorPlan.running = true
-    }
-
-    Process {
-        id: escritorPlan
-        // La trayectoria depende del plan, así que se rehace cuando el plan ya
-        // está escrito en disco y no antes.
-        onExited: recalcular.restart()
-    }
-
-    //  Al editar hay que rehacer la trayectoria, pero no a cada tecla: si
-    //  mantienes pulsada una flecha se lanzarían veinte procesos. Un respiro
-    //  corto y solo se calcula la última.
-    Timer {
-        id: recalcular
-        interval: 180
-        onTriggered: {
-            if (editor.rutaPlan.length === 0)
-                return
-            camarero.command = ["python3", editor.guion, "camara", editor.rutaPlan]
-            camarero.running = true
-        }
-    }
-
-    Process {
-        id: camarero
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    const d = JSON.parse(this.text)
-                    if (d.ok) {
-                        editor.camara = d.camara || []
-                        editor.clics = d.clics || []
-                        editor.anchoVideo = d.w || editor.anchoVideo
-                        editor.altoVideo = d.h || editor.altoVideo
-                        if (d.fuentes && d.fuentes.length > 0)
-                            editor.fuentes = d.fuentes
-                        if (d.audio && editor.pistasAudio.length === 0)
-                            editor.pistasAudio = d.audio
-                    }
-                } catch (e) { }
-            }
-        }
+                                         entre: fundidoEntre } }))
     }
 
     // ── renderizar ────────────────────────────────────────────────
@@ -1861,57 +1754,7 @@ Singleton {
                           + "-k4." + formatoSalida
         progreso = 0
         estado = "renderizando"
-        renderizador.command = ["python3", guion, "render",
-                                rutaPlan, rutaRenderizada, "--codec", codec,
-                                "--formato", formatoSalida]
-        renderizador.running = true
-    }
-
-    Process {
-        id: renderizador
-
-        //  La última línea de error, para que un traceback de python o un
-        //  fallo de ffmpeg no muera en silencio: es lo que se enseña si el
-        //  proceso acaba sin haber contado nada por stdout.
-        property string ultimoError: ""
-
-        stdout: SplitParser {
-            onRead: function (linea) {
-                let d = null
-                try { d = JSON.parse(linea) } catch (e) { return }
-                if (d.progreso !== undefined)
-                    editor.progreso = d.progreso
-                if (d.estado === "fin" && d.ruta) {
-                    editor.estado = ""
-                    editor.rutaRenderizada = d.ruta
-                    editor.renderListo(d.ruta)
-                }
-                if (d.ok === false) {
-                    editor.estado = ""
-                    editor.fallo(d.motivo || "fallo")
-                }
-            }
-        }
-
-        stderr: SplitParser {
-            onRead: function (linea) {
-                const l = String(linea).trim()
-                if (l.length > 0)
-                    renderizador.ultimoError = l.substring(0, 200)
-            }
-        }
-
-        //  Si el guion muere sin despedirse —traceback, ffmpeg ausente, un
-        //  kill— la interfaz se quedaba en «renderizando» PARA SIEMPRE: nadie
-        //  limpiaba el estado. El veredicto de salida es la red de seguridad.
-        onExited: function (code) {
-            if (editor.estado !== "renderizando")
-                return
-            editor.estado = ""
-            editor.fallo(renderizador.ultimoError.length > 0
-                ? renderizador.ultimoError
-                : "el renderizador terminó sin avisar (código " + code + ")")
-        }
+        procesos.renderizar(rutaRenderizada, codec, formatoSalida)
     }
 
     //  Descartar es tirarlo todo: los momentos, el estado y la cápsula de

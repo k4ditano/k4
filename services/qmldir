@@ -28,3 +28,4 @@ singleton PluginManager 1.0 PluginManager.qml
 singleton Indicadores 1.0 Indicadores.qml
 singleton GameDatos 1.0 GameDatos.qml
 singleton Huella 1.0 Huella.qml
+EditorProcesos 1.0 EditorProcesos.qml
