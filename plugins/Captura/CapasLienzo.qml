@@ -204,6 +204,7 @@ Item {
             readonly property bool esTexto: modelData.tipo === "texto"
             readonly property bool esPip: modelData.tipo === "video"
             readonly property bool esZona: modelData.tipo === "zona"
+            readonly property bool esForma: modelData.tipo === "forma"
             readonly property string modoZona: modelData.modo || "desenfoque"
             readonly property var recorteFuente: modelData.recorteFuente
                 && modelData.recorteFuente.length === 4
@@ -216,6 +217,7 @@ Item {
                                         || modelData.tipo === "imagen"
                                         || modelData.tipo === "video"
                                         || modelData.tipo === "zona"
+                                        || modelData.tipo === "forma"
 
             //  La proporción de la imagen la trae la propia imagen. ffmpeg
             //  escala con `-1` de alto, o sea conservándola, así que aquí hay
@@ -223,7 +225,10 @@ Item {
             //  Un pip trae su tamaño en el plan, medido al añadirlo: `scale=…:-1`
             //  conserva la proporción al renderizar, y si la previa la inventara
             //  enseñaría un recuadro que no es el que va a salir.
-            readonly property real relacion: esPip
+            //  Una forma es cuadrada por construcción: su PNG se dibuja en
+            //  un lienzo de lado fijo.
+            readonly property real relacion: esForma ? 1.0
+                : esPip
                 ? (modelData.w > 0
                    ? modelData.h * recorteFuente[3]
                      / Math.max(1, modelData.w * recorteFuente[2])
@@ -439,16 +444,64 @@ Item {
             //  Con marco recortado: el zoom del Ken Burns agranda la imagen
             //  por dentro y lo que se sale por los bordes no se ve, igual
             //  que hace zoompan con su ventana.
+            //  La forma, con el mismo trazo que le pinta magick al render:
+            //  el grosor es 1/13 del lado, la flecha apunta a la derecha.
+            Canvas {
+                id: forma
+                anchors.fill: parent
+                visible: capa.esForma
+
+                readonly property string tono: capa.modelData.color || "#ff453a"
+                readonly property string modo: capa.modelData.modo || "flecha"
+                onTonoChanged: requestPaint()
+                onModoChanged: requestPaint()
+                onWidthChanged: requestPaint()
+
+                onPaint: {
+                    const ctx = getContext("2d")
+                    ctx.clearRect(0, 0, width, height)
+                    const g = Math.max(2, width / 13)
+                    ctx.strokeStyle = tono
+                    ctx.fillStyle = tono
+                    ctx.lineWidth = g
+                    if (modo === "circulo") {
+                        ctx.beginPath()
+                        ctx.arc(width / 2, height / 2, width / 2 - g, 0,
+                                2 * Math.PI)
+                        ctx.stroke()
+                    } else if (modo === "marco") {
+                        ctx.strokeRect(g, g, width - 2 * g, height - 2 * g)
+                    } else {
+                        const y = height / 2
+                        ctx.lineWidth = g * 1.2
+                        ctx.beginPath()
+                        ctx.moveTo(width / 16, y)
+                        ctx.lineTo(width - width / 3, y)
+                        ctx.stroke()
+                        ctx.beginPath()
+                        ctx.moveTo(width - width / 16, y)
+                        ctx.lineTo(width - width / 3 - 8 * width / 512,
+                                   y - height / 5)
+                        ctx.lineTo(width - width / 3 - 8 * width / 512,
+                                   y + height / 5)
+                        ctx.closePath()
+                        ctx.fill()
+                    }
+                }
+            }
+
             Item {
                 anchors.fill: parent
                 clip: true
                 visible: !capa.esTexto && !capa.esPip && !capa.esZona
+                    && !capa.esForma
 
                 Image {
                     id: imagen
                     anchors.fill: parent
                     scale: capa.zoomKenburns
-                    source: !capa.esTexto && !capa.esPip && capa.modelData.ruta
+                    source: !capa.esTexto && !capa.esPip && !capa.esForma
+                        && capa.modelData.ruta
                         ? "file://" + capa.modelData.ruta : ""
                     fillMode: Image.Stretch
                     // El PNG llega a menudo mucho más grande que el hueco; sin esto

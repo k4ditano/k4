@@ -892,6 +892,30 @@ Singleton {
         return nueva.id
     }
 
+    //  Una forma para señalar: flecha, círculo o marco.
+    //
+    //  No lleva fichero detrás: la dibuja python al renderizar, con su modo y
+    //  su color, y la previa la pinta con el mismo trazo. Nace en medio, roja
+    //  y de buen tamaño: desde ahí se coloca, se gira y se anima como
+    //  cualquier imagen, que es exactamente lo que es por dentro.
+    function crearForma(t0, modo) {
+        const a = Math.max(0, Math.min(t0, Math.max(0, duracionLinea - 1)))
+        const b = Math.min(duracionLinea, a + 3)
+        const nueva = {
+            id: nuevoIdCapa(),
+            tipo: "forma",
+            modo: modo || "flecha",
+            color: "#ff453a",
+            t0: a, t1: b,
+            banda: bandaParaNueva(a, b),
+            x: 0.5, y: 0.5, escala: 0.18, opacidad: 1.0, rotacion: 0
+        }
+        capas = capas.concat([nueva])
+        persistir()
+        seleccionar("capa", nueva.id)
+        return nueva.id
+    }
+
     //  Una pista de audio añadida: música, una voz, lo que sea.
     //
     //  Antes de crearla hay que saber cuánto dura, y eso hay que preguntárselo al
@@ -1014,6 +1038,10 @@ Singleton {
             const t = String(c.texto || "").trim()
             return t.length > 0 ? t : Idioma.t("Rótulo")
         }
+        if (c.tipo === "forma")
+            return c.modo === "circulo" ? Idioma.t("Círculo")
+                 : c.modo === "marco"   ? Idioma.t("Marco")
+                                        : Idioma.t("Flecha")
         // Una zona no tiene fichero: lo que la distingue es qué le hace.
         if (c.tipo === "zona")
             return c.modo === "pixelado" ? Idioma.t("Pixelado")
@@ -1045,6 +1073,10 @@ Singleton {
             return c.modo === "pixelado" ? 0x000F00B6   // md-blur_linear
                  : c.modo === "foco"     ? 0x000F04C9   // md-spotlight_beam
                                          : 0x000F00B5   // md-blur
+        if (c.tipo === "forma")
+            return c.modo === "circulo" ? 0x000F0130    // md-checkbox_blank_circle_outline
+                 : c.modo === "marco"   ? 0x000F01A2    // md-crop_square
+                                        : 0x000F09C6    // md-arrow_top_right_thick
         return 0x000F02E9
     }
 

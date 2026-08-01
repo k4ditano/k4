@@ -184,6 +184,7 @@ Item {
             if (Editor.capaSel.tipo === "audio")  return Idioma.t("Audio")
             if (Editor.capaSel.tipo === "video")  return Idioma.t("Vídeo encima")
             if (Editor.capaSel.tipo === "zona")   return Editor.nombreCapa(Editor.capaSel)
+            if (Editor.capaSel.tipo === "forma")  return Editor.nombreCapa(Editor.capaSel)
             return Idioma.t("Imagen")
         }
         if (momento)

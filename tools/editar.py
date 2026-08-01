@@ -508,6 +508,14 @@ def entradas(plan, carpeta=None):
     de_capa = {c["id"]: apuntar(c["ruta"])
                for c in capas_de(plan) if c.get("ruta")}
 
+    #  Las formas no traen fichero: se dibujan aquí y su PNG entra como una
+    #  imagen más. Sin carpeta no hay dónde dibujar, y la capa se salta.
+    if carpeta:
+        for c in capas_de(plan, "forma"):
+            ruta = dibujar_forma(carpeta, c)
+            if ruta:
+                de_capa[c["id"]] = apuntar(ruta)
+
     idx_anillo = -1
     if carpeta and plan.get("clics", {}).get("activo"):
         anillo = dibujar_anillo(carpeta, plan)
@@ -553,6 +561,19 @@ def abrir_entradas(plan, rutas):
         if c.get("tipo") == "imagen" and c.get("ruta") and capa_animada(c):
             r = os.path.abspath(c["ruta"])
             hasta[r] = max(hasta.get(r, 0.0), float(c.get("t1", 0.0)) + 1.0)
+
+    #  Y una FORMA animada, igual: su PNG no está en el plan —se dibuja al
+    #  montar las entradas— así que se localiza por su nombre, que es
+    #  determinista (modo y color).
+    for c in capas_de(plan, "forma"):
+        if not capa_animada(c):
+            continue
+        nombre = nombre_forma(c)
+        for r in rutas:
+            if os.path.basename(r) == nombre:
+                ra = os.path.abspath(r)
+                hasta[ra] = max(hasta.get(ra, 0.0),
+                                float(c.get("t1", 0.0)) + 1.0)
 
     args = []
     for r in rutas:
@@ -1380,6 +1401,67 @@ def dibujar_anillo(carpeta, plan):
     return ruta if p.returncode == 0 and os.path.exists(ruta) else ""
 
 
+#  Las formas de señalar: flecha, círculo y marco.
+#
+#  No son dibujos de ffmpeg: se pintan UNA vez con magick a un PNG con alfa
+#  —como el anillo de los clics— y entran por la tubería de imagen, que es lo
+#  que les regala el movimiento, los efectos, las claves y el trazado sin una
+#  línea nueva. El nombre lleva el modo y el color: dos capas iguales
+#  comparten fichero, y cambiar el color no puede reusar el viejo.
+LADO_FORMA = 512
+
+
+def nombre_forma(capa):
+    modo = capa.get("modo") or "flecha"
+    color = str(capa.get("color", "#ff453a")).lstrip("#").lower()
+    return "forma-%s-%s.png" % (modo, color)
+
+
+def dibujar_forma(carpeta, capa):
+    """El PNG de una forma, dibujado si no estaba. La ruta, o "" si no pudo."""
+    try:
+        os.makedirs(carpeta, exist_ok=True)
+    except OSError:
+        return ""
+    ruta = os.path.join(carpeta, nombre_forma(capa))
+    if os.path.exists(ruta):
+        return ruta
+
+    color = str(capa.get("color", "#ff453a"))
+    modo = capa.get("modo") or "flecha"
+    L = LADO_FORMA
+    grosor = L // 13
+    orden = ["magick", "-size", "%dx%d" % (L, L), "xc:none"]
+    if modo == "circulo":
+        r = L / 2.0 - grosor
+        orden += ["-fill", "none", "-stroke", color,
+                  "-strokewidth", str(grosor),
+                  "-draw", "circle %.1f,%.1f %.1f,%.1f"
+                  % (L / 2.0, L / 2.0, L / 2.0, L / 2.0 - r)]
+    elif modo == "marco":
+        m = grosor
+        orden += ["-fill", "none", "-stroke", color,
+                  "-strokewidth", str(grosor),
+                  "-draw", "rectangle %d,%d %d,%d" % (m, m, L - m, L - m)]
+    else:
+        #  La flecha apunta a la DERECHA y desde ahí se gira: el asta como
+        #  línea gruesa y la punta como triángulo lleno.
+        y = L / 2.0
+        orden += ["-fill", "none", "-stroke", color,
+                  "-strokewidth", str(int(grosor * 1.2)),
+                  "-draw", "line %d,%.1f %d,%.1f" % (L // 16, y, L - L // 3, y),
+                  "-fill", color, "-stroke", "none",
+                  "-draw", "polygon %d,%.1f %d,%.1f %d,%.1f"
+                  % (L - L // 16, y, L - L // 3 - 8, y - L // 5,
+                     L - L // 3 - 8, y + L // 5)]
+    orden.append(ruta)
+    try:
+        pr = subprocess.run(orden, capture_output=True, text=True)
+    except OSError:
+        return ""
+    return ruta if pr.returncode == 0 and os.path.exists(ruta) else ""
+
+
 def clics_de(plan):
     """Los clics del rastro, en tiempo de LÍNEA y en píxeles del lienzo.
 
@@ -1528,6 +1610,17 @@ def grafo(plan, sin_audio=False, carpeta=None, sonoridad=False):
         if tipo == "zona":
             #  No tiene fichero detrás: se hace con el propio fotograma.
             nuevas, entra = rama_zona(n, capa, ancho, alto, entra)
+            lineas += nuevas
+            continue
+        if tipo == "forma":
+            #  Su PNG se dibujó al montar las entradas; si no pudo dibujarse
+            #  —sin magick, sin carpeta— la capa se salta y el render sale.
+            ruta_f = os.path.join(carpeta, nombre_forma(capa))
+            if capa["id"] not in idx_capa or not os.path.exists(ruta_f):
+                continue
+            nuevas, entra = rama_capa(n, idx_capa[capa["id"]],
+                                      dict(capa, ruta=ruta_f),
+                                      ancho, alto, entra)
             lineas += nuevas
             continue
         if tipo not in ("imagen", "video"):

@@ -146,6 +146,12 @@ ColumnLayout {
             icono: 0xF05A1
             onPulsado: Editor.crearMarcador(view.segundos)
         }
+
+        BotonAccion {
+            texto: Idioma.t("Señalar")
+            icono: 0xF09C6              // md-arrow_top_right_thick
+            onPulsado: Editor.crearForma(view.segundos, "flecha")
+        }
     }
 
     IslandLabel {

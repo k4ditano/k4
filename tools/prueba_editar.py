@@ -1269,6 +1269,48 @@ def prueba_sonoridad_pone_loudnorm_al_final():
           "loudnorm" in texto, False)
 
 
+def prueba_forma_entra_por_la_tuberia_de_imagen():
+    """Una forma es un PNG dibujado que entra como imagen: mismo overlay,
+    mismos efectos, mismas claves. Se siembra el fichero en la carpeta para
+    que la caché acierte y la prueba no dependa de magick."""
+    import tempfile
+    carpeta = tempfile.mkdtemp(prefix="k4-forma-")
+    f = capa(tipo="forma", modo="flecha", color="#ff453a", ruta=None)
+    del f["ruta"]
+    open(os.path.join(carpeta, editar.nombre_forma(f)), "wb").close()
+
+    p = con_capas([f])
+    rutas, _, de_capa, _ = editar.entradas(p, carpeta)
+    igual("el PNG dibujado está entre las entradas",
+          any(r.endswith("forma-flecha-ff453a.png") for r in rutas), True)
+    igual("y la capa sabe cuál es el suyo", 1 in de_capa, True)
+
+    texto, _ = editar.grafo(p, carpeta=carpeta)
+    igual("la forma pasa por la rama de imagen",
+          "[%d:v]" % de_capa[1] in texto and "overlay" in texto, True)
+
+    #  Animada, su PNG entra en bucle como cualquier imagen viva.
+    f["entrada"] = {"tipo": "desvanecer", "dur": 0.4}
+    rutas, _, _, _ = editar.entradas(p, carpeta)
+    args = " ".join(editar.abrir_entradas(p, rutas))
+    igual("animada va en bucle hasta su t1+1", "-loop 1 -t 5.000" in args, True)
+
+
+def prueba_forma_sin_dibujo_no_tumba():
+    """Si el dibujo falla —sin magick, disco lleno— la capa se salta y el
+    render sale. Se fuerza el fallo suplantando el dibujante."""
+    p = con_capas([dict(capa(tipo="forma", modo="marco"), ruta=None)])
+    del p["capas"][0]["ruta"]
+    de_verdad = editar.dibujar_forma
+    editar.dibujar_forma = lambda *a: ""
+    try:
+        texto, _ = editar.grafo(p)
+    finally:
+        editar.dibujar_forma = de_verdad
+    igual("el grafo sale sin la forma y sin caerse",
+          "[base]" in texto and "overlay" not in texto, True)
+
+
 def prueba_estilos_de_rotulo():
     """Caja, contorno y sombra en el grafo, con colorFondo de color
     secundario; y los planes viejos sin `estilo` conservan su caja."""

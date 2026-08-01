@@ -424,6 +424,63 @@ ColumnLayout {
         }
     }
 
+    //  Qué forma señala: los tres modos comparten sitio, tamaño, giro y
+    //  ventana, así que cambiar de uno a otro no descoloca nada.
+    IslandLabel {
+        visible: Editor.capaSel && Editor.capaSel.tipo === "forma"
+        text: Idioma.t("Qué forma")
+        color: Theme.dim
+        font.pixelSize: 9
+        font.capitalization: Font.AllUppercase
+        font.weight: Font.DemiBold
+    }
+
+    RowLayout {
+        visible: Editor.capaSel && Editor.capaSel.tipo === "forma"
+        Layout.fillWidth: true
+        spacing: 3
+
+        Repeater {
+            model: [
+                { id: "flecha",  icono: 0xF09C6 },  // md-arrow_top_right_thick
+                { id: "circulo", icono: 0xF0130 },  // md-checkbox_blank_circle_outline
+                { id: "marco",   icono: 0xF01A2 }   // md-crop_square
+            ]
+
+            delegate: Rectangle {
+                id: chipForma
+                required property var modelData
+
+                readonly property bool puesta: Editor.capaSel
+                    && (Editor.capaSel.modo || "flecha")
+                       === chipForma.modelData.id
+
+                Layout.fillWidth: true
+                Layout.preferredHeight: 26
+                radius: 13
+                color: chipForma.puesta ? Theme.blue
+                     : formaRaton.containsMouse ? Theme.surfaceHi
+                                                : Theme.surface
+
+                IconGlyph {
+                    anchors.centerIn: parent
+                    text: String.fromCodePoint(chipForma.modelData.icono)
+                    color: chipForma.puesta ? "#ffffff" : Theme.muted
+                    font.pixelSize: 13
+                }
+
+                MouseArea {
+                    id: formaRaton
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Editor.fijarCapa(Editor.idSel,
+                        { modo: chipForma.modelData.id })
+                }
+            }
+        }
+    }
+
     // Inspector numérico: permite repetir posiciones y
     // tamaños con precisión, sin depender del ratón.
     GridLayout {
@@ -753,6 +810,8 @@ ColumnLayout {
         model: Editor.capaSel && Editor.capaSel.tipo === "texto"
             ? [{ campo: "color", nombre: Idioma.t("Color del texto") },
                { campo: "colorFondo", nombre: Idioma.t("Color del estilo") }]
+            : Editor.capaSel && Editor.capaSel.tipo === "forma"
+            ? [{ campo: "color", nombre: Idioma.t("Color") }]
             : []
 
         delegate: ColumnLayout {
@@ -943,6 +1002,8 @@ ColumnLayout {
                         return Idioma.t("Quitar el audio")
                     if (Editor.capaSel.tipo === "video")
                         return Idioma.t("Quitar el vídeo")
+                    if (Editor.capaSel.tipo === "forma")
+                        return Idioma.t("Quitar la forma")
                     return Idioma.t("Quitar la imagen")
                 }
                 font.pixelSize: 10
