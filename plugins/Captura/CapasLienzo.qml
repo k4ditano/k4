@@ -683,4 +683,156 @@ Item {
             }
         }
     }
+
+    // ── el recorrido de la capa elegida ───────────────────────────
+    //
+    //  La polilínea de sus fotogramas clave, con un punto agarrable y
+    //  numerado en cada uno. Vive fuera del modo de trazado a propósito: con
+    //  la capa elegida, el recorrido se ve y se retoca siempre — arrastrar
+    //  recoloca el punto y el clic derecho lo quita, igual que su rombo.
+    Item {
+        id: recorrido
+        anchors.fill: parent
+        visible: Editor.tipoSel === "capa" && Editor.capaSel !== null
+            && ks.length > 0 && Editor.capaVisible(Editor.capaSel)
+
+        readonly property var ks: Editor.tipoSel === "capa" && Editor.capaSel
+            ? (Editor.capaSel.keyframes || []) : []
+
+        onKsChanged: trazo.requestPaint()
+        onWidthChanged: trazo.requestPaint()
+        onHeightChanged: trazo.requestPaint()
+
+        Canvas {
+            id: trazo
+            anchors.fill: parent
+            opacity: 0.85
+            onPaint: {
+                const ctx = getContext("2d")
+                ctx.clearRect(0, 0, width, height)
+                const ks = recorrido.ks
+                if (ks.length < 2)
+                    return
+                ctx.strokeStyle = String(Theme.blue)
+                ctx.lineWidth = 1.5
+                ctx.setLineDash([5, 4])
+                ctx.beginPath()
+                ctx.moveTo(Number(ks[0].x) * width, Number(ks[0].y) * height)
+                for (let i = 1; i < ks.length; ++i)
+                    ctx.lineTo(Number(ks[i].x) * width,
+                               Number(ks[i].y) * height)
+                ctx.stroke()
+            }
+        }
+
+        Repeater {
+            model: recorrido.ks
+
+            delegate: Item {
+                id: punto
+                required property var modelData
+                required property int index
+
+                property bool moviendo: false
+                property real vx: 0
+                property real vy: 0
+
+                readonly property real px: moviendo ? vx : Number(modelData.x)
+                readonly property real py: moviendo ? vy : Number(modelData.y)
+
+                width: 18
+                height: 18
+                x: px * recorrido.width - width / 2
+                y: py * recorrido.height - height / 2
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 10
+                    height: 10
+                    radius: 5
+                    color: puntoRaton.containsMouse || punto.moviendo
+                        ? Theme.ink : Theme.blue
+                    border.width: 1
+                    border.color: "#ffffff"
+                }
+
+                //  El número dice el orden del recorrido, que la línea sola
+                //  no cuenta cuando se cruza consigo misma.
+                IslandLabel {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.top
+                    text: punto.index + 1
+                    color: Theme.ink
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
+                    style: Text.Outline
+                    styleColor: "#000000"
+                }
+
+                MouseArea {
+                    id: puntoRaton
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    preventStealing: true
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    cursorShape: Qt.SizeAllCursor
+
+                    function enLienzo(ev) { return mapToItem(lienzo, ev.x, ev.y) }
+
+                    onPressed: function (ev) {
+                        if (ev.button === Qt.RightButton) {
+                            Editor.quitarKeyframe(Editor.idSel, punto.index)
+                            return
+                        }
+                        punto.vx = punto.px
+                        punto.vy = punto.py
+                        punto.moviendo = true
+                    }
+
+                    onPositionChanged: function (ev) {
+                        if (!pressed || !punto.moviendo)
+                            return
+                        const p = enLienzo(ev)
+                        punto.vx = Math.max(0, Math.min(1,
+                            p.x / Math.max(1, recorrido.width)))
+                        punto.vy = Math.max(0, Math.min(1,
+                            p.y / Math.max(1, recorrido.height)))
+                    }
+
+                    onReleased: {
+                        if (!punto.moviendo)
+                            return
+                        punto.moviendo = false
+                        Editor.moverPuntoRuta(Editor.idSel, punto.index,
+                                              punto.vx, punto.vy)
+                    }
+                }
+            }
+        }
+    }
+
+    // ── trazar el movimiento pinchando ────────────────────────────
+    //
+    //  El modo que quita botones de en medio: activado desde la ficha, cada
+    //  clic sobre el vídeo añade un punto del recorrido y la capa pasará por
+    //  todos en orden. El tiempo se reparte solo —la velocidad la pone la
+    //  distancia entre puntos— y el clic derecho termina. Declarado el
+    //  último: mientras el modo está puesto, el lienzo es suyo.
+    MouseArea {
+        anchors.fill: parent
+        visible: Editor.trazandoRuta && Editor.tipoSel === "capa"
+        z: 50
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        cursorShape: Qt.CrossCursor
+
+        onClicked: function (ev) {
+            if (ev.button === Qt.RightButton) {
+                Editor.trazandoRuta = false
+                return
+            }
+            Editor.anadirPuntoRuta(Editor.idSel,
+                                   ev.x / Math.max(1, width),
+                                   ev.y / Math.max(1, height))
+        }
+    }
 }

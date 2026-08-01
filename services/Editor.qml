@@ -1084,6 +1084,59 @@ Singleton {
         fijarCapa(id, campos)
     }
 
+    //  El modo «trazar movimiento»: pinchar el recorrido sobre el vídeo.
+    function alternarRuta() {
+        const c = capaSel
+        if (!c || capaBloqueada(c)
+            || (c.tipo !== "imagen" && c.tipo !== "texto" && c.tipo !== "video")) {
+            trazandoRuta = false
+            return
+        }
+        trazandoRuta = !trazandoRuta
+    }
+
+    //  Un punto más del recorrido, pinchado sobre el vídeo.
+    //
+    //  El tiempo se reparte solo: los puntos quedan equiespaciados en la
+    //  ventana de la capa, así que la velocidad la pone la DISTANCIA — dos
+    //  puntos juntos van despacio, dos separados van deprisa — y después se
+    //  afina moviendo los rombos en la línea de tiempo. Añadir un punto
+    //  vuelve a repartir: un recorrido nuevo es un plan nuevo.
+    function anadirPuntoRuta(id, x, y) {
+        const c = capaPorId(id)
+        if (!c || capaBloqueada(c))
+            return
+        const nuevo = { t: 0,
+                        x: Math.max(0, Math.min(1, Number(x) || 0)),
+                        y: Math.max(0, Math.min(1, Number(y) || 0)),
+                        escala: c.escala !== undefined ? c.escala : 0.3,
+                        tam: c.tam !== undefined ? c.tam : 0.06,
+                        rotacion: c.rotacion !== undefined ? c.rotacion : 0,
+                        opacidad: c.opacidad !== undefined ? c.opacidad : 1 }
+        let ks = (c.keyframes || []).concat([nuevo])
+        const t0 = Number(c.t0) || 0
+        const t1 = Math.max(t0 + 0.1, Number(c.t1) || 0)
+        ks = ks.map(function (k, i) {
+            return Object.assign({}, k, {
+                t: ks.length === 1 ? t0
+                   : t0 + (t1 - t0) * i / (ks.length - 1) })
+        })
+        fijarCapa(id, { keyframes: ks })
+    }
+
+    //  Llevar un punto del recorrido a otro sitio del fotograma.
+    function moverPuntoRuta(id, indice, x, y) {
+        const c = capaPorId(id)
+        if (!c || capaBloqueada(c) || !c.keyframes
+            || indice < 0 || indice >= c.keyframes.length)
+            return
+        const ks = c.keyframes.slice()
+        ks[indice] = Object.assign({}, ks[indice], {
+            x: Math.max(0, Math.min(1, Number(x) || 0)),
+            y: Math.max(0, Math.min(1, Number(y) || 0)) })
+        fijarCapa(id, { keyframes: ks })
+    }
+
     //  Mover un fotograma clave a otro instante. Se reordena por si el
     //  arrastre lo ha cruzado con un vecino: la lista va siempre por tiempo.
     function moverKeyframe(id, indice, t) {
@@ -1368,6 +1421,8 @@ Singleton {
     property string tipoSel: ""             // "" · clip · momento
     property int idSel: 0
     property bool recortandoCapa: false
+    //  Si se está pinchando el recorrido de la capa sobre el vídeo.
+    property bool trazandoRuta: false
 
     function seleccionar(tipo, id) {
         if (tipo === "capa") {
@@ -1383,6 +1438,10 @@ Singleton {
             bandaObjetivo = 0
         if (tipo !== "capa")
             recortandoCapa = false
+        //  Cambiar de selección corta el trazado: pinchar puntos sobre otra
+        //  capa de la que uno cree es de las peores sorpresas posibles.
+        if (tipo !== "capa" || id !== idSel)
+            trazandoRuta = false
         tipoSel = tipo
         idSel = id
     }

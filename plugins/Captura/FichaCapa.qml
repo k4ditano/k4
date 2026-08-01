@@ -553,6 +553,22 @@ ColumnLayout {
         }
     }
 
+    //  El camino directo: pinchar el recorrido sobre el propio vídeo. Los
+    //  tiempos se reparten solos —la velocidad la pone la distancia entre
+    //  puntos— y se afinan con los rombos. Menos botones, más lienzo.
+    BotonAccion {
+        visible: Editor.capaSel !== null
+            && (Editor.capaSel.tipo === "imagen"
+                || Editor.capaSel.tipo === "texto"
+                || Editor.capaSel.tipo === "video")
+        texto: Editor.trazandoRuta
+            ? Idioma.t("Pincha el recorrido · clic derecho termina")
+            : Idioma.t("Trazar movimiento")
+        icono: 0xF0561                        // md-vector_polyline
+        activo: Editor.trazandoRuta
+        onPulsado: Editor.alternarRuta()
+    }
+
     BotonAccion {
         visible: Editor.capaSel !== null
             && Editor.capaSel.tipo !== "audio"
@@ -583,7 +599,7 @@ ColumnLayout {
         visible: Editor.capaSel
             && (Editor.capaSel.keyframes || []).length > 0
         Layout.fillWidth: true
-        text: Idioma.t("los rombos del bloque se arrastran · clic derecho quita uno")
+        text: Idioma.t("los puntos del vídeo y los rombos del bloque se arrastran · clic derecho quita")
         color: Theme.dim
         font.pixelSize: 9
         wrapMode: Text.WordWrap
