@@ -1462,10 +1462,31 @@ def pistas_audio(video):
     return salida
 
 
+def duracion_sonda(flujo, contenedor):
+    """La duración que vale: la del flujo de vídeo, y si no la declara, la del
+    contenedor.
+
+    No son la misma cifra, y en una grabación casi nunca lo son: el audio
+    sigue corriendo unas décimas después del último fotograma, y el contenedor
+    dura lo que el flujo más largo. Un plan montado sobre la cifra del
+    contenedor promete una línea que el render no puede cumplir —los últimos
+    segundos del último trozo no tienen fotogramas detrás— y el fichero salía
+    más corto que lo que enseñaba la línea de tiempo. Medido: 0,66 s de aire
+    en una grabación de 8 s.
+
+    Algunos formatos (webm, mkv) no declaran la duración por flujo y ffprobe
+    contesta N/A o nada: entonces la del contenedor es lo único que hay.
+    """
+    try:
+        return float(flujo)
+    except (TypeError, ValueError):
+        return float(contenedor)
+
+
 def sondear(video):
     p = subprocess.run(
         ["ffprobe", "-v", "error", "-select_streams", "v:0",
-         "-show_entries", "stream=width,height,r_frame_rate",
+         "-show_entries", "stream=width,height,r_frame_rate,duration",
          "-show_entries", "format=duration", "-of", "json", video],
         capture_output=True, text=True)
     d = json.loads(p.stdout)
@@ -1476,7 +1497,9 @@ def sondear(video):
          "-show_entries", "stream=codec_name", "-of", "csv=p=0", video],
         capture_output=True, text=True).stdout.strip() != ""
     return (int(s["width"]), int(s["height"]),
-            float(num) / float(den), float(d["format"]["duration"]), hay_audio)
+            float(num) / float(den),
+            duracion_sonda(s.get("duration"), d["format"]["duration"]),
+            hay_audio)
 
 
 # ── el plan ───────────────────────────────────────────────────────
@@ -1785,23 +1808,28 @@ def orden_medir(args):
     if not os.path.exists(args.fichero):
         salir(ok=False, motivo="no-existe")
     p = subprocess.run(
-        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-         "-of", "csv=p=0", args.fichero], capture_output=True, text=True)
+        ["ffprobe", "-v", "error", "-select_streams", "v:0",
+         "-show_entries", "stream=width,height,duration",
+         "-show_entries", "format=duration", "-of", "json", args.fichero],
+        capture_output=True, text=True)
     try:
-        dur = round(float(p.stdout.strip()), 3)
-    except ValueError:
+        d = json.loads(p.stdout)
+        dur = round(float(d["format"]["duration"]), 3)
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError):
         salir(ok=False, motivo="ilegible")
 
     #  Y el tamaño, si lleva vídeo. Lo necesita el editor para dibujar la capa con
     #  su proporción: `scale=…:-1` la conserva al renderizar, y si la previa la
     #  inventara enseñaría un recuadro que no es el que va a salir.
-    q = subprocess.run(
-        ["ffprobe", "-v", "error", "-select_streams", "v:0",
-         "-show_entries", "stream=width,height", "-of", "csv=p=0",
-         args.fichero], capture_output=True, text=True)
-    partes = q.stdout.strip().split(",")
-    if len(partes) == 2 and partes[0].isdigit():
-        salir(ok=True, dur=dur, w=int(partes[0]), h=int(partes[1]))
+    #
+    #  Con vídeo, la duración buena es la de SU flujo, por lo mismo que en
+    #  `sondear`: un PIP prometido más largo que sus fotogramas se queda
+    #  congelado al final. Para un audio, la del contenedor es la que hay.
+    flujos = d.get("streams") or []
+    if flujos and flujos[0].get("width"):
+        s = flujos[0]
+        dur = round(duracion_sonda(s.get("duration"), dur), 3)
+        salir(ok=True, dur=dur, w=int(s["width"]), h=int(s["height"]))
     salir(ok=True, dur=dur)
 
 

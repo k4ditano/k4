@@ -1097,6 +1097,22 @@ def prueba_srt_que_no_existe():
           transcribir.leer_srt(os.path.join(BORRADOR, "no-hay.srt")), [])
 
 
+def prueba_duracion_manda_el_flujo():
+    """En una grabación el audio sigue tras el último fotograma: el contenedor
+    dura más que el vídeo, y la línea tiene que medirse por los fotogramas."""
+    cerca("el flujo de vídeo manda",
+          editar.duracion_sonda("7.400000", "8.047000"), 7.4)
+
+
+def prueba_duracion_sin_flujo_vale_el_contenedor():
+    """webm y mkv no declaran la duración por flujo: ffprobe contesta N/A o
+    directamente nada, y entonces el contenedor es lo único que hay."""
+    cerca("N/A cae al contenedor",
+          editar.duracion_sonda("N/A", "8.047000"), 8.047)
+    cerca("sin campo también",
+          editar.duracion_sonda(None, "8.047000"), 8.047)
+
+
 def main():
     pruebas = [v for k, v in sorted(globals().items()) if k.startswith("prueba_")]
     for p in pruebas:
