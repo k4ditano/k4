@@ -3,6 +3,9 @@
 #  resolución implícita de hermanos no existe.
 #  `python3 tools/plugins.py` comprueba que esté completo.
 
+
+AccesosDirectos 1.0 AccesosDirectos.qml
+DetalleBluetooth 1.0 DetalleBluetooth.qml
+DetalleWifi 1.0 DetalleWifi.qml
 PanelPlugin 1.0 PanelPlugin.qml
 PanelView 1.0 PanelView.qml
-AccesosDirectos 1.0 AccesosDirectos.qml
