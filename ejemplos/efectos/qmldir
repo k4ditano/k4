@@ -1,0 +1,6 @@
+#  Los tipos de esta carpeta, para que se resuelvan también
+#  cargando el plugin por URL (esquema qs:).
+
+EfectosPlugin 1.0 EfectosPlugin.qml
+EfectosView 1.0 EfectosView.qml
+Mano 1.0 Mano.qml

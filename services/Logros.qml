@@ -117,9 +117,4 @@ Singleton {
             ? Tokens.cifra(cuanto) + " / " + Tokens.cifra(l.meta)
             : cuanto + " / " + l.meta
     }
-
-    // Cuántos quedan por delante: da la medida de lo que falta de un vistazo.
-    function pendientes(conseguidos) {
-        return definicion.length - (conseguidos ? conseguidos.length : 0)
-    }
 }

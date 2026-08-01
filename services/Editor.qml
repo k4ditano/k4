@@ -878,14 +878,6 @@ Singleton {
                          suavizado: 0.05 } })
     }
 
-    function ponerToleranciaCroma(id, v) {
-        const c = capaPorId(id)
-        if (!c || !c.croma)
-            return
-        fijarCapa(id, { croma: Object.assign({}, c.croma, {
-            tolerancia: Math.max(0.01, Math.min(1, Number(v) || 0.25)) }) })
-    }
-
     function capaPorId(id) {
         for (let i = 0; i < capas.length; ++i)
             if (capas[i].id === id)
@@ -1135,14 +1127,6 @@ Singleton {
         fijarCapa(id, { keyframes: ks })
     }
 
-    function quitarKeyframe(id, t) {
-        const c = capaPorId(id)
-        if (!c) return
-        fijarCapa(id, { keyframes: (c.keyframes || []).filter(function (x) {
-            return Math.abs(Number(x.t) - Number(t)) > 0.02
-        }) })
-    }
-
     function ajustarTiempo(v, excluirId) {
         let t = Math.max(0, Math.min(duracionLinea, Number(v) || 0))
         const puntos = [0, duracionLinea]
@@ -1177,13 +1161,6 @@ Singleton {
 
     function quitarMarcador(id) {
         marcadores = marcadores.filter(function (m) { return m.id !== id })
-        persistir()
-    }
-
-    function fijarMarcador(id, campos) {
-        marcadores = marcadores.map(function (m) {
-            return m.id === id ? Object.assign({}, m, campos) : m
-        })
         persistir()
     }
 
@@ -1231,11 +1208,6 @@ Singleton {
         else
             nuevas.unshift(capa)
         capas = nuevas
-        persistir()
-    }
-
-    //  Las bandas vacías son válidas y se conservan como grupos organizativos.
-    function compactarBandas() {
         persistir()
     }
 
@@ -1897,6 +1869,12 @@ Singleton {
 
     Process {
         id: renderizador
+
+        //  La última línea de error, para que un traceback de python o un
+        //  fallo de ffmpeg no muera en silencio: es lo que se enseña si el
+        //  proceso acaba sin haber contado nada por stdout.
+        property string ultimoError: ""
+
         stdout: SplitParser {
             onRead: function (linea) {
                 let d = null
@@ -1913,6 +1891,26 @@ Singleton {
                     editor.fallo(d.motivo || "fallo")
                 }
             }
+        }
+
+        stderr: SplitParser {
+            onRead: function (linea) {
+                const l = String(linea).trim()
+                if (l.length > 0)
+                    renderizador.ultimoError = l.substring(0, 200)
+            }
+        }
+
+        //  Si el guion muere sin despedirse —traceback, ffmpeg ausente, un
+        //  kill— la interfaz se quedaba en «renderizando» PARA SIEMPRE: nadie
+        //  limpiaba el estado. El veredicto de salida es la red de seguridad.
+        onExited: function (code) {
+            if (editor.estado !== "renderizando")
+                return
+            editor.estado = ""
+            editor.fallo(renderizador.ultimoError.length > 0
+                ? renderizador.ultimoError
+                : "el renderizador terminó sin avisar (código " + code + ")")
         }
     }
 

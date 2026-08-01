@@ -955,13 +955,6 @@ Singleton {
         heroes = h
     }
 
-    function darExperiencia(cantidad) {
-        const g = clonar(grupo)
-        if (aplicarExp(g, cantidad))
-            guardar()
-        grupo = g
-    }
-
     // ── estado de la partida ──────────────────────────────────────
     property int oleada: 1
     property real oro: 0
@@ -2386,15 +2379,5 @@ Singleton {
             i += 1
         }
         return (n < 10 ? n.toFixed(2) : n < 100 ? n.toFixed(1) : Math.floor(n)) + sufijos[i]
-    }
-
-    function duracion(segundos) {
-        const h = Math.floor(segundos / 3600)
-        const m = Math.floor((segundos % 3600) / 60)
-        if (h > 0)
-            return h + " h " + m + " min"
-        if (m > 0)
-            return m + " min"
-        return Math.floor(segundos) + " s"
     }
 }

@@ -76,14 +76,6 @@ Singleton {
         return s
     }
 
-    function nombreDe(cod) {
-        for (let i = 0; i < disponibles.length; ++i) {
-            if (disponibles[i].codigo === cod)
-                return disponibles[i].nombre
-        }
-        return cod
-    }
-
     // ── carga ─────────────────────────────────────────────────────
     //  blockLoading a propósito: el diccionario tiene que estar antes de que
     //  se construya la primera vista, o la barra arrancaría en español y

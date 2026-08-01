@@ -51,11 +51,4 @@ Singleton {
     function quitar(id) {
         lista = lista.filter(function (m) { return m.id !== id })
     }
-
-    function tiene(id) {
-        for (let i = 0; i < lista.length; ++i)
-            if (lista[i].id === id)
-                return true
-        return false
-    }
 }

@@ -230,14 +230,6 @@ Singleton {
         return Math.ceil(rarezaDe(objeto.rareza).valor * (1 + nivelDe(objeto) * 0.24))
     }
 
-    // Puntuación para ordenar la bolsa y para decidir si algo es mejor que lo
-    // puesto. No es exacta —depende de la clase— pero ordena bien.
-    // Color de la escuela: el acero tira a plata y lo arcano a violeta. Sirve
-    // para distinguirlas de un vistazo sin leer el resumen entero.
-    function tonoEscuela(objeto) {
-        return objeto && objeto.escuela === "arcana" ? "#bf5af2" : "#c7c7cc"
-    }
-
     // ── combinar tres iguales ─────────────────────────────────────
     //
     //  Tres piezas del mismo tipo, grado y nivel salen una. Que sean TRES no
@@ -323,12 +315,6 @@ Singleton {
     // pronto da algo por lo que seguir subiendo, en vez de equiparla y ya.
     function nivelRequerido(objeto) {
         return nivelDe(objeto)
-    }
-
-    function etiqueta(objeto) {
-        if (!objeto)
-            return ""
-        return rarezaDe(objeto.rareza).nombre + " · nivel " + nivelDe(objeto)
     }
 
     function resumen(objeto) {

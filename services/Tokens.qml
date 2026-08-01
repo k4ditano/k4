@@ -243,8 +243,13 @@ Singleton {
     }
 
     // «Activo» caduca: sin ingresos durante un minuto, dejas de estar picando.
+    //
+    //  Con la mazmorra apagada nadie consume «activo», así que el latido
+    //  baja a uno por minuto — lo justo para el cambio de día. Era el único
+    //  timer sin condición del fichero, y despertar el bucle de eventos cada
+    //  cinco segundos de por vida no se lo gana nadie gratis.
     Timer {
-        interval: 5000
+        interval: Settings.juegoActivo ? 5000 : 60000
         repeat: true
         running: true
         onTriggered: {

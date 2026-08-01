@@ -1,0 +1,5 @@
+#  Los tipos de esta carpeta, para que se resuelvan también
+#  cargando el plugin por URL (esquema qs:).
+
+HolaPlugin 1.0 HolaPlugin.qml
+HolaView 1.0 HolaView.qml

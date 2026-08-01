@@ -35,6 +35,10 @@ INDICE = os.path.join(BASE, "indice.json")
 
 TOPE_ENTRADAS = 300
 TOPE_BYTES = 8 * 1024 * 1024      # una copia mayor que esto no vale la pena
+#  Y un techo para el conjunto: 300 entradas de imágenes generosas podían
+#  ser cientos de MB perfectamente legales. El historial es una comodidad,
+#  no un archivo: lo viejo cede sitio.
+TOPE_TOTAL = 50 * 1024 * 1024
 RESUMEN = 400                     # lo que se guarda para pintar la fila
 
 
@@ -165,16 +169,23 @@ def guardar(tipo):
 
 
 def podar(entradas):
-    """Recorta por el final, sin tocar nunca lo fijado."""
-    if len(entradas) <= TOPE_ENTRADAS:
-        return
+    """Recorta por el final —número Y bytes totales—, sin tocar lo fijado."""
+    sobran = max(0, len(entradas) - TOPE_ENTRADAS)
 
-    sobran = len(entradas) - TOPE_ENTRADAS
+    def peso(e):
+        try:
+            return os.path.getsize(ruta(e["id"]))
+        except OSError:
+            return 0
+
+    total = sum(peso(e) for e in entradas)
+
     for e in reversed(list(entradas)):
-        if sobran <= 0:
+        if sobran <= 0 and total <= TOPE_TOTAL:
             break
         if e.get("fijado"):
             continue
+        total -= peso(e)
         entradas.remove(e)
         try:
             os.remove(ruta(e["id"]))

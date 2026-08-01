@@ -1,22 +1,56 @@
 pragma Singleton
 
-//  Volumen del sink por defecto, vía wireplumber.
+//  Volumen del sink por defecto, por señales de Pipewire.
 //
-//  wpctl no notifica cambios, así que se sondea. Cuando el volumen cambia por
-//  fuera (teclas de multimedia, mixer…) se levanta overlayOpen, que es lo que
-//  el plugin Volume usa para pedir la island.
+//  Antes esto sondeaba `wpctl get-volume` cada 350 ms — unas diez mil
+//  ejecuciones por hora, para siempre, se usara o no el volumen. Quickshell
+//  habla Pipewire directamente y AVISA: cuando el volumen cambia por fuera
+//  (teclas multimedia, un mixer) llega una señal, se actualiza el estado y
+//  se levanta `overlayOpen` igual que antes, sin un solo proceso.
 
 import QtQuick
 import Quickshell
-import Quickshell.Io
+import Quickshell.Services.Pipewire
 
 Singleton {
     id: audio
+
+    //  Un nodo de Pipewire solo publica sus propiedades mientras alguien lo
+    //  rastrea: esto es ese alguien.
+    PwObjectTracker { objects: [Pipewire.defaultAudioSink] }
+
+    readonly property var _sink: Pipewire.defaultAudioSink
 
     property int volume: 0
     property bool muted: false
     property bool initialized: false
     property bool overlayOpen: false
+
+    //  Por señal y no por binding directo: hay que distinguir el primer
+    //  valor (que no es un cambio) para no abrir el overlay al arrancar.
+    property var _vigila: Connections {
+        target: audio._sink ? audio._sink.audio : null
+        function onVolumesChanged() { audio._sincronizar() }
+        function onMutedChanged() { audio._sincronizar() }
+    }
+
+    on_SinkChanged: _sincronizar()
+
+    function _sincronizar() {
+        if (!_sink || !_sink.audio)
+            return
+        const nuevoVolumen = Math.round(_sink.audio.volume * 100)
+        const nuevoSilencio = _sink.audio.muted
+        const cambio = initialized
+            && (nuevoVolumen !== volume || nuevoSilencio !== muted)
+
+        volume = nuevoVolumen
+        muted = nuevoSilencio
+        initialized = true
+
+        if (cambio)
+            showOverlay()
+    }
 
     function showOverlay() {
         overlayOpen = true
@@ -25,50 +59,20 @@ Singleton {
 
     function setVolume(percent) {
         const bounded = Math.max(0, Math.min(100, Math.round(percent)))
-        Quickshell.execDetached(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", String(bounded / 100)])
+        if (_sink && _sink.audio) {
+            _sink.audio.volume = bounded / 100
+            _sink.audio.muted = false
+        }
+        //  El eco local mantiene el deslizador suave; la señal confirma.
         volume = bounded
         muted = false
         showOverlay()
-        poll.restart()
     }
 
     function toggleMute() {
-        Quickshell.execDetached(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"])
+        if (_sink && _sink.audio)
+            _sink.audio.muted = !_sink.audio.muted
         showOverlay()
-        poll.restart()
-    }
-
-    function parse(output) {
-        const match = output.match(/Volume:\s+([0-9.]+)/)
-        const nextVolume = match ? Math.round(parseFloat(match[1]) * 100) : volume
-        const nextMuted = output.indexOf("[MUTED]") !== -1
-        // en el primer sondeo no hay nada con qué comparar: no es un cambio
-        const changed = initialized && (nextVolume !== volume || nextMuted !== muted)
-
-        volume = nextVolume
-        muted = nextMuted
-        initialized = true
-
-        if (changed)
-            showOverlay()
-    }
-
-    Process {
-        id: volumeProcess
-        command: ["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"]
-        running: true
-
-        stdout: StdioCollector {
-            onStreamFinished: audio.parse(this.text)
-        }
-
-        onExited: poll.restart()
-    }
-
-    Timer {
-        id: poll
-        interval: 350
-        onTriggered: volumeProcess.running = true
     }
 
     Timer {
