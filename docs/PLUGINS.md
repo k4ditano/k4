@@ -343,7 +343,9 @@ most. The rare effect impresses because the bar is sober the rest of the
 time — ask for it at the moment that matters and let it breathe.
 
 **Painting outside.** `K4.Isla.rect` gives the island's real on-screen
-geometry (`{ x, y, ancho, alto }`, the primary one if there are several).
+geometry (`{ x, y, ancho, alto }`, the primary one if there are several);
+with several monitors, `K4.Isla.rectEn(name)` gives each screen's own, and
+a `K4.Ventana` picks its monitor with `pantalla`.
 With a transparent `K4.Ventana` above everything and that rect, anything
 can peek over the edge, fall off the bar or stroll across it — a waving
 hand, the pet climbing down. `ejemplos/efectos/` ships all three pieces

@@ -29,10 +29,16 @@ QtObject {
     //  Dónde está la island, en coordenadas de pantalla: { x, y, ancho, alto }.
     //
     //  Para pintar FUERA de ella con una K4.Ventana —una mano que asoma por
-    //  el borde, algo que se cae de la barra— anclado al píxel. Con varios
-    //  monitores es la de la pantalla principal.
+    //  el borde, algo que se cae de la barra— anclado al píxel. `rect` es la
+    //  de la pantalla principal; con varios monitores, `rectEn(nombre)` da
+    //  la de cada una (la K4.Ventana dice su pantalla con `pantalla`).
     readonly property var rect: (_i && _i.rect) ? _i.rect
         : ({ x: 0, y: 0, ancho: 0, alto: 0 })
+
+    function rectEn(pantalla) {
+        const d = _i ? _i.rects : null
+        return (d && d[pantalla]) ? d[pantalla] : rect
+    }
 
     //  Dónde cae la island a lo largo de su borde, como fracción del ancho
     //  libre: 0 pegada a la izquierda, 0.5 en el centro, 1 a la derecha. La

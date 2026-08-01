@@ -28,6 +28,21 @@ PanelWindow {
     // Sale en `hyprctl layers` y sirve para darle reglas en el compositor.
     property string nombre: "k4"
 
+    //  En qué monitor sale, por nombre (los de `hyprctl monitors`). Vacío es
+    //  el que el compositor prefiera. Casa con `K4.Isla.rectEn(pantalla)`
+    //  para anclar lo que asoma a la island de ESA pantalla.
+    property string pantalla: ""
+
+    screen: {
+        if (pantalla.length === 0)
+            return null
+        const lista = Quickshell.screens
+        for (let i = 0; i < lista.length; ++i)
+            if (lista[i].name === pantalla)
+                return lista[i]
+        return null
+    }
+
     //  Si se queda el teclado en exclusiva. Solo para lo que de verdad lo
     //  necesita mientras está delante: mientras lo tenga, ninguna otra ventana
     //  recibe una tecla.

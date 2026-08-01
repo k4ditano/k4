@@ -360,14 +360,12 @@ Scope {
                 Component.onCompleted: publicarRect()
 
                 function publicarRect() {
-                    if (panelWindow.modelData !== Quickshell.screens[0])
-                        return
-                    Island.rect = {
+                    Island.publicarRect(panelWindow.screen.name, {
                         x: island.x,
                         y: panelWindow.abajo
                             ? panelWindow.screen.height - island.height : 0,
                         ancho: island.width, alto: island.height
-                    }
+                    }, panelWindow.modelData === Quickshell.screens[0])
                 }
 
                 Connections {

@@ -32,11 +32,20 @@ Singleton {
 
     //  Dónde está la island en la pantalla, en coordenadas de pantalla.
     //
-    //  Lo publica el host desde la pantalla principal; con varios monitores la
-    //  island se repite y esta es la de la primera. Es lo que necesita un
-    //  plugin que pinte FUERA de la island con una K4.Ventana —una mano que
-    //  asoma, algo que se cae— para anclarse al borde con precisión.
+    //  `rect` es la de la pantalla principal — el caso de un monitor y el
+    //  plugin que no pregunta más. `rects` es el mapa completo por nombre de
+    //  pantalla: con varios monitores la island se repite, y lo que asome
+    //  con una K4.Ventana debe poder anclarse a la SUYA.
     property var rect: ({ x: 0, y: 0, ancho: 0, alto: 0 })
+    property var rects: ({})
+
+    function publicarRect(pantalla, r, esPrincipal) {
+        const d = Object.assign({}, rects)
+        d[pantalla] = r
+        rects = d
+        if (esPrincipal)
+            rect = r
+    }
 
     // ── colocación ────────────────────────────────────────────────
     //

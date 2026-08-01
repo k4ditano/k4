@@ -96,7 +96,7 @@ not be declared inside the view.
 | `K4.Reloj` | The bar's single clock |
 | `K4.Ajustes` | Your own settings inside the bar's Settings — switches, choices, free text (`secreto` for keys) |
 | `K4.Lanzador` | Contribute results to the launcher |
-| `K4.Isla` | Island state: open, occupant, maximum height — plus `rect`/`posicion` (geometry), `efecto()` (shake, push, tug) and `colocar()` (slide along the edge) |
+| `K4.Isla` | Island state: open, occupant, maximum height — plus `rect`/`rectEn()`/`posicion` (geometry, per screen) — `efecto()` (shake, push, tug) and `colocar()` (slide along the edge) |
 
 ## Catalog and registration
 
