@@ -5,6 +5,7 @@
 //  agrupada por las mismas secciones que tienes en tu configuración.
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import "../../core"
 import "../../services"
@@ -85,6 +86,8 @@ FadeIn {
 
         // ── la lista ──────────────────────────────────────────────
         ListView {
+            //  La barra de la casa: se ve solo si hay más de lo que cabe.
+            ScrollBar.vertical: IslandScrollBar {}
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true

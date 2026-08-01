@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import K4 as K4
 import "../../core"
@@ -78,6 +79,8 @@ FadeIn {
                 color: Theme.surface
 
                 ListView {
+                    //  La barra de la casa: sale sola si hay más de lo que cabe.
+                    ScrollBar.vertical: IslandScrollBar {}
                     anchors.fill: parent
                     anchors.margins: 8
                     clip: true
@@ -272,6 +275,8 @@ FadeIn {
                     Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.surfaceHi }
 
                     ListView {
+                        //  La barra de la casa: sale sola si hay más de lo que cabe.
+                        ScrollBar.vertical: IslandScrollBar {}
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         clip: true

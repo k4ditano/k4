@@ -533,10 +533,7 @@ Item {
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 flickableDirection: Flickable.VerticalFlick
-                ScrollBar.vertical: ScrollBar {
-                    policy: ficha.contentHeight > ficha.height
-                        ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
-                }
+                ScrollBar.vertical: IslandScrollBar {}
 
                 ColumnLayout {
                     id: fichaCol
@@ -714,10 +711,7 @@ Item {
             //  y dos desplazamientos peleándose por el mismo arrastre es lo que
             //  hace que ninguno de los dos vaya bien.
             flickableDirection: Flickable.VerticalFlick
-            ScrollBar.vertical: ScrollBar {
-                policy: rodilloV.contentHeight > rodilloV.height
-                    ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
-            }
+            ScrollBar.vertical: IslandScrollBar {}
 
             LineaTiempo {
                 id: linea

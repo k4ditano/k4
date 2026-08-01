@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import K4 as K4
 import "../../core"
@@ -472,6 +473,8 @@ FadeIn {
             visible: view.plugin.tab === "notifications"
 
             ListView {
+                //  La barra de la casa: sale sola si hay más de lo que cabe.
+                ScrollBar.vertical: IslandScrollBar {}
                 anchors.fill: parent
                 anchors.margins: 10
                 clip: true

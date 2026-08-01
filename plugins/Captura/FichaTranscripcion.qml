@@ -6,6 +6,7 @@
 //  transcripción sirva para algo más que subtitular.
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import K4 as K4
 import "../../core"
@@ -157,6 +158,8 @@ ColumnLayout {
     }
 
     ListView {
+        //  La barra de la casa: sale sola si hay más de lo que cabe.
+        ScrollBar.vertical: IslandScrollBar {}
         visible: Editor.transcripcion.length > 0
         Layout.fillWidth: true
         Layout.fillHeight: true

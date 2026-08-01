@@ -2,6 +2,7 @@
 //  PanelView (870 líneas, siete secciones); ahora es una pieza con nombre.
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import "../../core"
 import "../../services"
@@ -44,6 +45,8 @@ IslandTile {
         }
 
         ListView {
+            //  La barra de la casa: sale sola si hay más de lo que cabe.
+            ScrollBar.vertical: IslandScrollBar {}
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true

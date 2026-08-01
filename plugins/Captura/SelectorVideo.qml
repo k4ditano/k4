@@ -9,6 +9,7 @@
 //  supone que te acuerdas del nombre, y la mitad de las veces no.
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import K4 as K4
 import "../../core"
@@ -195,6 +196,8 @@ FadeIn {
 
         // ── los resultados ────────────────────────────────────────
         ListView {
+            //  La barra de la casa: se ve solo si hay más de lo que cabe.
+            ScrollBar.vertical: IslandScrollBar {}
             id: listado
             Layout.fillWidth: true
             Layout.fillHeight: true

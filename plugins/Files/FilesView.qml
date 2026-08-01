@@ -5,6 +5,7 @@
 //  que distingue el fichero que buscas de los otros seis con el mismo nombre.
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import "../../core"
 import "../../services"
@@ -152,6 +153,8 @@ FadeIn {
 
         // ── resultados ────────────────────────────────────────────
         ListView {
+            //  La barra de la casa: se ve solo si hay más de lo que cabe.
+            ScrollBar.vertical: IslandScrollBar {}
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true

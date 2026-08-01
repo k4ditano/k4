@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import "../../core"
 import "../../services"
@@ -200,6 +201,8 @@ FadeIn {
                 Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.surfaceHi }
 
                 ListView {
+                    //  La barra de la casa: sale sola si hay más de lo que cabe.
+                    ScrollBar.vertical: IslandScrollBar {}
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true

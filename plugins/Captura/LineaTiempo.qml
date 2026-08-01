@@ -11,6 +11,7 @@
 //  ctrl+rueda acerca, como en cualquier editor.
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import "../../core"
 import "../../services"
@@ -235,6 +236,30 @@ RowLayout {
         flickableDirection: Flickable.HorizontalFlick
         boundsBehavior: Flickable.StopAtBounds
         clip: true
+        //  Con barra: ampliada la línea, sin nada que lo diga no se sabe ni
+        //  que hay más ni por dónde vas de un proyecto largo.
+        ScrollBar.horizontal: IslandScrollBar {}
+
+        //  Y siguiendo al cabezal, como cualquier editor: si la reproducción
+        //  se acerca al borde de lo visible, la vista se recoloca para
+        //  dejarla con aire por delante. Solo cuando nadie tiene la línea
+        //  agarrada — con la mano encima, manda la mano.
+        Connections {
+            target: linea
+            function onCabezalChanged() {
+                if (linea.acercamiento <= 1.001 || rodillo.moving
+                        || rodillo.dragging)
+                    return
+                const px = rodillo.contentWidth
+                    * (linea.cabezal / Math.max(0.001, linea.total))
+                const margen = rodillo.width * 0.12
+                if (px < rodillo.contentX + margen
+                        || px > rodillo.contentX + rodillo.width - margen)
+                    rodillo.contentX = Math.max(0, Math.min(
+                        rodillo.contentWidth - rodillo.width,
+                        px - rodillo.width * 0.3))
+            }
+        }
 
         ColumnLayout {
             id: contenido

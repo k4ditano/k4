@@ -91,8 +91,7 @@ FadeIn {
             boundsBehavior: Flickable.StopAtBounds
             //  Con barra: sin nada que lo diga, un panel que se desplaza parece
             //  un panel al que le falta la mitad.
-            ScrollBar.vertical: ScrollBar { policy: rodillo.contentHeight > rodillo.height
-                ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff }
+            ScrollBar.vertical: IslandScrollBar {}
 
             //  La rueda, en un área que solo escucha la rueda.
             //

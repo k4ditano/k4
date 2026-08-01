@@ -4,6 +4,7 @@
 //  a tiro y abajo queda lo que da para meses.
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import "../../core"
 import "../../services"
@@ -151,6 +152,8 @@ ColumnLayout {
     }
 
     ListView {
+        //  La barra de la casa: sale sola si hay más de lo que cabe.
+        ScrollBar.vertical: IslandScrollBar {}
         Layout.fillWidth: true
         Layout.fillHeight: true
         clip: true

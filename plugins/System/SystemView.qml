@@ -5,6 +5,7 @@
 //  su botón para cortarlo.
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import "../../core"
 import "../../services"
@@ -254,6 +255,8 @@ FadeIn {
         }
 
         ListView {
+            //  La barra de la casa: sale sola si hay más de lo que cabe.
+            ScrollBar.vertical: IslandScrollBar {}
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true

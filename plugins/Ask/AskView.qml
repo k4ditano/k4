@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import "../../services"
 import QtQuick.Layouts
 import K4 as K4
@@ -307,6 +308,8 @@ FadeIn {
 
         // ── conversación
         ListView {
+            //  La barra de la casa: se ve solo si hay más de lo que cabe.
+            ScrollBar.vertical: IslandScrollBar {}
             id: conversationList
             Layout.fillWidth: true
             Layout.fillHeight: true

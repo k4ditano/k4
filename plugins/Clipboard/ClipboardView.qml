@@ -5,6 +5,7 @@
 //  o imagen. Lo fijado sube arriba y no caduca.
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import "../../core"
 import "../../services"
@@ -137,6 +138,8 @@ FadeIn {
 
         // ── la lista ──────────────────────────────────────────────
         ListView {
+            //  La barra de la casa: se ve solo si hay más de lo que cabe.
+            ScrollBar.vertical: IslandScrollBar {}
             id: filas
             Layout.fillWidth: true
             Layout.fillHeight: true

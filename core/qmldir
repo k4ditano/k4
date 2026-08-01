@@ -11,3 +11,4 @@ IslandTile 1.0 IslandTile.qml
 InsigniaRareza 1.0 InsigniaRareza.qml
 ConnectionRow 1.0 ConnectionRow.qml
 MediaButton 1.0 MediaButton.qml
+IslandScrollBar 1.0 IslandScrollBar.qml

@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import "../../services"
 import QtQuick.Layouts
 import K4 as K4
@@ -139,6 +140,8 @@ FadeIn {
 
         // ── aplicaciones
         ListView {
+            //  La barra de la casa: se ve solo si hay más de lo que cabe.
+            ScrollBar.vertical: IslandScrollBar {}
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: view.plugin.mode === "apps"
@@ -237,6 +240,8 @@ FadeIn {
 
         // ── resultados de paquetes
         ListView {
+            //  La barra de la casa: se ve solo si hay más de lo que cabe.
+            ScrollBar.vertical: IslandScrollBar {}
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: view.plugin.mode === "packages"
