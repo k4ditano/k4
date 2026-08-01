@@ -25,6 +25,7 @@ Baldosa 1.0 Baldosa.qml
 Boton 1.0 Boton.qml
 Aparicion 1.0 Aparicion.qml
 Rodillo 1.0 Rodillo.qml
+Desplazador 1.0 Desplazador.qml
 FocoInicial 1.0 FocoInicial.qml
 singleton Idioma 1.0 Idioma.qml
 Guardado 1.0 Guardado.qml

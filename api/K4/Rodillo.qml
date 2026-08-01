@@ -49,9 +49,8 @@ Flickable {
         }
     }
 
-    //  La barrita, solo cuando hay algo que recorrer.
-    ScrollBar.vertical: ScrollBar {
-        policy: rodillo.contentHeight > rodillo.height ? ScrollBar.AlwaysOn
-                                                       : ScrollBar.AlwaysOff
-    }
+    //  La barrita de la casa, de serie: sale sola cuando hay algo que
+    //  recorrer y se desvanece al soltar. Quien quiera otra puede
+    //  sobreescribir la adjunta, pero nadie debería tener que ponerla.
+    ScrollBar.vertical: Desplazador {}
 }

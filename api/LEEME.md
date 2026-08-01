@@ -84,7 +84,8 @@ not be declared inside the view.
 | `K4.Deslizador` | Labelled slider |
 | `K4.Baldosa` | Pressable card |
 | `K4.Boton` | Round single-glyph button |
-| `K4.Rodillo` | Scroll area that obeys the wheel |
+| `K4.Rodillo` | Scroll area that obeys the wheel, house scroll bar included |
+| `K4.Desplazador` | The house scroll bar, for your own lists |
 | `K4.Aparicion` | Fade in instead of popping |
 | `K4.FocoInicial` | Move the caret into your text field |
 | `K4.Audio` | Volume and mute (writing needs `audio`) |
