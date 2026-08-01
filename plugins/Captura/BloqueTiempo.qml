@@ -37,10 +37,17 @@ Rectangle {
     property bool porFilas: false
     property real pasoFila: 29
 
+    //  Los fotogramas clave de la capa, para pintarlos como rombos y poder
+    //  moverlos y quitarlos sin salir de la línea de tiempo. Vacío en los
+    //  bloques que no los tienen —clips, momentos— y no pinta nada.
+    property var claves: []
+
     signal cambiado(real nuevoT0, real nuevoT1)
     signal cambiadoDeFila(int filas)
     signal soltado()
     signal pulsado()
+    signal claveMovida(int indice, real t)
+    signal claveQuitada(int indice)
 
     // El estado del gesto en curso. Solo manda mientras `editando`.
     property bool editando: false
@@ -223,4 +230,79 @@ Rectangle {
 
     Loader { sourceComponent: asa; onLoaded: item.esIzquierda = true }
     Loader { sourceComponent: asa; onLoaded: item.esIzquierda = false }
+
+    // ── los fotogramas clave ──────────────────────────────────────
+    //
+    //  Rombos DENTRO del bloque, en su instante. Solo en el bloque elegido:
+    //  en los demás serían ruido. Se arrastran en horizontal —el gesto se
+    //  edita en local y el modelo se escribe al soltar, como el propio
+    //  bloque y por el mismo motivo— y el clic derecho los quita.
+    Repeater {
+        model: bloque.elegido ? bloque.claves : []
+
+        delegate: Item {
+            id: clave
+            required property var modelData
+            required property int index
+
+            property bool moviendo: false
+            property real vT: 0
+
+            readonly property real t: moviendo ? vT
+                : (Number(modelData.t) || 0)
+
+            width: 14
+            height: bloque.height
+            x: bloque.width
+               * ((t - bloque.eT0) / Math.max(0.001, bloque.eT1 - bloque.eT0))
+               - width / 2
+            z: 10
+
+            Rectangle {
+                anchors.centerIn: parent
+                width: 7
+                height: 7
+                rotation: 45
+                radius: 1
+                color: claveRaton.containsMouse || clave.moviendo
+                    ? Theme.ink : Qt.rgba(1, 1, 1, 0.85)
+                border.width: 1
+                border.color: Qt.rgba(0, 0, 0, 0.45)
+            }
+
+            MouseArea {
+                id: claveRaton
+                anchors.fill: parent
+                hoverEnabled: true
+                preventStealing: true
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                cursorShape: Qt.SizeHorCursor
+
+                onPressed: function (ev) {
+                    if (ev.button === Qt.RightButton) {
+                        bloque.claveQuitada(clave.index)
+                        return
+                    }
+                    clave.vT = clave.t
+                    clave.moviendo = true
+                }
+
+                onPositionChanged: function (ev) {
+                    if (!pressed || !clave.moviendo)
+                        return
+                    //  En tiempo de la pista, sumando lo que el rombo lleva
+                    //  recorrido: la trampa de coordenadas de siempre.
+                    const enPista = bloque.px2t(bloque.x + clave.x + ev.x)
+                    clave.vT = bloque.encaja(enPista, bloque.eT0, bloque.eT1)
+                }
+
+                onReleased: function (ev) {
+                    if (!clave.moviendo)
+                        return
+                    clave.moviendo = false
+                    bloque.claveMovida(clave.index, clave.vT)
+                }
+            }
+        }
+    }
 }

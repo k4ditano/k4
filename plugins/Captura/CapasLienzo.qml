@@ -139,7 +139,11 @@ Item {
                 for (let i = 1; i < ks.length; ++i) {
                     if (lienzo.segundos <= Number(ks[i].t)) {
                         const a = ks[i - 1], b = ks[i]
-                        const u = (lienzo.segundos - a.t) / Math.max(0.001, b.t - a.t)
+                        let u = (lienzo.segundos - a.t) / Math.max(0.001, b.t - a.t)
+                        //  La misma smoothstep que mete python en el grafo:
+                        //  u²(3−2u), por capa y no por clave.
+                        if (modelData.suave)
+                            u = u * u * (3 - 2 * u)
                         const av = a[campo] !== undefined ? Number(a[campo]) : defecto
                         const bv = b[campo] !== undefined ? Number(b[campo]) : av
                         return av + (bv - av) * u

@@ -676,18 +676,28 @@ def color_ffmpeg(css, opacidad=1.0):
 
 
 def expresion_animada(capa, campo, defecto):
-    """Expresión ffmpeg lineal para los fotogramas clave de una capa."""
+    """Expresión ffmpeg para los fotogramas clave de una capa.
+
+    Recta entre punto y punto, o suave si la capa lo pide (`suave: true`):
+    la misma smoothstep de toda la vida, u²(3−2u), que arranca y frena sin
+    tirón. Es POR CAPA y no por clave a propósito: un movimiento mezcla los
+    dos estilos y ya no se sabe qué va a hacer entre dos rombos.
+    """
     ks = sorted(capa.get("keyframes", []) or [], key=lambda x: float(x.get("t", 0)))
     if not ks:
         return "%.6f" % float(capa.get(campo, defecto))
     puntos = [(float(k.get("t", 0)), float(k.get(campo, defecto))) for k in ks]
     if len(puntos) == 1:
         return "%.6f" % puntos[0][1]
+    suave = bool(capa.get("suave"))
     def tramo(i):
         t0, v0 = puntos[i]
         t1, v1 = puntos[i + 1]
         if abs(t1 - t0) < 1e-6:
             return "%.6f" % v1
+        if suave:
+            u = "clip((t-%.6f)/%.6f,0,1)" % (t0, t1 - t0)
+            return "(%.6f+(%.6f)*%s*%s*(3-2*%s))" % (v0, v1 - v0, u, u, u)
         return "(%.6f+(%.6f)*(t-%.6f))" % (v0, (v1 - v0) / (t1 - t0), t0)
     expr = "%.6f" % puntos[-1][1]
     for i in range(len(puntos) - 2, -1, -1):

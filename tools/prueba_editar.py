@@ -1169,6 +1169,20 @@ def prueba_efecto_no_toca_una_capa_quieta():
     igual("la escala sigue siendo un número", "scale=480:-1" in texto, True)
 
 
+def prueba_keyframes_suaves():
+    """`suave: true` mete la smoothstep u²(3−2u) en la expresión; sin él la
+    recta de siempre, intacta."""
+    ks = [{"t": 1.0, "x": 0.2}, {"t": 3.0, "x": 0.8}]
+    recta = editar.expresion_animada({"keyframes": ks}, "x", 0.5)
+    igual("recta: pendiente por tramo", "(0.200000+(0.300000)*(t-1.000000))"
+          in recta, True)
+    suave = editar.expresion_animada({"keyframes": ks, "suave": True}, "x", 0.5)
+    igual("suave: la smoothstep con su rampa acotada",
+          "*(3-2*clip((t-1.000000)/2.000000,0,1))" in suave, True)
+    # En los extremos las dos valen lo mismo: suavizar no mueve los rombos.
+    igual("y la recta no lleva smoothstep", "3-2" in recta, False)
+
+
 def prueba_duracion_manda_el_flujo():
     """En una grabación el audio sigue tras el último fotograma: el contenedor
     dura más que el vídeo, y la línea tiene que medirse por los fotogramas."""

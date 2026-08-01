@@ -498,6 +498,33 @@ ColumnLayout {
                                          fichaCapa.view.segundos)
     }
 
+    //  Solo cuando hay claves: un interruptor de easing sin animación que
+    //  suavizar es ruido. El movimiento suave es la smoothstep de siempre,
+    //  por capa entera: mezclar estilos entre rombos no se puede leer.
+    BotonAccion {
+        readonly property bool hay: Editor.capaSel
+            && (Editor.capaSel.keyframes || []).length > 1
+        visible: hay
+        texto: Editor.capaSel && Editor.capaSel.suave
+            ? Idioma.t("Movimiento suave") : Idioma.t("Movimiento recto")
+        //  Comprobado contra la propia fuente con fontTools, como manda la
+        //  casa: 0xF0170 era md-code_not_equal.
+        icono: 0xF0C50                        // md-chart_bell_curve
+        activo: Editor.capaSel && !!Editor.capaSel.suave
+        onPulsado: Editor.fijarCapa(Editor.idSel,
+            { suave: !Editor.capaSel.suave })
+    }
+
+    IslandLabel {
+        visible: Editor.capaSel
+            && (Editor.capaSel.keyframes || []).length > 0
+        Layout.fillWidth: true
+        text: Idioma.t("los rombos del bloque se arrastran · clic derecho quita uno")
+        color: Theme.dim
+        font.pixelSize: 9
+        wrapMode: Text.WordWrap
+    }
+
     //  Lo que dice el rótulo.
     //
     //  Aquí y no editando encima del vídeo: sobre el vídeo el

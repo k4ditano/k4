@@ -381,6 +381,16 @@ RowLayout {
                 delegate: Loader {
                     required property var modelData
 
+                    //  El puente para PistaBanda: su propiedad se llama
+                    //  `linea`, y dentro de su binding ese nombre resuelve
+                    //  PRIMERO contra sus propias propiedades — o sea contra
+                    //  sí misma, que aún es undefined. Con `linea: linea` la
+                    //  fila se quedaba sin total ni cabezal y los bloques se
+                    //  salían del borde derecho: por eso las bandas de capas
+                    //  llevaban tiempo saliendo vacías. Desde el Loader, que
+                    //  no tiene ninguna `linea`, el nombre sí llega al id.
+                    readonly property var lineaDeArriba: linea
+
                     Layout.fillWidth: true
                     Layout.preferredHeight: modelData.clips
                         ? linea.altoClips : linea.altoPista
@@ -402,7 +412,7 @@ RowLayout {
                         id: pistaCapas
                         PistaBanda {
                             banda: modelData
-                            linea: linea
+                            linea: lineaDeArriba
                         }
                     }
                 }

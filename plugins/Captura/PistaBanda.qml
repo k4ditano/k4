@@ -75,4 +75,9 @@ Pista {
             return
         Editor.ponerCapaEnBanda(id, banda.banda - filas)
     }
+
+    //  Los rombos: mover un fotograma clave por la línea y quitarlo con el
+    //  clic derecho, sin pasar por la ficha.
+    onMoverClave: function (id, indice, t) { Editor.moverKeyframe(id, indice, t) }
+    onQuitarClave: function (id, indice) { Editor.quitarKeyframe(id, indice) }
 }

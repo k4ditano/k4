@@ -1084,6 +1084,30 @@ Singleton {
         fijarCapa(id, campos)
     }
 
+    //  Mover un fotograma clave a otro instante. Se reordena por si el
+    //  arrastre lo ha cruzado con un vecino: la lista va siempre por tiempo.
+    function moverKeyframe(id, indice, t) {
+        const c = capaPorId(id)
+        if (!c || capaBloqueada(c) || !c.keyframes
+            || indice < 0 || indice >= c.keyframes.length)
+            return
+        const ks = c.keyframes.slice()
+        ks[indice] = Object.assign({}, ks[indice],
+            { t: Math.max(0, Math.min(duracionLinea, Number(t) || 0)) })
+        ks.sort(function (a, b) { return a.t - b.t })
+        fijarCapa(id, { keyframes: ks })
+    }
+
+    //  Quitar uno. El último se lleva la lista entera: una capa con cero
+    //  claves es una capa quieta, no una animación vacía.
+    function quitarKeyframe(id, indice) {
+        const c = capaPorId(id)
+        if (!c || capaBloqueada(c) || !c.keyframes)
+            return
+        const ks = c.keyframes.filter(function (x, j) { return j !== indice })
+        fijarCapa(id, { keyframes: ks.length > 0 ? ks : null })
+    }
+
     function crearKeyframe(id, t) {
         const c = capaPorId(id)
         if (!c || capaBloqueada(c)) return

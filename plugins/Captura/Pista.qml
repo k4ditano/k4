@@ -36,6 +36,8 @@ Rectangle {
     signal soltar()
     signal crear(real t0, real t1)
     signal moverFila(int id, int filas)
+    signal moverClave(int id, int indice, real t)
+    signal quitarClave(int id, int indice)
 
     radius: 6
     color: Theme.surface
@@ -126,6 +128,14 @@ Rectangle {
             onCambiado: function (a, b) { pista.editar(modelData.id, a, b) }
             onCambiadoDeFila: function (f) { pista.moverFila(modelData.id, f) }
             onSoltado: pista.soltar()
+
+            claves: modelData.keyframes || []
+            onClaveMovida: function (i, t) {
+                pista.moverClave(modelData.id, i, t)
+            }
+            onClaveQuitada: function (i) {
+                pista.quitarClave(modelData.id, i)
+            }
         }
     }
 
