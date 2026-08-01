@@ -364,5 +364,71 @@ FadeIn {
                 font.pixelSize: 13
             }
         }
+
+        // ── las actualizaciones, de camino ────────────────────────
+        //
+        //  El lanzador es la puerta de cada día, así que el aviso vive
+        //  aquí — y SOLO cuando hay algo que hacer: un pie permanente en
+        //  un lanzador estilo Spotlight es un mueble que estorba.
+        Rectangle {
+            visible: Paquetes.pendientes > 0
+            Layout.fillWidth: true
+            Layout.preferredHeight: 34
+            radius: 10
+            color: Theme.surface
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 12
+                anchors.rightMargin: 6
+                spacing: 8
+
+                IconGlyph {
+                    text: String.fromCodePoint(0xF06B0)   // md-update
+                    color: Theme.yellow
+                    font.pixelSize: 13
+                }
+
+                IslandLabel {
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                    text: Idioma.f(Idioma.t("%1 actualizaciones del sistema (%2)"),
+                                   String(Paquetes.pendientes),
+                                   Math.max(0, Paquetes.pendientesRepo)
+                                       + " repos · "
+                                       + Math.max(0, Paquetes.pendientesAur)
+                                       + " AUR")
+                    color: Theme.muted
+                    font.pixelSize: 11
+                }
+
+                Rectangle {
+                    Layout.preferredWidth: subirTexto.implicitWidth + 20
+                    Layout.preferredHeight: 24
+                    radius: 12
+                    color: subirRaton.containsMouse
+                        ? Qt.lighter(Theme.blue, 1.15) : Theme.blue
+
+                    IslandLabel {
+                        id: subirTexto
+                        anchors.centerIn: parent
+                        text: Idioma.t("Actualizar")
+                        font.pixelSize: 10
+                        font.weight: Font.DemiBold
+                    }
+
+                    MouseArea {
+                        id: subirRaton
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            Paquetes.actualizarTodo()
+                            view.plugin.close()
+                        }
+                    }
+                }
+            }
+        }
     }
 }

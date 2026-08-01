@@ -220,7 +220,7 @@ FadeIn {
 
                 IconGlyph {
                     text: String.fromCodePoint(0xF06B0)  // md-update
-                    color: view.plugin.pendientes > 0 ? Theme.yellow
+                    color: Paquetes.pendientes > 0 ? Theme.yellow
                                                       : Theme.dim
                     font.pixelSize: 14
                 }
@@ -230,29 +230,29 @@ FadeIn {
                     spacing: 0
 
                     IslandLabel {
-                        text: view.plugin.comprobando
+                        text: Paquetes.comprobando
                             ? K4.Idioma.t("Buscando actualizaciones…")
-                            : view.plugin.pendientesRepo < 0
+                            : Paquetes.pendientesRepo < 0
                             ? K4.Idioma.t("Actualizaciones sin comprobar")
-                            : view.plugin.pendientes === 0
+                            : Paquetes.pendientes === 0
                             ? K4.Idioma.t("El sistema está al día")
                             : K4.Idioma.f(
                                 K4.Idioma.t("%1 actualizaciones (%2)"),
-                                String(view.plugin.pendientes),
-                                Math.max(0, view.plugin.pendientesRepo)
+                                String(Paquetes.pendientes),
+                                Math.max(0, Paquetes.pendientesRepo)
                                     + " repos · "
-                                    + Math.max(0, view.plugin.pendientesAur)
+                                    + Math.max(0, Paquetes.pendientesAur)
                                     + " AUR")
-                        color: view.plugin.pendientes > 0 ? Theme.ink
+                        color: Paquetes.pendientes > 0 ? Theme.ink
                                                           : Theme.muted
                         font.pixelSize: 11
                     }
 
                     IslandLabel {
-                        visible: view.plugin.nombresPendientes.length > 0
+                        visible: Paquetes.nombresPendientes.length > 0
                         Layout.fillWidth: true
                         elide: Text.ElideRight
-                        text: view.plugin.nombresPendientes.slice(0, 8)
+                        text: Paquetes.nombresPendientes.slice(0, 8)
                             .join("  ·  ")
                         color: Theme.dim
                         font.pixelSize: 9
@@ -264,11 +264,11 @@ FadeIn {
                     glyph: String.fromCodePoint(0xF0450)   // md-refresh
                     glyphSize: 13
                     glyphColor: Theme.dim
-                    onActivated: view.plugin.comprobarActualizaciones(true)
+                    onActivated: Paquetes.comprobar(true)
                 }
 
                 Rectangle {
-                    visible: view.plugin.pendientes > 0
+                    visible: Paquetes.pendientes > 0
                     Layout.preferredWidth: actualizarTexto.implicitWidth + 22
                     Layout.preferredHeight: 26
                     radius: 13
@@ -288,7 +288,7 @@ FadeIn {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: view.plugin.actualizarTodo()
+                        onClicked: { Paquetes.actualizarTodo(); view.plugin.cerrar() }
                     }
                 }
             }

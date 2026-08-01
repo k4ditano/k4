@@ -299,6 +299,10 @@ K4Plugin {
         closing = false
         if (panel) panel.close()
         Notifs.dismissToast()
+        //  De paso se miran las actualizaciones: el lanzador es la puerta
+        //  que el usuario abre veinte veces al día, y el contador vive en
+        //  el servicio con su caché — no cuesta nada.
+        Paquetes.comprobar(false)
         open = true
         refreshApplications()
     }

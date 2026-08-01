@@ -49,94 +49,11 @@ K4.Plugin {
 
     view: Component { AppsView { plugin: self } }
 
-    // ── las actualizaciones del sistema ───────────────────────────
-    //
-    //  Cuántas esperan, de los repos y de AUR, mirado al abrir el centro con
-    //  una caché de diez minutos: `checkupdates` monta una base temporal y
-    //  tarda unos segundos, y preguntarlo a cada apertura sería castigo.
-    //  Actualizar abre una terminal DE VERDAD, como instalar desde el
-    //  lanzador y por lo mismo: hay que poder meter la clave de root y
-    //  responder preguntas.
-    property int pendientesRepo: -1          // -1 = aún sin mirar
-    property int pendientesAur: -1
-    property var nombresPendientes: []
-    property real comprobadoEn: 0
-
-    readonly property bool comprobando: repoUpd.running || aurUpd.running
-    readonly property int pendientes:
-        Math.max(0, pendientesRepo) + Math.max(0, pendientesAur)
-
-    function comprobarActualizaciones(forzar) {
-        if (comprobando)
-            return
-        if (!forzar && comprobadoEn > 0
-                && Date.now() - comprobadoEn < 10 * 60 * 1000)
-            return
-        comprobadoEn = Date.now()
-        pendientesRepo = -1
-        pendientesAur = -1
-        nombresPendientes = []
-        repoUpd.running = true
-        aurUpd.running = true
-    }
-
-    function apuntarPendientes(texto, esAur) {
-        const lineas = texto.split("\n").filter(function (l) {
-            return l.trim().length > 0
-        })
-        const nombres = nombresPendientes.slice()
-        for (let i = 0; i < lineas.length; ++i)
-            nombres.push(lineas[i].split(/\s+/)[0])
-        nombresPendientes = nombres
-        if (esAur)
-            pendientesAur = lineas.length
-        else
-            pendientesRepo = lineas.length
-    }
-
-    K4.Process {
-        id: repoUpd
-        command: ["checkupdates"]
-        onSalida: function (texto) { self.apuntarPendientes(texto, false) }
-        //  checkupdates contesta 2 cuando NO hay nada pendiente: es su forma
-        //  de decir «al día», no un fallo.
-        onTerminado: function (codigo) {
-            if (codigo === 2)
-                self.pendientesRepo = Math.max(0, self.pendientesRepo)
-        }
-    }
-
-    K4.Process {
-        id: aurUpd
-        command: ["yay", "-Qua"]
-        onSalida: function (texto) { self.apuntarPendientes(texto, true) }
-        onTerminado: function (codigo) {
-            if (self.pendientesAur < 0)
-                self.pendientesAur = 0
-        }
-    }
-
-    //  Todo de una vez, en una terminal: root, preguntas y PKGBUILDs son
-    //  cosas de una terminal, no de una barra. Al acabar avisa y se vuelve a
-    //  mirar, para que el contador cuente la verdad.
-    function actualizarTodo() {
-        const script = "yay -Syu"
-            + " && notify-send -a 'Actualizar' '"
-            + Idioma.t("Sistema al día") + "'"
-            + " || { notify-send -a 'Actualizar' -u critical '"
-            + Idioma.t("La actualización falló") + "';"
-            + " printf '\\nPulsa Enter para cerrar…'; read _; }"
-        K4.Sistema.lanzar(["uwsm", "app", "--", "kitty", "-e", "sh", "-c",
-                           script])
-        comprobadoEn = 0
-        cerrar()
-    }
-
     function abrirse() {
         busqueda = ""
         seleccion = 0
         abierto = true
-        comprobarActualizaciones(false)
+        Paquetes.comprobar(false)
     }
 
     function toggle() {
