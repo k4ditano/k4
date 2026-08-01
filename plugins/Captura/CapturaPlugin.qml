@@ -519,6 +519,14 @@ K4Plugin {
         // Editar un vídeo concreto, sin pasar por el selector.
         function editar(ruta: string): void { self.abrirVideo(ruta) }
 
+        //  Editar la última grabación, con su rastro y su cámara si los hay:
+        //  el mismo camino que el botón «Editor» de la tarjeta, pero sin
+        //  tener que cazar la tarjeta antes de que se marche sola.
+        function ultima(): void {
+            if (Captura.rutaVideo.length > 0)
+                self.editarUltimaGrabacion()
+        }
+
         //  Poner una imagen encima, sin pasar por el diálogo.
         //
         //  Sirve para automatizar y también para un atajo que suelte encima lo
