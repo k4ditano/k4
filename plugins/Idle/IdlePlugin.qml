@@ -47,7 +47,16 @@ K4Plugin {
 
     readonly property int ladoDer: trayWidth + juegoWidth + grabacionWidth
         + minimizadosWidth
-    readonly property int ladoAncho: Math.max(ladoIzq, ladoDer)
+
+    //  La medida REAL de la fila derecha, publicada por la vista. La suma de
+    //  arriba se queda como arranque y red de seguridad: en cuanto la vista
+    //  existe, manda lo medido — y añadir un indicador nuevo deja de exigir
+    //  acordarse de sumar su hueco aquí, que es como se pisó dos veces la
+    //  hora.
+    property int ladoDerMedido: 0
+
+    readonly property int ladoAncho: Math.max(ladoIzq,
+        ladoDerMedido > 0 ? ladoDerMedido : ladoDer)
 
     // El centro ya no es solo la hora: al cambiar de escritorio enseña los
     // puntos en su lugar, y hay que reservar lo que ocupe el más ancho de los
@@ -58,6 +67,6 @@ K4Plugin {
     islandHeight: Theme.baseHeight
 
     view: Component {
-        IdleView { tray: self.tray; shown: self.trayShown }
+        IdleView { plugin: self; tray: self.tray; shown: self.trayShown }
     }
 }

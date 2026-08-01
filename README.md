@@ -204,6 +204,13 @@ commands and dependencies, and do not import private host services from a
 plugin. Plugins can currently execute local processes, so only reviewed code
 should be installed.
 
+Naming convention (the codebase predates it; migrate names when you touch
+them, never in bulk): the `K4Plugin` contract keeps its English members
+(`open`, `close`, `toggle`, `active`, `view`), and everything else — services,
+properties, functions, signals — is named in Spanish, which is the project's
+voice. Do not add a third variant of an existing pair: if a file already has
+`abrir()`/`cerrar()`, extend that.
+
 ## License
 
 k4 is released under the [MIT License](LICENSE).

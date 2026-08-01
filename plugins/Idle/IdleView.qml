@@ -19,6 +19,7 @@ import "../../widgets"
 FadeIn {
     id: view
 
+    property var plugin: null
     property var tray: null
     property int shown: 0
 
@@ -145,6 +146,15 @@ FadeIn {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
+
+            //  El ancho real de la fila, publicado al plugin: la píldora se
+            //  ensancha con lo que HAY, no con lo que alguien recordó sumar.
+            //  implicitWidth no depende del ancho del padre, así que no hay
+            //  bucle de binding posible.
+            onImplicitWidthChanged: if (view.plugin)
+                view.plugin.ladoDerMedido = Math.ceil(implicitWidth)
+            Component.onCompleted: if (view.plugin)
+                view.plugin.ladoDerMedido = Math.ceil(implicitWidth)
 
             Minimizados { Layout.alignment: Qt.AlignVCenter }
 
