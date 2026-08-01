@@ -143,6 +143,14 @@ Singleton {
     }
 
     Process {
+        //  La voz de error, que antes se tiraba: si esto
+        //  falla, el motivo queda en el log de la barra.
+        stderr: SplitParser {
+            onRead: function (l) {
+                if (String(l).trim().length > 0)
+                    console.warn("captura:", l)
+            }
+        }
         id: congelador
         property string pendiente: ""
 
@@ -301,6 +309,14 @@ Singleton {
 
     // El nombre lo decide el guion, que es quien sabe esquivar colisiones.
     Process {
+        //  La voz de error, que antes se tiraba: si esto
+        //  falla, el motivo queda en el log de la barra.
+        stderr: SplitParser {
+            onRead: function (l) {
+                if (String(l).trim().length > 0)
+                    console.warn("captura:", l)
+            }
+        }
         id: pedirNombreVideo
         command: ["python3", Quickshell.shellPath("tools/captura.py"),
                   "nombre", "--que", "video"]
@@ -376,6 +392,14 @@ Singleton {
     property string fuenteMicro: "@DEFAULT_SOURCE@"
 
     Process {
+        //  La voz de error, que antes se tiraba: si esto
+        //  falla, el motivo queda en el log de la barra.
+        stderr: SplitParser {
+            onRead: function (l) {
+                if (String(l).trim().length > 0)
+                    console.warn("captura:", l)
+            }
+        }
         id: comprobarNvenc
         command: ["sh", "-c",
                   "command -v nvidia-smi >/dev/null 2>&1 && "
@@ -399,6 +423,14 @@ Singleton {
     }
 
     Process {
+        //  La voz de error, que antes se tiraba: si esto
+        //  falla, el motivo queda en el log de la barra.
+        stderr: SplitParser {
+            onRead: function (l) {
+                if (String(l).trim().length > 0)
+                    console.warn("captura:", l)
+            }
+        }
         command: ["sh", "-c", "pactl get-default-source"]
         running: true
         stdout: StdioCollector {
@@ -419,6 +451,14 @@ Singleton {
     property string rutaRastro: ""
 
     Process {
+        //  La voz de error, que antes se tiraba: si esto
+        //  falla, el motivo queda en el log de la barra.
+        stderr: SplitParser {
+            onRead: function (l) {
+                if (String(l).trim().length > 0)
+                    console.warn("captura:", l)
+            }
+        }
         id: rastreador
         stdinEnabled: true
     }
@@ -440,6 +480,14 @@ Singleton {
     property string rutaMicro: ""
 
     Process {
+        //  La voz de error, que antes se tiraba: si esto
+        //  falla, el motivo queda en el log de la barra.
+        stderr: SplitParser {
+            onRead: function (l) {
+                if (String(l).trim().length > 0)
+                    console.warn("captura:", l)
+            }
+        }
         id: grabadorMicro
 
         //  Es SU salida la que dispara el juntado, no un temporizador.
@@ -482,6 +530,14 @@ Singleton {
     function buscarCamaras() { rastreoCamaras.running = true }
 
     Process {
+        //  La voz de error, que antes se tiraba: si esto
+        //  falla, el motivo queda en el log de la barra.
+        stderr: SplitParser {
+            onRead: function (l) {
+                if (String(l).trim().length > 0)
+                    console.warn("captura:", l)
+            }
+        }
         id: rastreoCamaras
         running: true
         //  El nombre bonito sale de `name`, que es lo que enseña el sistema; si
@@ -551,6 +607,14 @@ Singleton {
     property real inicioPantalla: 0
 
     Process {
+        //  La voz de error, que antes se tiraba: si esto
+        //  falla, el motivo queda en el log de la barra.
+        stderr: SplitParser {
+            onRead: function (l) {
+                if (String(l).trim().length > 0)
+                    console.warn("captura:", l)
+            }
+        }
         id: grabadorCamara
         //  El instante en que la cámara empezó de verdad, para saber cuánto se
         //  le adelantó la pantalla. Son decenas de milisegundos.
@@ -568,6 +632,14 @@ Singleton {
     }
 
     Process {
+        //  La voz de error, que antes se tiraba: si esto
+        //  falla, el motivo queda en el log de la barra.
+        stderr: SplitParser {
+            onRead: function (l) {
+                if (String(l).trim().length > 0)
+                    console.warn("captura:", l)
+            }
+        }
         id: grabador
 
         onStarted: {
@@ -664,6 +736,14 @@ Singleton {
     }
 
     Process {
+        //  La voz de error, que antes se tiraba: si esto
+        //  falla, el motivo queda en el log de la barra.
+        stderr: SplitParser {
+            onRead: function (l) {
+                if (String(l).trim().length > 0)
+                    console.warn("captura:", l)
+            }
+        }
         id: juntador
         property string destino: ""
 
@@ -768,6 +848,14 @@ Singleton {
 
     // ── el proceso de la foto ─────────────────────────────────────
     Process {
+        //  La voz de error, que antes se tiraba: si esto
+        //  falla, el motivo queda en el log de la barra.
+        stderr: SplitParser {
+            onRead: function (l) {
+                if (String(l).trim().length > 0)
+                    console.warn("captura:", l)
+            }
+        }
         id: disparo
 
         stdout: StdioCollector {
@@ -824,6 +912,14 @@ Singleton {
     }
 
     Process {
+        //  La voz de error, que antes se tiraba: si esto
+        //  falla, el motivo queda en el log de la barra.
+        stderr: SplitParser {
+            onRead: function (l) {
+                if (String(l).trim().length > 0)
+                    console.warn("captura:", l)
+            }
+        }
         command: ["python3", Quickshell.shellPath("tools/captura.py"),
                   "carpeta", "--que", "videos"]
         running: true

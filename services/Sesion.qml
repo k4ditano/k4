@@ -75,6 +75,14 @@ Singleton {
     // El nombre bonito sale del quinto campo de passwd, hasta la primera coma:
     // el resto del GECOS son despacho y teléfonos que no pintan nada aquí.
     Process {
+        //  La voz de error, que antes se tiraba: si esto
+        //  falla, el motivo queda en el log de la barra.
+        stderr: SplitParser {
+            onRead: function (l) {
+                if (String(l).trim().length > 0)
+                    console.warn("sesion:", l)
+            }
+        }
         command: ["getent", "passwd", sesion.usuario]
         running: sesion.usuario.length > 0
 

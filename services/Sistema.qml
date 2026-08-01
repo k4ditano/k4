@@ -87,6 +87,14 @@ Singleton {
 
     // ── el muestreador ────────────────────────────────────────────
     Process {
+        //  La voz de error, que antes se tiraba: si esto
+        //  falla, el motivo queda en el log de la barra.
+        stderr: SplitParser {
+            onRead: function (l) {
+                if (String(l).trim().length > 0)
+                    console.warn("sistema:", l)
+            }
+        }
         id: muestreo
         command: ["python3", Quickshell.shellPath("tools/sistema.py")]
         running: sistema.mirando

@@ -139,6 +139,14 @@ Singleton {
     //  mientras hay un diálogo abierto, así que no cuesta nada el resto del
     //  tiempo.
     property var _sonda: Process {
+        //  La voz de error, que antes se tiraba: si esto
+        //  falla, el motivo queda en el log de la barra.
+        stderr: SplitParser {
+            onRead: function (l) {
+                if (String(l).trim().length > 0)
+                    console.warn("island:", l)
+            }
+        }
         command: ["pgrep", "-c", "-x", "zenity"]
         stdout: StdioCollector {
             onStreamFinished: {

@@ -246,6 +246,14 @@ Singleton {
     }
 
     Process {
+        //  La voz de error, que antes se tiraba: si esto
+        //  falla, el motivo queda en el log de la barra.
+        stderr: SplitParser {
+            onRead: function (l) {
+                if (String(l).trim().length > 0)
+                    console.warn("notifs:", l)
+            }
+        }
         id: clientQuery
         command: ["hyprctl", "-j", "clients"]
 
