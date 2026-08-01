@@ -200,6 +200,99 @@ FadeIn {
                 }
             }
         }
+
+        // ── las actualizaciones del sistema ───────────────────────
+        //
+        //  El pie del centro: cuántas esperan y el botón que las aplica.
+        //  Aquí y no en otro módulo porque este ES el sitio de las
+        //  aplicaciones, y mantenerlas al día es parte de tenerlas.
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 40
+            radius: 12
+            color: Theme.surface
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 14
+                anchors.rightMargin: 8
+                spacing: 8
+
+                IconGlyph {
+                    text: String.fromCodePoint(0xF06B0)  // md-update
+                    color: view.plugin.pendientes > 0 ? Theme.yellow
+                                                      : Theme.dim
+                    font.pixelSize: 14
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 0
+
+                    IslandLabel {
+                        text: view.plugin.comprobando
+                            ? K4.Idioma.t("Buscando actualizaciones…")
+                            : view.plugin.pendientesRepo < 0
+                            ? K4.Idioma.t("Actualizaciones sin comprobar")
+                            : view.plugin.pendientes === 0
+                            ? K4.Idioma.t("El sistema está al día")
+                            : K4.Idioma.f(
+                                K4.Idioma.t("%1 actualizaciones (%2)"),
+                                String(view.plugin.pendientes),
+                                Math.max(0, view.plugin.pendientesRepo)
+                                    + " repos · "
+                                    + Math.max(0, view.plugin.pendientesAur)
+                                    + " AUR")
+                        color: view.plugin.pendientes > 0 ? Theme.ink
+                                                          : Theme.muted
+                        font.pixelSize: 11
+                    }
+
+                    IslandLabel {
+                        visible: view.plugin.nombresPendientes.length > 0
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                        text: view.plugin.nombresPendientes.slice(0, 8)
+                            .join("  ·  ")
+                        color: Theme.dim
+                        font.pixelSize: 9
+                    }
+                }
+
+                //  Volver a mirar, saltándose la caché de diez minutos.
+                MediaButton {
+                    glyph: String.fromCodePoint(0xF0450)   // md-refresh
+                    glyphSize: 13
+                    glyphColor: Theme.dim
+                    onActivated: view.plugin.comprobarActualizaciones(true)
+                }
+
+                Rectangle {
+                    visible: view.plugin.pendientes > 0
+                    Layout.preferredWidth: actualizarTexto.implicitWidth + 22
+                    Layout.preferredHeight: 26
+                    radius: 13
+                    color: actualizarRaton.containsMouse
+                        ? Qt.lighter(Theme.blue, 1.15) : Theme.blue
+
+                    IslandLabel {
+                        id: actualizarTexto
+                        anchors.centerIn: parent
+                        text: K4.Idioma.t("Actualizar")
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                    }
+
+                    MouseArea {
+                        id: actualizarRaton
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: view.plugin.actualizarTodo()
+                    }
+                }
+            }
+        }
     }
 
     //  El foco al buscador en cuanto se abre: se abre para escribir.
