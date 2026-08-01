@@ -97,6 +97,24 @@ Item {
         id: tregua
         interval: 200
         onTriggered: {
+            //  Al vencer, la comprobación que faltaba: ¿el salto se HIZO?
+            //  Una búsqueda se pierde a veces —pausado y todo, medido: la
+            //  segunda vuelta de una línea con reorden la perdía— y el medio
+            //  sigue reproduciendo el trozo viejo; al creerle otra vez, esas
+            //  posiciones se mapeaban por el tramo nuevo y el cabezal saltaba
+            //  hacia atrás. Si está fuera del trozo, se reintenta y se da
+            //  otra tregua, las veces que haga falta: converge en una o dos.
+            if (repro.tramo && !repro.tramo.imagen) {
+                const s = mp.position / 1000
+                if (s < repro.tramo.desde - 0.25
+                        || s > repro.tramo.hasta + 0.25) {
+                    mp.pause()
+                    mp.position = repro.enFuente(repro.cabezal,
+                                                 repro.tramo) * 1000
+                    tregua.restart()
+                    return
+                }
+            }
             repro.enTregua = false
             if (repro.sonando && mp.playbackState !== MediaPlayer.PlayingState)
                 mp.play()
@@ -196,6 +214,22 @@ Item {
             pendiente = enFuente(limpio, tr)
             mp.source = fuente
         } else {
+            //  Quieto ANTES de buscar, siempre. Es la lección medida del
+            //  rascado —«escribir position con el vídeo en marcha se cumple
+            //  unas veces y otras no»— aplicada a los cortes, que hasta hoy
+            //  buscaban en marcha: cuando la búsqueda se perdía, el medio
+            //  seguía reproduciendo el trozo VIEJO, y al expirar la tregua
+            //  esas posiciones se mapeaban por el tramo nuevo y el cabezal
+            //  saltaba HACIA ATRÁS. Y en el final del fichero ni la pausa
+            //  basta: parado en su último fotograma, `position` no hace nada
+            //  —la trampa documentada al dar la vuelta— y `play()` rebobina a
+            //  cero él solo; `stop()` sí lo devuelve a un estado que obedece.
+            //  Con un trozo reordenado que acaba justo donde acaba el fichero
+            //  —lo más normal del mundo—, eso era la línea reiniciándose.
+            if (mp.mediaStatus === MediaPlayer.EndOfMedia)
+                mp.stop()
+            else if (mp.playbackState === MediaPlayer.PlayingState)
+                mp.pause()
             mp.position = enFuente(limpio, tr) * 1000
             if (sonando)
                 mp.play()
@@ -383,8 +417,17 @@ Item {
         onMediaStatusChanged: {
             //  Que se acabe el FICHERO no es que se acabe la línea: puede
             //  quedar otro trozo, y puede estar en el mismo fichero más atrás.
+            //
+            //  Pero un fin de fichero RECIÉN SALTADO no vale: cuando un trozo
+            //  acaba donde acaba el fichero, el aviso de posición ya ha hecho
+            //  el avance y este EndOfMedia llega rezagado, del sitio VIEJO.
+            //  Hacerle caso era avanzar dos veces —la segunda desde el último
+            //  tramo—, o sea dar la vuelta entera: la línea se reiniciaba
+            //  sola en mitad de la reproducción. La tregua ya dice «acabamos
+            //  de saltar»: durante ella, los finales viejos se ignoran.
             if (mediaStatus === MediaPlayer.EndOfMedia) {
-                repro.avanzar()
+                if (!repro.enTregua)
+                    repro.avanzar()
                 return
             }
             if (mediaStatus !== MediaPlayer.LoadedMedia
