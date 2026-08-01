@@ -42,11 +42,15 @@ K4Plugin {
     islandWidth: 700
     islandHeight: messages.length > 0 ? 430 : 128
 
-    function openAsk(attach) {
-        // Pedir una pregunta nueva empieza de cero, y por tanto ya no hay nada
-        // apartado que retomar.
+    //  Abrir RETOMA lo que hubiera apartado — con Escape o con el −, daba
+    //  igual: volver a pulsar el atajo no puede costar la conversación que
+    //  dejaste a medias. Para empezar de cero está el botón «nueva» (y
+    //  `fresco: true`, que usa el IPC de pregunta directa).
+    function openAsk(attach, fresco) {
+        const retomar = fresco !== true && messages.length > 0
         Modulos.quitar("ask")
-        newConversation()
+        if (!retomar)
+            newConversation()
         if (panel) panel.close()
         if (launcher) launcher.close()
         Notifs.dismissToast()
@@ -402,7 +406,9 @@ K4Plugin {
         function screen(): void { self.withScreenshot() }
         function region(): void { self.withRegion() }
         function now(question: string): void {
-            self.openAsk(false)
+            //  Pregunta directa: esta sí empieza de cero, que viene de un
+            //  guion y mezclar hilos sería peor.
+            self.openAsk(false, true)
             self.query = question
             self.send()
         }
