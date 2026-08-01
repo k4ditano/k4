@@ -251,10 +251,10 @@ Item {
             readonly property real vAn: escalando ? vEscala : (modelData.an || 0.3)
             readonly property real eAl: escalando ? vAl : (modelData.al || 0.25)
 
-            width: esTexto ? rotulo.implicitWidth + relleno * 2
+            width: esTexto ? rotuloMedida.implicitWidth + relleno * 2
                  : esZona  ? Math.max(8, lienzo.width * vAn)
                            : Math.max(8, lienzo.width * eEscala)
-            height: esTexto ? rotulo.implicitHeight + relleno * 2
+            height: esTexto ? rotuloMedida.implicitHeight + relleno * 2
                   : esZona  ? Math.max(8, lienzo.height * eAl)
                             : width * relacion
             x: ex * lienzo.width - width / 2
@@ -536,12 +536,39 @@ Item {
                     ? capa.modelData.fondo : 0.5
             }
 
+            //  El rótulo entero, invisible: es quien MIDE. Con la máquina de
+            //  escribir el visible enseña un prefijo, pero la capa tiene que
+            //  medir lo que medirá al final o la caja bailaría.
+            Text {
+                id: rotuloMedida
+                visible: false
+                text: capa.modelData.texto || ""
+                font.family: fuenteRotulos.name
+                font.pixelSize: Math.max(6, capa.tamTexto)
+                renderType: Text.NativeRendering
+            }
+
+            //  Cuántas letras se ven ya, con la misma rampa del render.
+            readonly property int letrasVisibles: {
+                const e = modelData.entrada
+                const texto = modelData.texto || ""
+                if (!capa.esTexto || !e || e.tipo !== "maquina")
+                    return texto.length
+                const d = Math.max(0.05, Math.min(
+                    Math.max(0.1, modelData.t1 - modelData.t0) / 2,
+                    Number(e.dur) > 0 ? Number(e.dur) : 0.4))
+                const u = Math.max(0, Math.min(1,
+                    (lienzo.segundos - modelData.t0) / d))
+                return Math.min(texto.length, Math.floor(texto.length * u) + 1)
+            }
+
             Text {
                 id: rotulo
                 visible: capa.esTexto && !capa.editandoTexto
                 x: capa.relleno
                 y: capa.relleno
-                text: capa.modelData.texto || ""
+                text: (capa.modelData.texto || "")
+                    .substring(0, capa.letrasVisibles)
                 color: capa.modelData.color || "#ffffff"
                 //  La misma tipografía que le pasa el grafo a ffmpeg, cargada del
                 //  mismo fichero. Sin esto el ancho del rótulo en la previa no

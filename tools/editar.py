@@ -792,7 +792,7 @@ def efecto_de(capa, cual):
     """
     e = capa.get(cual) or {}
     tipo = e.get("tipo") or ""
-    if tipo not in ("desvanecer", "deslizar"):
+    if tipo not in ("desvanecer", "deslizar", "maquina"):
         return None
     ventana = max(0.1, float(capa.get("t1", 0.0)) - float(capa.get("t0", 0.0)))
     return {"tipo": tipo,
@@ -930,6 +930,60 @@ def estilo_texto(capa):
     return "caja" if float(capa.get("fondo", 0.0)) > 0.001 else "limpio"
 
 
+def ancho_texto(texto, tam):
+    """Cuánto mide un rótulo en píxeles, con la MISMA fuente del render.
+
+    Lo mide PIL sobre el mismo TTF que usa drawtext: es lo que permite anclar
+    la máquina de escribir a la izquierda sin que el texto baile. Sin PIL se
+    devuelve None y el efecto degrada a rótulo entero, que es peor que
+    teclear pero mejor que mentir con un centrado que salta.
+    """
+    try:
+        from PIL import ImageFont
+        return ImageFont.truetype(FUENTE, tam).getlength(texto)
+    except Exception:
+        return None
+
+
+def rama_maquina(n, capa, ent, tam, partes_comunes, carpeta, entra):
+    """El rótulo tecleándose: un drawtext por prefijo, anclado a la izquierda.
+
+    Centrar cada prefijo lo haría bailar —el centro se mueve con cada letra—
+    así que se calcula UNA vez dónde empieza el texto completo y todos los
+    prefijos arrancan ahí. Como mucho 60 pasos: en rótulos largos entran
+    varias letras por paso y nadie lo nota.
+    """
+    texto = capa.get("texto", "")
+    total = ancho_texto(texto, tam)
+    if total is None or len(texto) < 2:
+        return None
+
+    t0, t1 = float(capa.get("t0", 0)), float(capa.get("t1", 0))
+    dur = ent["dur"]
+    pasos = min(60, len(texto))
+    x_izq = "%.4f*w-%.1f" % (float(capa.get("x", 0.5)), total / 2.0)
+
+    lineas = []
+    for k in range(pasos):
+        corte = int(round(len(texto) * (k + 1) / float(pasos)))
+        ruta = os.path.join(carpeta, "texto-%d-%d.txt" % (capa["id"], k))
+        with open(ruta, "w") as f:
+            f.write(texto[:corte])
+        ta = t0 + dur * k / float(pasos)
+        #  El último paso se queda hasta el final de la capa: es el rótulo
+        #  entero, ya tecleado.
+        tb = t1 if k == pasos - 1 else t0 + dur * (k + 1) / float(pasos)
+        partes = ["drawtext=fontfile=%s" % citar(FUENTE),
+                  "textfile=%s" % citar(ruta),
+                  "expansion=none",
+                  "x=%s" % x_izq,
+                  "enable='between(t,%.4f,%.4f)'" % (ta, tb)] + partes_comunes
+        sale = "ov%dk%d" % (n, k)
+        lineas.append("[%s]%s[%s]" % (entra, ":".join(partes), sale))
+        entra = sale
+    return lineas, entra
+
+
 def rama_texto(n, capa, ancho, alto, carpeta, entra):
     """Un rótulo. Devuelve (líneas, etiqueta de salida).
 
@@ -946,48 +1000,61 @@ def rama_texto(n, capa, ancho, alto, carpeta, entra):
     _, dys_ef = efectos_video(capa)
     alfa = alfa_texto(capa)
     empuje = "".join("+" + d for d in dys_ef)
-    #  `expansion=none`: sin esto `drawtext` se cree que el texto lleva formato y
-    #  un «50 %» acaba en «Stray %» y en un rótulo a medias. Probado.
-    partes = ["drawtext=fontfile=%s" % citar(FUENTE),
-              "textfile=%s" % citar(ruta),
-              "expansion=none",
-              ("fontsize='max(8,%s*h)'"
-               % expresion_animada(capa, "tam", 0.06)
-               if capa.get("keyframes") else "fontsize=%d" % tam),
-              "fontcolor=%s" % color_ffmpeg(capa.get("color", "#ffffff")),
-              #  Centrado en (x, y) como las demás capas: `text_w` y `text_h` son
-              #  lo que mide el rótulo ya compuesto.
-              ("x='%s*w-text_w/2'" % expresion_animada(capa, "x", 0.5)
-               if capa.get("keyframes") else
-               "x=%.4f*w-text_w/2" % float(capa.get("x", 0.5))),
-              ("y='(%s%s)*h-text_h/2'"
-               % (expresion_animada(capa, "y", 0.85), empuje)
-               if capa.get("keyframes") or empuje else
-               "y=%.4f*h-text_h/2" % float(capa.get("y", 0.85))),
-              "enable='between(t,%.4f,%.4f)'"
-              % (float(capa.get("t0", 0)), float(capa.get("t1", 0)))]
-    if alfa:
-        partes.append("alpha='%s'" % alfa)
+
+    #  Lo que comparten el rótulo entero y sus prefijos de la máquina de
+    #  escribir: cuerpo, color, altura y estilo.
+    comunes = [("fontsize='max(8,%s*h)'"
+                % expresion_animada(capa, "tam", 0.06)
+                if capa.get("keyframes") else "fontsize=%d" % tam),
+               "fontcolor=%s" % color_ffmpeg(capa.get("color", "#ffffff")),
+               ("y='(%s%s)*h-text_h/2'"
+                % (expresion_animada(capa, "y", 0.85), empuje)
+                if capa.get("keyframes") or empuje else
+                "y=%.4f*h-text_h/2" % float(capa.get("y", 0.85)))]
 
     estilo = estilo_texto(capa)
     fondo = float(capa.get("fondo", 0.5))
     if estilo == "caja" and fondo > 0.001:
         # Una caja detrás, para que el texto se lea sobre cualquier cosa.
-        partes += ["box=1",
-                   "boxcolor=%s" % color_ffmpeg(capa.get("colorFondo", "#000000"),
-                                                fondo),
-                   "boxborderw=%d" % max(2, int(round(tam * 0.28)))]
+        comunes += ["box=1",
+                    "boxcolor=%s" % color_ffmpeg(capa.get("colorFondo", "#000000"),
+                                                 fondo),
+                    "boxborderw=%d" % max(2, int(round(tam * 0.28)))]
     elif estilo == "contorno":
         #  Grosor con el cuerpo de letra: un contorno fijo se come las letras
         #  pequeñas y desaparece en las grandes.
-        partes += ["borderw=%d" % max(1, int(round(tam * 0.08))),
-                   "bordercolor=%s"
-                   % color_ffmpeg(capa.get("colorFondo", "#000000"))]
+        comunes += ["borderw=%d" % max(1, int(round(tam * 0.08))),
+                    "bordercolor=%s"
+                    % color_ffmpeg(capa.get("colorFondo", "#000000"))]
     elif estilo == "sombra":
         sombra = max(1, int(round(tam * 0.07)))
-        partes += ["shadowx=%d" % sombra, "shadowy=%d" % sombra,
-                   "shadowcolor=%s"
-                   % color_ffmpeg(capa.get("colorFondo", "#000000"), 0.65)]
+        comunes += ["shadowx=%d" % sombra, "shadowy=%d" % sombra,
+                    "shadowcolor=%s"
+                    % color_ffmpeg(capa.get("colorFondo", "#000000"), 0.65)]
+
+    #  La máquina de escribir: si hay con qué medir, teclea; si no, rótulo
+    #  entero de siempre, que es peor que teclear pero mejor que un centrado
+    #  que baila.
+    ent = efecto_de(capa, "entrada")
+    if ent and ent["tipo"] == "maquina":
+        hecho = rama_maquina(n, capa, ent, tam, comunes, carpeta, entra)
+        if hecho:
+            return hecho
+
+    #  `expansion=none`: sin esto `drawtext` se cree que el texto lleva formato y
+    #  un «50 %» acaba en «Stray %» y en un rótulo a medias. Probado.
+    partes = ["drawtext=fontfile=%s" % citar(FUENTE),
+              "textfile=%s" % citar(ruta),
+              "expansion=none",
+              #  Centrado en (x, y) como las demás capas: `text_w` y `text_h` son
+              #  lo que mide el rótulo ya compuesto.
+              ("x='%s*w-text_w/2'" % expresion_animada(capa, "x", 0.5)
+               if capa.get("keyframes") else
+               "x=%.4f*w-text_w/2" % float(capa.get("x", 0.5))),
+              "enable='between(t,%.4f,%.4f)'"
+              % (float(capa.get("t0", 0)), float(capa.get("t1", 0)))] + comunes
+    if alfa:
+        partes.append("alpha='%s'" % alfa)
 
     sale = "ov%d" % n
     return ["[%s]%s[%s]" % (entra, ":".join(partes), sale)], sale

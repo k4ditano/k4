@@ -239,12 +239,22 @@ ColumnLayout {
                 spacing: 3
 
                 Repeater {
-                    model: [
-                        { id: "", nombre: Idioma.t("Nada") },
-                        { id: "desvanecer",
-                          nombre: filaEfecto.modelData.aparecer },
-                        { id: "deslizar", nombre: Idioma.t("Deslizar") }
-                    ]
+                    model: {
+                        const base = [
+                            { id: "", nombre: Idioma.t("Nada") },
+                            { id: "desvanecer",
+                              nombre: filaEfecto.modelData.aparecer },
+                            { id: "deslizar", nombre: Idioma.t("Deslizar") }
+                        ]
+                        //  La máquina de escribir teclea: solo un rótulo, y
+                        //  solo al entrar.
+                        if (filaEfecto.modelData.cual === "entrada"
+                            && Editor.capaSel
+                            && Editor.capaSel.tipo === "texto")
+                            base.push({ id: "maquina",
+                                        nombre: Idioma.t("Máquina") })
+                        return base
+                    }
 
                     delegate: Rectangle {
                         id: chipEfecto

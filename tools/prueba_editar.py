@@ -999,8 +999,11 @@ def prueba_rotulo_tamano_y_centro():
     #  Centrado como las demás capas. Ojo: `text_h` de drawtext es alto de línea,
     #  así que el centro VISIBLE queda algo más arriba; la previa copia la misma
     #  fórmula para que coincida.
+    #  x e y por separado: desde la máquina de escribir ya no van pegadas en
+    #  la cadena —el orden de opciones de drawtext da igual—.
     igual("y se coloca por el centro",
-          "x=0.2500*w-text_w/2:y=0.7000*h-text_h/2" in texto, True)
+          "x=0.2500*w-text_w/2" in texto
+          and "y=0.7000*h-text_h/2" in texto, True)
 
 
 def prueba_rotulo_caja():
@@ -1267,6 +1270,26 @@ def prueba_sonoridad_pone_loudnorm_al_final():
     texto, _ = editar.grafo(p)
     igual("sin pedirlo no toca el volumen de nadie",
           "loudnorm" in texto, False)
+
+
+def prueba_maquina_de_escribir():
+    """El rótulo se teclea: un drawtext por prefijo, todos anclados en el
+    MISMO x de la izquierda —centrar cada prefijo lo haría bailar— y el
+    último se queda hasta el final de la capa."""
+    texto, _ = editar.grafo(con_capas(
+        [capa(tipo="texto", texto="Hola", tam=0.06, x=0.5,
+              entrada={"tipo": "maquina", "dur": 0.4})]), carpeta=BORRADOR)
+    igual("cuatro letras, cuatro pasos", texto.count("drawtext"), 4)
+    #  PIL mide «Hola» a 65 px de cuerpo; lo importante es que el ancla sea
+    #  LA MISMA en todos los pasos.
+    anclas = [l.split("x=")[1].split(":")[0]
+              for l in texto.split(";") if "drawtext" in l]
+    igual("todos los prefijos arrancan del mismo sitio",
+          len(set(anclas)), 1)
+    igual("el último paso llega al final de la capa",
+          "enable='between(t,2.3000,4.0000)'" in texto, True)
+    igual("y el primero empieza con la capa",
+          "enable='between(t,2.0000,2.1000)'" in texto, True)
 
 
 def prueba_transicion_conserva_la_linea():
