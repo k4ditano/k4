@@ -736,9 +736,10 @@ def efecto_de(capa, cual):
 
 
 def capa_animada(capa):
-    """Si los filtros de la capa dependen del tiempo: claves o efectos."""
+    """Si los filtros de la capa dependen del tiempo: claves, efectos o
+    Ken Burns."""
     return bool(capa.get("keyframes")) or bool(efecto_de(capa, "entrada")) \
-        or bool(efecto_de(capa, "salida"))
+        or bool(efecto_de(capa, "salida")) or bool(kenburns_de(capa))
 
 
 #  Cuánto empuja «deslizar», en fracción del alto del fotograma.
@@ -771,6 +772,66 @@ def efectos_video(capa):
             dys.append("%.3f*(1-clip((%.4f-t)/%.4f,0,1))"
                        % (DESLIZA, t1, sal["dur"]))
     return fades, dys
+
+
+def tamano_imagen(ruta):
+    """(ancho, alto) leídos de la cabecera del fichero, o None.
+
+    PNG y JPEG a mano —es leer unos bytes— y ffprobe de respaldo para lo
+    demás. Hace falta para el Ken Burns: `zoompan` exige el tamaño de salida
+    en números de verdad, no en expresiones.
+    """
+    try:
+        with open(ruta, "rb") as f:
+            cab = f.read(24)
+            if cab[:8] == b"\x89PNG\r\n\x1a\n" and len(cab) >= 24:
+                return (int.from_bytes(cab[16:20], "big"),
+                        int.from_bytes(cab[20:24], "big"))
+            if cab[:2] == b"\xff\xd8":
+                #  JPEG: saltar de marca en marca hasta el SOF, que es quien
+                #  lleva el tamaño. C4, C8 y CC parecen SOF y no lo son.
+                f.seek(2)
+                while True:
+                    marca = f.read(4)
+                    if len(marca) < 4 or marca[0] != 0xFF:
+                        break
+                    tipo = marca[1]
+                    largo = int.from_bytes(marca[2:4], "big")
+                    if 0xC0 <= tipo <= 0xCF and tipo not in (0xC4, 0xC8, 0xCC):
+                        datos = f.read(5)
+                        if len(datos) < 5:
+                            break
+                        return (int.from_bytes(datos[3:5], "big"),
+                                int.from_bytes(datos[1:3], "big"))
+                    f.seek(largo - 2, 1)
+    except OSError:
+        return None
+    p = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v:0",
+         "-show_entries", "stream=width,height", "-of", "csv=p=0", ruta],
+        capture_output=True, text=True)
+    partes = p.stdout.strip().split(",")
+    if len(partes) == 2 and partes[0].isdigit() and partes[1].isdigit():
+        return (int(partes[0]), int(partes[1]))
+    return None
+
+
+def kenburns_de(capa):
+    """El Ken Burns de una capa de imagen, normalizado, o None.
+
+    {desde, hasta}: cuánto zoom al empezar y al acabar su ventana, por DENTRO
+    de la huella —la capa no cambia de tamaño, respira el contenido—. Acotado
+    a 1..3: por debajo de 1 zoompan no sabe alejarse y por encima de 3 una
+    foto normal ya es papilla.
+    """
+    kb = capa.get("kenburns") or {}
+    if capa.get("tipo") != "imagen":
+        return None
+    z0 = encaja(float(kb.get("desde", 1.0) or 1.0), 1.0, 3.0)
+    z1 = encaja(float(kb.get("hasta", 1.0) or 1.0), 1.0, 3.0)
+    if abs(z1 - z0) < 0.01:
+        return None
+    return {"desde": z0, "hasta": z1}
 
 
 def alfa_texto(capa):
@@ -978,7 +1039,31 @@ def rama_capa(n, idx, capa, ancho, alto, entra):
                            expresion_animada(capa, "rotacion", rotacion))
         else:
             filtros.append("rotate=%.6f*PI/180:fillcolor=none" % rotacion)
-    if capa.get("keyframes"):
+    #  El Ken Burns: zoom por DENTRO de la huella, con zoompan, que es el
+    #  único camino que de verdad anima un tamaño —las expresiones de `scale`
+    #  están congeladas, ver arriba—. La capa no cambia de medida: se acerca
+    #  su contenido, con el recorte centrado. Exige saber cuánto mide la
+    #  imagen, porque `s=` solo acepta números; si no se puede medir, la capa
+    #  se queda quieta y ya.
+    kb = kenburns_de(capa)
+    dim = tamano_imagen(capa.get("ruta", "")) if kb else None
+    if kb and dim:
+        iw, ih = dim
+        hf = max(2, int(round(ancho_capa * ih / max(1, iw))))
+        zmax = max(kb["desde"], kb["hasta"])
+        t0, t1 = float(capa.get("t0", 0.0)), float(capa.get("t1", 0.0))
+        progreso = "clip((it-%.4f)/%.4f,0,1)" % (t0, max(0.05, t1 - t0))
+        if capa.get("suave"):
+            progreso = "%s*%s*(3-2*%s)" % (progreso, progreso, progreso)
+        #  Se escala ANTES a lo que pide el zoom máximo: zoompan recorta de su
+        #  entrada, y recortar de una imagen justa es inventar píxeles.
+        filtros.append("scale=%d:-1" % int(round(ancho_capa * zmax + 2)))
+        filtros.append(
+            "zoompan=z='%.4f+%.4f*%s':x='iw/2-iw/zoom/2':"
+            "y='ih/2-ih/zoom/2':d=1:s=%dx%d:fps=25"
+            % (kb["desde"], kb["hasta"] - kb["desde"], progreso,
+               ancho_capa, hf))
+    elif capa.get("keyframes"):
         filtros.append("scale=w='round(%d*%s)':h=-1:eval=frame" % (ancho, escala_expr))
     else:
         filtros.append("scale=%d:-1" % ancho_capa)

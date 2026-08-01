@@ -346,6 +346,70 @@ ColumnLayout {
         }
     }
 
+    //  El Ken Burns: la foto quieta que respira. Zoom por dentro de la
+    //  huella —la capa no cambia de tamaño— a lo largo de su ventana.
+    IslandLabel {
+        visible: Editor.capaSel && Editor.capaSel.tipo === "imagen"
+        text: Idioma.t("Ken Burns")
+        color: Theme.dim
+        font.pixelSize: 9
+        font.capitalization: Font.AllUppercase
+        font.weight: Font.DemiBold
+    }
+
+    RowLayout {
+        visible: Editor.capaSel && Editor.capaSel.tipo === "imagen"
+        Layout.fillWidth: true
+        spacing: 3
+
+        Repeater {
+            model: [
+                { id: "",        nombre: Idioma.t("Nada") },
+                { id: "acercar", nombre: Idioma.t("Acercar") },
+                { id: "alejar",  nombre: Idioma.t("Alejar") }
+            ]
+
+            delegate: Rectangle {
+                id: chipKb
+                required property var modelData
+
+                readonly property var kb: Editor.capaSel
+                    ? Editor.capaSel.kenburns : null
+                readonly property string puestoId: !kb ? ""
+                    : (Number(kb.hasta) > Number(kb.desde) ? "acercar"
+                                                           : "alejar")
+                readonly property bool puesta: puestoId === chipKb.modelData.id
+
+                Layout.fillWidth: true
+                Layout.preferredHeight: 24
+                radius: 12
+                color: chipKb.puesta ? Theme.blue
+                     : kbRaton.containsMouse ? Theme.surfaceHi : Theme.surface
+
+                IslandLabel {
+                    anchors.centerIn: parent
+                    text: chipKb.modelData.nombre
+                    color: chipKb.puesta ? "#ffffff" : Theme.muted
+                    font.pixelSize: 10
+                    font.weight: chipKb.puesta ? Font.DemiBold : Font.Normal
+                }
+
+                MouseArea {
+                    id: kbRaton
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Editor.fijarCapa(Editor.idSel, {
+                        kenburns: chipKb.modelData.id === "" ? null
+                            : chipKb.modelData.id === "acercar"
+                            ? { desde: 1.0, hasta: 1.25 }
+                            : { desde: 1.25, hasta: 1.0 }
+                    })
+                }
+            }
+        }
+    }
+
     // Inspector numérico: permite repetir posiciones y
     // tamaños con precisión, sin depender del ratón.
     GridLayout {

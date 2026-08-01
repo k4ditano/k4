@@ -1169,6 +1169,64 @@ def prueba_efecto_no_toca_una_capa_quieta():
     igual("la escala sigue siendo un número", "scale=480:-1" in texto, True)
 
 
+def png_de_prueba(nombre, ancho, alto):
+    """Un PNG mínimo de verdad, para lo que necesita leer cabeceras."""
+    import struct, zlib
+    def bloque(tipo, datos):
+        return (struct.pack(">I", len(datos)) + tipo + datos
+                + struct.pack(">I", zlib.crc32(tipo + datos)))
+    ihdr = struct.pack(">IIBBBBB", ancho, alto, 8, 2, 0, 0, 0)
+    idat = zlib.compress((b"\x00" + b"\x7f\x7f\x7f" * ancho) * alto)
+    ruta = os.path.join(BORRADOR, nombre)
+    with open(ruta, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n" + bloque(b"IHDR", ihdr)
+                + bloque(b"IDAT", idat) + bloque(b"IEND", b""))
+    return ruta
+
+
+def prueba_tamano_imagen():
+    ruta = png_de_prueba("medible.png", 200, 100)
+    igual("el PNG se mide por su cabecera",
+          editar.tamano_imagen(ruta), (200, 100))
+    igual("un fichero vacío no es una imagen",
+          editar.tamano_imagen(fichero("vacio.bin")), None)
+
+
+def prueba_kenburns_mete_zoompan():
+    """El zoom por dentro va con zoompan, que es lo único que anima un tamaño
+    de verdad; conserva la huella (s=an×al de la capa) y su rampa recorre la
+    ventana."""
+    ruta = png_de_prueba("kb.png", 200, 100)
+    texto, _ = editar.grafo(con_capas(
+        [capa(ruta=ruta, kenburns={"desde": 1.0, "hasta": 1.25})]))
+    igual("zoompan con la rampa de la ventana",
+          "zoompan=z='1.0000+0.2500*clip((it-2.0000)/2.0000,0,1)'" in texto,
+          True)
+    igual("la huella no cambia: 480×240 de un PNG 2:1",
+          "s=480x240" in texto, True)
+    igual("y se escala de más antes de recortar", "scale=602:-1" in texto, True)
+
+
+def prueba_kenburns_sin_tamano_se_queda_quieto():
+    """Una imagen que no se puede medir no puede respirar: capa quieta, y el
+    render sale igual que siempre en vez de caerse."""
+    texto, _ = editar.grafo(con_capas(
+        [capa(kenburns={"desde": 1.0, "hasta": 1.25})]))
+    #  Ojo: el zoompan de la CÁMARA siempre está; lo que no puede aparecer es
+    #  el del Ken Burns, que se reconoce por su rampa con `it`.
+    igual("sin tamaño no hay zoompan de capa", "*clip((it-" in texto, False)
+    igual("la escala de siempre", "scale=480:-1" in texto, True)
+
+
+def prueba_kenburns_suave_lleva_smoothstep():
+    ruta = png_de_prueba("kb2.png", 100, 100)
+    texto, _ = editar.grafo(con_capas(
+        [capa(ruta=ruta, suave=True,
+              kenburns={"desde": 1.25, "hasta": 1.0})]))
+    igual("la rampa del zoom también se suaviza",
+          "*(3-2*clip((it-2.0000)/2.0000,0,1))'" in texto, True)
+
+
 def prueba_keyframes_suaves():
     """`suave: true` mete la smoothstep u²(3−2u) en la expresión; sin él la
     recta de siempre, intacta."""

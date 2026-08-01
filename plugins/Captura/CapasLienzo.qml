@@ -184,6 +184,23 @@ Item {
                 + (modelData.salida && modelData.salida.tipo === "deslizar"
                     ? 0.08 * (1 - rampaEfecto(modelData.salida, false)) : 0)
 
+            //  El Ken Burns de la previa: el mismo zoom por dentro que hace
+            //  zoompan en el render, con su recorte centrado y su misma
+            //  rampa. La capa no cambia de tamaño; respira su contenido.
+            readonly property real zoomKenburns: {
+                const kb = modelData.kenburns
+                if (!kb)
+                    return 1
+                const z0 = Math.max(1, Math.min(3, Number(kb.desde) || 1))
+                const z1 = Math.max(1, Math.min(3, Number(kb.hasta) || 1))
+                let u = (lienzo.segundos - modelData.t0)
+                    / Math.max(0.05, modelData.t1 - modelData.t0)
+                u = Math.max(0, Math.min(1, u))
+                if (modelData.suave)
+                    u = u * u * (3 - 2 * u)
+                return z0 + (z1 - z0) * u
+            }
+
             readonly property bool esTexto: modelData.tipo === "texto"
             readonly property bool esPip: modelData.tipo === "video"
             readonly property bool esZona: modelData.tipo === "zona"
@@ -419,18 +436,27 @@ Item {
                 }
             }
 
-            Image {
-                id: imagen
+            //  Con marco recortado: el zoom del Ken Burns agranda la imagen
+            //  por dentro y lo que se sale por los bordes no se ve, igual
+            //  que hace zoompan con su ventana.
+            Item {
                 anchors.fill: parent
+                clip: true
                 visible: !capa.esTexto && !capa.esPip && !capa.esZona
-                source: !capa.esTexto && !capa.esPip && capa.modelData.ruta
-                    ? "file://" + capa.modelData.ruta : ""
-                fillMode: Image.Stretch
-                // El PNG llega a menudo mucho más grande que el hueco; sin esto
-                // se guarda en memoria a tamaño completo por cada capa.
-                sourceSize.width: Math.max(64, width)
-                smooth: true
-                asynchronous: true
+
+                Image {
+                    id: imagen
+                    anchors.fill: parent
+                    scale: capa.zoomKenburns
+                    source: !capa.esTexto && !capa.esPip && capa.modelData.ruta
+                        ? "file://" + capa.modelData.ruta : ""
+                    fillMode: Image.Stretch
+                    // El PNG llega a menudo mucho más grande que el hueco; sin esto
+                    // se guarda en memoria a tamaño completo por cada capa.
+                    sourceSize.width: Math.max(64, width)
+                    smooth: true
+                    asynchronous: true
+                }
             }
 
             // ── el rótulo ─────────────────────────────────────────
