@@ -1,11 +1,11 @@
-# Crear un plugin
+# Creating a plugin
 
-k4 carga plugins de dos sitios: los del repositorio (`plugins/`) y los del
-usuario en **`~/.config/k4/plugins/<id>/`**. Esta guía es para los segundos:
-no hace falta tocar el repositorio para escribir uno.
+k4 loads plugins from two places: the repository's (`plugins/`) and the
+user's in **`~/.config/k4/plugins/<id>/`**. This guide is for the latter:
+you do not need to touch the repository to write one.
 
-El ejemplo completo de esta guía está en `ejemplos/hola/` y se puede copiar
-tal cual:
+The complete example for this guide lives in `ejemplos/hola/` and can be
+copied as is:
 
 ```sh
 cp -r ejemplos/hola ~/.config/k4/plugins/
@@ -13,36 +13,38 @@ quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4 pluginEnable hola
 quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4.hola toggle
 ```
 
-## 0 · Instalar uno que ya existe
+## 0 · Installing one that already exists
 
-Si alguien publicó un plugin en un repositorio:
+If someone published a plugin in a repository:
 
 ```sh
 python3 tools/plugins.py --instalar https://github.com/quien/su-plugin
 ```
 
-Clona a un temporal, lo valida entero ahí, y **solo entonces** enseña qué
-dice ser y qué permisos declara, y pregunta. Nada llega a tu directorio de
-plugins sin haber pasado el mismo examen que pasan los ya instalados: no
-existe el «medio instalado y roto». Si el QML usa algo que el manifiesto no
-declara, se rechaza antes de tocar el disco.
+It clones to a temporary directory, validates the whole thing there, and
+**only then** shows what it claims to be and which permissions it declares,
+and asks. Nothing reaches your plugin directory without passing the same
+exam the installed ones pass: there is no "half installed and broken". If
+the QML uses something the manifest does not declare, it is rejected before
+touching the disk.
 
-Llega **apagado**. Encenderlo es otra decisión y se toma en Ajustes, viendo
-esos mismos permisos.
+It arrives **off**. Turning it on is a separate decision, made in Settings,
+looking at those same permissions.
 
 ```sh
-python3 tools/plugins.py --instalados        # qué tienes y de dónde vino
-python3 tools/plugins.py --actualizar snake  # reinstala desde su origen
-python3 tools/plugins.py --quitar snake      # desinstala (--con-estado borra
-                                             # también lo que guardó)
+python3 tools/plugins.py --instalados        # what you have and where it came from
+python3 tools/plugins.py --actualizar snake  # reinstall from its origin
+python3 tools/plugins.py --quitar snake      # uninstall (--con-estado also
+                                             # deletes what it saved)
 ```
 
-Con la barra en marcha, `k4 pluginRefresh` le hace releer el catálogo: lo
-recién instalado aparece y lo quitado desaparece sin reiniciar nada. Y tras
-actualizar uno encendido, `k4 pluginReload <id>` cambia el código que corre
-—en la barra sigue vivo el de antes hasta que se lo digas.
+With the bar running, `k4 pluginRefresh` makes it re-read the catalog: what
+you just installed appears and what you removed disappears without
+restarting anything. And after updating an enabled one, `k4 pluginReload
+<id>` swaps the running code — the old one stays alive in the bar until you
+say so.
 
-## 1 · La carpeta y el manifiesto
+## 1 · The directory and the manifest
 
 ```text
 ~/.config/k4/plugins/hola/
@@ -51,7 +53,7 @@ actualizar uno encendido, `k4 pluginReload <id>` cambia el código que corre
 └── HolaView.qml
 ```
 
-`plugin.json` es el manifiesto:
+`plugin.json` is the manifest:
 
 ```json
 {
@@ -65,36 +67,38 @@ actualizar uno encendido, `k4 pluginReload <id>` cambia el código que corre
 }
 ```
 
-- `id`: minúsculas, sin espacios, y **tiene que coincidir con el nombre de la
-  carpeta**. Si choca con un plugin de la barra, pierde el tuyo.
-- `entry`: el fichero que hereda de `K4.Plugin`, dentro de la propia carpeta.
-- `host`: la versión mínima de barra que necesitas (`>=x.y.z`).
-- `icono`: tu icono, de una de estas dos clases:
-  - **un códice de la Nerd Font** en texto, `"0xF011A"` — búscalo con
-    `python3 tools/glifos.py <palabra>`. Hereda el color del tema, así que
-    queda como el resto de la barra y se apaga y se tiñe con ella.
-  - **tu propia imagen**, `"icono.png"`: un fichero PNG o SVG **de tu
-    carpeta** (sin rutas: tu icono es tuyo). El PNG tiene que ser de al menos
-    **64×64** —por debajo se ve borroso justo donde más se mira, y un icono
-    pixelado hace que un plugin bueno parezca malo— y pesar menos de 1 MB. El
-    SVG no lleva mínimo, que para eso escala.
+- `id`: lowercase, no spaces, and it **must match the directory name**. If
+  it collides with one of the bar's plugins, yours loses.
+- `entry`: the file that inherits from `K4.Plugin`, inside the directory
+  itself.
+- `host`: the minimum bar version you need (`>=x.y.z`).
+- `icono`: your icon, of one of these two kinds:
+  - **a Nerd Font codepoint** as text, `"0xF011A"` — find it with
+    `python3 tools/glifos.py <word>`. It inherits the theme's color, so it
+    looks like the rest of the bar and dims and tints along with it.
+  - **your own image**, `"icono.png"`: a PNG or SVG file **from your
+    directory** (no paths: your icon is yours). A PNG must be at least
+    **64×64** — below that it looks blurry exactly where people look the
+    most, and a pixelated icon makes a good plugin look bad — and weigh
+    less than 1 MB. SVG has no minimum, that is what scaling is for.
 
-  Se valida al instalar: un icono que no existe, demasiado pequeño o en un
-  formato raro es un error de instalación y no un cuadradito vacío en el
-  centro de aplicaciones. Sale en Ajustes, en el centro de aplicaciones y en
-  los accesos directos del centro de control.
-- `aplicacion`: `true` si lo tuyo es algo que se **abre y se usa** —un juego,
-  una herramienta— y no un indicador o un servicio. Con eso apareces en el
-  centro de aplicaciones (SUPER+SHIFT+Space) y te pueden anclar a la franja
-  del centro de control —donde además se reordenan arrastrándolos—. Además apareces al escribir en el lanzador
-  (SUPER+Space), que sigue siendo otro cajón —el de las aplicaciones del
-  escritorio— pero encuentra las dos cosas.
-- `permisos`: qué capacidades usas — ver más abajo. Vacío si solo pintas.
+  It is validated at install time: an icon that does not exist, is too
+  small or comes in a strange format is an installation error, not an empty
+  little square in the application center. It shows up in Settings, in the
+  application center and in the control center's shortcuts.
+- `aplicacion`: `true` if yours is something that is **opened and used** —
+  a game, a tool — and not an indicator or a service. With it you appear in
+  the application center (SUPER+SHIFT+Space) and you can be pinned to the
+  control center strip — where shortcuts are also reordered by dragging.
+  You also appear when typing in the launcher (SUPER+Space), which remains
+  a different drawer — the desktop applications' one — but finds both.
+- `permisos`: which capabilities you use — see below. Empty if you only
+  paint.
 
-## 2 · El plugin y la vista
+## 2 · The plugin and the view
 
-El plugin es el estado: vive siempre, tenga o no la island. La vista solo
-pinta, y solo existe mientras el plugin tiene la island.
+The plugin is the state: it lives always, island or no island. The view
+only paints, and only exists while the plugin holds the island.
 
 ```qml
 // HolaPlugin.qml
@@ -135,125 +139,130 @@ Item {
 }
 ```
 
-### El tamaño es tuyo
+### The size is yours
 
-`islandWidth` e `islandHeight` los pides tú, y **puedes cambiarlos en vivo**:
-un plugin puede ser una tira de 200×150 y convertirse en una pantalla grande
-según lo que esté haciendo. El editor de vídeo de la barra hace justo eso.
+You ask for `islandWidth` and `islandHeight`, and **you can change them
+live**: a plugin can be a 200×150 strip and turn into a big screen
+depending on what it is doing. The bar's video editor does exactly that.
 
 ```qml
 islandWidth:  modo === "mini" ? 200 : 980
 islandHeight: modo === "mini" ? 150 : K4.Isla.altoMaximo
 ```
 
-El tope de alto es `K4.Isla.altoMaximo` (880 hoy). Pedir más no rompe nada
-pero tampoco crece: lo que sobra se recorta, y una pantalla que no se puede
-ver entera es peor que una más pequeña. Si tu contenido puede crecer sin
-límite, mételo en un `K4.Rodillo` y deja el alto fijo.
+The height ceiling is `K4.Isla.altoMaximo` (880 today). Asking for more
+breaks nothing but does not grow either: the excess is clipped, and a
+screen that cannot be seen whole is worse than a smaller one. If your
+content can grow without limit, put it in a `K4.Rodillo` and keep the
+height fixed.
 
-Reglas que la barra hace cumplir:
+Rules the bar enforces:
 
-- **Un plugin importa QtQuick y K4. Nada más.** Desde tu carpeta no hay ruta
-  a los servicios internos, y así es a propósito: la API pública es el
-  contrato que no se te rompe al actualizar.
-- El id raíz conviene que sea `self`: una vista con `required property var
-  plugin` puede tapar un id que se llame igual.
-Si te declaras `aplicacion`, la barra te abrirá llamando a `abrir()`. Por
-defecto usa tu `toggle()`, que es lo que ya tienen casi todos; redefínela si
-necesitas otra cosa —por ejemplo abrir siempre en vez de alternar.
+- **A plugin imports QtQuick and K4. Nothing else.** From your directory
+  there is no path to the internal services, and that is on purpose: the
+  public API is the contract that does not break under your feet on update.
+- The root id should be `self`: a view with `required property var plugin`
+  can shadow an id with the same name.
+If you declare yourself `aplicacion`, the bar will open you by calling
+`abrir()`. By default it uses your `toggle()`, which is what almost all of
+them already have; redefine it if you need something else — for example
+always opening instead of toggling.
 
-- Procesos, timers e IPC van como hijos del `K4.Plugin`, no de la vista: la
-  vista se destruye cada vez que pierdes la island.
+- Processes, timers and IPC go as children of the `K4.Plugin`, not of the
+  view: the view is destroyed every time you lose the island.
 
-## 3 · Lo que la API te da
+## 3 · What the API gives you
 
-| Tipo | Para qué |
+| Type | What for |
 |---|---|
-| `K4.Plugin` | el contrato: island, prioridad, teclado, vista |
-| `K4.Tema` | la paleta (`tinta`, `superficie`, `apagado`…) y las fuentes |
-| `K4.Etiqueta` | texto con los defaults de la barra |
-| `K4.Glifo` | un icono de la Nerd Font (búscalos con `tools/glifos.py`) |
-| `K4.Icono` | un icono del tema del escritorio, por nombre |
-| `K4.Interruptor` | el switch de la barra; avisa, no cambia solo |
-| `K4.Deslizador` | deslizador con etiqueta y valor |
-| `K4.Baldosa` | la tarjeta pulsable del centro de control |
-| `K4.Boton` | botón redondo de un glifo |
-| `K4.Rodillo` | zona con scroll **que sí obedece a la rueda** |
-| `K4.Aparicion` | entra con un fundido en vez de dar un salto |
-| `K4.FocoInicial` | lleva el cursor a tu campo de texto al abrir |
-| `K4.Idioma` | `t()` y `f()` — sin diccionario devuelven el texto tal cual |
-| `K4.Guardado` | tu estado en JSON, en TU directorio, con `cargado`/`guardar` |
-| `K4.Ipc` | tu target de IPC (`k4.<id>`) |
-| `K4.Process` | procesos externos — requiere el permiso `procesos` |
-| `K4.Sonido` | un sonido corto — requiere el permiso `sonido` |
-| `K4.Fichero` | leer y escribir ficheros — requiere `ficheros` |
-| `K4.Pildora` | un indicador en la píldora plegada |
-| `K4.Paths` | rutas: `estadoDe(id)` es tu directorio de estado |
-| `K4.IconoPlugin` | el icono de un plugin: su imagen si trae, y si no su glifo |
+| `K4.Plugin` | the contract: island, priority, keyboard, view |
+| `K4.Tema` | the palette (`tinta`, `superficie`, `apagado`…) and the fonts |
+| `K4.Etiqueta` | text with the bar's defaults |
+| `K4.Glifo` | a Nerd Font icon (find them with `tools/glifos.py`) |
+| `K4.Icono` | a desktop-theme icon, by name |
+| `K4.Interruptor` | the bar's switch; it notifies, it does not flip itself |
+| `K4.Deslizador` | slider with label and value |
+| `K4.Baldosa` | the control center's pressable card |
+| `K4.Boton` | round one-glyph button |
+| `K4.Rodillo` | a scrolling area **that actually obeys the wheel** |
+| `K4.Aparicion` | enters with a fade instead of popping |
+| `K4.FocoInicial` | moves the cursor to your text field on open |
+| `K4.Idioma` | `t()` and `f()` — with no dictionary they return the text as is |
+| `K4.Guardado` | your state as JSON, in YOUR directory, with `cargado`/`guardar` |
+| `K4.Ipc` | your IPC target (`k4.<id>`) |
+| `K4.Process` | external processes — requires the `procesos` permission |
+| `K4.Sonido` | a short sound — requires the `sonido` permission |
+| `K4.Fichero` | reading and writing files — requires `ficheros` |
+| `K4.Pildora` | an indicator on the folded pill |
+| `K4.Paths` | paths: `estadoDe(id)` is your state directory |
+| `K4.IconoPlugin` | a plugin's icon: its image if it brings one, its glyph if not |
 
-Y lo que hace falta cuando lo tuyo se sale de la island:
+And what you need when yours grows past the island:
 
-| Tipo | Para qué |
+| Type | What for |
 |---|---|
-| `K4.Ventana` | una ventana propia, aparte de la island: un selector a pantalla completa, un editor, algo a lo que dedicarle sitio de verdad |
-| `K4.PorPantalla` | una copia de lo tuyo por cada monitor — con dos pantallas casi nada quiere existir una sola vez |
-| `K4.Cargador` | carga lo caro solo cuando hace falta y lo suelta al dejar de hacer falta |
-| `K4.Atajo` | un atajo global, de los que funcionan tenga el foco quien lo tenga. Aquí declaras el nombre; atarlo a una tecla es cosa de la configuración del compositor |
-| `K4.Apps` | las aplicaciones instaladas: nombre, icono, cómo se lanzan |
-| `K4.Sistema` | lo suelto: lanzar cosas, mirar el entorno, encontrar iconos |
-| `K4.MenuBandeja` | el menú que publica un icono de la bandeja |
-| `K4.BloqueoSesion` | bloquear la sesión de verdad (`ext-session-lock`) |
-| `K4.SuperficieBloqueo` | lo que se dibuja mientras está bloqueada, una por monitor |
-| `K4.Autenticacion` | comprobar que quien está delante es quien dice ser, vía PAM |
+| `K4.Ventana` | a window of your own, apart from the island: a full-screen picker, an editor, something worth real space |
+| `K4.PorPantalla` | one copy of yours per monitor — with two screens almost nothing wants to exist once |
+| `K4.Cargador` | loads the expensive part only when needed and drops it when not |
+| `K4.Atajo` | a global shortcut, the kind that works no matter who has focus. Here you declare the name; binding it to a key belongs to the compositor's configuration |
+| `K4.Apps` | the installed applications: name, icon, how to launch them |
+| `K4.Sistema` | the loose ends: launching things, reading the environment, finding icons |
+| `K4.MenuBandeja` | the menu a tray icon publishes |
+| `K4.BloqueoSesion` | locking the session for real (`ext-session-lock`) |
+| `K4.SuperficieBloqueo` | what is drawn while locked, one per monitor |
+| `K4.Autenticacion` | checking that whoever is in front is who they claim, via PAM |
 
-Las cuatro últimas son para reemplazar piezas de la barra —una pantalla de
-bloqueo propia, otra bandeja— más que para un plugin corriente. Están aquí
-porque los módulos de casa las usan y la regla es la misma para todos: si un
-plugin del repositorio puede, uno de fuera también.
+The last four are for replacing pieces of the bar — a lock screen of your
+own, another tray — more than for an ordinary plugin. They are here because
+the built-in modules use them and the rule is the same for everyone: if a
+repository plugin can, an outside one can too.
 
-(`K4.Puente` también existe y **no es para ti**: es por donde la barra le pasa
-a la API lo que necesita. Solo lo toca quien implemente la API en otro host.)
+(`K4.Puente` also exists and **is not for you**: it is how the bar hands
+the API what it needs. Only someone implementing the API on another host
+touches it.)
 
-Y los datos vivos del sistema:
+And the live system data:
 
-| Tipo | Qué da | Escribir pide |
+| Type | What it gives | Writing requires |
 |---|---|---|
-| `K4.Audio` | volumen, silencio | `audio` |
-| `K4.Medios` | qué suena: título, artista, carátula, posición | `medios` |
-| `K4.Notificaciones` | las que llegan, con señal `llego()` | `notificaciones` |
-| `K4.Red` | Wi‑Fi y Bluetooth — **solo lectura, sin excepción** | — |
-| `K4.Escritorios` | cuáles hay y en cuál estás | — |
-| `K4.Portapapeles` | el historial — **leer ya pide** `portapapeles` | `portapapeles` |
-| `K4.Reloj` | la hora, del reloj único de la barra | — |
+| `K4.Audio` | volume, mute | `audio` |
+| `K4.Medios` | what is playing: title, artist, artwork, position | `medios` |
+| `K4.Notificaciones` | the ones that arrive, with the `llego()` signal | `notificaciones` |
+| `K4.Red` | Wi‑Fi and Bluetooth — **read-only, no exceptions** | — |
+| `K4.Escritorios` | which ones exist and which one you are on | — |
+| `K4.Portapapeles` | the history — **just reading already requires** `portapapeles` | `portapapeles` |
+| `K4.Reloj` | the time, from the bar's single clock | — |
 
-La línea la marca el efecto, no el módulo: mirar el volumen no le hace nada a
-nadie, subirlo sí. El portapapeles va al revés porque guarda contraseñas y
-tokens — ahí lo delicado es leer. Y conectarse a una red o emparejar un
-aparato no se abre ni con permiso: equivocarse ahí cuesta quedarse sin red o
-entregarle el portátil a un desconocido, y ninguna idea de plugin lo compensa.
+The line is drawn by the effect, not the module: looking at the volume does
+nothing to anyone, raising it does. The clipboard goes the other way
+because it holds passwords and tokens — there, the delicate part is
+reading. And connecting to a network or pairing a device does not open even
+with a permission: a mistake there costs your connectivity or hands your
+laptop to a stranger, and no plugin idea makes up for that.
 
-`K4.Medios.posicion` solo avanza si alguien la mira: llama a
-`seguirPosicion()` al montar tu vista y a `dejarPosicion()` al soltarla, o el
-temporizador no corre.
+`K4.Medios.posicion` only advances if someone is watching: call
+`seguirPosicion()` when your view mounts and `dejarPosicion()` when you
+drop it, or the timer does not run.
 
-Con esas piezas tu plugin tiene la MISMA cara que la barra sin dibujar un
-rectángulo: `ejemplos/piezas/` es el muestrario, copiable y ejecutable. Y una
-advertencia que te ahorra una tarde: si metes tu lista en un `Flickable`
-normal y sus filas tienen hover o clic, **la rueda no funcionará** —un
-MouseArea acepta la rueda tenga o no manejador— y no dará ningún error. Por
-eso existe `K4.Rodillo`.
+With those pieces your plugin has the SAME face as the bar without drawing
+a rectangle: `ejemplos/piezas/` is the showcase, copyable and runnable. And
+a warning that saves you an afternoon: if you put your list in a plain
+`Flickable` and its rows have hover or click, **the wheel will not work** —
+a MouseArea accepts the wheel whether it handles it or not — and no error
+will be raised. That is why `K4.Rodillo` exists.
 
-Para un juego: `K4.Guardado` es la partida y el récord, `grabKeyboard: true`
-mientras se juega te da el teclado entero, y un `Timer` es el tick. La
-Mazmorra del repo (`plugins/Game/`) es la referencia de que da para mucho.
+For a game: `K4.Guardado` is the save and the high score,
+`grabKeyboard: true` while playing gives you the whole keyboard, and a
+`Timer` is the tick. The repo's dungeon (`plugins/Game/`) is the proof it
+can go far.
 
-## 3b · Salir en sitios que no son tuyos
+## 3b · Showing up in places that are not yours
 
-Un plugin no tiene por qué vivir solo dentro de su island.
+A plugin does not have to live only inside its island.
 
-**Tus ajustes, en Ajustes.** Sin esto, dos opciones te obligaban a inventarte
-una pantalla, un botón para abrirla y una forma de guardarlas — y el usuario
-tenía que aprender un sitio nuevo por cada plugin.
+**Your settings, in Settings.** Without this, two options forced you to
+invent a screen, a button to open it and a way to save them — and the user
+had to learn a new place for every plugin.
 
 ```qml
 K4.Ajustes {
@@ -267,11 +276,11 @@ K4.Ajustes {
 }
 ```
 
-Los valores los guardas TÚ: la barra pregunta por `valores` y avisa por
-`cambiado`. Así lo que se enseña es siempre lo que de verdad tienes guardado
-y no una copia que se desincroniza al primer fallo de escritura.
+YOU keep the values: the bar asks through `valores` and notifies through
+`cambiado`. That way what is shown is always what you actually have saved,
+and not a copy that desynchronizes on the first failed write.
 
-Un interruptor por opción es el defecto; `tipo` abre los otros dos:
+A switch per option is the default; `tipo` unlocks the other two:
 
 ```qml
 opciones: [
@@ -286,18 +295,18 @@ opciones: [
 ]
 ```
 
-Una elección enseña sus `alternativas` como chips y `cambiado` trae el
-`codigo` elegido. Un texto es un campo libre —una URL, un modelo, una clave—:
-`pista` es el gris del campo vacío, `secreto: true` lo tapa con puntos en
-cuanto se deja de teclear, y el valor llega al confirmar —Intro o clic
-fuera—, no tecla a tecla. Con esto un plugin que hable con un servicio, una
-IA o un CLI se configura en Ajustes como todo lo demás, sin inventarse una
-pantalla propia.
+A choice shows its `alternativas` as chips and `cambiado` delivers the
+chosen `codigo`. A text is a free field — a URL, a model, a key: `pista` is
+the empty field's gray, `secreto: true` masks it with dots once typing
+stops, and the value arrives on confirm — Enter or a click outside — not
+keystroke by keystroke. With this, a plugin that talks to a service, an AI
+or a CLI configures itself in Settings like everything else, without
+inventing a screen of its own.
 
-**Tus resultados, en el lanzador.** Contestas cuando puedes; si lo tuyo cuesta
-—una consulta por red— no bloqueas a nadie. Lo tuyo sale **debajo** de las
-aplicaciones del sistema: ese panel es el de ellas, y estás ahí para que se te
-pueda encontrar, no para competir.
+**Your results, in the launcher.** You answer when you can; if yours is
+expensive — a network query — you block nobody. Yours shows up **below**
+the system's applications: that panel is theirs, and you are there to be
+findable, not to compete.
 
 ```qml
 K4.Lanzador {
@@ -310,64 +319,67 @@ K4.Lanzador {
 }
 ```
 
-## 3c · La island como escenario
+## 3c · The island as a stage
 
-Tres piezas convierten la barra en parte del juego, no solo en su marco.
+Three pieces turn the bar into part of the game, not just its frame.
 
-**Teñir el ambiente.** `K4.Tema.tintar(tuId, color, fuerza, duracionMs)` tiñe
-el andamio neutro entero —island, superficies, carriles— y todo lo que pinta
-con el tema se recolorea solo. La tinta y los colores con significado (verde,
-rojo…) no se tocan, para que el texto se lea y una alerta siga siendo una
-alerta. La fuerza se recorta a 0,45 en el host; `duracionMs` 0 es «hasta que
-llames a `destintar(tuId)`», y al deshabilitar tu plugin se destiñe solo.
+**Tinting the ambience.** `K4.Tema.tintar(tuId, color, fuerza, duracionMs)`
+tints the whole neutral scaffold — island, surfaces, tracks — and
+everything painted with the theme recolors itself. The ink and the colors
+with meaning (green, red…) are not touched, so text stays readable and an
+alert stays an alert. Strength is capped at 0.45 by the host; `duracionMs`
+0 means "until you call `destintar(tuId)`", and disabling your plugin
+untints on its own.
 
 ```qml
 K4.Tema.tintar("mi-juego", "#26324f", 0.35, 4000)   // abismo, 4 segundos
 ```
 
-**Pedirle gestos.** `K4.Isla.efecto(tuId, nombre, fuerza)` mueve la island
-como un objeto físico: `"sacudida"` (un golpe), `"empujon"` (algo pesado le
-cae encima), `"tiron"` (algo tira de ella, como un pez del sedal). El host
-anima y arbitra: un gesto cada medio segundo como mucho. El efecto raro
-impresiona porque la barra es sobria el resto del tiempo — pídelo en el
-momento que importa y déjalo respirar.
+**Asking for gestures.** `K4.Isla.efecto(tuId, nombre, fuerza)` moves the
+island like a physical object: `"sacudida"` (a hit), `"empujon"` (something
+heavy lands on it), `"tiron"` (something pulls at it, like a fish on the
+line). The host animates and arbitrates: one gesture every half second at
+most. The rare effect impresses because the bar is sober the rest of the
+time — ask for it at the moment that matters and let it breathe.
 
-**Pintar fuera.** `K4.Isla.rect` da la geometría real de la island en
-pantalla (`{ x, y, ancho, alto }`, la principal si hay varias). Con una
-`K4.Ventana` transparente encima de todo y ese rect, cualquier cosa puede
-asomar por el borde, caerse de la barra o pasearse por encima — una mano que
-saluda, la mascota que se descuelga. `ejemplos/efectos/` trae las tres piezas
-funcionando, mano incluida.
+**Painting outside.** `K4.Isla.rect` gives the island's real on-screen
+geometry (`{ x, y, ancho, alto }`, the primary one if there are several).
+With a transparent `K4.Ventana` above everything and that rect, anything
+can peek over the edge, fall off the bar or stroll across it — a waving
+hand, the pet climbing down. `ejemplos/efectos/` ships all three pieces
+working, hand included.
 
-Y como la barra ya no vive solo arriba —en Ajustes se elige el borde—,
-`K4.Isla.posicion` dice cuál es (`"arriba"` o `"abajo"`). El host se encarga
-de lo suyo (anclaje, silueta volteada, gestos hacia dentro de la pantalla);
-lo tuyo es leer `rect` y `posicion` en vez de suponer que arriba es arriba.
+And since the bar no longer lives only at the top — the edge is chosen in
+Settings — `K4.Isla.posicion` says which one it is (`"arriba"` or
+`"abajo"`). The host takes care of its side (anchoring, flipped silhouette,
+gestures pointing into the screen); your side is reading `rect` and
+`posicion` instead of assuming up is up.
 
-**Moverla por el borde.** La island tampoco vive clavada al centro: el
-usuario elige su alineación en Ajustes, y un plugin puede desplazarla
-TEMPORALMENTE con `K4.Isla.colocar(tuId, fraccion, duracionMs)` — 0 pegada a
-la izquierda, 1 a la derecha, animado con el mismo resorte de abrirse.
-Vuelve sola a la base del usuario: por plazo, con `soltar(tuId)`, o al
-deshabilitar tu plugin. Es para lo que dura una escena —la island que
-esquiva un golpe, que hace de pala, que se aparta para enseñar algo detrás—
-no para quedarse: la posición permanente es del usuario. `K4.Isla.colocacion`
-dice la fracción efectiva de ahora mismo.
+**Sliding it along the edge.** The island is not nailed to the center
+either: the user picks its alignment in Settings, and a plugin can move it
+TEMPORARILY with `K4.Isla.colocar(tuId, fraccion, duracionMs)` — 0 flush
+left, 1 flush right, animated with the same spring as opening. It returns
+to the user's base on its own: on timeout, with `soltar(tuId)`, or when
+your plugin is disabled. It is for what a scene lasts — the island dodging
+a hit, playing paddle, stepping aside to show something behind — not for
+staying: the permanent position belongs to the user. `K4.Isla.colocacion`
+tells the effective fraction right now.
 
-**Y `K4.Isla`** para saber si estás a la vista: `abierta`, `ocupadaPor`,
-`raton`, `altoMaximo`. Solo lectura — quién ocupa la island lo decide el host
-comparando prioridades, que es la única forma de que dos plugins no se peleen
-por la pantalla. Úsalo para no animar ni sondear cuando no te ve nadie.
+**And `K4.Isla`** to know whether you are on display: `abierta`,
+`ocupadaPor`, `raton`, `altoMaximo`. Read-only — who holds the island is
+decided by the host comparing priorities, which is the only way two plugins
+do not fight over the screen. Use it to skip animating and polling when
+nobody is watching.
 
-Los tres se dan de baja solos cuando tu plugin se destruye —apagarlo,
-recargarlo, desinstalarlo—, y el gestor barre además por id: una fila de
-Ajustes que llame a un plugin muerto no puede existir.
+All three deregister on their own when your plugin is destroyed — disabled,
+reloaded, uninstalled — and the manager also sweeps by id: a Settings row
+that calls a dead plugin cannot exist.
 
-## 4 · Permisos
+## 4 · Permissions
 
-El manifiesto declara lo que usas; la barra lo comprueba **antes de listar**:
+The manifest declares what you use; the bar checks it **before listing**:
 
-| Permiso | Lo delata |
+| Permission | What betrays it |
 |---|---|
 | `procesos` | `K4.Process` |
 | `red` | `XMLHttpRequest`, `WebSocket` |
@@ -376,51 +388,55 @@ El manifiesto declara lo que usas; la barra lo comprueba **antes de listar**:
 | `audio` | `K4.Audio.ponerVolumen`, `K4.Audio.alternarSilencio` |
 | `medios` | `K4.Medios.alternarPausa`, `.siguiente`, `.anterior`, `.buscar` |
 | `notificaciones` | `K4.Notificaciones.limpiar` |
-| `portapapeles` | `K4.Portapapeles` — **también solo leerlo** |
+| `portapapeles` | `K4.Portapapeles` — **even just reading it** |
 
-Los ocho, y fíjate dónde cae la línea: se vigila `ponerVolumen` y no
-`K4.Audio`, porque mirar el volumen no le hace nada a nadie y cambiarlo sí. El
-portapapeles es el único al revés, porque ahí lo delicado es leer.
+All eight, and note where the line falls: `ponerVolumen` is watched and
+`K4.Audio` is not, because looking at the volume does nothing to anyone and
+changing it does. The clipboard is the only one reversed, because there the
+delicate part is reading.
 
-Usar algo sin declararlo hace el plugin **no cargable**, con el motivo en
-Ajustes. Y lo honesto: esto **no es un sandbox**. QML corre en el proceso de
-la barra y un plugin cargado puede hacer lo que la barra pueda hacer. Los
-permisos son consentimiento informado —el usuario los ve antes de encender—
-más un análisis que atrapa el descuido y el engaño simple, no una jaula.
-Instalar un plugin es confiar en su autor.
+Using something without declaring it makes the plugin **not loadable**,
+with the reason in Settings. And the honest part: this **is not a
+sandbox**. QML runs inside the bar's process and a loaded plugin can do
+whatever the bar can do. The permissions are informed consent — the user
+sees them before turning it on — plus an analysis that catches carelessness
+and simple deception, not a cage. Installing a plugin is trusting its
+author.
 
-## 5 · El ciclo de vida
+## 5 · The lifecycle
 
-1. Los plugins de fuera llegan **deshabilitados**: se encienden en Ajustes
-   (o `k4 pluginEnable <id>`), viendo antes descripción y permisos.
-2. Deshabilitado = **no instanciado**: tu IPC ni existe.
-3. Si tu QML no compila, la barra arranca sin ti y Ajustes enseña el error
-   con fichero y línea; «reintentar» recarga del disco tras arreglarlo, sin
-   reiniciar la barra.
-4. `python3 tools/plugins.py` valida tu manifiesto y tus permisos sin
-   arrancar nada.
+1. Outside plugins arrive **disabled**: they are turned on in Settings (or
+   `k4 pluginEnable <id>`), seeing description and permissions first.
+2. Disabled = **not instantiated**: your IPC does not even exist.
+3. If your QML does not compile, the bar starts without you and Settings
+   shows the error with file and line; "retry" reloads from disk after you
+   fix it, without restarting the bar.
+4. `python3 tools/plugins.py` validates your manifest and permissions
+   without starting anything.
 
-### Mientras lo escribes
+### While you write it
 
 ```sh
 quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4 pluginReload hola
 ```
 
-Destruye tu plugin y lo vuelve a crear del disco: editas, recargas, miras. No
-reinicia la barra ni toca a los demás. Recarga la carpeta ENTERA —entrada y
-vistas—, así que vale igual para un retoque en la vista. Si la versión nueva
-no compila, tu plugin queda en error con su motivo y el «reintentar» de
-Ajustes; el resto de la barra ni se entera.
+It destroys your plugin and recreates it from disk: edit, reload, look. It
+does not restart the bar or touch the others. It reloads the WHOLE
+directory — entry and views — so it works just as well for a view tweak. If
+the new version does not compile, your plugin is left in error with its
+reason and the "retry" in Settings; the rest of the bar does not even
+notice.
 
-Un aviso honesto: recargar destruye tu objeto. Lo que tenga estado en memoria
-y no hayas guardado con `K4.Guardado`, se pierde — que para desarrollar suele
-ser justo lo que quieres.
+An honest warning: reloading destroys your object. Whatever holds state in
+memory and was not saved with `K4.Guardado` is lost — which for development
+is usually exactly what you want.
 
-## Plugins del repositorio
+## Repository plugins
 
-Para contribuir un plugin a la propia barra el camino es el mismo contrato,
-con tres diferencias: la carpeta va en `plugins/`, se registra en
-`plugins/catalog.json`, y la carpeta lleva un `qmldir` con todos sus tipos
-(el esquema de URLs de Quickshell no resuelve hermanos sin él —
-`tools/plugins.py` avisa si falta). Los del repo sí pueden usar los servicios
-internos vía `"../../services"`, porque se actualizan con la barra.
+Contributing a plugin to the bar itself follows the same contract, with
+three differences: the directory goes in `plugins/`, it is registered in
+`plugins/catalog.json`, and the directory carries a `qmldir` with all its
+types (Quickshell's URL scheme does not resolve siblings without it —
+`tools/plugins.py` warns if it is missing). Repo plugins CAN use the
+internal services via `"../../services"`, because they update together with
+the bar.

@@ -313,5 +313,5 @@ a plugin is trusting its author.
 Two doors stay shut on purpose: connecting to networks and pairing Bluetooth
 devices are read-only for plugins, with no permission that opens them.
 
-The full guide, in Spanish and kept current by `tools/api.py`, is
+The full guide, kept current by `tools/api.py` and `tools/guia.py`, is
 `docs/PLUGINS.md`. New dependencies still go in `dependencias.tsv`.

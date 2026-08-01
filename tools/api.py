@@ -45,7 +45,7 @@ def revisar_documentacion():
                                    qmldir, re.M)
              if t != "Puente"]
     fallos = []
-    #  Dos guías y las dos cuentan: la larga en castellano para quien escribe
+    #  Dos guías y las dos cuentan: la larga para quien escribe
     #  un plugin, y la tabla en inglés de api/LEEME.md, que es lo primero que
     #  mira quien llega al repositorio. Una API que solo está en una de las dos
     #  acaba contándose distinto en cada sitio.
