@@ -841,6 +841,34 @@ Item {
                 }
             }
 
+            //  La salida vertical para Shorts, al lado de los formatos: es
+            //  la misma clase de decisión —de cada render, no un ajuste—.
+            Rectangle {
+                readonly property bool puesto: Editor.salidaVertical
+                visible: Editor.estado !== "renderizando"
+                Layout.preferredWidth: 40
+                Layout.preferredHeight: 22
+                radius: 11
+                color: puesto ? Theme.surfaceHi : "transparent"
+                border.width: 1
+                border.color: puesto ? Qt.rgba(1, 1, 1, 0.2)
+                                     : Qt.rgba(1, 1, 1, 0.08)
+
+                IslandLabel {
+                    anchors.centerIn: parent
+                    text: "9:16"
+                    color: parent.puesto ? Theme.ink : Theme.dim
+                    font.pixelSize: 9
+                    font.weight: parent.puesto ? Font.DemiBold : Font.Normal
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Editor.salidaVertical = !Editor.salidaVertical
+                }
+            }
+
             Rectangle {
                 visible: Editor.estado !== "renderizando"
                 Layout.preferredWidth: renderTexto.implicitWidth + 24

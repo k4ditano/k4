@@ -604,7 +604,40 @@ def cadena_atempo(v):
     return ",".join("atempo=%.6f" % t for t in trozos)
 
 
-def rama_audio(i, idx, clip, fuente, dur, fundido=""):
+#  Las transiciones de los cortes, con nombre de casa y filtro de ffmpeg.
+XFADE = {"encadenado": "fade", "deslizar": "slideleft", "barrido": "wipeleft"}
+
+
+def transicion_de(plan):
+    """La transición de los cortes, normalizada, o None si es corte seco.
+
+    Global y no por corte, como los fundidos: es una decisión del montaje
+    entero. La duración se acota a 0,15–1: por debajo no se ve y por encima
+    ya no es una transición, es un efecto.
+    """
+    tr = plan.get("transicion") or {}
+    tipo = tr.get("tipo") or ""
+    if tipo not in XFADE:
+        return None
+    return {"tipo": XFADE[tipo],
+            "dur": encaja(float(tr.get("dur", 0.5) or 0.5), 0.15, 1.0)}
+
+
+def duraciones_transicion(tramos, tr):
+    """Cuánto dura la transición en CADA corte, acotada a los vecinos.
+
+    Un corte entre dos trozos cortos no puede llevarse media vida de ambos:
+    se recorta al 45 % del más breve, que deja siempre trozo a la vista.
+    """
+    D = []
+    for i in range(len(tramos) - 1):
+        d0 = tramos[i][1] - tramos[i][0]
+        d1 = tramos[i + 1][1] - tramos[i + 1][0]
+        D.append(max(0.05, min(tr["dur"], 0.45 * d0, 0.45 * d1)))
+    return D
+
+
+def rama_audio(i, idx, clip, fuente, dur, fundido="", ext=0.0):
     """La rama de audio de un clip, ya mezclada y a volumen.
 
     Devuelve las líneas del grafo. Las pistas mudas no entran; si no queda
@@ -624,7 +657,7 @@ def rama_audio(i, idx, clip, fuente, dur, fundido=""):
         #  `dur` ya viene en tiempo de línea, o sea con la velocidad aplicada.
         #  Y no lleva fundido: fundir silencio no es nada.
         return ["anullsrc=r=48000:cl=stereo,atrim=0:%.4f,asetpts=PTS-STARTPTS[a%d]"
-                % (dur, i)]
+                % (dur + ext, i)]
 
     #  El fundido va al final de todo, después de la norma: si fuera antes del
     #  `amix` habría que aplicarlo a cada pista y sonaría dos veces.
@@ -640,6 +673,12 @@ def rama_audio(i, idx, clip, fuente, dur, fundido=""):
     tempo = cadena_atempo(velocidad_de(clip))
     tempo = tempo + "," if tempo else ""
 
+    #  La cola de la transición: el trozo entrega `ext` segundos de más para
+    #  que el encadenado tenga con qué mezclar SIN comerse al siguiente. El
+    #  `apad,atrim` deja el largo clavado aunque el fichero se acabe antes.
+    exacto = (",apad,atrim=0:%.4f" % (dur + ext)) if ext > 0 else ""
+    hasta_ext = clip["hasta"] + ext * velocidad_de(clip)
+
     lineas, etiquetas = [], []
     for p in vivas:
         et = "a%d" % i if una else "c%dp%d" % (i, p["i"])
@@ -649,10 +688,10 @@ def rama_audio(i, idx, clip, fuente, dur, fundido=""):
         limpia = "afftdn=nr=12:nf=-25," if p.get("limpia") else ""
         lineas.append(
             "[%d:a:%d]atrim=start=%.4f:end=%.4f,asetpts=PTS-STARTPTS,"
-            "%svolume=%.3f,%s%s%s[%s]"
-            % (idx, p["i"], clip["desde"], clip["hasta"], limpia,
+            "%svolume=%.3f,%s%s%s%s[%s]"
+            % (idx, p["i"], clip["desde"], hasta_ext, limpia,
                float(p.get("volumen", 1.0)), tempo, NORMA_AUDIO,
-               cola if una else "", et))
+               exacto if una else "", cola if una else "", et))
         etiquetas.append("[%s]" % et)
 
     if una:
@@ -660,8 +699,8 @@ def rama_audio(i, idx, clip, fuente, dur, fundido=""):
 
     #  `normalize=0`: sin esto amix baja el volumen de todas al sumarlas, y
     #  subir una acabaría bajando la otra sin que nadie lo haya pedido.
-    lineas.append("%samix=inputs=%d:normalize=0%s[a%d]"
-                  % ("".join(etiquetas), len(etiquetas), cola, i))
+    lineas.append("%samix=inputs=%d:normalize=0%s%s[a%d]"
+                  % ("".join(etiquetas), len(etiquetas), exacto, cola, i))
     return lineas
 
 
@@ -1525,7 +1564,8 @@ def ramas_clics(plan, idx_anillo, entra):
     return lineas, entra
 
 
-def grafo(plan, sin_audio=False, carpeta=None, sonoridad=False):
+def grafo(plan, sin_audio=False, carpeta=None, sonoridad=False,
+          vertical=False):
     """El filter_complex entero. Devuelve (texto, nodos de la cámara).
 
     `carpeta` es dónde dejar los ficheros que necesita el grafo —de momento el
@@ -1550,6 +1590,25 @@ def grafo(plan, sin_audio=False, carpeta=None, sonoridad=False):
 
     lineas = []
 
+    #  La transición de los cortes, si la hay. Con ella cada trozo entrega
+    #  una COLA de más —material del fichero que viene después de su `hasta`,
+    #  fotogramas que de todas formas existían— y el encadenado mezcla esa
+    #  cola con la cabeza del siguiente. Así la línea dura EXACTAMENTE lo
+    #  mismo que sin transición: un xfade a secas se comería el principio de
+    #  cada trozo y descolocaría rótulos, zooms y capas, que es justo lo que
+    #  este editor promete no hacer. Si el fichero no da más de sí, `tpad`
+    #  clona el último fotograma: mejor medio segundo congelado que medio
+    #  vídeo corrido.
+    tr = transicion_de(plan) if len(tramos) > 1 else None
+    D = duraciones_transicion(tramos, tr) if tr else []
+    plan_fundidos = plan
+    if tr:
+        #  El fundido a negro «en los cortes» y la transición son respuestas a
+        #  la misma pregunta: con transición puesta, manda la transición.
+        f = dict(plan.get("fundidos") or {})
+        f["entre"] = 0
+        plan_fundidos = dict(plan, fundidos=f)
+
     # ── 1. cada trozo, recortado y normalizado
     for i, (a, b, clip, fuente) in enumerate(tramos):
         idx = idx_de[fuente["id"]]
@@ -1561,6 +1620,14 @@ def grafo(plan, sin_audio=False, carpeta=None, sonoridad=False):
         pts = ("setpts=(PTS-STARTPTS)/%.6f" % v) if abs(v - 1.0) > 1e-6 \
             else "setpts=PTS-STARTPTS"
 
+        ext = D[i] if tr and i < len(tramos) - 1 else 0.0
+        fin = clip["hasta"] + ext * v
+        tope = float(fuente.get("dur", fin)) or fin
+        recorte_fin = min(fin, tope) if ext > 0 else clip["hasta"]
+        faltan = (b - a) + ext - (recorte_fin - clip["desde"]) / v
+        relleno = ("tpad=stop_mode=clone:stop_duration=%.4f" % faltan) \
+            if ext > 0 and faltan > 0.001 else ""
+
         #  El color va DENTRO de la normalización de cada trozo, o sea antes del
         #  `concat`: es del trozo y no de la línea, que es lo que hace falta para
         #  juntar dos grabaciones que no casan.
@@ -1569,18 +1636,36 @@ def grafo(plan, sin_audio=False, carpeta=None, sonoridad=False):
         #  después del `setpts` de la velocidad, un trozo de 8 s a 2× ocupa 4 y
         #  el fundido tiene que caber en esos 4.
         color = filtro_color(clip)
-        fv, fa = filtros_fundido(i, len(tramos), b - a, plan)
-        cadena = ",".join(x for x in (pts, norma, color, fv) if x)
+        fv, fa = filtros_fundido(i, len(tramos), b - a, plan_fundidos)
+        cadena = ",".join(x for x in (pts, norma, relleno, color, fv) if x)
 
         lineas.append(
             "[%d:v]trim=start=%.4f:end=%.4f,%s[v%d]"
-            % (idx, clip["desde"], clip["hasta"], cadena, i))
-        lineas += rama_audio(i, idx, clip, fuente, b - a, fa)
+            % (idx, clip["desde"], recorte_fin, cadena, i))
+        lineas += rama_audio(i, idx, clip, fuente, b - a, fa, ext=ext)
 
-    # ── 2. pegarlos
+    # ── 2. pegarlos: concat a secas, o el encadenado de la transición
     if len(tramos) == 1:
         lineas.append("[v0]null[base]")
         lineas.append("[a0]anull[mez]")
+    elif tr:
+        #  Cadena de xfade: el desplazamiento de cada uno es la suma de las
+        #  duraciones NORMALES, así que la mezcla cae exactamente sobre la
+        #  cola extendida y el siguiente trozo empieza donde siempre. El
+        #  audio va igual con acrossfade, que consume la cola por su cuenta.
+        off = 0.0
+        vprev, aprev = "v0", "a0"
+        for i in range(1, len(tramos)):
+            off += tramos[i - 1][1] - tramos[i - 1][0]
+            vs = "base" if i == len(tramos) - 1 else "tv%d" % i
+            as_ = "mez" if i == len(tramos) - 1 else "ta%d" % i
+            lineas.append(
+                "[%s][v%d]xfade=transition=%s:duration=%.4f:offset=%.4f[%s]"
+                % (vprev, i, tr["tipo"], D[i - 1], off, vs))
+            lineas.append(
+                "[%s][a%d]acrossfade=d=%.4f:c1=tri:c2=tri[%s]"
+                % (aprev, i, D[i - 1], as_))
+            vprev, aprev = vs, as_
     else:
         pares = "".join("[v%d][a%d]" % (i, i) for i in range(len(tramos)))
         lineas.append("%sconcat=n=%d:v=1:a=1[base][mez]"
@@ -1636,7 +1721,18 @@ def grafo(plan, sin_audio=False, carpeta=None, sonoridad=False):
                                     ancho, alto, entra)
         lineas += nuevas
 
-    lineas.append("[%s]format=yuv420p[v]" % entra)
+    if vertical:
+        #  La salida 9:16 para Shorts: recorte centrado y a 1080×1920. Y el
+        #  centro no es conformismo: cuando el zoom trabaja, zoompan ya ha
+        #  dejado el sujeto clavado en el centro del fotograma, así que el
+        #  recorte vertical sigue a la cámara GRATIS; sin zoom, el centro es
+        #  lo razonable que haría cualquiera.
+        wv = int(round(alto * 9.0 / 32.0)) * 2
+        lineas.append("[%s]crop=%d:%d:(iw-%d)/2:0,"
+                      "scale=1080:1920:flags=lanczos,setsar=1,"
+                      "format=yuv420p[v]" % (entra, wv, alto, wv))
+    else:
+        lineas.append("[%s]format=yuv420p[v]" % entra)
 
     # ── 6. el audio añadido, encima de lo que ya suena
     lineas += ramas_audio_extra(plan, idx_capa, sin_audio)
@@ -2214,7 +2310,7 @@ def orden_camara(args):
 
 
 def escribir_grafo(plan, ruta_plan, sin_audio=False, nombre="grafo.txt",
-                   sonoridad=False):
+                   sonoridad=False, vertical=False):
     """El grafo a un fichero, y la ruta del fichero.
 
     `-filter_complex_script` y no `-filter_complex` a secas: el límite no es
@@ -2230,7 +2326,8 @@ def escribir_grafo(plan, ruta_plan, sin_audio=False, nombre="grafo.txt",
     #  `<vídeo>.k4.k4`, que funcionaba pero era un sitio que nadie esperaba.
     carpeta = carpeta_de(ruta_plan)
     os.makedirs(carpeta, exist_ok=True)
-    texto, nodos = grafo(plan, sin_audio, carpeta, sonoridad=sonoridad)
+    texto, nodos = grafo(plan, sin_audio, carpeta, sonoridad=sonoridad,
+                         vertical=vertical)
     ruta = os.path.join(carpeta, nombre)
     with open(ruta, "w") as f:
         f.write(texto)
@@ -2289,7 +2386,8 @@ def orden_render(args):
     duracion = duracion_linea(plan)
     rutas, _, _, _ = entradas(plan, carpeta_de(args.plan))
     ruta_grafo, nodos = escribir_grafo(
-        plan, args.plan, sonoridad=getattr(args, "sonoridad", False))
+        plan, args.plan, sonoridad=getattr(args, "sonoridad", False),
+        vertical=getattr(args, "vertical", False))
 
     formato = getattr(args, "formato", "mp4") or "mp4"
 
@@ -2431,6 +2529,39 @@ def orden_congelar(args):
     salir(ok=True, fuente=ident, clip=congelado["id"], ruta=destino)
 
 
+def orden_niveles(args):
+    """Cuánto suena cada pista del vídeo: pico y media, en dB.
+
+    Con `volumedetect`, pista a pista y sin vídeo: decodificar solo el audio
+    va sobrado de rápido, y es lo que hace falta para saber si el micro
+    satura ANTES de descubrirlo en el render.
+    """
+    salida = []
+    for p in pistas_audio(args.video):
+        pr = subprocess.run(
+            ["ffmpeg", "-v", "info", "-i", args.video,
+             "-map", "0:a:%d" % p["i"], "-af", "volumedetect",
+             "-vn", "-f", "null", "-"],
+            capture_output=True, text=True)
+        pico, media = None, None
+        for linea in pr.stderr.splitlines():
+            if "max_volume:" in linea:
+                try:
+                    pico = float(linea.split("max_volume:")[1]
+                                 .replace("dB", "").strip())
+                except ValueError:
+                    pass
+            elif "mean_volume:" in linea:
+                try:
+                    media = float(linea.split("mean_volume:")[1]
+                                  .replace("dB", "").strip())
+                except ValueError:
+                    pass
+        if pico is not None:
+            salida.append({"i": p["i"], "pico": pico, "media": media})
+    salir(ok=True, pistas=salida)
+
+
 def orden_miniatura(args):
     """El fotograma bajo el cabezal, a un PNG a resolución completa.
 
@@ -2562,6 +2693,8 @@ def main():
                    choices=["mp4", "webm", "gif"])
     b.add_argument("--sonoridad", action="store_true",
                    help="normalizar a -14 LUFS, lo que espera YouTube")
+    b.add_argument("--vertical", action="store_true",
+                   help="salida 9:16 a 1080x1920, para Shorts")
 
     d = sub.add_parser("camara")
     d.add_argument("plan")
@@ -2590,11 +2723,15 @@ def main():
     mi.add_argument("plan")
     mi.add_argument("t", type=float)
 
+    nv = sub.add_parser("niveles")
+    nv.add_argument("video")
+
     args = ap.parse_args()
     {"abrir": orden_abrir, "proponer": orden_proponer, "render": orden_render,
      "previa": orden_previa, "camara": orden_camara,
      "silencios": orden_silencios, "congelar": orden_congelar,
-     "medir": orden_medir, "miniatura": orden_miniatura}[args.orden](args)
+     "medir": orden_medir, "miniatura": orden_miniatura,
+     "niveles": orden_niveles}[args.orden](args)
 
 
 if __name__ == "__main__":

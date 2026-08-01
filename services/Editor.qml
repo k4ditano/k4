@@ -74,7 +74,9 @@ Singleton {
                                 colorClics: colorClics,
                                 fundidoEntrada: fundidoEntrada,
                                 fundidoSalida: fundidoSalida,
-                                fundidoEntre: fundidoEntre })
+                                fundidoEntre: fundidoEntre,
+                                transicionTipo: transicionTipo,
+                                transicionDur: transicionDur })
     }
 
     function iniciarHistorial() {
@@ -120,6 +122,8 @@ Singleton {
         fundidoEntrada = d.fundidoEntrada || 0
         fundidoSalida = d.fundidoSalida || 0
         fundidoEntre = d.fundidoEntre || 0
+        transicionTipo = d.transicionTipo || ""
+        transicionDur = d.transicionDur || 0.5
         restaurandoHistorial = false
         ultimoHistorial = s
         persistir()
@@ -793,6 +797,14 @@ Singleton {
     }
 
     //  Cuánto dura un fundido. `cual` es "entrada", "salida" o "entre".
+    //  La transición de los cortes. Tipo vacío es corte seco.
+    function ponerTransicion(tipo, segundos) {
+        transicionTipo = tipo || ""
+        if (segundos !== undefined)
+            transicionDur = Math.max(0.15, Math.min(1, Number(segundos) || 0.5))
+        persistir()
+    }
+
     function ponerFundido(cual, segundos) {
         const v = Math.max(0, Math.min(5, Number(segundos) || 0))
         if (cual === "entrada")      fundidoEntrada = v
@@ -1562,11 +1574,22 @@ Singleton {
     property real fundidoEntrada: 0
     property real fundidoSalida: 0
     property real fundidoEntre: 0
+    //  La transición de los cortes: "" es corte seco; encadenado, deslizar o
+    //  barrido la ponen en TODOS los cortes, que es una decisión del montaje
+    //  como los fundidos. La cola que necesita la entrega el trozo anterior
+    //  —material que ya existía— y la línea no se mueve un fotograma.
+    property string transicionTipo: ""
+    property real transicionDur: 0.5
     property string colorClics: "#ffd60a"
 
     //  Las pistas de audio del vídeo, con su volumen y su silencio.
     //  [{ i, titulo, volumen, mudo }]
     property var pistasAudio: []
+
+    //  Cuánto suena cada pista: pico y media en dB, medidos en segundo plano
+    //  al abrir el plan. Para saber si el micro satura ANTES del render.
+    //  {0: {pico, media}, …} por índice de pista.
+    property var nivelesPistas: ({})
 
     // Tamaño del lienzo: hace falta para pasar de píxeles del vídeo a píxeles
     // del marco donde se previsualiza.
@@ -1659,6 +1682,8 @@ Singleton {
         fundidoEntrada = (d.fundidos && d.fundidos.entrada) || 0
         fundidoSalida = (d.fundidos && d.fundidos.salida) || 0
         fundidoEntre = (d.fundidos && d.fundidos.entre) || 0
+        transicionTipo = (d.transicion && d.transicion.tipo) || ""
+        transicionDur = (d.transicion && d.transicion.dur) || 0.5
         colorClics = (d.clics && d.clics.color) || "#ffd60a"
         estadoTranscripcion = ""
         pistasAudio = (d.fuentes && d.fuentes.length > 0
@@ -1674,6 +1699,8 @@ Singleton {
         estado = "editando"
         iniciarHistorial()
         procesos.recalcularCamara()
+        nivelesPistas = {}
+        procesos.medirNiveles(rutaVideo)
         planListo()
     }
 
@@ -1706,6 +1733,14 @@ Singleton {
         onSilenciosFallo: editor.estadoSilencios = "fallo"
 
         onMedido: function (d) { editor.recibirMedida(d) }
+
+        onNivelesListos: function (d) {
+            const n = {}
+            const lista = d.pistas || []
+            for (let i = 0; i < lista.length; ++i)
+                n[lista[i].i] = lista[i]
+            editor.nivelesPistas = n
+        }
 
         onMiniaturaLista: function (d) {
             if (!d || !d.ok) {
@@ -1877,7 +1912,9 @@ Singleton {
                                       color: colorClics },
                              fundidos: { entrada: fundidoEntrada,
                                          salida: fundidoSalida,
-                                         entre: fundidoEntre } }))
+                                         entre: fundidoEntre },
+                             transicion: { tipo: transicionTipo,
+                                           dur: transicionDur } }))
     }
 
     // ── renderizar ────────────────────────────────────────────────
@@ -1885,16 +1922,21 @@ Singleton {
     //  el mismo vídeo se saca en mp4 para archivar y en gif para pegarlo en una
     //  incidencia, y eso no es una preferencia, es una decisión de cada vez.
     property string formatoSalida: "mp4"      // mp4 · webm · gif
+    //  Salida 9:16 para Shorts: recorte centrado —que sigue a la cámara del
+    //  zoom por construcción— y a 1080×1920. Decisión de cada render, como
+    //  el formato.
+    property bool salidaVertical: false
 
     function renderizar() {
         if (rutaPlan.length === 0)
             return
         rutaRenderizada = rutaVideo.replace(/\.[^./]+$/, "")
-                          + "-k4." + formatoSalida
+                          + (salidaVertical ? "-shorts." : "-k4.")
+                          + formatoSalida
         progreso = 0
         estado = "renderizando"
         procesos.renderizar(rutaRenderizada, codec, formatoSalida,
-                            Settings.editorSonoridad)
+                            Settings.editorSonoridad, salidaVertical)
     }
 
     //  El fotograma bajo el cabezal, a un PNG a resolución completa y con

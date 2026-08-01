@@ -1269,6 +1269,59 @@ def prueba_sonoridad_pone_loudnorm_al_final():
           "loudnorm" in texto, False)
 
 
+def prueba_transicion_conserva_la_linea():
+    """El encadenado NO mueve la línea: cada trozo entrega una cola de más y
+    el desplazamiento del xfade cae en la suma de duraciones normales."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 0,  "hasta": 4},
+              {"id": 2, "fuente": 1, "desde": 6,  "hasta": 8},
+              {"id": 3, "fuente": 1, "desde": 10, "hasta": 12}])
+    p["transicion"] = {"tipo": "encadenado", "dur": 0.5}
+    texto, _ = editar.grafo(p)
+    igual("el primer trozo entrega su cola: recorta hasta 4,5",
+          "trim=start=0.0000:end=4.5000" in texto, True)
+    igual("el xfade del primer corte cae en el 4, no antes",
+          "xfade=transition=fade:duration=0.5000:offset=4.0000" in texto, True)
+    igual("y el segundo en el 6",
+          "offset=6.0000" in texto, True)
+    igual("el audio va con acrossfade y la misma cola",
+          texto.count("acrossfade=d=0.5000:c1=tri:c2=tri"), 2)
+    igual("el último trozo no entrega cola",
+          "trim=start=10.0000:end=12.0000" in texto, True)
+    igual("y sin concat: la cadena es el pegamento",
+          "concat=n=" in texto, False)
+
+
+def prueba_transicion_corta_se_acota_y_rellena():
+    """Con trozos cortos la transición se acota a los vecinos, y si el
+    fichero no da más de sí, tpad clona el último fotograma."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 19, "hasta": 20},
+              {"id": 2, "fuente": 1, "desde": 0, "hasta": 1}])
+    p["transicion"] = {"tipo": "barrido", "dur": 1.0}
+    texto, _ = editar.grafo(p)
+    #  45 % del trozo más corto (1 s) = 0,45; y la fuente acaba en 20, así
+    #  que la cola entera sale de clonar.
+    igual("la duración se acota al 45 % del corto",
+          "xfade=transition=wipeleft:duration=0.4500:offset=1.0000" in texto,
+          True)
+    igual("y el relleno clona lo que el fichero no da",
+          "tpad=stop_mode=clone:stop_duration=0.4500" in texto, True)
+
+
+def prueba_transicion_apaga_el_fundido_entre():
+    """Transición y fundido a negro en los cortes responden a la misma
+    pregunta: con transición puesta, manda la transición."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 4},
+              {"id": 2, "fuente": 1, "desde": 6, "hasta": 8}])
+    p["fundidos"] = {"entrada": 0, "salida": 0, "entre": 0.5}
+    sin_tr, _ = editar.grafo(p)
+    igual("sin transición el fundido entre está",
+          "fade=t=out" in sin_tr, True)
+    p["transicion"] = {"tipo": "encadenado", "dur": 0.3}
+    con_tr, _ = editar.grafo(p)
+    igual("con transición, el fundido entre calla",
+          "fade=t=out" in con_tr, False)
+
+
 def prueba_forma_entra_por_la_tuberia_de_imagen():
     """Una forma es un PNG dibujado que entra como imagen: mismo overlay,
     mismos efectos, mismas claves. Se siembra el fichero en la carpeta para

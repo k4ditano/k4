@@ -127,6 +127,22 @@ ColumnLayout {
                 color: Theme.dim
                 font.pixelSize: 9
             }
+
+            //  El pico de la pista, medido del fichero: rojo satura, ámbar
+            //  va justo, verde respira. Vacío mientras se mide.
+            IslandLabel {
+                readonly property var nivel:
+                    Editor.nivelesPistas[filaPista.modelData.i]
+                Layout.preferredWidth: 44
+                horizontalAlignment: Text.AlignRight
+                visible: nivel !== undefined
+                text: nivel !== undefined
+                    ? nivel.pico.toFixed(1) + " dB" : ""
+                color: nivel === undefined ? Theme.dim
+                     : nivel.pico > -1 ? Theme.red
+                     : nivel.pico > -6 ? Theme.yellow : Theme.green
+                font.pixelSize: 9
+            }
         }
     }
 }

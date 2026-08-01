@@ -206,6 +206,26 @@ Scope {
         }
     }
 
+    // ── los niveles de las pistas ─────────────────────────────────
+    signal nivelesListos(var d)
+
+    function medirNiveles(video) {
+        nivelador.command = ["python3", guion, "niveles", video]
+        nivelador.running = true
+    }
+
+    Process {
+        id: nivelador
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let d = null
+                try { d = JSON.parse(this.text) } catch (e) { }
+                if (d && d.ok)
+                    procesos.nivelesListos(d)
+            }
+        }
+    }
+
     // ── la miniatura ──────────────────────────────────────────────
     signal miniaturaLista(var d)
 
@@ -256,6 +276,7 @@ Scope {
             "p['transcripcion']=d['transcripcion']; " +
             "p['clics']=d['clics']; " +
             "p['fundidos']=d['fundidos']; " +
+            "p['transicion']=d['transicion']; " +
             "p['marcadores']=d['marcadores']; " +
             "json.dump(p, open(sys.argv[1],'w'), ensure_ascii=False, indent=1)",
             rutaPlan, datos]
@@ -312,7 +333,7 @@ Scope {
     //  proceso que muere sin despedirse de uno que ya contó su final.
     property bool renderActivo: false
 
-    function renderizar(salida, codec, formato, sonoridad) {
+    function renderizar(salida, codec, formato, sonoridad, vertical) {
         renderActivo = true
         renderizador.ultimoError = ""
         renderizador.command = ["python3", guion, "render",
@@ -320,6 +341,8 @@ Scope {
                                 "--formato", formato]
         if (sonoridad)
             renderizador.command = renderizador.command.concat(["--sonoridad"])
+        if (vertical)
+            renderizador.command = renderizador.command.concat(["--vertical"])
         renderizador.running = true
     }
 
