@@ -31,13 +31,6 @@ Singleton {
     // services/Game.qml: el combate solo avanza con tokens de IA gastados
     property bool juegoPorTokens: false
 
-    // ── k4mon ─────────────────────────────────────────────────────
-    // services/Kmon.qml y widgets/KmonPildora.qml los leen.
-    property bool kmonActivo: true          // apagado no corre ni guarda
-    property bool kmonEnPildora: true       // el LCD del digivice en la píldora
-    property string kmonDomador: ""         // tu nombre de domador
-    property bool kmonCine: true            // digievolución con tinte y sacudida
-
     // ── captura y grabación ───────────────────────────────────────
     // services/Captura.qml los lee. Estaban a fuego ahí, con un comentario que
     // decía «en la fase 6 los lee de Settings»: esta es la fase 6.
@@ -134,26 +127,6 @@ Singleton {
                   desc: Idioma.t("Oleada actual y aviso de cofres sin abrir"), glifo: 0xF0BC2 },
                 { requiere: "juegoActivo", id: "juegoPorTokens", nombre: Idioma.t("Pelear con tokens"),
                   desc: Idioma.t("Avanza solo mientras gastas en Claude o Codex"), glifo: 0xF0241 }
-            ]
-        },
-        {
-            grupo: "K4MON",
-            opciones: [
-                { id: "kmonActivo", nombre: Idioma.t("K4MON activo"),
-                  desc: Idioma.t("Apagado no corre, no envejece y no guarda"),
-                  glifo: 0xF0AAF },
-                { requiere: "kmonActivo", id: "kmonDomador", tipo: "texto",
-                  nombre: Idioma.t("Nombre de domador"),
-                  desc: Idioma.t("Sale en tu placa y en las despedidas"),
-                  pista: Idioma.t("Domador"), glifo: 0xF1821 },
-                { requiere: "kmonActivo", id: "kmonEnPildora",
-                  nombre: Idioma.t("Digivice en la píldora"),
-                  desc: Idioma.t("La pantallita LCD, siempre a la vista"),
-                  glifo: 0xF0BC2 },
-                { requiere: "kmonActivo", id: "kmonCine",
-                  nombre: Idioma.t("Digievolución de cine"),
-                  desc: Idioma.t("Tinte de barra y sacudida en los momentos grandes"),
-                  glifo: 0xF0567 }
             ]
         },
         {
@@ -308,7 +281,6 @@ Singleton {
     readonly property var claves: [
         "idioma",
         "juegoActivo", "juegoContinuar", "juegoEnPildora", "juegoPorTokens",
-        "kmonActivo", "kmonEnPildora", "kmonDomador", "kmonCine",
         "capturaDestino", "capturaCursor",
         "grabarAudio", "grabarCodec", "grabarFps",
         "grabarCamara", "camaraDispositivo",

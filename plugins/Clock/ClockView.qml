@@ -74,15 +74,6 @@ FadeIn {
                     onAbrir: if (view.juego) view.juego.toggle()
                 }
 
-                KmonPildora {
-                    interactive: true
-                    Layout.alignment: Qt.AlignVCenter
-                    onAbrir: {
-                        const m = PluginManager.instancia("kmon")
-                        if (m)
-                            m.toggle()
-                    }
-                }
 
                 // La island ya está desplegada y quieta: aquí sí se pincha.
                 TrayRow {

@@ -152,8 +152,6 @@ FadeIn {
 
             JuegoPildora { Layout.alignment: Qt.AlignVCenter }
 
-            KmonPildora { Layout.alignment: Qt.AlignVCenter }
-
             PluginPildora { Layout.alignment: Qt.AlignVCenter }
 
             TrayRow {

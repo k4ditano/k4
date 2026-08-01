@@ -28,10 +28,6 @@ K4Plugin {
         && Game.cargado && Settings.juegoEnPildora
         ? (Game.cofres > 0 ? 44 : 36) : 0
 
-    // y el digivice igual: su pantallita más el espaciado de la fila
-    readonly property int mascotaWidth: Settings.kmonActivo
-        && Kmon.cargado && Settings.kmonEnPildora ? 34 : 0
-
     // Los dos flancos reservan lo mismo —el del más ancho— para que la hora
     // quede en el centro de verdad y no se mueva al aparecer o irse un icono.
     // Sale una píldora algo más ancha cuando un lado va cargado, que es el
@@ -50,7 +46,7 @@ K4Plugin {
     readonly property int minimizadosWidth: Modulos.count * 116
 
     readonly property int ladoDer: trayWidth + juegoWidth + grabacionWidth
-        + mascotaWidth + minimizadosWidth
+        + minimizadosWidth
     readonly property int ladoAncho: Math.max(ladoIzq, ladoDer)
 
     // El centro ya no es solo la hora: al cambiar de escritorio enseña los
