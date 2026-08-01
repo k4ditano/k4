@@ -26,6 +26,34 @@ ScrollBar {
     implicitWidth: 10
     implicitHeight: 10
 
+    //  El asomo: la barra se enseña cuando la POSICIÓN cambia, sea quien sea
+    //  quien la cambie. `active` no basta y se comprobó a base de no verla:
+    //  solo salta con arrastres de verdad, y la rueda de media casa mueve
+    //  `contentY` a mano —el truco del Rodillo—, que para Qt no es moverse.
+    property bool asomo: false
+    property real _posVista: -1
+
+    onPositionChanged: {
+        if (_posVista >= 0 && Math.abs(position - _posVista) > 0.0005) {
+            asomo = true
+            recogida.restart()
+        }
+        _posVista = position
+    }
+
+    //  Y un saludo al aparecer con contenido de sobra: un panel que se
+    //  desplaza sin decirlo parece un panel al que le falta la mitad.
+    onSizeChanged: if (size > 0 && size < 0.999) {
+        asomo = true
+        recogida.restart()
+    }
+
+    Timer {
+        id: recogida
+        interval: 900
+        onTriggered: barra.asomo = false
+    }
+
     contentItem: Rectangle {
         implicitWidth: barra.hovered || barra.pressed ? 6 : 3
         implicitHeight: implicitWidth
@@ -40,7 +68,8 @@ ScrollBar {
         //  Visible mientras hay movimiento o intención, y fuera después. La
         //  opacidad va aquí y no en la barra entera: la zona de agarre sigue
         //  existiendo aunque no se vea, que es lo que permite ir a por ella.
-        opacity: barra.active || barra.hovered || barra.pressed ? 1 : 0
+        opacity: barra.asomo || barra.active || barra.hovered || barra.pressed
+            ? 1 : 0
         Behavior on opacity { NumberAnimation { duration: 300 } }
     }
 
