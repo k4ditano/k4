@@ -183,6 +183,46 @@ def medir(ruta):
     return 0, 0
 
 
+def etiqueta_audio(d):
+    """El nombre que se puede leer, de entre los que trae el dispositivo.
+
+    `description` sería el bueno, pero el pactl de PipeWire lo entrega como la
+    cadena «(null)» en los sinks —literalmente esas letras—, así que se mira
+    también en las propiedades. Y se recorta: en Ajustes esto va en un chip, y
+    «Familia de controladoras de audio de alta definición» no cabe en ninguno.
+    """
+    p = d.get("properties", {}) or {}
+    for candidata in (p.get("node.nick"), p.get("device.description"),
+                      d.get("description"), d.get("name")):
+        if candidata and candidata != "(null)":
+            return candidata[:26] + "…" if len(candidata) > 27 else candidata
+    return "?"
+
+
+def listar_audios():
+    """Los micrófonos y las salidas de sonido, para elegirlos en Ajustes.
+
+    Por pactl y no por /sys: aquí lo que importa es lo que ve el servidor de
+    sonido, que es a quien wf-recorder y ffmpeg le van a pedir el dispositivo.
+    Los monitores no se listan como micrófonos: grabar el sistema ya tiene su
+    propio interruptor y su propio camino.
+    """
+    def pedir(que):
+        p = subprocess.run(["pactl", "-f", "json", "list", que],
+                           capture_output=True, text=True)
+        try:
+            return json.loads(p.stdout)
+        except (json.JSONDecodeError, ValueError):
+            return []
+
+    micros = [{"nombre": s["name"], "etiqueta": etiqueta_audio(s)}
+              for s in pedir("sources")
+              if (s.get("properties", {}) or {}).get("device.class") != "monitor"]
+    salidas = [{"nombre": s["name"], "etiqueta": etiqueta_audio(s)}
+               for s in pedir("sinks")]
+    salir(ok=True, microfonos=micros, salidas=salidas)
+
+
 def main():
     ap = argparse.ArgumentParser(add_help=False)
     sub = ap.add_subparsers(dest="orden", required=True)
@@ -205,6 +245,8 @@ def main():
     n = sub.add_parser("nombre")
     n.add_argument("--que", default="foto", choices=["foto", "video"])
 
+    sub.add_parser("audios")
+
     args = ap.parse_args()
     os.makedirs(TRABAJO, exist_ok=True)
 
@@ -214,6 +256,8 @@ def main():
         salir(ok=True, ruta=carpeta(args.que))
     elif args.orden == "nombre":
         salir(ok=True, ruta=nombre(args.que))
+    elif args.orden == "audios":
+        listar_audios()
 
 
 if __name__ == "__main__":

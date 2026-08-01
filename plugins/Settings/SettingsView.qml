@@ -8,6 +8,11 @@ import "../../services"
 FadeIn {
     id: view
 
+    //  Los dispositivos de sonido se refrescan al abrir: enchufar unos
+    //  auriculares a mitad de sesión es lo normal, y la lista tiene que
+    //  enseñarlos sin reiniciar nada.
+    Component.onCompleted: Captura.buscarAudios()
+
     required property var plugin
 
     // El botón de borrar la partida está armado esperando confirmación.

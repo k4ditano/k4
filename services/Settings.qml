@@ -42,9 +42,13 @@ Singleton {
     // ── captura y grabación ───────────────────────────────────────
     // services/Captura.qml los lee. Estaban a fuego ahí, con un comentario que
     // decía «en la fase 6 los lee de Settings»: esta es la fase 6.
-    property string capturaDestino: "ambos"     // fichero · portapapeles · ambos · anotar
+    property string capturaDestino: "ambos"     // fichero · portapapeles · ambos
     property bool capturaCursor: false          // ¿sale el puntero en la foto?
     property string grabarAudio: "ambos"        // ninguno · sistema · micro · ambos
+    //  Qué micrófono y qué salida se graban. «auto» sigue al del sistema, que
+    //  es lo de siempre; un nombre concreto lo fija aunque cambie el defecto.
+    property string grabarMicro: "auto"
+    property string grabarSalida: "auto"
     property string grabarCodec: "h264"         // h264 · hevc
     property int grabarFps: 60
     //  ¿Grabar también la cámara, en un fichero aparte?
@@ -172,6 +176,14 @@ Singleton {
                   nombre: Idioma.t("Qué sonido se graba"),
                   desc: Idioma.t("En pistas separadas, para equilibrarlas después"),
                   glifo: 0xF057E },
+                { id: "grabarMicro", tipo: "eleccion", de: "microfonos",
+                  nombre: Idioma.t("Micrófono"),
+                  desc: Idioma.t("Automático sigue al del sistema"),
+                  glifo: 0xF036C },
+                { id: "grabarSalida", tipo: "eleccion", de: "salidas",
+                  nombre: Idioma.t("Salida que se graba"),
+                  desc: Idioma.t("De dónde sale el sonido del sistema"),
+                  glifo: 0xF04C3 },
                 { id: "grabarFps", tipo: "eleccion", de: "fps",
                   nombre: Idioma.t("Fotogramas por segundo"),
                   desc: Idioma.t("60 va más suave y ocupa el doble"),
@@ -252,6 +264,18 @@ Singleton {
                     { codigo: "sistema", nombre: Idioma.t("Sistema") },
                     { codigo: "micro",   nombre: Idioma.t("Micro") },
                     { codigo: "ambos",   nombre: Idioma.t("Los dos") }]
+        //  Los dispositivos de verdad, con su etiqueta legible. Los lista
+        //  Captura vía pactl; aquí solo se les pone «Automático» delante.
+        if (de === "microfonos")
+            return [{ codigo: "auto", nombre: Idioma.t("Automático") }]
+                .concat(Captura.microfonos.map(function (m) {
+                    return { codigo: m.nombre, nombre: m.etiqueta }
+                }))
+        if (de === "salidas")
+            return [{ codigo: "auto", nombre: Idioma.t("Automático") }]
+                .concat(Captura.salidasAudio.map(function (s) {
+                    return { codigo: s.nombre, nombre: s.etiqueta }
+                }))
         if (de === "codecs")
             return [{ codigo: "h264", nombre: "H.264" },
                     { codigo: "hevc", nombre: "HEVC" }]
@@ -308,7 +332,7 @@ Singleton {
         "idioma",
         "juegoActivo", "juegoContinuar", "juegoEnPildora", "juegoPorTokens",
         "capturaDestino", "capturaCursor",
-        "grabarAudio", "grabarCodec", "grabarFps",
+        "grabarAudio", "grabarMicro", "grabarSalida", "grabarCodec", "grabarFps",
         "grabarCamara", "camaraDispositivo",
         "zoomAuto", "zoomNivel", "editorCodec",
         "posicionBarra", "alineacionBarra",

@@ -375,9 +375,9 @@ Singleton {
         //  fuente ninguna y el vídeo salía mudo, con lo que el juntado
         //  producía vídeo + micro: una sola pista, y encima la equivocada.
         if (audio === "sistema" || audio === "ambos")
-            orden.push("--audio=" + sinkMonitor)
+            orden.push("--audio=" + monitorElegido)
         else if (audio === "micro")
-            orden.push("--audio=" + fuenteMicro)
+            orden.push("--audio=" + microElegido)
 
         return orden
     }
@@ -390,6 +390,52 @@ Singleton {
     // El micrófono por defecto, por el mismo motivo: cambia al enchufar unos
     // auriculares y hay que preguntarlo, no darlo por sabido.
     property string fuenteMicro: "@DEFAULT_SOURCE@"
+
+    // ── qué dispositivos hay, y cuál se usa ───────────────────────
+    //
+    //  En Ajustes se puede fijar un micrófono y una salida concretos; en
+    //  «auto» se sigue al del sistema, que es lo de siempre. Las listas las
+    //  trae pactl vía tools/captura.py, con su etiqueta legible, y se
+    //  refrescan al arrancar y al abrir Ajustes: enchufar unos auriculares a
+    //  mitad de sesión es lo normal.
+    property var microfonos: []
+    property var salidasAudio: []
+
+    function buscarAudios() { buscadorAudios.running = true }
+
+    Process {
+        id: buscadorAudios
+        command: ["python3", Quickshell.shellPath("tools/captura.py"), "audios"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let d = null
+                try { d = JSON.parse(this.text) } catch (e) { return }
+                if (!d || !d.ok)
+                    return
+                captura.microfonos = d.microfonos || []
+                captura.salidasAudio = d.salidas || []
+            }
+        }
+    }
+
+    //  El dispositivo que se usa de verdad: el fijado en Ajustes, si sigue
+    //  enchufado, y si no el del sistema. Un micro fijado y desenchufado no
+    //  debe dejar la grabación muda ni rota: se vuelve al de siempre.
+    function entreLos(nombre, lista) {
+        for (let i = 0; i < lista.length; ++i)
+            if (lista[i].nombre === nombre)
+                return true
+        return false
+    }
+
+    readonly property string microElegido:
+        Settings.grabarMicro !== "auto" && entreLos(Settings.grabarMicro, microfonos)
+            ? Settings.grabarMicro : fuenteMicro
+
+    readonly property string monitorElegido:
+        Settings.grabarSalida !== "auto" && entreLos(Settings.grabarSalida, salidasAudio)
+            ? Settings.grabarSalida + ".monitor" : sinkMonitor
 
     Process {
         //  La voz de error, que antes se tiraba: si esto
@@ -507,7 +553,7 @@ Singleton {
 
     function ordenMicro(ruta) {
         return ["ffmpeg", "-v", "error", "-y",
-                "-f", "pulse", "-i", fuenteMicro,
+                "-f", "pulse", "-i", microElegido,
                 "-c:a", "aac", "-b:a", "160k", ruta]
     }
 
