@@ -242,6 +242,7 @@ And the live system data:
 | `K4.Escritorios` | which ones exist and which one you are on | — |
 | `K4.Portapapeles` | the history — **just reading already requires** `portapapeles` | `portapapeles` |
 | `K4.Reloj` | the time, from the bar's single clock | — |
+| `K4.Huella` | the user's personal footprint, AGGREGATED (Steam library, package inventory) — double-keyed: your `datos-personales` permission AND the user turning each source on in Settings, everything off by default | `datos-personales` |
 
 The line is drawn by the effect, not the module: looking at the volume does
 nothing to anyone, raising it does. The clipboard goes the other way
@@ -401,8 +402,9 @@ The manifest declares what you use; the bar checks it **before listing**:
 | `medios` | `K4.Medios.alternarPausa`, `.siguiente`, `.anterior`, `.buscar` |
 | `notificaciones` | `K4.Notificaciones.limpiar` |
 | `portapapeles` | `K4.Portapapeles` — **even just reading it** |
+| `datos-personales` | `K4.Huella` — **just naming it**: there is no innocent read of personal data |
 
-All eight, and note where the line falls: `ponerVolumen` is watched and
+All nine, and note where the line falls: `ponerVolumen` is watched and
 `K4.Audio` is not, because looking at the volume does nothing to anyone and
 changing it does. The clipboard is the only one reversed, because there the
 delicate part is reading.

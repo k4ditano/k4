@@ -109,7 +109,9 @@ def revisar_permisos(doc, texto):
     #  y no se enteró, porque la palabra seguía apareciendo dos párrafos más
     #  arriba. Estar mencionado de pasada no es estar documentado — quien
     #  busca qué permisos hay mira la tabla.
-    documentados = set(re.findall(r"^\| `(\w+)` \|", texto, re.M))
+    #  `[\w-]`: los permisos pueden llevar guion (datos-personales fue el
+    #  primero y destapó que `\w+` no los veía).
+    documentados = set(re.findall(r"^\| `([\w-]+)` \|", texto, re.M))
     for p in sorted(reales - documentados):
         fallos.append(f"{doc}: el permiso `{p}` existe y no está en la tabla")
     #  Y al revés: un permiso inventado en la guía manda a alguien a declarar

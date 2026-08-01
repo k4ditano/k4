@@ -27,3 +27,4 @@ singleton Modulos 1.0 Modulos.qml
 singleton PluginManager 1.0 PluginManager.qml
 singleton Indicadores 1.0 Indicadores.qml
 singleton GameDatos 1.0 GameDatos.qml
+singleton Huella 1.0 Huella.qml

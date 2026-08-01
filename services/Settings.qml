@@ -31,6 +31,14 @@ Singleton {
     // services/Game.qml: el combate solo avanza con tokens de IA gastados
     property bool juegoPorTokens: false
 
+    // ── datos personales ──────────────────────────────────────────
+    //  La doble llave de K4.Huella: el plugin declara `datos-personales` en
+    //  su manifiesto Y el usuario enciende aquí cada fuente. TODO apagado de
+    //  fábrica: los datos personales no se presumen.
+    property bool huellaActiva: false
+    property bool huellaSteam: false
+    property bool huellaPaquetes: false
+
     // ── captura y grabación ───────────────────────────────────────
     // services/Captura.qml los lee. Estaban a fuego ahí, con un comentario que
     // decía «en la fase 6 los lee de Settings»: esta es la fase 6.
@@ -127,6 +135,22 @@ Singleton {
                   desc: Idioma.t("Oleada actual y aviso de cofres sin abrir"), glifo: 0xF0BC2 },
                 { requiere: "juegoActivo", id: "juegoPorTokens", nombre: Idioma.t("Pelear con tokens"),
                   desc: Idioma.t("Avanza solo mientras gastas en Claude o Codex"), glifo: 0xF0241 }
+            ]
+        },
+        {
+            grupo: Idioma.t("Datos personales"),
+            opciones: [
+                { id: "huellaActiva", nombre: Idioma.t("Compartir mi huella con plugins"),
+                  desc: Idioma.t("Solo agregados, solo con permiso declarado, y borrable"),
+                  glifo: 0xF0349 },
+                { requiere: "huellaActiva", id: "huellaSteam",
+                  nombre: Idioma.t("Biblioteca de Steam"),
+                  desc: Idioma.t("Cuántos juegos y minutos, nunca partidas ni cuentas"),
+                  glifo: 0xF0EB0 },
+                { requiere: "huellaActiva", id: "huellaPaquetes",
+                  nombre: Idioma.t("Inventario de paquetes"),
+                  desc: Idioma.t("Cuántos hay y cuándo se actualizó, nada más"),
+                  glifo: 0xF03D7 }
             ]
         },
         {
@@ -286,6 +310,7 @@ Singleton {
         "grabarCamara", "camaraDispositivo",
         "zoomAuto", "zoomNivel", "editorCodec",
         "posicionBarra", "alineacionBarra",
+        "huellaActiva", "huellaSteam", "huellaPaquetes",
         "bandejaEnPildora", "notificacionesAlPasar",
         "accesosDirectos"
     ]

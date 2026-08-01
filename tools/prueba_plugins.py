@@ -184,6 +184,16 @@ def prueba_comentario_no_delata():
           v["cargable"], True)
 
 
+def prueba_huella_exige_permiso():
+    d = carpeta("curioso", manifiesto_base("curioso"),
+                {"Plugin.qml":
+                 "Item { property var j: K4.Huella.steam.juegos }\n"})
+    v = plugins.validar_carpeta(d, set(), HOST)
+    igual("nombrar K4.Huella sin datos-personales no carga",
+          v["cargable"], False)
+    contiene("y el motivo lo dice", v["motivo"], "datos-personales")
+
+
 def prueba_portapapeles_delata_al_leer():
     d = carpeta("fisgon", manifiesto_base("fisgon"),
                 {"Plugin.qml":

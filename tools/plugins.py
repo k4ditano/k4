@@ -48,6 +48,9 @@ PERMISOS = {
     "notificaciones": re.compile(r"\bK4\.Notificaciones\.limpiar\b"),
     "portapapeles": re.compile(r"\bK4\.Portapapeles\b"),
     "sonido": re.compile(r"\bK4\.Sonido\b"),
+    #  La huella entera con solo nombrarla: en datos personales no hay
+    #  lectura inocente.
+    "datos-personales": re.compile(r"\bK4\.Huella\b"),
 }
 
 

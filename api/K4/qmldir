@@ -61,3 +61,4 @@ Cargador 1.0 Cargador.qml
 BloqueoSesion 1.0 BloqueoSesion.qml
 SuperficieBloqueo 1.0 SuperficieBloqueo.qml
 Autenticacion 1.0 Autenticacion.qml
+singleton Huella 1.0 Huella.qml

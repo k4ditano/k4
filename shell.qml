@@ -96,6 +96,7 @@ Scope {
         K4.Puente.reloj = Clock
         K4.Puente.enganches = Enganches
         K4.Puente.isla = Island
+        K4.Puente.huella = Huella
 
         void Audio.volume
         void Wifi.name

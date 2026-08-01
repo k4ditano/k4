@@ -285,18 +285,23 @@ K4.Lanzador {
 
 `ejemplos/efectos/` has every piece working, hand included.
 
-## Planned: a personal-data API (not yet available)
+## Personal data: `K4.Huella`
 
-A designed-but-unbuilt surface, documented here so nobody mistakes intent
-for reality. The idea: plugins reading aggregated slices of the user's real
-life — apps and focus time, Steam hours, local git rhythm, browser domains
-(never URLs), shell binaries (never arguments) — under a **double key**: the
-plugin declares a `datos-personales` manifest permission AND the user
-enables each source individually in Settings, everything off by default,
-aggregated before it ever reaches QML, erasable with one button, and with
-hard red lines (no keylogging, no notification or file contents, no
-mic/camera content — only a binary "in use" indicator). Working name:
-`Rastro`. Until it ships, none of this exists in the API.
+Aggregated slices of the user's real life, under a **double key**: the
+plugin declares the `datos-personales` manifest permission (just naming
+`K4.Huella` demands it) AND the user enables each source individually in
+Settings → "Datos personales" — everything off by default. Aggregation
+happens in the python readers (`tools/huella.py`) before anything touches
+QML, and forgetting is immediate.
+
+Shipped sources: `steam` (`{ juegos, minutos, titulos }`) and `paquetes`
+(`{ total, ultimaActualizacion }`). Check `K4.Huella.activa("steam")`
+before reading — without both keys you get empty objects, never errors.
+
+Planned next, same rules: focus time per app, local git rhythm, browser
+domains (never URLs), shell binaries (never arguments). Hard red lines
+that no permission opens: keylogging, notification or file contents,
+mic/camera content — only a binary "in use" indicator.
 
 ## Current boundaries
 

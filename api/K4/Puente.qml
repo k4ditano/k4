@@ -40,4 +40,7 @@ QtObject {
     //  barra que no son suyos, y el estado de la island.
     property var enganches: null
     property var isla: null
+
+    //  La huella: datos personales agregados, con doble llave.
+    property var huella: null
 }
