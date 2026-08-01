@@ -20,3 +20,9 @@ PistaClips 1.0 PistaClips.qml
 Reproductor 1.0 Reproductor.qml
 SelectorRegion 1.0 SelectorRegion.qml
 SelectorVideo 1.0 SelectorVideo.qml
+FichaAnadir 1.0 FichaAnadir.qml
+FichaCapa 1.0 FichaCapa.qml
+FichaClip 1.0 FichaClip.qml
+FichaFundidos 1.0 FichaFundidos.qml
+FichaPistas 1.0 FichaPistas.qml
+FichaTranscripcion 1.0 FichaTranscripcion.qml
