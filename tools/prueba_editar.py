@@ -1269,6 +1269,28 @@ def prueba_sonoridad_pone_loudnorm_al_final():
           "loudnorm" in texto, False)
 
 
+def prueba_estilos_de_rotulo():
+    """Caja, contorno y sombra en el grafo, con colorFondo de color
+    secundario; y los planes viejos sin `estilo` conservan su caja."""
+    base = {"tipo": "texto", "texto": "Hola", "tam": 0.06,
+            "colorFondo": "#102030"}
+    texto, _ = editar.grafo(con_capas(
+        [capa(**dict(base, estilo="contorno"))]))
+    igual("contorno con su trazo al cuerpo de letra",
+          "borderw=5:bordercolor=0x102030@1.000" in texto, True)
+    texto, _ = editar.grafo(con_capas(
+        [capa(**dict(base, estilo="sombra"))]))
+    igual("sombra desplazada y translúcida",
+          "shadowx=5:shadowy=5:shadowcolor=0x102030@0.650" in texto, True)
+    texto, _ = editar.grafo(con_capas(
+        [capa(**dict(base, estilo="limpio", fondo=0.5))]))
+    igual("limpio no lleva nada", "box=1" in texto or "borderw" in texto
+          or "shadowx" in texto, False)
+    texto, _ = editar.grafo(con_capas([capa(**dict(base, fondo=0.5))]))
+    igual("un plan viejo con fondo sigue con su caja",
+          "box=1:boxcolor=0x102030@0.500" in texto, True)
+
+
 def prueba_a_linea_deshace_el_mapa():
     """Del tiempo del fichero al de la línea, con cortes, reorden y
     velocidad; lo que cayó en un trozo quitado devuelve None."""

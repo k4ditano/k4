@@ -857,6 +857,19 @@ def alfa_texto(capa):
     return "*".join(partes) if partes else None
 
 
+def estilo_texto(capa):
+    """El estilo del rótulo: caja, contorno, sombra o limpio.
+
+    Los planes de antes no llevan `estilo`: si tenían caja se quedan con su
+    caja, y si no, limpios. `colorFondo` es el color SECUNDARIO del estilo,
+    sea el que sea: la caja de detrás, el trazo del contorno o la sombra.
+    """
+    e = capa.get("estilo") or ""
+    if e in ("caja", "contorno", "sombra", "limpio"):
+        return e
+    return "caja" if float(capa.get("fondo", 0.0)) > 0.001 else "limpio"
+
+
 def rama_texto(n, capa, ancho, alto, carpeta, entra):
     """Un rótulo. Devuelve (líneas, etiqueta de salida).
 
@@ -896,13 +909,25 @@ def rama_texto(n, capa, ancho, alto, carpeta, entra):
     if alfa:
         partes.append("alpha='%s'" % alfa)
 
-    fondo = float(capa.get("fondo", 0.0))
-    if fondo > 0.001:
+    estilo = estilo_texto(capa)
+    fondo = float(capa.get("fondo", 0.5))
+    if estilo == "caja" and fondo > 0.001:
         # Una caja detrás, para que el texto se lea sobre cualquier cosa.
         partes += ["box=1",
                    "boxcolor=%s" % color_ffmpeg(capa.get("colorFondo", "#000000"),
                                                 fondo),
                    "boxborderw=%d" % max(2, int(round(tam * 0.28)))]
+    elif estilo == "contorno":
+        #  Grosor con el cuerpo de letra: un contorno fijo se come las letras
+        #  pequeñas y desaparece en las grandes.
+        partes += ["borderw=%d" % max(1, int(round(tam * 0.08))),
+                   "bordercolor=%s"
+                   % color_ffmpeg(capa.get("colorFondo", "#000000"))]
+    elif estilo == "sombra":
+        sombra = max(1, int(round(tam * 0.07)))
+        partes += ["shadowx=%d" % sombra, "shadowy=%d" % sombra,
+                   "shadowcolor=%s"
+                   % color_ffmpeg(capa.get("colorFondo", "#000000"), 0.65)]
 
     sale = "ov%d" % n
     return ["[%s]%s[%s]" % (entra, ":".join(partes), sale)], sale

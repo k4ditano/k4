@@ -460,9 +460,24 @@ Item {
             }
 
             // ── el rótulo ─────────────────────────────────────────
+            //
+            //  El estilo, con el mismo criterio que `estilo_texto()` en
+            //  python: los planes de antes no llevan `estilo`, y si tenían
+            //  caja se quedan con su caja. `colorFondo` es el color
+            //  secundario del estilo, sea cual sea.
+            readonly property string estiloTexto: {
+                const e = modelData.estilo || ""
+                if (e === "caja" || e === "contorno" || e === "sombra"
+                    || e === "limpio")
+                    return e
+                return (modelData.fondo || 0) > 0.001 ? "caja" : "limpio"
+            }
+            //  Si el texto se está escribiendo AQUÍ, sobre el vídeo.
+            property bool editandoTexto: false
+
             Rectangle {
                 anchors.fill: parent
-                visible: capa.esTexto && capa.modelData.fondo > 0.001
+                visible: capa.esTexto && capa.estiloTexto === "caja"
                 color: capa.modelData.colorFondo || "#000000"
                 opacity: capa.modelData.fondo !== undefined
                     ? capa.modelData.fondo : 0.5
@@ -470,7 +485,7 @@ Item {
 
             Text {
                 id: rotulo
-                visible: capa.esTexto
+                visible: capa.esTexto && !capa.editandoTexto
                 x: capa.relleno
                 y: capa.relleno
                 text: capa.modelData.texto || ""
@@ -481,6 +496,52 @@ Item {
                 font.family: fuenteRotulos.name
                 font.pixelSize: Math.max(6, capa.tamTexto)
                 renderType: Text.NativeRendering
+                //  Contorno y sombra, aproximados: el de Qt es de un píxel
+                //  mientras el render escala con la letra. Sitio y color son
+                //  exactos, que es lo que se ajusta a ojo; el resto lo dice
+                //  la previa exacta.
+                style: capa.estiloTexto === "contorno" ? Text.Outline
+                     : capa.estiloTexto === "sombra" ? Text.Raised
+                                                     : Text.Normal
+                styleColor: capa.modelData.colorFondo || "#000000"
+            }
+
+            //  Escribir el rótulo AHÍ, sobre el vídeo, con doble clic. El
+            //  mismo campo de la ficha sigue valiendo; este es el directo.
+            //
+            //  Se edita EN LOCAL y el plan se escribe al terminar, por lo
+            //  mismo que los bloques de la línea de tiempo: escribir el
+            //  modelo reasigna el array de capas, eso destruye y recrea los
+            //  delegados, y el TextInput moría con la primera letra — el
+            //  resto de la frase caía en los atajos del editor, que es de
+            //  las peores cosas que pueden pasar tecleando.
+            TextInput {
+                id: rotuloVivo
+                visible: capa.esTexto && capa.editandoTexto
+                x: capa.relleno
+                y: capa.relleno
+                width: Math.max(40, implicitWidth + 20)
+                color: capa.modelData.color || "#ffffff"
+                font.family: fuenteRotulos.name
+                font.pixelSize: Math.max(6, capa.tamTexto)
+                selectByMouse: true
+                selectionColor: Theme.blue
+
+                function terminar(guardando) {
+                    if (!capa.editandoTexto)
+                        return
+                    capa.editandoTexto = false
+                    if (guardando)
+                        Editor.fijarCapa(capa.modelData.id, { texto: text })
+                }
+
+                onEditingFinished: terminar(true)
+                Keys.onEscapePressed: terminar(false)
+                onVisibleChanged: if (visible) {
+                    text = capa.modelData.texto || ""
+                    forceActiveFocus()
+                    selectAll()
+                }
             }
 
             // ── el marco de selección ─────────────────────────────
@@ -563,7 +624,19 @@ Item {
                 anchors.bottomMargin: 12
                 hoverEnabled: true
                 preventStealing: true
+                //  Mientras se escribe el rótulo ahí mismo, el área de mover
+                //  se aparta: el clic es para colocar el cursor en el texto.
+                enabled: !capa.editandoTexto
                 cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+
+                //  Doble clic en un rótulo: escribirlo ahí, sobre el vídeo.
+                onDoubleClicked: {
+                    if (capa.esTexto
+                        && !Editor.capaBloqueada(capa.modelData)) {
+                        capa.moviendo = false
+                        capa.editandoTexto = true
+                    }
+                }
 
                 property real xIni: 0
                 property real yIni: 0

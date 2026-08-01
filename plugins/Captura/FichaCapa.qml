@@ -679,6 +679,142 @@ ColumnLayout {
         }
     }
 
+    //  El estilo del rótulo: la caja de siempre, contorno, sombra o limpio.
+    //  `colorFondo` es el color secundario del estilo que toque, y por eso la
+    //  segunda fila de colores vale para los tres.
+    IslandLabel {
+        visible: Editor.capaSel && Editor.capaSel.tipo === "texto"
+        text: Idioma.t("Estilo")
+        color: Theme.dim
+        font.pixelSize: 9
+        font.capitalization: Font.AllUppercase
+        font.weight: Font.DemiBold
+    }
+
+    RowLayout {
+        visible: Editor.capaSel && Editor.capaSel.tipo === "texto"
+        Layout.fillWidth: true
+        spacing: 3
+
+        readonly property string puesto: {
+            const c = Editor.capaSel
+            if (!c) return ""
+            const e = c.estilo || ""
+            if (e.length > 0) return e
+            return (c.fondo || 0) > 0.001 ? "caja" : "limpio"
+        }
+
+        Repeater {
+            model: [
+                { id: "caja",     nombre: Idioma.t("Caja") },
+                { id: "contorno", nombre: Idioma.t("Contorno") },
+                { id: "sombra",   nombre: Idioma.t("Sombra") },
+                { id: "limpio",   nombre: Idioma.t("Limpio") }
+            ]
+
+            delegate: Rectangle {
+                id: chipEstilo
+                required property var modelData
+
+                readonly property bool puesta:
+                    parent.puesto === chipEstilo.modelData.id
+
+                Layout.fillWidth: true
+                Layout.preferredHeight: 24
+                radius: 12
+                color: chipEstilo.puesta ? Theme.blue
+                     : estiloRaton.containsMouse ? Theme.surfaceHi
+                                                 : Theme.surface
+
+                IslandLabel {
+                    anchors.centerIn: parent
+                    text: chipEstilo.modelData.nombre
+                    color: chipEstilo.puesta ? "#ffffff" : Theme.muted
+                    font.pixelSize: 9
+                    font.weight: chipEstilo.puesta ? Font.DemiBold : Font.Normal
+                }
+
+                MouseArea {
+                    id: estiloRaton
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Editor.fijarCapa(Editor.idSel,
+                        { estilo: chipEstilo.modelData.id })
+                }
+            }
+        }
+    }
+
+    //  Los colores, en dos filas de muestras: el del texto y el del estilo
+    //  —la caja, el trazo o la sombra—. Pocas y buenas: para un rótulo de
+    //  vídeo, seis colores bien elegidos rinden más que una rueda entera.
+    Repeater {
+        model: Editor.capaSel && Editor.capaSel.tipo === "texto"
+            ? [{ campo: "color", nombre: Idioma.t("Color del texto") },
+               { campo: "colorFondo", nombre: Idioma.t("Color del estilo") }]
+            : []
+
+        delegate: ColumnLayout {
+            id: filaColorTexto
+            required property var modelData
+
+            Layout.fillWidth: true
+            spacing: 3
+
+            IslandLabel {
+                text: filaColorTexto.modelData.nombre
+                color: Theme.dim
+                font.pixelSize: 9
+                font.capitalization: Font.AllUppercase
+                font.weight: Font.DemiBold
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                Repeater {
+                    model: ["#ffffff", "#000000", "#ffd60a",
+                            "#ff453a", "#32d74b", "#0a84ff"]
+
+                    delegate: Rectangle {
+                        id: muestra
+                        required property var modelData
+
+                        readonly property bool puesta: Editor.capaSel
+                            && String(Editor.capaSel[filaColorTexto.modelData.campo]
+                                      || (filaColorTexto.modelData.campo === "color"
+                                          ? "#ffffff" : "#000000")).toLowerCase()
+                               === muestra.modelData
+
+                        Layout.preferredWidth: 22
+                        Layout.preferredHeight: 22
+                        radius: 11
+                        color: muestra.modelData
+                        border.width: puesta ? 2 : 1
+                        border.color: puesta ? Theme.blue
+                                             : Qt.rgba(1, 1, 1, 0.25)
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                const campos = {}
+                                campos[filaColorTexto.modelData.campo] =
+                                    muestra.modelData
+                                Editor.fijarCapa(Editor.idSel, campos)
+                            }
+                        }
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+            }
+        }
+    }
+
     IslandLabel {
         text: {
             if (!Editor.capaSel) return Idioma.t("Opacidad")
