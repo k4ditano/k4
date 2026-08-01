@@ -31,6 +31,9 @@ K4.Plugin {
     property bool abierto: false
     property string busqueda: ""
     property int seleccion: 0
+    //  Con esto puesto, la rejilla se aparta y sale la lista de
+    //  actualizaciones pendientes, cada una con su interruptor.
+    property bool modoActualizaciones: false
 
     //  Las de la barra, filtradas por lo que se escribe. Una apagada NO
     //  desaparece: sale en gris. Que algo se esfume al apagarlo obliga a
@@ -52,8 +55,15 @@ K4.Plugin {
     function abrirse() {
         busqueda = ""
         seleccion = 0
+        modoActualizaciones = false
         abierto = true
         Paquetes.comprobar(false)
+    }
+
+    //  Entrar directo a elegir qué actualizar: lo usa el lanzador.
+    function abrirActualizaciones() {
+        abrirse()
+        modoActualizaciones = true
     }
 
     function toggle() {

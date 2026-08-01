@@ -402,6 +402,41 @@ FadeIn {
                     font.pixelSize: 11
                 }
 
+                //  Elegir cuáles: salta al centro de aplicaciones, que es
+                //  donde cabe una lista con un interruptor por paquete. El
+                //  lanzador avisa; la elección fina vive en la otra puerta.
+                Rectangle {
+                    Layout.preferredWidth: elegirTexto.implicitWidth + 20
+                    Layout.preferredHeight: 24
+                    radius: 12
+                    color: "transparent"
+                    border.width: 1
+                    border.color: elegirRaton.containsMouse ? Theme.muted
+                                                            : Theme.dim
+
+                    IslandLabel {
+                        id: elegirTexto
+                        anchors.centerIn: parent
+                        text: Idioma.t("Elegir")
+                        font.pixelSize: 10
+                        color: elegirRaton.containsMouse ? Theme.ink
+                                                         : Theme.muted
+                    }
+
+                    MouseArea {
+                        id: elegirRaton
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            view.plugin.close()
+                            const apps = PluginManager.instancia("apps")
+                            if (apps)
+                                apps.abrirActualizaciones()
+                        }
+                    }
+                }
+
                 Rectangle {
                     Layout.preferredWidth: subirTexto.implicitWidth + 20
                     Layout.preferredHeight: 24

@@ -21,6 +21,7 @@ FadeIn {
 
         // ── el buscador ───────────────────────────────────────────
         Rectangle {
+            visible: !view.plugin.modoActualizaciones
             Layout.fillWidth: true
             Layout.preferredHeight: 44
             radius: 12
@@ -102,6 +103,7 @@ FadeIn {
 
         // ── la rejilla ────────────────────────────────────────────
         K4.Rodillo {
+            visible: !view.plugin.modoActualizaciones
             Layout.fillWidth: true
             Layout.fillHeight: true
             muesca: view.celdaAlto
@@ -201,6 +203,146 @@ FadeIn {
             }
         }
 
+        // ── elegir qué actualizar ─────────────────────────────────
+        //
+        //  La rejilla se aparta y sale la lista de pendientes, cada una
+        //  con su interruptor. Elegir aquí es EXCLUIR: lo desmarcado se
+        //  queda quieto con --ignore y el resto sube en una actualización
+        //  completa — subir paquetes sueltos sobre un sistema viejo es la
+        //  forma clásica de romper un Arch, y esta es la que pacman
+        //  contempla de fábrica.
+        Rectangle {
+            visible: view.plugin.modoActualizaciones
+            Layout.fillWidth: true
+            Layout.preferredHeight: 40
+            radius: 12
+            color: Theme.surface
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 6
+                anchors.rightMargin: 14
+                spacing: 8
+
+                MediaButton {
+                    glyph: String.fromCodePoint(0xF004D)   // md-arrow_left
+                    glyphSize: 15
+                    glyphColor: Theme.muted
+                    onActivated: view.plugin.modoActualizaciones = false
+                }
+
+                IslandLabel {
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                    text: K4.Idioma.t("Elige qué actualizar")
+                    font.pixelSize: 13
+                    font.weight: Font.DemiBold
+                    color: Theme.ink
+                }
+
+                IslandLabel {
+                    text: K4.Idioma.f(K4.Idioma.t("%1 de %2 marcadas"),
+                                      String(Paquetes.marcadas),
+                                      String(Paquetes.pendientes))
+                    color: Theme.muted
+                    font.pixelSize: 11
+                }
+            }
+        }
+
+        K4.Rodillo {
+            visible: view.plugin.modoActualizaciones
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            muesca: 38
+
+            Column {
+                width: parent.width
+                spacing: 4
+
+                Repeater {
+                    model: view.plugin.modoActualizaciones
+                        ? Paquetes.detalles : []
+
+                    delegate: Rectangle {
+                        id: fila
+                        required property var modelData
+                        //  Marcada = sube. Se lee del servicio y no de un
+                        //  estado local para que la cuenta de la cabecera,
+                        //  el botón del pie y la fila cuenten lo mismo.
+                        readonly property bool dentro:
+                            !Paquetes.excluidos[modelData.nombre]
+
+                        width: parent.width
+                        height: 34
+                        radius: 10
+                        color: filaRaton.containsMouse
+                            ? Qt.lighter(Theme.surface, 1.4) : Theme.surface
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 10
+                            anchors.rightMargin: 12
+                            spacing: 10
+
+                            //  El interruptor de esta app, lo que pedía la
+                            //  pregunta: azul con su marca cuando va a subir,
+                            //  hueco cuando se queda.
+                            Rectangle {
+                                Layout.preferredWidth: 18
+                                Layout.preferredHeight: 18
+                                radius: 9
+                                color: fila.dentro ? Theme.blue : "transparent"
+                                border.width: fila.dentro ? 0 : 1
+                                border.color: Theme.dim
+
+                                IconGlyph {
+                                    anchors.centerIn: parent
+                                    visible: fila.dentro
+                                    text: String.fromCodePoint(0xF012C) // md-check
+                                    font.pixelSize: 11
+                                    color: Theme.ink
+                                }
+                            }
+
+                            IslandLabel {
+                                text: fila.modelData.nombre
+                                font.pixelSize: 12
+                                color: fila.dentro ? Theme.ink : Theme.dim
+                            }
+
+                            IslandLabel {
+                                visible: fila.modelData.aur
+                                text: "AUR"
+                                font.pixelSize: 9
+                                color: Theme.yellow
+                            }
+
+                            Item { Layout.fillWidth: true }
+
+                            IslandLabel {
+                                Layout.maximumWidth: 280
+                                elide: Text.ElideLeft
+                                text: fila.modelData.de + "  →  "
+                                    + fila.modelData.a
+                                font.pixelSize: 10
+                                color: Theme.dim
+                            }
+                        }
+
+                        MouseArea {
+                            id: filaRaton
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Paquetes.alternarExcluida(
+                                           fila.modelData.nombre)
+                        }
+                    }
+                }
+            }
+        }
+
         // ── las actualizaciones del sistema ───────────────────────
         //
         //  El pie del centro: cuántas esperan y el botón que las aplica.
@@ -211,6 +353,17 @@ FadeIn {
             Layout.preferredHeight: 40
             radius: 12
             color: Theme.surface
+
+            //  Pulsar la franja abre (o cierra) la lista para elegir. Va
+            //  DEBAJO de la fila de botones: los que llevan ratón propio
+            //  —volver a mirar, actualizar— se quedan el clic para ellos.
+            MouseArea {
+                anchors.fill: parent
+                enabled: Paquetes.pendientes > 0
+                cursorShape: Qt.PointingHandCursor
+                onClicked: view.plugin.modoActualizaciones =
+                               !view.plugin.modoActualizaciones
+            }
 
             RowLayout {
                 anchors.fill: parent
@@ -226,6 +379,7 @@ FadeIn {
                 }
 
                 ColumnLayout {
+                    id: pieTextos
                     Layout.fillWidth: true
                     spacing: 0
 
@@ -259,6 +413,15 @@ FadeIn {
                     }
                 }
 
+                IconGlyph {
+                    visible: Paquetes.pendientes > 0
+                    text: String.fromCodePoint(
+                              view.plugin.modoActualizaciones
+                                  ? 0xF0140 : 0xF0143)  // chevron down / up
+                    color: Theme.dim
+                    font.pixelSize: 14
+                }
+
                 //  Volver a mirar, saltándose la caché de diez minutos.
                 MediaButton {
                     glyph: String.fromCodePoint(0xF0450)   // md-refresh
@@ -267,35 +430,74 @@ FadeIn {
                     onActivated: Paquetes.comprobar(true)
                 }
 
+                //  Sin nada marcado el botón se apaga: una tanda vacía no
+                //  es una orden, es un despiste.
                 Rectangle {
                     visible: Paquetes.pendientes > 0
                     Layout.preferredWidth: actualizarTexto.implicitWidth + 22
                     Layout.preferredHeight: 26
                     radius: 13
-                    color: actualizarRaton.containsMouse
+                    color: Paquetes.marcadas === 0 ? Theme.surface
+                        : actualizarRaton.containsMouse
                         ? Qt.lighter(Theme.blue, 1.15) : Theme.blue
 
                     IslandLabel {
                         id: actualizarTexto
                         anchors.centerIn: parent
-                        text: K4.Idioma.t("Actualizar")
+                        text: Paquetes.marcadas < Paquetes.pendientes
+                            ? K4.Idioma.f(K4.Idioma.t("Actualizar %1"),
+                                          String(Paquetes.marcadas))
+                            : K4.Idioma.t("Actualizar")
                         font.pixelSize: 11
                         font.weight: Font.DemiBold
+                        color: Paquetes.marcadas === 0 ? Theme.dim : Theme.ink
                     }
 
                     MouseArea {
                         id: actualizarRaton
                         anchors.fill: parent
+                        enabled: Paquetes.marcadas > 0
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: { Paquetes.actualizarTodo(); view.plugin.cerrar() }
+                        onClicked: {
+                            Paquetes.actualizarMarcadas()
+                            view.plugin.cerrar()
+                        }
                     }
                 }
             }
         }
     }
 
-    //  El foco al buscador en cuanto se abre: se abre para escribir.
-    FocoInicial { id: foco; objetivo: entrada }
+    //  El teclado en la lista: el buscador está oculto y alguien tiene que
+    //  responder — Escape vuelve a la rejilla, Enter aplica lo marcado.
+    Item {
+        id: tecladoLista
+        visible: view.plugin.modoActualizaciones
+
+        Keys.onPressed: function (ev) {
+            if (ev.key === Qt.Key_Escape) {
+                view.plugin.modoActualizaciones = false
+                ev.accepted = true
+            } else if ((ev.key === Qt.Key_Return || ev.key === Qt.Key_Enter)
+                       && Paquetes.marcadas > 0) {
+                Paquetes.actualizarMarcadas()
+                view.plugin.cerrar()
+                ev.accepted = true
+            }
+        }
+    }
+
+    //  El foco al buscador en cuanto se abre —se abre para escribir—, o a
+    //  la lista si lo que está delante es la lista.
+    FocoInicial {
+        id: foco
+        objetivo: view.plugin.modoActualizaciones ? tecladoLista : entrada
+    }
     Component.onCompleted: foco.reclamar()
+
+    Connections {
+        target: view.plugin
+        function onModoActualizacionesChanged() { foco.reclamar() }
+    }
 }
