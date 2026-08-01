@@ -31,12 +31,12 @@ Singleton {
     // services/Game.qml: el combate solo avanza con tokens de IA gastados
     property bool juegoPorTokens: false
 
-    // ── mascota ───────────────────────────────────────────────────
-    // services/Mascota.qml y widgets/MascotaPildora.qml los leen.
-    property bool mascotaActiva: true       // apagada no corre ni guarda
-    property bool mascotaEnPildora: true    // el sprite en la píldora
-    property string mascotaNombre: ""       // vacío usa el de la especie
-    property bool mascotaTinte: false       // su humor tiñe la barra (tenue)
+    // ── k4mon ─────────────────────────────────────────────────────
+    // services/Kmon.qml y widgets/KmonPildora.qml los leen.
+    property bool kmonActivo: true          // apagado no corre ni guarda
+    property bool kmonEnPildora: true       // el LCD del digivice en la píldora
+    property string kmonDomador: ""         // tu nombre de domador
+    property bool kmonCine: true            // digievolución con tinte y sacudida
 
     // ── captura y grabación ───────────────────────────────────────
     // services/Captura.qml los lee. Estaban a fuego ahí, con un comentario que
@@ -137,23 +137,23 @@ Singleton {
             ]
         },
         {
-            grupo: Idioma.t("Mascota"),
+            grupo: "K4MON",
             opciones: [
-                { id: "mascotaActiva", nombre: Idioma.t("Mascota activa"),
-                  desc: Idioma.t("Apagada no corre, no siente y no guarda"),
+                { id: "kmonActivo", nombre: Idioma.t("K4MON activo"),
+                  desc: Idioma.t("Apagado no corre, no envejece y no guarda"),
                   glifo: 0xF0AAF },
-                { requiere: "mascotaActiva", id: "mascotaNombre", tipo: "texto",
-                  nombre: Idioma.t("Su nombre"),
-                  desc: Idioma.t("Vacío usa el de su especie"),
-                  pista: Idioma.t("Pulpi"), glifo: 0xF1821 },
-                { requiere: "mascotaActiva", id: "mascotaEnPildora",
-                  nombre: Idioma.t("Vive en la píldora"),
-                  desc: Idioma.t("Su sprite, siempre a la vista"),
+                { requiere: "kmonActivo", id: "kmonDomador", tipo: "texto",
+                  nombre: Idioma.t("Nombre de domador"),
+                  desc: Idioma.t("Sale en tu placa y en las despedidas"),
+                  pista: Idioma.t("Domador"), glifo: 0xF1821 },
+                { requiere: "kmonActivo", id: "kmonEnPildora",
+                  nombre: Idioma.t("Digivice en la píldora"),
+                  desc: Idioma.t("La pantallita LCD, siempre a la vista"),
                   glifo: 0xF0BC2 },
-                { requiere: "mascotaActiva", id: "mascotaTinte",
-                  nombre: Idioma.t("Su humor tiñe la barra"),
-                  desc: Idioma.t("Un ambiente tenue cuando está radiante o mustia"),
-                  glifo: 0xF0E51 }
+                { requiere: "kmonActivo", id: "kmonCine",
+                  nombre: Idioma.t("Digievolución de cine"),
+                  desc: Idioma.t("Tinte de barra y sacudida en los momentos grandes"),
+                  glifo: 0xF0567 }
             ]
         },
         {
@@ -308,7 +308,7 @@ Singleton {
     readonly property var claves: [
         "idioma",
         "juegoActivo", "juegoContinuar", "juegoEnPildora", "juegoPorTokens",
-        "mascotaActiva", "mascotaEnPildora", "mascotaNombre", "mascotaTinte",
+        "kmonActivo", "kmonEnPildora", "kmonDomador", "kmonCine",
         "capturaDestino", "capturaCursor",
         "grabarAudio", "grabarCodec", "grabarFps",
         "grabarCamara", "camaraDispositivo",

@@ -98,12 +98,12 @@ FadeIn {
                 onAbrir: if (view.juego) view.juego.toggle()
             }
 
-            MascotaPildora {
+            KmonPildora {
                 interactive: true
                 Layout.leftMargin: 2
                 Layout.alignment: Qt.AlignVCenter
                 onAbrir: {
-                    const m = PluginManager.instancia("mascota")
+                    const m = PluginManager.instancia("kmon")
                     if (m)
                         m.toggle()
                 }

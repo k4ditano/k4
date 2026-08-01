@@ -1,6 +1,0 @@
-#  Generado por k4 (tools/plugins.py): los tipos de esta
-#  carpeta, para que se resuelvan también cargando el plugin
-#  por URL (esquema qs:).
-
-MascotaPlugin 1.0 MascotaPlugin.qml
-MascotaView 1.0 MascotaView.qml

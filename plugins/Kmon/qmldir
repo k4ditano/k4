@@ -1,0 +1,6 @@
+#  Generado por k4 (tools/plugins.py): los tipos de esta
+#  carpeta, para que se resuelvan también cargando el plugin
+#  por URL (esquema qs:).
+
+KmonPlugin 1.0 KmonPlugin.qml
+KmonView 1.0 KmonView.qml

@@ -96,10 +96,10 @@
    "aplicacion": true
   },
   {
-   "id": "mascota",
-   "entry": "Mascota/MascotaPlugin.qml",
-   "version": "1.0.0",
-   "title": "Mascota",
+   "id": "kmon",
+   "entry": "Kmon/KmonPlugin.qml",
+   "version": "0.1.0",
+   "title": "K4MON",
    "enabledByDefault": true,
    "icono": "0xF0AAF",
    "aplicacion": true

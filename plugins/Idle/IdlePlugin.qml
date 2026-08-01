@@ -28,9 +28,9 @@ K4Plugin {
         && Game.cargado && Settings.juegoEnPildora
         ? (Game.cofres > 0 ? 44 : 36) : 0
 
-    // y la mascota igual: su sprite más el espaciado de la fila
-    readonly property int mascotaWidth: Settings.mascotaActiva
-        && Mascota.cargado && Settings.mascotaEnPildora ? 26 : 0
+    // y el digivice igual: su pantallita más el espaciado de la fila
+    readonly property int mascotaWidth: Settings.kmonActivo
+        && Kmon.cargado && Settings.kmonEnPildora ? 34 : 0
 
     // Los dos flancos reservan lo mismo —el del más ancho— para que la hora
     // quede en el centro de verdad y no se mueva al aparecer o irse un icono.
