@@ -80,25 +80,39 @@ FadeIn {
                 border.color: "#23251f"
                 clip: true
 
-                //  La rejilla de píxeles del cristal, apenas insinuada.
-                Grid {
-                    anchors.fill: parent
-                    columns: 12
-                    spacing: 24
-                    opacity: 0.10
-                    Repeater {
-                        model: 48
-                        Rectangle { width: 1; height: 24; color: view.tinta }
+                //  La matriz de celdas del LCD, visible en TODA la pantalla:
+                //  es lo que hace que el cristal parezca un aparato de verdad
+                //  y no un rectángulo pintado. Líneas en las dos direcciones,
+                //  paso 7 — baratas y suficientes.
+                Repeater {
+                    model: Math.ceil(pantalla.width / 7)
+                    Rectangle {
+                        required property int index
+                        x: index * 7; y: 0
+                        width: 1; height: pantalla.height
+                        color: view.tinta
+                        opacity: 0.055
+                    }
+                }
+                Repeater {
+                    model: Math.ceil(pantalla.height / 7)
+                    Rectangle {
+                        required property int index
+                        x: 0; y: index * 7
+                        width: pantalla.width; height: 1
+                        color: view.tinta
+                        opacity: 0.055
                     }
                 }
 
-                //  La sombra de la criatura, como en los aparatos de verdad.
+                //  La sombra de la criatura, pegada a sus pies.
                 Rectangle {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    y: parent.height * 0.74
-                    width: 110; height: 12; radius: 6
+                    anchors.top: criatura.bottom
+                    anchors.topMargin: -14
+                    width: criatura.width * 0.6; height: 10; radius: 5
                     color: view.tinta
-                    opacity: 0.18
+                    opacity: 0.15
                 }
 
                 //  La criatura (o el huevo), respirando.
@@ -111,8 +125,12 @@ FadeIn {
                         return Qt.resolvedUrl("assets/"
                                               + Kmon.spriteLcd(view.alterno))
                     }
-                    sourceSize.width: 132
-                    sourceSize.height: 132
+                    //  A lo GRANDE y con vecino próximo: los píxeles gruesos
+                    //  del sprite son la estética, no un defecto. sourceSize
+                    //  nativo — escalar decodificando emborrona.
+                    width: 190
+                    height: 190
+                    fillMode: Image.PreserveAspectFit
                     smooth: false
 
                     SequentialAnimation on scale {
