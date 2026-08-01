@@ -565,6 +565,47 @@ def listar():
     return 0
 
 
+#  El escaparate: un JSON público con lo que la comunidad publica. Vive en
+#  el propio repositorio para no depender de ningún servidor, y cualquiera
+#  puede apuntar a otro con --registro.
+REGISTRO = ("https://raw.githubusercontent.com/k4ditano/k4/main/"
+            "plugins/registro.json")
+
+
+def buscar(termino=None, url=None):
+    """Lista lo publicado en el registro, filtrado si hay término."""
+    import urllib.request
+    try:
+        with urllib.request.urlopen(url or REGISTRO, timeout=10) as r:
+            datos = json.loads(r.read().decode("utf-8"))
+    except Exception as exc:
+        print(f"no pude leer el registro: {exc}", file=sys.stderr)
+        return 2
+
+    t = (termino or "").lower()
+    aciertos = [e for e in datos.get("plugins") or []
+                if not t
+                or t in str(e.get("id", "")).lower()
+                or t in str(e.get("title", "")).lower()
+                or t in str(e.get("description", "")).lower()]
+
+    if not aciertos:
+        print("nada en el registro"
+              + (f" que case con {termino!r}" if t else "") + ".")
+        return 1
+
+    for e in aciertos:
+        print(f"  {e.get('title', e.get('id'))}  ·  {e.get('id')}"
+              + (f"  ·  de {e['autor']}" if e.get("autor") else ""))
+        if e.get("description"):
+            print(f"    {e['description']}")
+        orden = f"    instalar: tools/plugins.py --instalar {e.get('repo')}"
+        if e.get("carpeta"):
+            orden += f" --carpeta {e['carpeta']}"
+        print(orden + "\n")
+    return 0
+
+
 def main():
     fallos: list[str] = []
     try:
@@ -598,10 +639,12 @@ AYUDA = """El catálogo de plugins de k4.
     tools/plugins.py --instalar <url>     clona, valida, pregunta e instala
     tools/plugins.py --actualizar <id>    reinstala desde su origen
     tools/plugins.py --quitar <id>        desinstala
+    tools/plugins.py --buscar [texto]     qué hay publicado en el registro
 
     --si          no preguntar (para guiones)
     --con-estado  al quitar, borra también lo que el plugin guardó
     --carpeta <n> al instalar, cuál del repo si hay varias
+    --registro <url>  otro registro que no sea el de la casa
 """
 
 
@@ -627,6 +670,10 @@ if __name__ == "__main__":
     if "--quitar" in sys.argv:
         _id = _valor("--quitar")
         sys.exit(quitar(_id, _si, "--con-estado" in sys.argv) if _id else 2)
+    if "--buscar" in sys.argv:
+        _t = _valor("--buscar")
+        sys.exit(buscar(None if _t and _t.startswith("--") else _t,
+                        _valor("--registro")))
     if "--instalados" in sys.argv:
         sys.exit(instalados())
     if "--recargar" in sys.argv:

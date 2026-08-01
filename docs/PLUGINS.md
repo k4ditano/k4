@@ -15,7 +15,17 @@ quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4.hola toggle
 
 ## 0 · Installing one that already exists
 
-If someone published a plugin in a repository:
+To see what is published in the public registry:
+
+```sh
+python3 tools/plugins.py --buscar
+python3 tools/plugins.py --buscar snake
+```
+
+Each entry prints its exact install command. To publish yours, open a PR
+adding an entry to `plugins/registro.json` (id, title, description, git
+repo, and `carpeta` if the plugin does not live at the repo root). And if
+someone handed you a repository directly:
 
 ```sh
 python3 tools/plugins.py --instalar https://github.com/quien/su-plugin

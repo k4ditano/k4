@@ -184,7 +184,8 @@ Plugins are loaded dynamically and in isolation: a broken one is recorded with
 its error and the bar starts without it. Your own plugins live in
 `~/.config/k4/plugins/<id>/` with a `plugin.json` manifest, arrive disabled,
 and declare the permissions they use — informed consent plus static analysis,
-not a sandbox. Install one with `python3 tools/plugins.py --instalar <url>`.
+not a sandbox. Browse the public registry with `python3 tools/plugins.py
+--buscar`, or install straight from a repository with `--instalar <url>`.
 
 Before opening a pull request, run:
 

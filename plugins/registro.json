@@ -1,0 +1,40 @@
+{
+ "_meta": {
+  "que": "El registro público de plugins de k4: lo que se puede instalar con tools/plugins.py --buscar / --instalar.",
+  "publicar": "Abre un PR añadiendo tu entrada: id, title, description, repo (git) y, si el plugin no vive en la raíz del repo, carpeta."
+ },
+ "plugins": [
+  {
+   "id": "hola",
+   "title": "Hola",
+   "description": "El plugin mínimo de la guía: una vista, un contador y sus ajustes",
+   "autor": "k4",
+   "repo": "https://github.com/k4ditano/k4",
+   "carpeta": "ejemplos/hola"
+  },
+  {
+   "id": "snake",
+   "title": "Snake",
+   "description": "La serpiente de siempre, jugable en la island",
+   "autor": "k4",
+   "repo": "https://github.com/k4ditano/k4",
+   "carpeta": "ejemplos/snake"
+  },
+  {
+   "id": "piezas",
+   "title": "Piezas",
+   "description": "Muestrario de los componentes visuales de la API",
+   "autor": "k4",
+   "repo": "https://github.com/k4ditano/k4",
+   "carpeta": "ejemplos/piezas"
+  },
+  {
+   "id": "efectos",
+   "title": "Efectos",
+   "description": "Escaparate del tinte, los gestos y pintar fuera de la island",
+   "autor": "k4",
+   "repo": "https://github.com/k4ditano/k4",
+   "carpeta": "ejemplos/efectos"
+  }
+ ]
+}
