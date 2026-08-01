@@ -31,6 +31,10 @@ Singleton {
     readonly property int despiertaA: 7
     readonly property int pesoSano: 10                 // ± lo que se considera bien
     readonly property int topeOfflineHoras: 8
+    readonly property int ninoHoras: 96                // niño → adulto al día 4
+    readonly property int entrenoCadaMin: 120          // un entreno cada 2 h
+    readonly property real entrenoCansa: 15            // energía por sesión
+    readonly property real pasivoPorMin: 0.02          // el mundo real entrena poquito
 
     //  El catálogo de formas de esta fase. `color` tiñe la barra en su
     //  digievolución y el cristal del digivice.
@@ -42,7 +46,20 @@ Singleton {
         bytezno: { nombre: "Bytezno", color: "#30d158", sprite: "formas/bytezno.png",
                    lema: "curioso, algo desatendido, listo como él solo" },
         flamillo: { nombre: "Flamillo", color: "#ff453a", sprite: "formas/flamillo.png",
-                    lema: "bien cebado: pura caldera" }
+                    lema: "bien cebado: pura caldera" },
+        //  Los adultos del día 4: la disciplina y el peso deciden la cara.
+        voltaron: { nombre: "Voltarón", color: "#0a84ff", sprite: "formas/voltaron.png",
+                    lema: "la disciplina hecha tormenta" },
+        chispas: { nombre: "Chispas", color: "#ffd60a", sprite: "formas/chispas.png",
+                   lema: "travieso, chispeante, imparable" },
+        cifrax: { nombre: "Cifrax", color: "#30d158", sprite: "formas/cifrax.png",
+                  lema: "orden hexagonal en estado puro" },
+        bugon: { nombre: "Bugón", color: "#a3e635", sprite: "formas/bugon.png",
+                 lema: "un error tan querido que ya es rasgo" },
+        fraguar: { nombre: "Fraguar", color: "#ff453a", sprite: "formas/fraguar.png",
+                   lema: "martillo firme, corazón de brasa" },
+        cenizo: { nombre: "Cenizo", color: "#8e8e93", sprite: "formas/cenizo.png",
+                  lema: "flaco, listo y con ascuas dentro" }
     })
 
     function formaDe(id) { return formas[id] || formas.bit }
@@ -62,6 +79,14 @@ Singleton {
     property int comidas: 0             // total de esta vida
     property real llamadaDesde: 0       // epoch: hay llamada de hambre en curso
     property real ultimaVez: 0
+
+    //  Los stats de combate: se ganan entrenando (y una pizca viviendo).
+    property real fuerza: 10
+    property real defensa: 10
+    property real velocidad: 10
+    property real cerebro: 10
+    property real ultimoEntreno: 0
+    property real _chispaAntes: -1
 
     //  El acelerador de pruebas: segundos que el reloj del juego va por
     //  delante del real. Solo lo toca el IPC de depuración.
@@ -171,6 +196,37 @@ Singleton {
         apuntar()
     }
 
+    // ── entrenar ──────────────────────────────────────────────────
+
+    //  Segundos hasta poder entrenar otra vez; 0 = listo.
+    readonly property real entrenoEn: Math.max(0,
+        entrenoCadaMin * 60 - (ahora() - ultimoEntreno))
+
+    readonly property bool puedeEntrenar: etapa !== "huevo" && !dormido
+        && entrenoEn <= 0 && energia >= entrenoCansa
+
+    //  El premio del mini-juego: `puntos` 0..10 del ejercicio. Entrenar
+    //  cansa, adelgaza y templa la disciplina — como debe ser.
+    function entrenar(tipo, puntos) {
+        if (!puedeEntrenar)
+            return
+        const ganancia = Math.max(1, Math.min(10, puntos))
+        if (tipo === "fuerza")
+            fuerza += ganancia
+        else if (tipo === "velocidad")
+            velocidad += ganancia
+        else if (tipo === "cerebro")
+            cerebro += ganancia
+        //  La defensa no tiene ejercicio propio: se templa un poco con todo.
+        defensa += ganancia * 0.3
+        energia = Math.max(0, energia - entrenoCansa)
+        peso = Math.max(1, peso - 0.5)
+        disciplina = Math.min(100, disciplina + 3)
+        ultimoEntreno = ahora()
+        _saltoHasta = ahora() + 4
+        apuntar()
+    }
+
     // ── la rama: la decisión de crianza de esta fase ──────────────
     //
     //  Pura y con las reglas a la vista (provisional hasta que el
@@ -186,6 +242,16 @@ Singleton {
         return "bytezno"
     }
 
+    //  La rama adulta del día 4, pura y con las reglas a la vista: cada niño
+    //  tiene su cara noble (disciplina, cuidado) y su cara traviesa.
+    function ramaAdulto(nino, disc, err, kg) {
+        if (nino === "chispin")
+            return disc >= 60 && err <= 2 ? "voltaron" : "chispas"
+        if (nino === "bytezno")
+            return disc >= 60 ? "cifrax" : "bugon"
+        return kg >= pesoSano - 2 ? "fraguar" : "cenizo"
+    }
+
     // ── el reloj ──────────────────────────────────────────────────
 
     property var _reloj: Timer {
@@ -195,8 +261,34 @@ Singleton {
         onTriggered: kmon._tic()
     }
 
+    //  CPU sin encender el panel de Sistema: /proc/loadavg una vez por tick.
+    property real cpuCarga: 0
+    property int _nucleos: 1
+    property var _sondaCpu: Process {
+        command: ["cat", "/proc/loadavg"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const carga = parseFloat(String(this.text).split(" ")[0])
+                if (isFinite(carga))
+                    kmon.cpuCarga = carga / Math.max(1, kmon._nucleos)
+            }
+        }
+    }
+    property var _sondaNucleos: Process {
+        command: ["nproc"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const n = parseInt(String(this.text).trim(), 10)
+                if (isFinite(n) && n > 0)
+                    kmon._nucleos = n
+            }
+        }
+    }
+
     function _tic() {
         const t = ahora()
+        _sondaCpu.running = true
 
         if (etapa === "huevo") {
             if (incubacion >= 1)
@@ -228,8 +320,23 @@ Singleton {
             }
         }
 
+        //  El mundo real entrena poquito a poco: la fragua templa la fuerza,
+        //  la música afina la velocidad, la chispa de IA alimenta el cerebro.
+        if (!dormido && etapa !== "huevo") {
+            if (cpuCarga > 0.85)
+                fuerza += pasivoPorMin * min
+            if (Media.isPlaying)
+                velocidad += pasivoPorMin * min
+            if (_chispaAntes >= 0 && Tokens.totalChispa > _chispaAntes)
+                cerebro += pasivoPorMin * 5
+            _chispaAntes = Tokens.totalChispa
+        }
+
         if (etapa === "bebe" && edadHoras >= bebeHoras)
-            _digievolucionar(ramaNino(errores, peso))
+            _digievolucionar(ramaNino(errores, peso), "nino")
+        else if (etapa === "nino" && edadHoras >= ninoHoras)
+            _digievolucionar(ramaAdulto(forma, disciplina, errores, peso),
+                             "adulto")
 
         ultimaVez = t
         apuntar()
@@ -249,10 +356,10 @@ Singleton {
             Idioma.t("Bit te está esperando en el digivice")])
     }
 
-    function _digievolucionar(nueva) {
+    function _digievolucionar(nueva, nuevaEtapa) {
         const vieja = formaDe(forma).nombre
         forma = nueva
-        etapa = "nino"
+        etapa = nuevaEtapa
         digievolucion(vieja, formaDe(nueva).nombre)
         _cine(formaDe(nueva).color)
         Quickshell.execDetached(["notify-send", "-a", "k4",
@@ -286,7 +393,11 @@ Singleton {
         errores = 0
         comidas = 0
         llamadaDesde = 0
-        desfase = 0
+        fuerza = 10
+        defensa = 10
+        velocidad = 10
+        cerebro = 10
+        ultimoEntreno = 0
         apuntar()
     }
 
@@ -303,7 +414,9 @@ Singleton {
             energia: energia, peso: peso, disciplina: disciplina,
             errores: errores, comidas: comidas,
             llamadaDesde: llamadaDesde, ultimaVez: ultimaVez,
-            desfase: desfase
+            desfase: desfase,
+            fuerza: fuerza, defensa: defensa, velocidad: velocidad,
+            cerebro: cerebro, ultimoEntreno: ultimoEntreno
         }, null, 1))
     }
 
@@ -335,6 +448,11 @@ Singleton {
                 llamadaDesde = d.llamadaDesde || 0
                 ultimaVez = d.ultimaVez || 0
                 desfase = d.desfase || 0
+                fuerza = d.fuerza !== undefined ? d.fuerza : 10
+                defensa = d.defensa !== undefined ? d.defensa : 10
+                velocidad = d.velocidad !== undefined ? d.velocidad : 10
+                cerebro = d.cerebro !== undefined ? d.cerebro : 10
+                ultimoEntreno = d.ultimoEntreno || 0
                 habia = true
             } catch (e) {
                 //  Estado ilegible: huevo nuevo, sin tirar la barra.

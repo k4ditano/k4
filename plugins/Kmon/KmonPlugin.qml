@@ -16,6 +16,7 @@ K4Plugin {
     active: habilitado && open
 
     property bool open: false
+    property string pestana: "estado"   // estado · entrenar
 
     islandWidth: 660
     islandHeight: 350

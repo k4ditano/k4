@@ -25,6 +25,15 @@ FadeIn {
     }
 
     readonly property color acento: Kmon.formaActual.color || "#5ac8fa"
+
+    //  El entrenamiento en curso ("" = ninguno). El mini-juego se juega
+    //  SOBRE el fósforo, que para eso es un digivice.
+    property string entreno: ""
+
+    function acabarEntreno(puntos) {
+        Kmon.entrenar(entreno, puntos)
+        entreno = ""
+    }
     //  La paleta del fósforo: cristal claro, tinta oscura — la estética de
     //  las pantallas de tamer de los 90.
     readonly property color fosforo: "#a9b39c"
@@ -107,6 +116,7 @@ FadeIn {
 
                 //  La sombra de la criatura, pegada a sus pies.
                 Rectangle {
+                    visible: view.entreno === ""
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.top: criatura.bottom
                     anchors.topMargin: -14
@@ -115,9 +125,41 @@ FadeIn {
                     opacity: 0.15
                 }
 
+                //  El ejercicio en curso, jugado sobre el fósforo. Un Loader
+                //  y no visibilidad: cada sesión estrena instancia limpia.
+                Loader {
+                    anchors.fill: parent
+                    sourceComponent: view.entreno === "fuerza" ? compRitmo
+                        : view.entreno === "velocidad" ? compEsquivar
+                        : view.entreno === "cerebro" ? compMemoria : null
+                }
+
+                Component {
+                    id: compRitmo
+                    EntrenoRitmo {
+                        tinta: view.tinta
+                        onTerminado: function (p) { view.acabarEntreno(p) }
+                    }
+                }
+                Component {
+                    id: compEsquivar
+                    EntrenoEsquivar {
+                        tinta: view.tinta
+                        onTerminado: function (p) { view.acabarEntreno(p) }
+                    }
+                }
+                Component {
+                    id: compMemoria
+                    EntrenoMemoria {
+                        tinta: view.tinta
+                        onTerminado: function (p) { view.acabarEntreno(p) }
+                    }
+                }
+
                 //  La criatura (o el huevo), respirando.
                 Image {
                     id: criatura
+                    visible: view.entreno === ""
                     anchors.centerIn: parent
                     anchors.verticalCenterOffset: -8
                     source: {
@@ -263,6 +305,47 @@ FadeIn {
 
                     Item { Layout.fillWidth: true }
 
+                    Repeater {
+                        model: [
+                            { id: "estado", nombre: Idioma.t("Estado") },
+                            { id: "entrenar", nombre: Idioma.t("Entrenar") }
+                        ]
+
+                        delegate: Rectangle {
+                            id: pestanaChip
+                            required property var modelData
+                            readonly property bool puesta:
+                                view.plugin.pestana === modelData.id
+
+                            Layout.preferredWidth: textoPestana.implicitWidth + 18
+                            Layout.preferredHeight: 22
+                            radius: 11
+                            color: puesta ? Qt.rgba(Qt.color(view.acento).r,
+                                Qt.color(view.acento).g,
+                                Qt.color(view.acento).b, 0.3)
+                                : (pestanaRaton.containsMouse
+                                   ? Theme.surfaceHi : Theme.track)
+
+                            IslandLabel {
+                                id: textoPestana
+                                anchors.centerIn: parent
+                                text: pestanaChip.modelData.nombre
+                                color: pestanaChip.puesta ? view.acento : Theme.muted
+                                font.pixelSize: 10
+                                font.weight: pestanaChip.puesta
+                                    ? Font.DemiBold : Font.Normal
+                            }
+
+                            MouseArea {
+                                id: pestanaRaton
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: view.plugin.pestana = pestanaChip.modelData.id
+                            }
+                        }
+                    }
+
                     MediaButton {
                         glyph: Theme.ico.close
                         glyphSize: 15
@@ -301,6 +384,7 @@ FadeIn {
                         id: barra
                         required property var modelData
                         visible: Kmon.etapa !== "huevo"
+                                 && view.plugin.pestana === "estado"
                         Layout.fillWidth: true
                         spacing: 8
 
@@ -327,10 +411,115 @@ FadeIn {
                     }
                 }
 
+                //  ── entrenar: stats y ejercicios ──────────────────
+                ColumnLayout {
+                    visible: view.plugin.pestana === "entrenar"
+                    Layout.fillWidth: true
+                    spacing: 7
+
+                    Repeater {
+                        model: [
+                            { nombre: Idioma.t("Fuerza"), valor: Kmon.fuerza },
+                            { nombre: Idioma.t("Velocidad"), valor: Kmon.velocidad },
+                            { nombre: Idioma.t("Cerebro"), valor: Kmon.cerebro },
+                            { nombre: Idioma.t("Defensa"), valor: Kmon.defensa }
+                        ]
+
+                        delegate: RowLayout {
+                            id: stat
+                            required property var modelData
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            IslandLabel {
+                                text: stat.modelData.nombre
+                                color: Theme.muted
+                                font.pixelSize: 10
+                                Layout.preferredWidth: 64
+                            }
+
+                            IslandLabel {
+                                text: Math.floor(stat.modelData.valor)
+                                color: view.acento
+                                font.pixelSize: 12
+                                font.weight: Font.Bold
+                            }
+                        }
+                    }
+
+                    Item { Layout.preferredHeight: 4 }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Repeater {
+                            model: [
+                                { t: Idioma.t("Saco"), tipo: "fuerza" },
+                                { t: Idioma.t("Esquivar"), tipo: "velocidad" },
+                                { t: Idioma.t("Memoria"), tipo: "cerebro" }
+                            ]
+
+                            delegate: Rectangle {
+                                id: ejercicio
+                                required property var modelData
+                                readonly property bool listo: Kmon.puedeEntrenar
+                                    && view.entreno === ""
+
+                                Layout.preferredWidth: textoEj.implicitWidth + 22
+                                Layout.preferredHeight: 28
+                                radius: 14
+                                opacity: listo ? 1 : 0.45
+                                color: ejercicioRaton.containsMouse && listo
+                                    ? Qt.rgba(Qt.color(view.acento).r,
+                                        Qt.color(view.acento).g,
+                                        Qt.color(view.acento).b, 0.35)
+                                    : Theme.surface
+                                border.width: 1
+                                border.color: ejercicioRaton.containsMouse && listo
+                                    ? view.acento : Theme.track
+
+                                IslandLabel {
+                                    id: textoEj
+                                    anchors.centerIn: parent
+                                    text: ejercicio.modelData.t
+                                    font.pixelSize: 11
+                                    font.weight: Font.DemiBold
+                                }
+
+                                MouseArea {
+                                    id: ejercicioRaton
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: ejercicio.listo
+                                        ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                    onClicked: if (ejercicio.listo)
+                                        view.entreno = ejercicio.modelData.tipo
+                                }
+                            }
+                        }
+                    }
+
+                    IslandLabel {
+                        text: Kmon.etapa === "huevo"
+                            ? Idioma.t("Un huevo no entrena")
+                            : Kmon.dormido ? Idioma.t("Está durmiendo")
+                            : Kmon.energia < Kmon.entrenoCansa
+                              ? Idioma.t("Sin energía: que coma y descanse")
+                            : Kmon.entrenoEn > 0
+                              ? Idioma.f(Idioma.t("Recuperándose: %1 min"),
+                                         Math.ceil(Kmon.entrenoEn / 60))
+                              : Idioma.t("Listo para entrenar")
+                        color: Theme.dim
+                        font.pixelSize: 9
+                    }
+                }
+
                 Item { Layout.fillHeight: true }
 
                 //  Acciones.
                 RowLayout {
+                    visible: view.plugin.pestana === "estado"
                     Layout.fillWidth: true
                     spacing: 8
 
@@ -378,15 +567,11 @@ FadeIn {
                     Item { Layout.fillWidth: true }
 
                     //  Lo que viene, sin mentir: apagado hasta su fase.
-                    Repeater {
-                        model: [Idioma.t("Entrenar"), Idioma.t("Digitario")]
-                        IslandLabel {
-                            required property var modelData
-                            text: modelData
-                            color: Theme.dim
-                            font.pixelSize: 10
-                            opacity: 0.5
-                        }
+                    IslandLabel {
+                        text: Idioma.t("Digitario")
+                        color: Theme.dim
+                        font.pixelSize: 10
+                        opacity: 0.5
                     }
                 }
             }

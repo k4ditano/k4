@@ -4,3 +4,6 @@
 
 KmonPlugin 1.0 KmonPlugin.qml
 KmonView 1.0 KmonView.qml
+EntrenoEsquivar 1.0 EntrenoEsquivar.qml
+EntrenoMemoria 1.0 EntrenoMemoria.qml
+EntrenoRitmo 1.0 EntrenoRitmo.qml
