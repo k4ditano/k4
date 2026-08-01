@@ -3,5 +3,6 @@
 #  resolución implícita de hermanos no existe.
 #  `python3 tools/plugins.py` comprueba que esté completo.
 
+BandaToast 1.0 BandaToast.qml
 ToastPlugin 1.0 ToastPlugin.qml
 ToastView 1.0 ToastView.qml
