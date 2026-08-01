@@ -459,6 +459,58 @@ Item {
                             font.weight: Font.DemiBold
                         }
                     }
+
+                    // ── la previa del Short ───────────────────────
+                    //
+                    //  Con la salida 9:16 puesta, dos cortinas oscurecen lo
+                    //  que el recorte vertical va a tirar y un borde marca la
+                    //  banda que sobrevive — la MISMA banda centrada que
+                    //  recorta el render—. Cortinas y no recorte duro a
+                    //  propósito: viendo lo que se pierde se decide mejor
+                    //  dónde poner cada cosa, y todo se sigue pudiendo
+                    //  arrastrar, también lo que queda en penumbra.
+                    readonly property real bandaShorts:
+                        height * 9.0 / 16.0
+                    readonly property real cortinaShorts:
+                        Math.max(0, (width - bandaShorts) / 2)
+
+                    Rectangle {
+                        visible: Editor.salidaVertical
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: marco.cortinaShorts
+                        color: "#aa000000"
+                    }
+
+                    Rectangle {
+                        visible: Editor.salidaVertical
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: marco.cortinaShorts
+                        color: "#aa000000"
+                    }
+
+                    Rectangle {
+                        visible: Editor.salidaVertical
+                        x: marco.cortinaShorts
+                        width: marco.bandaShorts
+                        height: parent.height
+                        color: "transparent"
+                        border.width: 1
+                        border.color: Theme.yellow
+
+                        IslandLabel {
+                            anchors.top: parent.top
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.topMargin: 4
+                            text: "9:16"
+                            color: Theme.yellow
+                            font.pixelSize: 9
+                            font.weight: Font.DemiBold
+                        }
+                    }
                 }
             }
 
