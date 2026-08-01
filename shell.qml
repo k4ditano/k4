@@ -292,13 +292,19 @@ Scope {
 
                 //  Ya no siempre al centro: la island vive en el punto del
                 //  borde que digan Ajustes, o donde la coloque temporalmente
-                //  un plugin (services/Island.qml). El OutBack de siempre para
-                //  que moverse se sienta como abrirse.
-                x: (parent.width - width) * Island.colocacion
+                //  un plugin (services/Island.qml).
+                //
+                //  Se anima la FRACCIÓN y no la x: la x es cálculo directo,
+                //  así que al cambiar el ancho se recoloca en el mismo frame
+                //  —como hacía el ancla al centro— y no va a remolque con su
+                //  propia animación, que era lo que descentraba la island al
+                //  abrir y cerrar módulos.
+                property real fraccionSuave: Island.colocacion
+                x: (parent.width - width) * fraccionSuave
                 width: Math.min(parent.width, root.islandWidth + Theme.wing * 2)
                 height: root.islandHeight
 
-                Behavior on x {
+                Behavior on fraccionSuave {
                     NumberAnimation {
                         duration: 440
                         easing.type: Easing.OutBack
