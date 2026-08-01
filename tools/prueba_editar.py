@@ -1269,6 +1269,46 @@ def prueba_sonoridad_pone_loudnorm_al_final():
           "loudnorm" in texto, False)
 
 
+def prueba_a_linea_deshace_el_mapa():
+    """Del tiempo del fichero al de la línea, con cortes, reorden y
+    velocidad; lo que cayó en un trozo quitado devuelve None."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 0,  "hasta": 4},
+              {"id": 2, "fuente": 1, "desde": 10, "hasta": 14, "velocidad": 2.0}])
+    tramos = editar.mapa(p)
+    cerca("dentro del primero", editar.a_linea(tramos, 1.0, 1), 1.0)
+    cerca("el 12 del fichero cae en 5: 4 + 2/2x",
+          editar.a_linea(tramos, 12.0, 1), 5.0)
+    igual("el 7 se quitó al cortar", editar.a_linea(tramos, 7.0, 1), None)
+    igual("otra fuente no es este fichero", editar.a_linea(tramos, 1.0, 9), None)
+
+
+def prueba_srt_sigue_el_mapa():
+    """El SRT sale en tiempo de LÍNEA: los segmentos pasan por el mapa y el
+    que cayó en un trozo quitado no sale."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 0,  "hasta": 4},
+              {"id": 2, "fuente": 1, "desde": 10, "hasta": 14}])
+    p["transcripcion"] = [
+        {"t0": 1.0, "t1": 2.5, "texto": "Se queda"},
+        {"t0": 6.0, "t1": 7.0, "texto": "Se fue con el corte"},
+        {"t0": 11.0, "t1": 12.0, "texto": "Reaparece movido"}]
+    ruta = editar.escribir_srt(p, os.path.join(BORRADOR, "sub.srt"))
+    contenido = open(ruta).read()
+    igual("el primero, tal cual",
+          "00:00:01,000 --> 00:00:02,500\nSe queda" in contenido, True)
+    igual("el del trozo quitado no sale", "Se fue" in contenido, False)
+    igual("el movido sale en su sitio de línea (11 → 5)",
+          "00:00:05,000 --> 00:00:06,000\nReaparece movido" in contenido, True)
+    igual("y la numeración no salta", "\n2\n00:00:05,000" in contenido, True)
+
+
+def prueba_srt_sin_transcripcion_no_escribe():
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 4}])
+    igual("sin segmentos no hay fichero",
+          editar.escribir_srt(p, os.path.join(BORRADOR, "no.srt")), None)
+    igual("y no lo ha creado",
+          os.path.exists(os.path.join(BORRADOR, "no.srt")), False)
+
+
 def prueba_keyframes_suaves():
     """`suave: true` mete la smoothstep u²(3−2u) en la expresión; sin él la
     recta de siempre, intacta."""

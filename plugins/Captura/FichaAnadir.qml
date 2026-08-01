@@ -180,4 +180,23 @@ ColumnLayout {
                 Editor.buscarSilencios()
         }
     }
+
+    //  El fotograma bajo el cabezal como miniatura del vídeo: PNG a
+    //  resolución completa, con el zoom y las capas puestos, numerado si ya
+    //  hay una. Quien hace miniaturas hace tres y se queda con la mejor.
+    BotonAccion {
+        texto: Idioma.t("Guardar miniatura")
+        icono: 0xF02EB                       // md-image_area
+        onPulsado: Editor.miniatura(view.segundos)
+    }
+
+    //  Los capítulos de YouTube, de los marcadores al portapapeles: una
+    //  línea por marcador, listas para la descripción del vídeo.
+    BotonAccion {
+        visible: Editor.marcadores.length > 0
+        texto: Idioma.f(Idioma.t("Copiar %1 capítulos"),
+                        String(Editor.marcadores.length))
+        icono: 0xF027B                       // md-format_list_numbered
+        onPulsado: Editor.copiarCapitulos()
+    }
 }

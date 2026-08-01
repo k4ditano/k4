@@ -425,6 +425,12 @@ K4Plugin {
             K4.Sistema.lanzar(["notify-send", "-a", "k4", "-u", "critical",
                                      Idioma.t("No se pudo editar"), motivo])
         }
+
+        function onMiniaturaGuardada(ruta) {
+            K4.Sistema.lanzar(["notify-send", "-a", "k4",
+                                     Idioma.t("Miniatura guardada"),
+                                     ruta.split("/").pop()])
+        }
     }
 
     // Se va sola, pero no mientras tengas el ratón encima: si estás leyendo

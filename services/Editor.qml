@@ -1552,6 +1552,7 @@ Singleton {
 
     signal planListo()
     signal renderListo(string ruta)
+    signal miniaturaGuardada(string ruta)
     signal fallo(string motivo)
 
     //  La cámara que se grabó a la vez, si la hubo.
@@ -1673,6 +1674,14 @@ Singleton {
         onSilenciosFallo: editor.estadoSilencios = "fallo"
 
         onMedido: function (d) { editor.recibirMedida(d) }
+
+        onMiniaturaLista: function (d) {
+            if (!d || !d.ok) {
+                editor.fallo(d && d.motivo ? d.motivo : "miniatura")
+                return
+            }
+            editor.miniaturaGuardada(d.ruta)
+        }
 
         onTranscripcionComprobada: function (d) { editor.recibirComprobacion(d) }
         onTranscripcionLinea: function (d) { editor.recibirTranscripcion(d) }
@@ -1854,6 +1863,46 @@ Singleton {
         estado = "renderizando"
         procesos.renderizar(rutaRenderizada, codec, formatoSalida,
                             Settings.editorSonoridad)
+    }
+
+    //  El fotograma bajo el cabezal, a un PNG a resolución completa y con
+    //  todo puesto: es el mismo grafo del render. Para la miniatura del vídeo.
+    function miniatura(t) {
+        if (rutaPlan.length === 0)
+            return
+        procesos.miniatura(t)
+    }
+
+    //  Los capítulos de YouTube, desde los marcadores: «00:00 Intro» y una
+    //  línea por marcador, listos para pegar en la descripción. YouTube exige
+    //  que el primero sea 00:00: si el primer marcador no lo es, se antepone.
+    function capitulosYoutube() {
+        if (marcadores.length === 0)
+            return ""
+        function sello(t) {
+            //  Al segundo de ABAJO: un capítulo que empieza en el 3,5 tiene
+            //  que llevar al 3, no al 4 — mejor llegar un pelo antes.
+            const s = Math.max(0, Math.floor(Number(t) || 0))
+            const h = Math.floor(s / 3600)
+            const m = Math.floor(s / 60) % 60
+            const seg = s % 60
+            const mm = (h > 0 && m < 10 ? "0" : "") + m
+            const ss = (seg < 10 ? "0" : "") + seg
+            return (h > 0 ? h + ":" : "") + mm + ":" + ss
+        }
+        const piezas = []
+        if (Number(marcadores[0].t) > 2)
+            piezas.push("00:00 " + Idioma.t("Inicio"))
+        for (let i = 0; i < marcadores.length; ++i)
+            piezas.push(sello(marcadores[i].t) + " "
+                        + (marcadores[i].nombre || Idioma.t("Capítulo")))
+        return piezas.join("\n")
+    }
+
+    function copiarCapitulos() {
+        const texto = capitulosYoutube()
+        if (texto.length > 0)
+            Quickshell.execDetached(["wl-copy", texto])
     }
 
     //  Descartar es tirarlo todo: los momentos, el estado y la cápsula de

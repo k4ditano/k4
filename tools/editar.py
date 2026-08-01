@@ -2119,6 +2119,53 @@ def escribir_grafo(plan, ruta_plan, sin_audio=False, nombre="grafo.txt",
     return ruta, nodos
 
 
+def a_linea(tramos, ts, id_fuente):
+    """Un instante del FICHERO llevado a la línea, o None si quedó cortado."""
+    for a, b, clip, fuente in tramos:
+        if fuente["id"] != id_fuente:
+            continue
+        if clip["desde"] - 1e-6 <= ts <= clip["hasta"] + 1e-6:
+            return a + (ts - clip["desde"]) / velocidad_de(clip)
+    return None
+
+
+def tiempo_srt(t):
+    ms = int(round(max(0.0, t) * 1000))
+    return "%02d:%02d:%02d,%03d" % (ms // 3600000, ms // 60000 % 60,
+                                    ms // 1000 % 60, ms % 1000)
+
+
+def escribir_srt(plan, ruta):
+    """La transcripción a un SRT, en tiempo de LÍNEA. La ruta, o None.
+
+    Los segmentos vienen en tiempo del fichero ORIGINAL, y el vídeo puede
+    estar cortado, reordenado y acelerado: cada uno pasa por el mapa. El que
+    cayó en un trozo quitado no sale — unos subtítulos de algo que ya no se
+    dice serían mentira— y el que quedó a caballo de un corte sale solo si
+    sus dos extremos siguen en pie, que es la regla que se puede predecir.
+    """
+    segs = plan.get("transcripcion") or []
+    if not segs or not plan.get("fuentes"):
+        return None
+    tramos = mapa(plan)
+    idf = plan["fuentes"][0]["id"]
+    piezas, n = [], 0
+    for s in segs:
+        texto = str(s.get("texto", "")).strip()
+        t0 = a_linea(tramos, float(s.get("t0", 0)), idf)
+        t1 = a_linea(tramos, float(s.get("t1", 0)), idf)
+        if not texto or t0 is None or t1 is None or t1 - t0 < 0.05:
+            continue
+        n += 1
+        piezas.append("%d\n%s --> %s\n%s\n"
+                      % (n, tiempo_srt(t0), tiempo_srt(t1), texto))
+    if not piezas:
+        return None
+    with open(ruta, "w") as f:
+        f.write("\n".join(piezas))
+    return ruta
+
+
 def orden_render(args):
     plan = cargar(args.plan)
     duracion = duracion_linea(plan)
@@ -2186,7 +2233,14 @@ def orden_render(args):
     p.wait()
     if p.returncode != 0 or not os.path.exists(args.salida):
         salir(ok=False, motivo="fallo")
-    salir(ok=True, estado="fin", ruta=args.salida)
+
+    #  Si hay transcripción, el SRT sale AL LADO del fichero, con su mismo
+    #  nombre: es lo que YouTube pide subir y nadie debería ir a buscarlo a
+    #  la carpeta adjunta. Un GIF no lleva subtítulos que valgan.
+    srt = None
+    if formato != "gif":
+        srt = escribir_srt(plan, args.salida.rsplit(".", 1)[0] + ".srt")
+    salir(ok=True, estado="fin", ruta=args.salida, srt=srt or "")
 
 
 def sacar_fotograma(plan, ruta_plan, t, destino):
@@ -2257,6 +2311,26 @@ def orden_congelar(args):
 
     guardar(plan, args.plan)
     salir(ok=True, fuente=ident, clip=congelado["id"], ruta=destino)
+
+
+def orden_miniatura(args):
+    """El fotograma bajo el cabezal, a un PNG a resolución completa.
+
+    Con todo puesto —zoom, capas, rótulos—, que para eso es el mismo grafo
+    del render. Numerada si ya hay una: quien hace miniaturas suele hacer
+    tres y quedarse con la mejor.
+    """
+    plan = cargar(args.plan)
+    if not plan.get("fuentes"):
+        salir(ok=False, motivo="sin-fuentes")
+    base = plan["fuentes"][0]["ruta"].rsplit(".", 1)[0] + "-miniatura"
+    destino, n = base + ".png", 2
+    while os.path.exists(destino):
+        destino = "%s-%d.png" % (base, n)
+        n += 1
+    if not sacar_fotograma(plan, args.plan, max(0.0, args.t), destino):
+        salir(ok=False, motivo="fallo")
+    salir(ok=True, ruta=destino)
 
 
 def orden_silencios(args):
@@ -2394,11 +2468,15 @@ def main():
     c.add_argument("t", type=float)
     c.add_argument("salida")
 
+    mi = sub.add_parser("miniatura")
+    mi.add_argument("plan")
+    mi.add_argument("t", type=float)
+
     args = ap.parse_args()
     {"abrir": orden_abrir, "proponer": orden_proponer, "render": orden_render,
      "previa": orden_previa, "camara": orden_camara,
      "silencios": orden_silencios, "congelar": orden_congelar,
-     "medir": orden_medir}[args.orden](args)
+     "medir": orden_medir, "miniatura": orden_miniatura}[args.orden](args)
 
 
 if __name__ == "__main__":

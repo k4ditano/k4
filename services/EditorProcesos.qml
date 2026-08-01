@@ -206,6 +206,26 @@ Scope {
         }
     }
 
+    // ── la miniatura ──────────────────────────────────────────────
+    signal miniaturaLista(var d)
+
+    function miniatura(t) {
+        miniaturero.command = ["python3", guion, "miniatura", rutaPlan,
+                               String(t)]
+        miniaturero.running = true
+    }
+
+    Process {
+        id: miniaturero
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let d = null
+                try { d = JSON.parse(this.text) } catch (e) { }
+                procesos.miniaturaLista(d)
+            }
+        }
+    }
+
     // ── guardar el plan ───────────────────────────────────────────
     //  El Editor arma el estado a guardar; aquí solo se escribe. `escribiendo`
     //  existe para que el rebote de guardado espere: dos procesos sobre el
