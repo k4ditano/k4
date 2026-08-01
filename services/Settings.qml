@@ -240,11 +240,13 @@ Singleton {
         if (de === "idiomas")
             return [{ codigo: "auto", nombre: Idioma.t("Automático") }]
                 .concat(Idioma.disponibles)
+        //  «Anotar» dejó de ser un destino: el anotador se abre desde la
+        //  tarjeta cuando se pide, no solo en cada captura. Un valor viejo
+        //  guardado sigue valiendo como «Guardar».
         if (de === "destinos")
             return [{ codigo: "fichero",      nombre: Idioma.t("Guardar") },
                     { codigo: "portapapeles", nombre: Idioma.t("Copiar") },
-                    { codigo: "ambos",        nombre: Idioma.t("Las dos") },
-                    { codigo: "anotar",       nombre: Idioma.t("Anotar") }]
+                    { codigo: "ambos",        nombre: Idioma.t("Las dos") }]
         if (de === "audios")
             return [{ codigo: "ninguno", nombre: Idioma.t("Nada") },
                     { codigo: "sistema", nombre: Idioma.t("Sistema") },

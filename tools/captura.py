@@ -153,6 +153,10 @@ def hacer_foto(args):
             subprocess.run(["wl-copy", "-t", "image/png"], stdin=f)
         copiada = True
 
+    #  «anotar» sigue aceptándose por si quedó guardado en unos ajustes de
+    #  antes, pero ya solo significa «guardar»: el anotador NO se abre solo.
+    #  Se abre desde el botón de la tarjeta, cuando se pide. Un programa que
+    #  aparece sin que nadie lo llame es un susto, no un atajo.
     guardada = args.destino in ("fichero", "ambos", "anotar")
     if not guardada:
         # Solo al portapapeles: el fichero era un medio, no un fin.
@@ -162,15 +166,8 @@ def hacer_foto(args):
             pass
         ruta = ""
 
-    if args.destino == "anotar":
-        subprocess.Popen(
-            ["satty", "-f", ruta, "-o", ruta, "--copy-command", "wl-copy",
-             "--early-exit", "save", "--initial-tool", "arrow"],
-            start_new_session=True,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
     salir(ok=True, ruta=ruta, w=ancho, h=alto,
-          copiada=copiada, guardada=guardada, anotando=args.destino == "anotar")
+          copiada=copiada, guardada=guardada)
 
 
 def medir(ruta):

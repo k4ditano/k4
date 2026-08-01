@@ -43,11 +43,12 @@ K4Plugin {
         { clave: "ventana",  texto: Idioma.t("Ventana"),  icono: 0xF05AF }
     ]
 
+    //  «Anotar» ya no es un destino: dejaba el anotador abriéndose solo en
+    //  CADA captura siguiente, y con el botón de la tarjeta no hace falta.
     readonly property var destinos: [
         { clave: "portapapeles", texto: Idioma.t("Copiar"),  icono: 0xF018F },
         { clave: "fichero",      texto: Idioma.t("Guardar"), icono: 0xF0193 },
-        { clave: "ambos",        texto: Idioma.t("Las dos"), icono: 0xF05E0 },
-        { clave: "anotar",       texto: Idioma.t("Anotar"),  icono: 0xF03EB }
+        { clave: "ambos",        texto: Idioma.t("Las dos"), icono: 0xF05E0 }
     ]
 
     // 500 y no 440: con cuatro botones debajo del nombre del fichero, a 440 se
@@ -488,9 +489,10 @@ K4Plugin {
         function region(): void { self.disparar("region") }
         function ventana(): void { self.disparar("ventana") }
 
-        // Capturar y abrir el anotador. El destino va como excepción de esta
-        // foto: pedir anotar una vez no debe cambiarte el ajuste.
-        function anotar(): void { self.disparar("region", "anotar") }
+        //  Antes esto capturaba Y abría el anotador. Ya no: el anotador se
+        //  abre desde el botón de la tarjeta, cuando se pide. El atajo sigue
+        //  existiendo para no romper los binds, y hace lo honesto: capturar.
+        function anotar(): void { self.disparar("region") }
 
         // ── vídeo ──
         function grabar(): void { self.close(); Captura.grabar("") }
