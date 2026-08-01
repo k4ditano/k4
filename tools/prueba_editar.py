@@ -1227,6 +1227,48 @@ def prueba_kenburns_suave_lleva_smoothstep():
           "*(3-2*clip((it-2.0000)/2.0000,0,1))'" in texto, True)
 
 
+def prueba_pista_limpia_mete_afftdn():
+    """La limpieza va por pista y ANTES del volumen: se quita el soplido del
+    original y luego se sube lo limpio."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8}])
+    p["fuentes"][0]["pistas"][0]["limpia"] = True
+    texto, _ = editar.grafo(p)
+    igual("afftdn delante del volumen",
+          "afftdn=nr=12:nf=-25,volume=" in texto, True)
+    p["fuentes"][0]["pistas"][0]["limpia"] = False
+    texto, _ = editar.grafo(p)
+    igual("apagada no filtra nada", "afftdn" in texto, False)
+
+
+def prueba_capa_de_audio_que_se_agacha():
+    """La música con `agachar` pasa por sidechaincompress con la voz del
+    vídeo de llave, y la llave sale de un asplit de la mezcla."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8}])
+    p["capas"] = [{"id": 1, "tipo": "audio", "ruta": fichero("musica.mp3"),
+                   "t0": 0.0, "t1": 8.0, "volumen": 0.8, "banda": 2,
+                   "agachar": True}]
+    texto, _ = editar.grafo(p)
+    igual("la mezcla se reparte en copias", "[mez]asplit=2[mezv][llave0]"
+          in texto, True)
+    igual("y la música pasa por el compresor con su llave",
+          "[ax0][llave0]sidechaincompress=" in texto, True)
+    p["capas"][0]["agachar"] = False
+    texto, _ = editar.grafo(p)
+    igual("sin agachar no hay compresor", "sidechaincompress" in texto, False)
+
+
+def prueba_sonoridad_pone_loudnorm_al_final():
+    """El −14 LUFS de YouTube es lo último de todo, y devuelve la frecuencia
+    a la norma: loudnorm sale a 192 kHz por dentro."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8}])
+    texto, _ = editar.grafo(p, sonoridad=True)
+    igual("loudnorm cerrando el audio",
+          "loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000[a]" in texto, True)
+    texto, _ = editar.grafo(p)
+    igual("sin pedirlo no toca el volumen de nadie",
+          "loudnorm" in texto, False)
+
+
 def prueba_keyframes_suaves():
     """`suave: true` mete la smoothstep u²(3−2u) en la expresión; sin él la
     recta de siempre, intacta."""

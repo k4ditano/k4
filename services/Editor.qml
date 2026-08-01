@@ -1852,7 +1852,8 @@ Singleton {
                           + "-k4." + formatoSalida
         progreso = 0
         estado = "renderizando"
-        procesos.renderizar(rutaRenderizada, codec, formatoSalida)
+        procesos.renderizar(rutaRenderizada, codec, formatoSalida,
+                            Settings.editorSonoridad)
     }
 
     //  Descartar es tirarlo todo: los momentos, el estado y la cápsula de

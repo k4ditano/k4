@@ -65,6 +65,9 @@ Singleton {
     property bool zoomAuto: true                // ¿propone momentos al grabar?
     property real zoomNivel: 2.5                // cuánto amplía como máximo
     property string editorCodec: "h264"         // con qué se renderiza
+    //  Normalizar la sonoridad al renderizar: −14 LUFS, lo que espera
+    //  YouTube. Apagado de fábrica: tocar el volumen de nadie sin permiso no.
+    property bool editorSonoridad: false
 
     // ── barra ─────────────────────────────────────────────────────
     //  En qué borde vive la barra. shell.qml ancla la ventana, voltea la
@@ -213,7 +216,11 @@ Singleton {
                 { id: "editorCodec", tipo: "eleccion", de: "codecs",
                   nombre: Idioma.t("Códec al renderizar"),
                   desc: Idioma.t("El del vídeo que sale del editor"),
-                  glifo: 0xF0381 }
+                  glifo: 0xF0381 },
+                { id: "editorSonoridad",
+                  nombre: Idioma.t("Sonoridad de YouTube"),
+                  desc: Idioma.t("Normaliza a −14 LUFS al renderizar"),
+                  glifo: 0xF147D }
             ]
         },
         {
@@ -334,7 +341,7 @@ Singleton {
         "capturaDestino", "capturaCursor",
         "grabarAudio", "grabarMicro", "grabarSalida", "grabarCodec", "grabarFps",
         "grabarCamara", "camaraDispositivo",
-        "zoomAuto", "zoomNivel", "editorCodec",
+        "zoomAuto", "zoomNivel", "editorCodec", "editorSonoridad",
         "posicionBarra", "alineacionBarra",
         "huellaActiva", "huellaSteam", "huellaPaquetes",
         "bandejaEnPildora", "notificacionesAlPasar",

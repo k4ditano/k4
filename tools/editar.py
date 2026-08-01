@@ -622,10 +622,14 @@ def rama_audio(i, idx, clip, fuente, dur, fundido=""):
     lineas, etiquetas = [], []
     for p in vivas:
         et = "a%d" % i if una else "c%dp%d" % (i, p["i"])
+        #  La limpieza de ruido, por pista y ANTES del volumen: el soplido del
+        #  micro se quita del original y luego se sube lo limpio. `afftdn` con
+        #  la puerta suave de fábrica; nr=12 quita el aire sin comerse la voz.
+        limpia = "afftdn=nr=12:nf=-25," if p.get("limpia") else ""
         lineas.append(
             "[%d:a:%d]atrim=start=%.4f:end=%.4f,asetpts=PTS-STARTPTS,"
-            "volume=%.3f,%s%s%s[%s]"
-            % (idx, p["i"], clip["desde"], clip["hasta"],
+            "%svolume=%.3f,%s%s%s[%s]"
+            % (idx, p["i"], clip["desde"], clip["hasta"], limpia,
                float(p.get("volumen", 1.0)), tempo, NORMA_AUDIO,
                cola if una else "", et))
         etiquetas.append("[%s]" % et)
@@ -1414,7 +1418,7 @@ def ramas_clics(plan, idx_anillo, entra):
     return lineas, entra
 
 
-def grafo(plan, sin_audio=False, carpeta=None):
+def grafo(plan, sin_audio=False, carpeta=None, sonoridad=False):
     """El filter_complex entero. Devuelve (texto, nodos de la cámara).
 
     `carpeta` es dónde dejar los ficheros que necesita el grafo —de momento el
@@ -1526,7 +1530,13 @@ def grafo(plan, sin_audio=False, carpeta=None):
     if not sin_audio:
         nuevas, fin = ramas_censura(plan, "amez")
         lineas += nuevas
-        lineas.append("[%s]anull[a]" % fin)
+        #  La sonoridad, lo último de todo: −14 LUFS es lo que YouTube espera,
+        #  y normalizar antes de la censura taparía sus propios silencios.
+        #  `loudnorm` sale a 192 kHz por dentro —es su manera de medir— y el
+        #  `aresample` lo devuelve a los 48 de la norma.
+        lineas.append("[%s]%s[a]"
+                      % (fin, "loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000"
+                         if sonoridad else "anull"))
 
     return ";\n".join(lineas), len(puntos)
 
@@ -1549,7 +1559,20 @@ def ramas_audio_extra(plan, idx_capa, sin_audio):
     if not extras:
         return ["[mez]anull[amez]"]
 
+    #  El agachado: la música que baja sola cuando hay voz.
+    #
+    #  La llave es la MEZCLA del vídeo —ahí va la voz— y cada capa que lo pida
+    #  pasa por `sidechaincompress` con esa llave antes de mezclarse. Hace
+    #  falta repartir [mez] en copias: una para la mezcla y una por cada
+    #  capa que agacha, porque en un grafo cada etiqueta se consume una vez.
+    agachan = [k for k, c in enumerate(extras) if c.get("agachar")]
     lineas, etiquetas = [], ["[mez]"]
+    if agachan:
+        lineas.append("[mez]asplit=%d[mezv]%s"
+                      % (1 + len(agachan),
+                         "".join("[llave%d]" % k for k in agachan)))
+        etiquetas = ["[mezv]"]
+
     for k, capa in enumerate(extras):
         et = "ax%d" % k
         retardo = max(0, int(round(float(capa.get("t0", 0)) * 1000)))
@@ -1580,6 +1603,15 @@ def ramas_audio_extra(plan, idx_capa, sin_audio):
         partes.append("apad")
         partes.append(NORMA_AUDIO)
         lineas.append(",".join(partes) + "[%s]" % et)
+
+        if k in agachan:
+            #  Umbral bajo y soltura lenta: baja en cuanto alguien habla y
+            #  vuelve con calma, que es como lo hace un técnico y no una
+            #  puerta. La llave no suena: solo manda.
+            lineas.append(
+                "[%s][llave%d]sidechaincompress=threshold=0.02:ratio=8:"
+                "attack=80:release=600[axa%d]" % (et, k, k))
+            et = "axa%d" % k
         etiquetas.append("[%s]" % et)
 
     #  `normalize=0` y `duration=first`: sin el primero, `amix` reparte el volumen
@@ -2063,7 +2095,8 @@ def orden_camara(args):
                  for t, x, y in clics_de(plan)])
 
 
-def escribir_grafo(plan, ruta_plan, sin_audio=False, nombre="grafo.txt"):
+def escribir_grafo(plan, ruta_plan, sin_audio=False, nombre="grafo.txt",
+                   sonoridad=False):
     """El grafo a un fichero, y la ruta del fichero.
 
     `-filter_complex_script` y no `-filter_complex` a secas: el límite no es
@@ -2079,7 +2112,7 @@ def escribir_grafo(plan, ruta_plan, sin_audio=False, nombre="grafo.txt"):
     #  `<vídeo>.k4.k4`, que funcionaba pero era un sitio que nadie esperaba.
     carpeta = carpeta_de(ruta_plan)
     os.makedirs(carpeta, exist_ok=True)
-    texto, nodos = grafo(plan, sin_audio, carpeta)
+    texto, nodos = grafo(plan, sin_audio, carpeta, sonoridad=sonoridad)
     ruta = os.path.join(carpeta, nombre)
     with open(ruta, "w") as f:
         f.write(texto)
@@ -2090,7 +2123,8 @@ def orden_render(args):
     plan = cargar(args.plan)
     duracion = duracion_linea(plan)
     rutas, _, _, _ = entradas(plan, carpeta_de(args.plan))
-    ruta_grafo, nodos = escribir_grafo(plan, args.plan)
+    ruta_grafo, nodos = escribir_grafo(
+        plan, args.plan, sonoridad=getattr(args, "sonoridad", False))
 
     formato = getattr(args, "formato", "mp4") or "mp4"
 
@@ -2334,6 +2368,8 @@ def main():
     b.add_argument("--codec", default="h264")
     b.add_argument("--formato", default="mp4",
                    choices=["mp4", "webm", "gif"])
+    b.add_argument("--sonoridad", action="store_true",
+                   help="normalizar a -14 LUFS, lo que espera YouTube")
 
     d = sub.add_parser("camara")
     d.add_argument("plan")

@@ -53,6 +53,20 @@ ColumnLayout {
                     { mudo: !filaPista.modelData.mudo })
             }
 
+            //  Limpiar el ruido de la pista al renderizar: el
+            //  soplido del micro fuera, la voz intacta. La previa
+            //  no lo enseña —el reproductor no filtra— y por eso
+            //  la escoba se queda encendida, para que se sepa.
+            MediaButton {
+                glyph: String.fromCodePoint(0xF00E2)   // md-broom
+                glyphSize: 13
+                glyphColor: filaPista.modelData.limpia
+                    ? Theme.green : Theme.dim
+                onActivated: Editor.fijarPista(
+                    filaPista.modelData.i,
+                    { limpia: !filaPista.modelData.limpia })
+            }
+
             IslandLabel {
                 Layout.preferredWidth: 62
                 text: filaPista.modelData.titulo.length > 0

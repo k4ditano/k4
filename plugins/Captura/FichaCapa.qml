@@ -346,6 +346,20 @@ ColumnLayout {
         }
     }
 
+    //  La música que se agacha: cuando hay voz en el vídeo, esta capa baja
+    //  sola y vuelve con calma. Solo para capas de audio, y solo se oye al
+    //  renderizar: el reproductor de la previa no comprime.
+    BotonAccion {
+        visible: Editor.capaSel && Editor.capaSel.tipo === "audio"
+        texto: Editor.capaSel && Editor.capaSel.agachar
+            ? Idioma.t("Se agacha con la voz (al renderizar)")
+            : Idioma.t("Agacharse con la voz")
+        icono: 0xF0792                        // md-arrow_collapse_down
+        activo: Editor.capaSel && !!Editor.capaSel.agachar
+        onPulsado: Editor.fijarCapa(Editor.idSel,
+            { agachar: !Editor.capaSel.agachar })
+    }
+
     //  El Ken Burns: la foto quieta que respira. Zoom por dentro de la
     //  huella —la capa no cambia de tamaño— a lo largo de su ventana.
     IslandLabel {

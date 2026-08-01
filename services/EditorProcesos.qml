@@ -292,12 +292,14 @@ Scope {
     //  proceso que muere sin despedirse de uno que ya contó su final.
     property bool renderActivo: false
 
-    function renderizar(salida, codec, formato) {
+    function renderizar(salida, codec, formato, sonoridad) {
         renderActivo = true
         renderizador.ultimoError = ""
         renderizador.command = ["python3", guion, "render",
                                 rutaPlan, salida, "--codec", codec,
                                 "--formato", formato]
+        if (sonoridad)
+            renderizador.command = renderizador.command.concat(["--sonoridad"])
         renderizador.running = true
     }
 
