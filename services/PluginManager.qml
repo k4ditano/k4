@@ -7,6 +7,7 @@ pragma Singleton
 // Mantenerlas separadas evita que cerrar un plugin lo desactive para siempre.
 
 import QtQuick
+import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Io
 import "../core"
@@ -502,6 +503,27 @@ Singleton {
     function releerCatalogo() {
         listador.running = false
         listador.running = true
+    }
+
+    //  Y que se note SOLO: la carpeta de plugins del usuario se vigila con
+    //  inotify (vía FolderListModel, sin un solo proceso) y aparecer o
+    //  desaparecer una carpeta relee el catálogo. Instalar deja de exigir
+    //  saberse el `k4 pluginRefresh` — copias, y a los dos segundos está.
+    property var _vigiaCarpeta: FolderListModel {
+        folder: "file://" + Quickshell.env("HOME") + "/.config/k4/plugins"
+        showDirs: true
+        showFiles: false
+        showDotAndDotDot: false
+        //  El primer conteo es la carga inicial, no un cambio: el arranque
+        //  ya trae su propio listado.
+        onCountChanged: if (manager.listo) manager._relectura.restart()
+    }
+
+    //  El respiro: `git clone` crea la carpeta ANTES que sus ficheros, y
+    //  validar a medio clonar daría un «roto» falso que se arregla solo.
+    property var _relectura: Timer {
+        interval: 1200
+        onTriggered: manager.releerCatalogo()
     }
 
     //  Casar lo que hay vivo con lo que dice el catálogo nuevo.
