@@ -543,6 +543,17 @@ def abrir_entradas(plan, rutas):
                 largo = max(largo, float(c.get("hasta", 0)))
         hasta[os.path.abspath(f["ruta"])] = largo + 1.0
 
+    #  Y una capa de IMAGEN animada —efectos o fotogramas clave— necesita el
+    #  mismo bucle: sus filtros evalúan con `t`, y un flujo de un solo
+    #  fotograma se filtra UNA vez, en el instante cero. Sin esto, la escala
+    #  animada de una imagen salía congelada en su primer valor y el fundido
+    #  ni aparecía. Estirada hasta su t1; de ahí en adelante ya la apaga el
+    #  `enable` del overlay.
+    for c in capas_de(plan):
+        if c.get("tipo") == "imagen" and c.get("ruta") and capa_animada(c):
+            r = os.path.abspath(c["ruta"])
+            hasta[r] = max(hasta.get(r, 0.0), float(c.get("t1", 0.0)) + 1.0)
+
     args = []
     for r in rutas:
         t = hasta.get(os.path.abspath(r))
@@ -684,6 +695,93 @@ def expresion_animada(capa, campo, defecto):
     return expr
 
 
+#  Los efectos de entrada y salida de una capa.
+#
+#  `entrada` y `salida` son {tipo, dur}. Dos tipos, y cada uno toca lo suyo:
+#  «desvanecer» funde el alfa y «deslizar» funde Y empuja desde abajo, que es
+#  lo que hace un tercio inferior. La envolvente es una rampa lineal de `dur`
+#  segundos pegada a t0 o a t1.
+#
+#  No hay un «crecer» y no es olvido: en el ffmpeg de hoy (8.1) las
+#  expresiones de `scale` NO avanzan con el tiempo —`t` y `n` quedan
+#  congelados, comprobado con vídeo y con imagen en bucle—, así que un tamaño
+#  animado exige otra maquinaria (zoompan sobre lienzo acolchado). Esa pieza
+#  llegará con el Ken Burns, que la necesita igual.
+
+
+def efecto_de(capa, cual):
+    """El efecto de entrada o salida, normalizado, o None si no hay.
+
+    La duración se acota a MEDIA ventana de la capa: una entrada de dos
+    segundos en una capa de uno no es un efecto, es la capa entera
+    apareciendo, y encima se pisaría con la salida.
+    """
+    e = capa.get(cual) or {}
+    tipo = e.get("tipo") or ""
+    if tipo not in ("desvanecer", "deslizar"):
+        return None
+    ventana = max(0.1, float(capa.get("t1", 0.0)) - float(capa.get("t0", 0.0)))
+    return {"tipo": tipo,
+            "dur": encaja(float(e.get("dur", 0.4)), 0.05, ventana / 2)}
+
+
+def capa_animada(capa):
+    """Si los filtros de la capa dependen del tiempo: claves o efectos."""
+    return bool(capa.get("keyframes")) or bool(efecto_de(capa, "entrada")) \
+        or bool(efecto_de(capa, "salida"))
+
+
+#  Cuánto empuja «deslizar», en fracción del alto del fotograma.
+DESLIZA = 0.08
+
+
+def efectos_video(capa):
+    """Lo que aportan los efectos a una capa con imagen detrás.
+
+    Devuelve (fades, dys): filtros `fade` para el alfa —parámetros
+    constantes, que es lo único que ese filtro acepta— y sumandos para la y
+    del overlay en fracción del alto. El alfa va por `fade` y no por una
+    expresión en `colorchannelmixer` porque ese filtro NO evalúa expresiones:
+    se las traga como error, y de ahí que el alfa animado por claves nunca
+    funcionara.
+    """
+    fades, dys = [], []
+    t0, t1 = float(capa.get("t0", 0.0)), float(capa.get("t1", 0.0))
+    ent = efecto_de(capa, "entrada")
+    if ent:
+        fades.append("fade=t=in:st=%.4f:d=%.4f:alpha=1" % (t0, ent["dur"]))
+        if ent["tipo"] == "deslizar":
+            dys.append("%.3f*(1-clip((t-%.4f)/%.4f,0,1))"
+                       % (DESLIZA, t0, ent["dur"]))
+    sal = efecto_de(capa, "salida")
+    if sal:
+        fades.append("fade=t=out:st=%.4f:d=%.4f:alpha=1"
+                     % (t1 - sal["dur"], sal["dur"]))
+        if sal["tipo"] == "deslizar":
+            dys.append("%.3f*(1-clip((%.4f-t)/%.4f,0,1))"
+                       % (DESLIZA, t1, sal["dur"]))
+    return fades, dys
+
+
+def alfa_texto(capa):
+    """La expresión de alfa de un rótulo con efectos, o None.
+
+    Un rótulo no pasa por `fade`: lo dibuja `drawtext` directamente sobre el
+    vídeo, así que su alfa es el parámetro `alpha`, que SÍ evalúa expresiones
+    con `t`. La caja de detrás se funde con él.
+    """
+    partes = []
+    ent = efecto_de(capa, "entrada")
+    if ent and ent["tipo"] in ("desvanecer", "deslizar"):
+        partes.append("clip((t-%.4f)/%.4f,0,1)"
+                      % (float(capa.get("t0", 0.0)), ent["dur"]))
+    sal = efecto_de(capa, "salida")
+    if sal and sal["tipo"] in ("desvanecer", "deslizar"):
+        partes.append("clip((%.4f-t)/%.4f,0,1)"
+                      % (float(capa.get("t1", 0.0)), sal["dur"]))
+    return "*".join(partes) if partes else None
+
+
 def rama_texto(n, capa, ancho, alto, carpeta, entra):
     """Un rótulo. Devuelve (líneas, etiqueta de salida).
 
@@ -697,12 +795,16 @@ def rama_texto(n, capa, ancho, alto, carpeta, entra):
         f.write(capa.get("texto", ""))
 
     tam = max(8, int(round(alto * float(capa.get("tam", 0.06)))))
+    _, dys_ef = efectos_video(capa)
+    alfa = alfa_texto(capa)
+    empuje = "".join("+" + d for d in dys_ef)
     #  `expansion=none`: sin esto `drawtext` se cree que el texto lleva formato y
     #  un «50 %» acaba en «Stray %» y en un rótulo a medias. Probado.
     partes = ["drawtext=fontfile=%s" % citar(FUENTE),
               "textfile=%s" % citar(ruta),
               "expansion=none",
-              ("fontsize='%s*h'" % expresion_animada(capa, "tam", 0.06)
+              ("fontsize='max(8,%s*h)'"
+               % expresion_animada(capa, "tam", 0.06)
                if capa.get("keyframes") else "fontsize=%d" % tam),
               "fontcolor=%s" % color_ffmpeg(capa.get("color", "#ffffff")),
               #  Centrado en (x, y) como las demás capas: `text_w` y `text_h` son
@@ -710,11 +812,14 @@ def rama_texto(n, capa, ancho, alto, carpeta, entra):
               ("x='%s*w-text_w/2'" % expresion_animada(capa, "x", 0.5)
                if capa.get("keyframes") else
                "x=%.4f*w-text_w/2" % float(capa.get("x", 0.5))),
-              ("y='%s*h-text_h/2'" % expresion_animada(capa, "y", 0.85)
-               if capa.get("keyframes") else
+              ("y='(%s%s)*h-text_h/2'"
+               % (expresion_animada(capa, "y", 0.85), empuje)
+               if capa.get("keyframes") or empuje else
                "y=%.4f*h-text_h/2" % float(capa.get("y", 0.85))),
               "enable='between(t,%.4f,%.4f)'"
               % (float(capa.get("t0", 0)), float(capa.get("t1", 0)))]
+    if alfa:
+        partes.append("alpha='%s'" % alfa)
 
     fondo = float(capa.get("fondo", 0.0))
     if fondo > 0.001:
@@ -747,6 +852,7 @@ def rama_pip(n, idx, capa, ancho, alto, entra):
     et = "pip%d" % n
     ancho_capa = max(2, int(round(ancho * float(capa.get("escala", 0.3)))))
     escala_expr = expresion_animada(capa, "escala", 0.3)
+    fades, dys_ef = efectos_video(capa)
 
     recorte = capa.get("recorte") or [0, 0]
     filtros = []
@@ -802,21 +908,24 @@ def rama_pip(n, idx, capa, ancho, alto, entra):
 
     opacidad = float(capa.get("opacidad", 1.0))
     if opacidad < 0.999:
-        if capa.get("keyframes"):
-            filtros.append("format=rgba,colorchannelmixer=aa='%s'" %
-                           expresion_animada(capa, "opacidad", opacidad))
-        else:
-            filtros.append("format=rgba,colorchannelmixer=aa=%.3f" % opacidad)
+        filtros.append("format=rgba,colorchannelmixer=aa=%.3f" % opacidad)
+    if fades:
+        #  Sobre rgba y al final: `fade` con `alpha=1` solo toca el alfa. Sus
+        #  tiempos van en la línea, y aquí el `setpts` de más arriba ya empujó
+        #  el clip a su instante, así que cuadran.
+        filtros.append("format=rgba")
+        filtros += fades
 
     lineas.append("[%d:v]%s[%s]" % (idx, ",".join(filtros), et))
 
     sale = "ov%d" % n
-    if capa.get("keyframes"):
+    empuje = "".join("+" + d for d in dys_ef)
+    if capa.get("keyframes") or empuje:
         linea_overlay = (
-            "[%s][%s]overlay=x='%s*W-w/2':y='%s*H-h/2':"
+            "[%s][%s]overlay=x='%s*W-w/2':y='(%s%s)*H-h/2':"
             "enable='between(t,%.4f,%.4f)':eof_action=pass[%s]"
             % (entra, et, expresion_animada(capa, "x", 0.75),
-               expresion_animada(capa, "y", 0.75),
+               expresion_animada(capa, "y", 0.75), empuje,
                float(capa.get("t0", 0)), float(capa.get("t1", 0)), sale))
     else:
         linea_overlay = (
@@ -845,6 +954,7 @@ def rama_capa(n, idx, capa, ancho, alto, entra):
     et = "cap%d" % n
     ancho_capa = max(2, int(round(ancho * float(capa.get("escala", 0.25)))))
     escala_expr = expresion_animada(capa, "escala", 0.25)
+    fades, dys_ef = efectos_video(capa)
 
     filtros = []
     rotacion = float(capa.get("rotacion", 0.0))
@@ -866,11 +976,12 @@ def rama_capa(n, idx, capa, ancho, alto, entra):
     if opacidad < 0.999:
         #  El alfa hay que tenerlo antes de poder tocarlo: un JPEG llega sin
         #  canal alfa y `colorchannelmixer=aa=` no haría nada, sin quejarse.
-        if capa.get("keyframes"):
-            filtros.append("format=rgba,colorchannelmixer=aa='%s'" %
-                           expresion_animada(capa, "opacidad", opacidad))
-        else:
-            filtros.append("format=rgba,colorchannelmixer=aa=%.3f" % opacidad)
+        filtros.append("format=rgba,colorchannelmixer=aa=%.3f" % opacidad)
+    if fades:
+        #  El fundido del efecto va el último y sobre rgba: `fade` con
+        #  `alpha=1` solo toca el canal alfa, que es justo lo que se quiere.
+        filtros.append("format=rgba")
+        filtros += fades
 
     lineas.append("[%d:v]%s[%s]" % (idx, ",".join(filtros), et))
 
@@ -886,12 +997,13 @@ def rama_capa(n, idx, capa, ancho, alto, entra):
     #  Y no hace falta protegerse de que la salida se trunque, porque `shortest`
     #  es 0 de fábrica: manda la duración de la entrada principal.
     sale = "ov%d" % n
-    if capa.get("keyframes"):
+    empuje = "".join("+" + d for d in dys_ef)
+    if capa.get("keyframes") or empuje:
         linea_overlay = (
-            "[%s][%s]overlay=x='%s*W-w/2':y='%s*H-h/2':"
+            "[%s][%s]overlay=x='%s*W-w/2':y='(%s%s)*H-h/2':"
             "enable='between(t,%.4f,%.4f)'[%s]"
             % (entra, et, expresion_animada(capa, "x", 0.5),
-               expresion_animada(capa, "y", 0.5),
+               expresion_animada(capa, "y", 0.5), empuje,
                float(capa.get("t0", 0.0)), float(capa.get("t1", 0.0)), sale))
     else:
         linea_overlay = (

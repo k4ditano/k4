@@ -1069,6 +1069,21 @@ Singleton {
         fijarCapa(id, campos)
     }
 
+    //  Con qué entra y con qué sale una capa: desvanecer o deslizar.
+    //
+    //  `cual` es "entrada" o "salida" y un tipo vacío quita el efecto. La
+    //  duración la acotan por igual python al renderizar y la previa al
+    //  pintar: media ventana de la capa como mucho, que más que eso ya no es
+    //  un efecto sino la capa entera apareciendo.
+    function fijarEfecto(id, cual, tipo, dur) {
+        const campos = {}
+        campos[cual] = tipo && tipo.length > 0
+            ? { tipo: tipo,
+                dur: Math.max(0.1, Math.min(2, Number(dur) || 0.4)) }
+            : null
+        fijarCapa(id, campos)
+    }
+
     function crearKeyframe(id, t) {
         const c = capaPorId(id)
         if (!c || capaBloqueada(c)) return

@@ -154,6 +154,32 @@ Item {
             readonly property real eEscala: escalando ? vEscala
                 : animado("escala", 0.3)
 
+            //  Los efectos de entrada y salida, con la MISMA cuenta que hace
+            //  python al renderizar: rampa lineal pegada a t0 o a t1, acotada
+            //  a media ventana. Los dos tipos funden; «deslizar» además
+            //  empuja desde abajo lo que le queda de rampa.
+            function rampaEfecto(e, esEntrada) {
+                if (!e || !e.tipo)
+                    return 1
+                const ventana = Math.max(0.1, modelData.t1 - modelData.t0)
+                const d = Math.max(0.05, Math.min(ventana / 2,
+                    Number(e.dur) > 0 ? Number(e.dur) : 0.4))
+                const r = esEntrada
+                    ? (lienzo.segundos - modelData.t0) / d
+                    : (modelData.t1 - lienzo.segundos) / d
+                return Math.max(0, Math.min(1, r))
+            }
+
+            readonly property real alfaEfecto:
+                rampaEfecto(modelData.entrada, true)
+                * rampaEfecto(modelData.salida, false)
+
+            readonly property real empujeEfecto:
+                (modelData.entrada && modelData.entrada.tipo === "deslizar"
+                    ? 0.08 * (1 - rampaEfecto(modelData.entrada, true)) : 0)
+                + (modelData.salida && modelData.salida.tipo === "deslizar"
+                    ? 0.08 * (1 - rampaEfecto(modelData.salida, false)) : 0)
+
             readonly property bool esTexto: modelData.tipo === "texto"
             readonly property bool esPip: modelData.tipo === "video"
             readonly property bool esZona: modelData.tipo === "zona"
@@ -206,7 +232,7 @@ Item {
                   : esZona  ? Math.max(8, lienzo.height * eAl)
                             : width * relacion
             x: ex * lienzo.width - width / 2
-            y: ey * lienzo.height - height / 2
+            y: (ey + empujeEfecto) * lienzo.height - height / 2
 
             // El mismo `boxborderw` que le pasa el grafo a ffmpeg.
             readonly property real tamTexto: lienzo.height
@@ -214,7 +240,7 @@ Item {
             readonly property real relleno: esTexto && modelData.fondo > 0.001
                 ? Math.max(2, Math.round(tamTexto * 0.28)) : 0
 
-            opacity: animado("opacidad", 1)
+            opacity: animado("opacidad", 1) * alfaEfecto
             rotation: animado("rotacion", 0)
 
             //  El vídeo de dentro, reproduciéndose.

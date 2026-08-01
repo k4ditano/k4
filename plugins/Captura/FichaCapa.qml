@@ -199,6 +199,153 @@ ColumnLayout {
         }
     }
 
+    //  Con qué entra y con qué sale la capa.
+    //
+    //  Solo lo que se ve: el sonido tendrá sus propios fundidos y una zona
+    //  no «entra», tapa. Los dos tipos funden; «deslizar» además llega
+    //  subiendo desde abajo, que es lo que hace un tercio inferior.
+    Repeater {
+        model: Editor.capaSel && (Editor.capaSel.tipo === "imagen"
+                                  || Editor.capaSel.tipo === "texto"
+                                  || Editor.capaSel.tipo === "video")
+            ? [{ cual: "entrada", nombre: Idioma.t("Entrada"),
+                 aparecer: Idioma.t("Aparecer") },
+               { cual: "salida", nombre: Idioma.t("Salida"),
+                 aparecer: Idioma.t("Desvanecer") }]
+            : []
+
+        delegate: ColumnLayout {
+            id: filaEfecto
+            required property var modelData
+
+            readonly property var puesto: Editor.capaSel
+                ? Editor.capaSel[filaEfecto.modelData.cual] : null
+            readonly property string tipoPuesto:
+                puesto && puesto.tipo ? puesto.tipo : ""
+
+            Layout.fillWidth: true
+            spacing: 3
+
+            IslandLabel {
+                text: filaEfecto.modelData.nombre
+                color: Theme.dim
+                font.pixelSize: 9
+                font.capitalization: Font.AllUppercase
+                font.weight: Font.DemiBold
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 3
+
+                Repeater {
+                    model: [
+                        { id: "", nombre: Idioma.t("Nada") },
+                        { id: "desvanecer",
+                          nombre: filaEfecto.modelData.aparecer },
+                        { id: "deslizar", nombre: Idioma.t("Deslizar") }
+                    ]
+
+                    delegate: Rectangle {
+                        id: chipEfecto
+                        required property var modelData
+
+                        readonly property bool puesta:
+                            filaEfecto.tipoPuesto === chipEfecto.modelData.id
+
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 24
+                        radius: 12
+                        color: chipEfecto.puesta ? Theme.blue
+                             : efectoRaton.containsMouse ? Theme.surfaceHi
+                                                         : Theme.surface
+
+                        IslandLabel {
+                            anchors.centerIn: parent
+                            text: chipEfecto.modelData.nombre
+                            color: chipEfecto.puesta ? "#ffffff" : Theme.muted
+                            font.pixelSize: 10
+                            font.weight: chipEfecto.puesta ? Font.DemiBold
+                                                           : Font.Normal
+                        }
+
+                        MouseArea {
+                            id: efectoRaton
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Editor.fijarEfecto(Editor.idSel,
+                                filaEfecto.modelData.cual,
+                                chipEfecto.modelData.id,
+                                filaEfecto.puesto ? filaEfecto.puesto.dur : 0.4)
+                        }
+                    }
+                }
+            }
+
+            //  Cuánto dura la rampa. El tope de verdad lo pone la ventana de
+            //  la capa —media, como en el render—; la barra ofrece hasta 1,5 s.
+            RowLayout {
+                visible: filaEfecto.tipoPuesto.length > 0
+                Layout.fillWidth: true
+                spacing: 6
+
+                readonly property real valor: filaEfecto.puesto
+                    ? Number(filaEfecto.puesto.dur) || 0.4 : 0.4
+
+                IslandLabel {
+                    Layout.preferredWidth: 58
+                    text: Idioma.t("Duración")
+                    color: Theme.muted
+                    font.pixelSize: 9
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 4
+                    radius: 2
+                    color: Theme.track
+
+                    Rectangle {
+                        width: parent.width * Math.max(0, Math.min(1,
+                            (parent.parent.valor - 0.1) / 1.4))
+                        height: parent.height
+                        radius: parent.radius
+                        color: Theme.green
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        anchors.topMargin: -8
+                        anchors.bottomMargin: -8
+                        cursorShape: Qt.PointingHandCursor
+
+                        function poner(x) {
+                            const u = Math.max(0, Math.min(1,
+                                x / Math.max(1, width)))
+                            Editor.fijarEfecto(Editor.idSel,
+                                filaEfecto.modelData.cual,
+                                filaEfecto.tipoPuesto,
+                                Math.round((0.1 + u * 1.4) * 20) / 20)
+                        }
+                        onPressed: function (ev) { poner(ev.x) }
+                        onPositionChanged: function (ev) {
+                            if (pressed) poner(ev.x)
+                        }
+                    }
+                }
+
+                IslandLabel {
+                    Layout.preferredWidth: 30
+                    horizontalAlignment: Text.AlignRight
+                    text: parent.valor.toFixed(2) + " s"
+                    color: Theme.dim
+                    font.pixelSize: 9
+                }
+            }
+        }
+    }
+
     // Inspector numérico: permite repetir posiciones y
     // tamaños con precisión, sin depender del ratón.
     GridLayout {

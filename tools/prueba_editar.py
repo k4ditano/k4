@@ -1097,6 +1097,78 @@ def prueba_srt_que_no_existe():
           transcribir.leer_srt(os.path.join(BORRADOR, "no-hay.srt")), [])
 
 
+def prueba_efecto_desvanecer_es_fade_de_alfa():
+    """El alfa animado va por `fade`, no por una expresión en
+    colorchannelmixer: ese filtro no evalúa expresiones, se las traga como
+    error y tumbaba el render entero."""
+    texto, _ = editar.grafo(con_capas(
+        [capa(entrada={"tipo": "desvanecer", "dur": 0.4})]))
+    igual("el fundido de entrada, pegado a t0",
+          "fade=t=in:st=2.0000:d=0.4000:alpha=1" in texto, True)
+    texto, _ = editar.grafo(con_capas(
+        [capa(salida={"tipo": "desvanecer", "dur": 0.5})]))
+    igual("el de salida acaba clavado en t1",
+          "fade=t=out:st=3.5000:d=0.5000:alpha=1" in texto, True)
+
+
+def prueba_efecto_dur_acotada_a_media_ventana():
+    """Una entrada de 5 s en una capa de 2 no es un efecto: es la capa entera
+    apareciendo, y encima pisaría a la salida."""
+    texto, _ = editar.grafo(con_capas(
+        [capa(entrada={"tipo": "desvanecer", "dur": 5.0})]))
+    igual("la rampa queda en media ventana (1 s)",
+          "fade=t=in:st=2.0000:d=1.0000:alpha=1" in texto, True)
+
+
+def prueba_efecto_crecer_no_existe():
+    """«crecer» no es un tipo: en el ffmpeg de hoy las expresiones de `scale`
+    no avanzan con el tiempo, y un efecto que no puede renderizarse no se
+    ofrece. El tamaño animado llegará por zoompan, con el Ken Burns."""
+    texto, _ = editar.grafo(con_capas(
+        [capa(entrada={"tipo": "crecer", "dur": 0.4})]))
+    igual("un tipo desconocido no anima nada", "fade=" in texto, False)
+    igual("y la escala sigue quieta", "scale=480:-1" in texto, True)
+
+
+def prueba_efecto_deslizar_empuja_y_funde():
+    texto, _ = editar.grafo(con_capas(
+        [capa(entrada={"tipo": "deslizar", "dur": 0.4})]))
+    igual("la y del overlay lleva el empujón",
+          "+0.080*(1-clip((t-2.0000)/0.4000,0,1)))*H-h/2" in texto, True)
+    igual("y además se funde", "fade=t=in" in texto, True)
+
+
+def prueba_efecto_en_rotulo_va_por_alpha():
+    """Un rótulo lo dibuja drawtext, que no pasa por fade: su alfa es el
+    parámetro `alpha`, que sí evalúa expresiones."""
+    texto, _ = editar.grafo(con_capas(
+        [capa(tipo="texto", texto="Hola", tam=0.06,
+              entrada={"tipo": "desvanecer", "dur": 0.4})]))
+    igual("drawtext lleva alpha con la rampa",
+          "alpha='clip((t-2.0000)/0.4000,0,1)'" in texto, True)
+
+
+def prueba_efecto_anima_la_entrada_de_la_imagen():
+    """Una imagen de capa entra en bucle SOLO si está animada: sin efectos ni
+    claves sigue siendo un fotograma suelto, que es más barato."""
+    quieta = con_capas([capa()])
+    rutas, _, _, _ = editar.entradas(quieta)
+    igual("quieta: sin bucle",
+          "-loop" in " ".join(editar.abrir_entradas(quieta, rutas)), False)
+    animada = con_capas([capa(entrada={"tipo": "desvanecer", "dur": 0.4})])
+    rutas, _, _, _ = editar.entradas(animada)
+    args = " ".join(editar.abrir_entradas(animada, rutas))
+    igual("animada: en bucle hasta t1+1",
+          "-loop 1 -t 5.000" in args, True)
+
+
+def prueba_efecto_no_toca_una_capa_quieta():
+    """Sin efectos, el grafo de siempre: ni fade, ni max(), ni expresiones."""
+    texto, _ = editar.grafo(con_capas([capa()]))
+    igual("ni rastro de fade", "fade=" in texto, False)
+    igual("la escala sigue siendo un número", "scale=480:-1" in texto, True)
+
+
 def prueba_duracion_manda_el_flujo():
     """En una grabación el audio sigue tras el último fotograma: el contenedor
     dura más que el vídeo, y la línea tiene que medirse por los fotogramas."""
