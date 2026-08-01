@@ -61,6 +61,12 @@ K4.PorPantalla {
             readonly property real anc: Math.abs(rw)
             readonly property real alt: Math.abs(rh)
 
+            //  El recuadro se enseña también MIENTRAS se traza, no solo al
+            //  soltar: encuadrar a ciegas y descubrir el resultado al final
+            //  es lo contrario de encuadrar. `hay` sigue diciendo si la
+            //  selección está hecha; esto solo dice si se pinta.
+            readonly property bool ensena: hay || trazando
+
             Component.onCompleted: forceActiveFocus()
 
             // ── las ventanas a las que engancharse ────────────────
@@ -171,17 +177,17 @@ K4.PorPantalla {
                 color: raiz.tono
                 anchors.left: parent.left; anchors.right: parent.right
                 anchors.top: parent.top
-                height: raiz.hay ? Math.max(0, raiz.arr) : parent.height
+                height: raiz.ensena ? Math.max(0, raiz.arr) : parent.height
             }
             Rectangle {
-                visible: raiz.hay
+                visible: raiz.ensena
                 color: raiz.tono
                 anchors.left: parent.left; anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 height: Math.max(0, parent.height - raiz.arr - raiz.alt)
             }
             Rectangle {
-                visible: raiz.hay
+                visible: raiz.ensena
                 color: raiz.tono
                 anchors.left: parent.left
                 y: raiz.arr
@@ -189,7 +195,7 @@ K4.PorPantalla {
                 height: raiz.alt
             }
             Rectangle {
-                visible: raiz.hay
+                visible: raiz.ensena
                 color: raiz.tono
                 anchors.right: parent.right
                 y: raiz.arr
@@ -199,7 +205,7 @@ K4.PorPantalla {
 
             // ── la ventana señalada, antes de haber selección ─────
             Rectangle {
-                visible: !raiz.hay && raiz.ventanaSenalada >= 0
+                visible: !raiz.ensena && raiz.ventanaSenalada >= 0
                 color: Qt.rgba(10 / 255, 132 / 255, 1, 0.14)
                 border.width: 1
                 border.color: Theme.blue
@@ -212,7 +218,7 @@ K4.PorPantalla {
             // ── el rectángulo ─────────────────────────────────────
             Rectangle {
                 id: marco
-                visible: raiz.hay
+                visible: raiz.ensena
                 x: raiz.izq
                 y: raiz.arr
                 width: raiz.anc
@@ -240,7 +246,7 @@ K4.PorPantalla {
 
             // ── cuánto llevas ─────────────────────────────────────
             Rectangle {
-                visible: raiz.hay
+                visible: raiz.ensena
                 radius: 4
                 color: "#cc000000"
                 width: medida.implicitWidth + 12
@@ -340,7 +346,7 @@ K4.PorPantalla {
 
             // ── la chuleta ────────────────────────────────────────
             Rectangle {
-                visible: !raiz.hay
+                visible: !raiz.ensena
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.top: parent.top
                 anchors.topMargin: 60
