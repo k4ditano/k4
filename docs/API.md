@@ -47,6 +47,55 @@ K4Plugin {
 }
 ```
 
+Repo modules import that root type from `core/`; third-party plugins use the
+same contract as `K4.Plugin`.
+
+## Visual components
+
+The bar's look, ready to assemble — every piece takes the palette from
+`K4.Tema` so a plugin lands looking native:
+
+| Type | What it is |
+|---|---|
+| `K4.Etiqueta` | Text with the bar's defaults (white, Adwaita, 12px) |
+| `K4.Glifo` | A Nerd Font glyph (find codepoints with `tools/glifos.py`) |
+| `K4.Icono` | An `IconImage` ready to render application icons |
+| `K4.IconoPlugin` | A plugin's own image, falling back to a glyph |
+| `K4.Interruptor` | The bar's switch |
+| `K4.Deslizador` | The bar's slider |
+| `K4.Baldosa` | Pressable card: hover lift, press sink |
+| `K4.Boton` | Round one-glyph button |
+| `K4.Aparicion` | Fade-in for views |
+| `K4.Rodillo` | Scrollable column whose wheel works over hoverable rows |
+| `K4.FocoInicial` | Grabs keyboard focus when a view opens |
+
+`ejemplos/piezas/` is the runnable showcase of all of them.
+
+## Plugin state that survives: `K4.Guardado`
+
+For game saves, counters, anything that must outlive a restart. It owns a
+JSON file under the plugin's own state directory:
+
+```qml
+property var guardado: K4.Guardado {
+    plugin: "hello"
+    onCargado: function (d) { self.visitas = d.visitas || 0 }
+}
+
+function apuntar() {
+    guardado.guardar({ visitas: visitas })
+}
+```
+
+Prefer it over raw `K4.Fichero` for plugin state: the path, the directory
+and the load signal are handled for you.
+
+## Spanish first, translated everywhere: `K4.Idioma`
+
+Wrap every user-facing string in `K4.Idioma.t("…")` and format with
+`K4.Idioma.f("%1 things", n)`. Source strings are Spanish; `en.json` and
+friends translate, and missing entries fall back to the original.
+
 ## Processes: `K4.Process`
 
 `K4.Process` wraps an external process and provides two output modes:
@@ -114,6 +163,26 @@ const home = K4.Sistema.entorno("HOME")
 one up and `K4.Apps.icono(name)` resolves its icon. `K4.Icono` is an
 `IconImage` ready to render.
 
+## Reading the machine
+
+Live system data, one wrapper per source. Reading is free; the few write
+operations are permission-gated (see the manifest permissions below):
+
+| Type | Reads | Gated writes |
+|---|---|---|
+| `K4.Audio` | volume, mute | `ponerVolumen`, `alternarSilencio` → `audio` |
+| `K4.Medios` | player, track, artwork | `alternarPausa`, `siguiente`… → `medios` |
+| `K4.Red` | Wi-Fi and Bluetooth state | none — read-only, no exceptions |
+| `K4.Escritorios` | Hyprland workspaces | — |
+| `K4.Notificaciones` | notification count and recents | `limpiar` → `notificaciones` |
+| `K4.Portapapeles` | clipboard history | reading is itself gated → `portapapeles` |
+| `K4.Reloj` | the bar's clock | — |
+
+## Sound: `K4.Sonido`
+
+A short effect — `fuente` points at the audio file, `volumen` scales it.
+Requires the `sonido` permission: a plugin that can make noise says so.
+
 ## IPC, windows and shortcuts
 
 Expose commands with `K4.Ipc`:
@@ -137,7 +206,8 @@ quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4.hello toggle
 - `K4.Cargador`: a `LazyLoader` for expensive views or windows.
 - `K4.Atajo`: a global shortcut identified by `appid: "k4"` and `name`.
 - `K4.Autenticacion`: PAM authentication state and signals.
-- `K4.BloqueoSesion`: the real `ext-session-lock` surface.
+- `K4.BloqueoSesion` and `K4.SuperficieBloqueo`: the real `ext-session-lock`
+  and its per-output surface.
 - `K4.MenuBandeja`: an application tray menu.
 
 ## Pill indicators
@@ -177,6 +247,22 @@ plugin keeps the values, the bar asks for them (`valores`) and notifies
 With these, a plugin that talks to a service, an AI or a CLI configures
 itself in Settings like everything else.
 
+## Your results in the launcher: `K4.Lanzador`
+
+Answer the launcher's queries whenever you can — a slow source blocks
+nobody. Your results appear below the system's applications:
+
+```qml
+K4.Lanzador {
+    plugin: "hola"
+    onBuscando: function (texto) {
+        resultados = texto.length < 2 ? []
+            : [{ id: "abrir", titulo: K4.Idioma.t("Abrir Hola"), desc: "…" }]
+    }
+    onElegido: function (id) { self.abierto = true }
+}
+```
+
 ## The island as a stage
 
 - `K4.Tema.tintar(id, color, strength, durationMs)` tints the bar's neutral
@@ -198,6 +284,19 @@ itself in Settings like everything else.
   springs back on timeout, `soltar(id)`, or disable.
 
 `ejemplos/efectos/` has every piece working, hand included.
+
+## Planned: a personal-data API (not yet available)
+
+A designed-but-unbuilt surface, documented here so nobody mistakes intent
+for reality. The idea: plugins reading aggregated slices of the user's real
+life — apps and focus time, Steam hours, local git rhythm, browser domains
+(never URLs), shell binaries (never arguments) — under a **double key**: the
+plugin declares a `datos-personales` manifest permission AND the user
+enables each source individually in Settings, everything off by default,
+aggregated before it ever reaches QML, erasable with one button, and with
+hard red lines (no keylogging, no notification or file contents, no
+mic/camera content — only a binary "in use" indicator). Working name:
+`Rastro`. Until it ships, none of this exists in the API.
 
 ## Current boundaries
 

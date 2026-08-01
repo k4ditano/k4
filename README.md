@@ -23,7 +23,16 @@ when it has something to show.
 - A virtual pet that lives in the pill and reacts to your real machine — music,
   CPU heat, weather, AI token spend — with 15 collectible species unlocked by
   how you actually use your computer, each with three evolution stages.
-- Plugin enable/disable state, plugin indicators and a documented public API.
+- Plugin enable/disable state, plugin indicators and a documented public API:
+  plugins contribute their own Settings rows (switches, choices, free-text
+  fields with secret masking for API keys), launcher results and pill
+  indicators.
+- The island as a stage for plugins: tint the whole bar's ambience, request
+  physical gestures (shake, push, tug), read the island's real screen
+  geometry to draw outside it, and slide it along its edge for the length of
+  a scene.
+- The bar lives where you put it: top or bottom edge, aligned left, center
+  or right — and plugins adapt through the API instead of assuming.
 - Spanish UI with translation files for additional languages.
 
 The editor supports layered video and image timelines, cuts, empty layers,
