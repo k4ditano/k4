@@ -283,6 +283,26 @@ FadeIn {
                     NumberAnimation { to: 1; duration: 620; easing.type: Easing.InOutSine }
                 }
             }
+
+            //  Apartar y olvidar, a la vista. Cerrar con Escape ya apartaba
+            //  la conversación, pero un gesto que no se ve no existe: el −
+            //  la deja esperando en la píldora y la ✕ la tira de verdad.
+            MediaButton {
+                visible: view.plugin.messages.length > 0
+                glyph: String.fromCodePoint(0xEABA)
+                glyphSize: 12
+                glyphColor: Theme.muted
+                onActivated: view.plugin.close()
+                Layout.alignment: Qt.AlignVCenter
+            }
+
+            MediaButton {
+                glyph: Theme.ico.close
+                glyphSize: 14
+                glyphColor: Theme.muted
+                onActivated: view.plugin.cerrarYOlvidar()
+                Layout.alignment: Qt.AlignVCenter
+            }
         }
 
         // ── conversación

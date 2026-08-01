@@ -71,6 +71,7 @@ K4Plugin {
         threadId = ""
         lastError = ""
         status = ""
+        imagenVista = ""
         selection = ""
         selectionCandidate = ""
         attachSelectionOnOpen = false
@@ -82,18 +83,41 @@ K4Plugin {
         }])
     }
 
-    // Rutas de imagen sueltas en la respuesta: si Codex genera algo, lo
-    // anuncia por su ruta, y verla vale más que leerla.
+    // Imágenes en la respuesta, por dos caminos:
+    //
+    //  - Una ruta absoluta suelta: Codex tocó un fichero y lo nombra.
+    //  - `attachment://exec-<id>.png`: su herramienta de GENERAR imágenes.
+    //    Ese esquema no es ninguna ruta, pero el fichero real está en
+    //    ~/.codex/generated_images/<sesión>/ y la sesión es nuestro threadId
+    //    — así que se reconstruye. Antes esto se perdía: generaba la imagen
+    //    y la conversación enseñaba un enlace roto.
     function imagenEn(texto) {
-        const m = String(texto).match(/(\/[^\s"'`)]+\.(?:png|jpe?g|webp|gif))/i)
-        return m ? m[1] : ""
+        const t = String(texto)
+        const adjunto = t.match(/attachment:\/\/([^\s"'`)]+\.(?:png|jpe?g|webp|gif))/i)
+        if (adjunto && threadId.length > 0)
+            return K4.Sistema.entorno("HOME") + "/.codex/generated_images/"
+                + threadId + "/" + adjunto[1]
+        const ruta = t.match(/(\/[^\s"'`)]+\.(?:png|jpe?g|webp|gif))/i)
+        return ruta ? ruta[1] : ""
+    }
+
+    //  El markdown de una imagen que ya se enseña aparte es un enlace roto
+    //  en medio del texto: fuera.
+    function sinAdjuntos(texto) {
+        return String(texto)
+            .replace(/!?\[[^\]]*\]\(attachment:\/\/[^\)]*\)/g, "")
+            .replace(/attachment:\/\/[^\s"'`)]+/g, "")
+            .trim()
     }
 
     function updateLastMessage(role, text) {
         const list = messages.slice()
         for (let i = list.length - 1; i >= 0; --i) {
             if (list[i].role === "assistant" || list[i].role === "error") {
-                list[i] = { role: role, text: text, imagen: imagenEn(text) }
+                const imagen = imagenEn(text)
+                list[i] = { role: role,
+                            text: imagen ? sinAdjuntos(text) : text,
+                            imagen: imagen }
                 messages = list
                 return
             }
@@ -186,6 +210,46 @@ K4Plugin {
         selection = ""
     }
 
+    //  La herramienta de generar imágenes de Codex no deja rastro fiable en
+    //  el texto: a veces `attachment://…`, a veces un mensaje final VACÍO —
+    //  la imagen solo existe como fichero en generated_images/<sesión>/. Así
+    //  que al acabar el turno se mira ahí directamente, y si hay una nueva se
+    //  engancha al último mensaje (aunque fuera un «error» por respuesta
+    //  vacía: una imagen ES la respuesta).
+    property string imagenVista: ""
+
+    function buscarImagenGenerada() {
+        if (threadId.length === 0)
+            return
+        buscadorImagen.command = ["sh", "-c",
+            "ls -t " + K4.Sistema.entorno("HOME") + "/.codex/generated_images/"
+            + threadId + "/*.png 2>/dev/null | head -1"]
+        buscadorImagen.running = true
+    }
+
+    K4.Process {
+        id: buscadorImagen
+        onSalida: function (texto) {
+            const ruta = texto.trim()
+            if (ruta.length === 0 || ruta === self.imagenVista)
+                return
+            self.imagenVista = ruta
+            const list = self.messages.slice()
+            for (let i = list.length - 1; i >= 0; --i) {
+                if (list[i].role === "assistant" || list[i].role === "error") {
+                    const t = (list[i].role === "assistant"
+                               && list[i].text.length > 0)
+                        ? list[i].text : Idioma.t("Aquí la tienes:")
+                    list[i] = { role: "assistant", text: t, imagen: ruta }
+                    self.messages = list
+                    if (self.status === "error")
+                        self.status = ""
+                    return
+                }
+            }
+        }
+    }
+
     function handleEvent(line) {
         const text = line.trim()
         if (text.length === 0 || text.charAt(0) !== "{")
@@ -210,6 +274,7 @@ K4Plugin {
         } else if (event.type === "turn.completed") {
             if (status === "thinking")
                 status = ""
+            buscarImagenGenerada()
         }
     }
 
@@ -294,7 +359,16 @@ K4Plugin {
                     : "Codex terminó con código " + code + " y sin respuesta.")
             } else if (self.status === "thinking") {
                 self.status = ""
+                //  Apartada mientras pensaba: avisar de que ya está, que para
+                //  eso se apartó — para no quedarse mirando.
+                if (!self.open)
+                    K4.Sistema.avisar(Idioma.t("Respuesta lista"),
+                                      self.resumenConversacion(), false)
             }
+
+            //  Y en cualquier caso, mirar si este turno dejó una imagen: el
+            //  veredicto de «sin respuesta» se corrige solo si aparece.
+            self.buscarImagenGenerada()
         }
     }
 
