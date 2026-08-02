@@ -101,6 +101,8 @@ Item {
                             //  El bit 0x02 del VT es la negrita.
                             font.weight: (modelData.n & 0x02) ? Font.Bold : Font.Normal
                             font.italic: (modelData.n & 0x04) !== 0
+                            font.underline: (modelData.n & 0x08) !== 0
+                            font.strikeout: (modelData.n & 0x40) !== 0
                             renderType: Text.NativeRendering
                         }
                     }
@@ -123,6 +125,18 @@ Item {
     //  Un receptor de teclas sin pintar nada: la traducción de tecla a bytes
     //  la hace la sesión, que para eso lleva el codificador de ghostty
     //  dentro. Aquí solo se decide si es texto o si tiene nombre.
+    //  La rueda mueve el historial de la sesión, que es quien lo guarda. Tres
+    //  líneas por muesca, como en todas partes.
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.NoButton
+        onWheel: function (rueda) {
+            const pasos = rueda.angleDelta.y > 0 ? 3 : -3
+            vista.plugin.mandar({ que: "rueda", lineas: -pasos })
+            rueda.accepted = true
+        }
+    }
+
     Item {
         id: campo
         focus: true
