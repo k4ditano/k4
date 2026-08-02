@@ -10,6 +10,7 @@
 //  día hace falta mandar un ESC de verdad a la sesión, será con otra tecla.
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import "../../core"
 import "../../services"
@@ -49,6 +50,13 @@ Item {
     //  parte las líneas donde no toca.
     readonly property int cols: Math.max(20, Math.floor((width - margen * 2) / anchoCelda))
     readonly property int filas: Math.max(4, Math.floor((height - margen * 2) / altoLinea))
+
+    //  Dónde estás dentro del historial, tal cual lo cuenta la sesión: la fila
+    //  por la que empieza lo que se ve y cuántas hay en total.
+    readonly property int arriba: marco ? marco.scroll[0] : 0
+    readonly property int historial: marco ? Math.max(1, marco.scroll[1]) : 1
+    readonly property real recorrido: Math.min(1, filas / historial)
+    readonly property real asomado: arriba / historial
 
     onColsChanged: medir.restart()
     onFilasChanged: medir.restart()
@@ -144,6 +152,53 @@ Item {
             const pasos = rueda.angleDelta.y > 0 ? 3 : -3
             vista.plugin.mandar({ que: "rueda", lineas: -pasos })
             rueda.accepted = true
+        }
+    }
+
+    //  Y la barrita de la casa, la misma pieza que el resto de la island: aquí
+    //  no se le puede colgar de un Flickable —la rejilla no lo es, el historial
+    //  vive en la sesión— así que se le dan `size` y `position` a mano con lo
+    //  que dice el marco. Sale sola cuando hay algo que recorrer y se desvanece
+    //  al parar, como en todas partes.
+    IslandScrollBar {
+        id: barra
+
+        orientation: Qt.Vertical
+        anchors.right: parent.right
+        anchors.rightMargin: 4
+        y: vista.margen
+        height: vista.height - vista.margen * 2
+
+        size: vista.recorrido
+        position: vista.asomado
+
+        //  Arrastrarla también mueve la sesión. Al agarrarla, Qt escribe en
+        //  `position` y de paso rompe el enlace con el marco; por eso se vuelve
+        //  a atar al soltar, que si no la barra se queda muerta a partir del
+        //  primer arrastre y no lo avisa nadie.
+        onPressedChanged: {
+            if (pressed) {
+                arrastre.start()
+            } else {
+                arrastre.stop()
+                position = Qt.binding(function () { return vista.asomado })
+            }
+        }
+
+        //  A tirones y no en cada píxel: la sesión solo sabe moverse en
+        //  relativo, así que cada latido recalcula lo que falta desde donde
+        //  está de verdad. Con eso el error no se acumula aunque los marcos
+        //  lleguen tarde.
+        Timer {
+            id: arrastre
+            interval: 50
+            repeat: true
+            onTriggered: {
+                const destino = Math.round(barra.position * vista.historial)
+                const salto = destino - vista.arriba
+                if (salto !== 0)
+                    vista.plugin.mandar({ que: "rueda", lineas: salto })
+            }
         }
     }
 
