@@ -192,6 +192,7 @@ always opening instead of toggling.
 | `K4.Icono` | a desktop-theme icon, by name |
 | `K4.Interruptor` | the bar's switch; it notifies, it does not flip itself |
 | `K4.Deslizador` | slider with label and value |
+| `K4.Medidor` | a bar that measures and is not touched: volume, progress, how much of a quota is gone |
 | `K4.Baldosa` | the control center's pressable card |
 | `K4.Boton` | round one-glyph button |
 | `K4.Rodillo` | a scrolling area **that actually obeys the wheel**, house scroll bar included |

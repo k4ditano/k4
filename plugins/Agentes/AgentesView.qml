@@ -10,6 +10,7 @@
 
 import QtQuick
 import QtQuick.Layouts
+import K4 as K4
 import "../../core"
 import "../../services"
 
@@ -215,27 +216,17 @@ FadeIn {
                                 Layout.preferredWidth: 78
                             }
 
-                            Rectangle {
-                                id: carril
+                            K4.Medidor {
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 6
                                 Layout.alignment: Qt.AlignVCenter
-                                radius: 3
-                                color: Theme.track
-
-                                Rectangle {
-                                    //  Un cupo recién tocado sigue siendo un cupo
-                                    //  tocado: por debajo de dos píxeles la barra
-                                    //  desaparece y parece que no has gastado nada.
-                                    width: fila.pct <= 0 ? 0
-                                        : Math.max(3, carril.width * fila.pct / 100)
-                                    height: parent.height
-                                    radius: parent.radius
-                                    color: view.tono(fila.pct)
-
-                                    Behavior on width { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
-                                    Behavior on color { ColorAnimation { duration: 200 } }
-                                }
+                                valor: fila.pct
+                                maximo: 100
+                                grosor: 6
+                                tono: view.tono(fila.pct)
+                                //  Un cupo recién tocado sigue siendo un cupo
+                                //  tocado: sin mínimo, un 0,4% no se ve y
+                                //  parece que no has gastado nada.
+                                minimo: 3
                             }
 
                             IslandLabel {

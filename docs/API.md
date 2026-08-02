@@ -63,6 +63,7 @@ The bar's look, ready to assemble — every piece takes the palette from
 | `K4.IconoPlugin` | A plugin's own image, falling back to a glyph |
 | `K4.Interruptor` | The bar's switch |
 | `K4.Deslizador` | The bar's slider |
+| `K4.Medidor` | A read-only bar: `valor` out of `maximo`, with the house track and easing |
 | `K4.Baldosa` | Pressable card: hover lift, press sink |
 | `K4.Boton` | Round one-glyph button |
 | `K4.Aparicion` | Fade-in for views |

@@ -82,6 +82,7 @@ not be declared inside the view.
 | `K4.IconoPlugin` | A plugin's icon: its image, or its glyph |
 | `K4.Interruptor` | The bar's switch |
 | `K4.Deslizador` | Labelled slider |
+| `K4.Medidor` | Read-only bar: `valor` out of `maximo`, house track and easing |
 | `K4.Baldosa` | Pressable card |
 | `K4.Boton` | Round single-glyph button |
 | `K4.Rodillo` | Scroll area that obeys the wheel, house scroll bar included |

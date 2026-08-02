@@ -55,6 +55,40 @@ K4.Aparicion {
                 onMovido: function (v) { vista.plugin.nivel = v }
             }
 
+            // ── Medidor ───────────────────────────────────────────
+            //  El hermano quieto del deslizador: este se mira, no se toca.
+            Row {
+                width: parent.width
+                spacing: 10
+
+                K4.Etiqueta {
+                    width: 70
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: K4.Idioma.t("Medidor")
+                    color: K4.Tema.apagado
+                    font.pixelSize: 11
+                }
+
+                K4.Medidor {
+                    width: parent.width - 118
+                    anchors.verticalCenter: parent.verticalCenter
+                    valor: vista.plugin.nivel
+                    maximo: 100
+                    tono: valor >= 85 ? K4.Tema.rojo
+                        : valor >= 60 ? K4.Tema.amarillo : K4.Tema.verde
+                    //  Con 3, un valor diminuto se sigue viendo.
+                    minimo: 3
+                }
+
+                K4.Etiqueta {
+                    width: 38
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Math.round(vista.plugin.nivel) + "%"
+                    font.pixelSize: 11
+                    horizontalAlignment: Text.AlignRight
+                }
+            }
+
             // ── Baldosas ──────────────────────────────────────────
             Row {
                 spacing: 10

@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import K4 as K4
 import "../../core"
 import "../../services"
 
@@ -18,22 +19,13 @@ FadeIn {
             Layout.alignment: Qt.AlignVCenter
         }
 
-        Rectangle {
-            id: track
+        K4.Medidor {
             Layout.fillWidth: true
-            Layout.preferredHeight: 4
             Layout.alignment: Qt.AlignVCenter
-            radius: 2
-            color: Theme.track
-
-            Rectangle {
-                width: track.width * Math.max(0, Math.min(100, Audio.volume)) / 100
-                height: parent.height
-                radius: 2
-                color: Audio.muted ? Theme.muted : Theme.ink
-
-                Behavior on width { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
-            }
+            valor: Audio.volume
+            maximo: 100
+            tono: Audio.muted ? Theme.muted : Theme.ink
+            duracion: 140
         }
 
         IslandLabel {
