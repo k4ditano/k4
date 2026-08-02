@@ -744,5 +744,12 @@
   "Modo tranquilo": "Quiet mode",
   "Atenúa lo anterior al último mandato": "Dims everything before the last command",
   "terminal": "terminal",
-  "alt+← → cambia · alt+T nueva · alt+W cierra": "alt+← → switch · alt+T new · alt+W close"
+  "alt+← → cambia · alt+T nueva · alt+W cierra": "alt+← → switch · alt+T new · alt+W close",
+  "Agentes": "Agents",
+  "Los límites de Claude y Codex": "Claude and Codex limits",
+  "lo que llevas gastado de cada cupo": "how much of each quota you have spent",
+  "créditos ": "credits ",
+  "Sin datos todavía — úsalo una vez y aparecerán": "No data yet — use it once and it will show up",
+  "Mirando…": "Looking…",
+  "No hay ningún CLI de agentes instalado": "No agent CLI is installed"
 }

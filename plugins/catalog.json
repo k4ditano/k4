@@ -184,6 +184,15 @@
    "enabledByDefault": true,
    "icono": "0xF018D",
    "aplicacion": true
+  },
+  {
+   "id": "agentes",
+   "entry": "Agentes/AgentesPlugin.qml",
+   "version": "1.0.0",
+   "title": "Agentes",
+   "enabledByDefault": true,
+   "icono": "0xF06A9",
+   "aplicacion": true
   }
  ],
  "version": "1.1.0"
