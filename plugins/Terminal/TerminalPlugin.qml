@@ -32,21 +32,10 @@ K4Plugin {
     //  algo. La sesión vive en k4term-isla, fuera de la barra, así que cerrar
     //  la vista no para nada y volver a abrirla te devuelve donde estabas.
     property bool abierto: false
-    property bool arrancado: false
-    property var marco: null
 
-    //  Cuántos fantasmas deja el cursor al moverse. No es una decisión de la
-    //  barra: lo dice la sesión, que lee los ajustes de k4term y los vigila.
-    //  Así la estela de la island y la de la ventana son la misma cosa
-    //  tocando un solo sitio, en vez de dos parecidas que se separan.
-    property int estela: 8
-
-    //  Con qué letra se pinta la rejilla. Lo dice la sesión, que lee los
-    //  ajustes de k4term, para que la isla y la ventana usen LA MISMA. Con la
-    //  de iconos de la barra no vale: es la variante ancha de la Nerd Font, y
-    //  medir la celda con ella deja el cursor separándose del texto.
-    property string fuente: "MesloLGS Nerd Font Mono"
-    property int cuerpo: 13
+    //  La estela del cursor y la letra las dice la SESIÓN, que lee los
+    //  ajustes de k4term y los vigila: así la isla y la ventana usan lo mismo
+    //  tocando un solo sitio. Se declaran abajo, junto a la lista.
 
     grabKeyboard: abierto
     islandWidth: 900
@@ -72,7 +61,9 @@ K4Plugin {
     //  siete filas con el cursor al fondo de la caja.
     //
     //  El margen y el pie ocupan lo que ocupan; el resto son filas enteras.
-    readonly property int chrome: 40
+    //  El margen, el pie y la tira de pestañas de arriba. Lo que sobra son
+    //  filas enteras.
+    readonly property int chrome: 62
     readonly property real altoLinea: Math.ceil(metricas.height)
 
     //  El ancho de celda, en píxeles ENTEROS y recalculado cuando cambia la
@@ -198,7 +189,6 @@ K4Plugin {
     }
 
     //  Cada sesión nueva empieza recogida.
-    onArrancadoChanged: if (!arrancado) { filasReales = filasMinimas; objetivo = filasMinimas }
 
     //  Sin animación por encima: `filasReales` YA se mueve de continuo, y
     //  ponerle una animación detrás solo añadiría un retardo entre el alto y
@@ -212,8 +202,8 @@ K4Plugin {
     view: Component { TerminalIslaView { plugin: self } }
 
     function mandar(orden) {
-        if (arrancado)
-            sesion.escribir(JSON.stringify(orden) + "\n")
+        if (sesion)
+            sesion.mandar(orden)
     }
 
     function cerrar() { abierto = false }
@@ -239,19 +229,18 @@ K4Plugin {
             K4.Sistema.lanzar(Consola.orden(guion))
             return
         }
-        const yaEstaba = arrancado
-        arrancado = true
+        //  Los mandatos de la casa van SIEMPRE a una terminal nueva, no a la
+        //  que tengas delante: si estabas con claude a medias, meterle un
+        //  `yay -Syu` por encima sería una faena.
+        nueva()
         abierto = true
         mandar({ que: "pinta" })
-        //  Si la sesión acaba de nacer hay que dejar que la shell saque su
-        //  prompt: el texto que llegue antes lo repite el tty en crudo y se ve
-        //  el mandato dos veces, una suelta arriba y otra en su sitio.
-        if (yaEstaba)
-            escribirMandato(guion)
-        else {
-            pendiente = guion
-            esperarPrompt.restart()
-        }
+        //  Siempre con espera, porque siempre es una sesión recién nacida: el
+        //  texto que llegue antes de que la shell saque su prompt lo repite el
+        //  tty en crudo y el mandato se ve dos veces, una suelta arriba y otra
+        //  en su sitio.
+        pendiente = guion
+        esperarPrompt.restart()
     }
 
     property string pendiente: ""
@@ -281,9 +270,10 @@ K4Plugin {
             K4.Sistema.lanzar(Consola.abrir(""))
             return
         }
-        //  La sesión no se arranca hasta que la pides por primera vez: quien
-        //  no use la terminal de la island no paga ni un proceso.
-        arrancado = true
+        //  La primera sesión no se arranca hasta que la pides: quien no use la
+        //  terminal de la island no paga ni un proceso.
+        if (vivas.length === 0)
+            nueva()
         abierto = !abierto
         if (abierto)
             mandar({ que: "pinta" })
@@ -294,7 +284,7 @@ K4Plugin {
     //  viva, con lo que estuviera corriendo— porque es suya y de nadie más;
     //  lo que se hereda es el sitio.
     function sacar() {
-        if (!arrancado) {
+        if (!sesion) {
             K4.Sistema.lanzar(Consola.abrir(""))
             return
         }
@@ -304,49 +294,93 @@ K4Plugin {
 
     property bool sacando: false
 
-    K4.Process {
-        id: sesion
-        command: ["k4term-isla"]
-        running: self.arrancado
-        porLineas: true
-        entradaAbierta: true
-        onLinea: function (linea) {
-            let m = null
-            try {
-                m = JSON.parse(linea)
-            } catch (e) {
-                return
-            }
-            if (!m)
-                return
-            if (m.que === "marco") {
-                self.marco = m
-                return
-            }
-            if (m.que === "config") {
-                self.estela = m.estela
-                if (m.fuente)
-                    self.fuente = m.fuente
-                if (m.tamano)
-                    self.cuerpo = Math.round(m.tamano)
-                return
-            }
-            //  La sesión contesta dónde está: solo interesa si se lo hemos
-            //  preguntado para sacarla, no vaya a abrirse una ventana por un
-            //  mensaje rezagado.
-            if (m.que === "donde" && self.sacando) {
-                self.sacando = false
+    //  ── las sesiones ──────────────────────────────────────────────
+    //
+    //  Varias, no una. Tener claude en una y codex en otra es justo para lo
+    //  que sirve una terminal que vive fuera de la vista: cambias de una a
+    //  otra y las dos siguen corriendo.
+    //
+    //  La lista es un ListModel y no un contador porque hay que poder cerrar
+    //  la de en medio: con un número, el Instantiator siempre se llevaría la
+    //  última.
+    property ListModel listaSesiones: ListModel {}
+    property var vivas: []
+    property int actual: 0
+    property int contador: 0
+
+    readonly property var sesion: vivas.length > 0 && actual < vivas.length
+        ? vivas[actual] : null
+
+    readonly property var marco: sesion ? sesion.marco : null
+    readonly property int estela: sesion ? sesion.estela : 8
+    readonly property string fuente: sesion ? sesion.fuente : "MesloLGS Nerd Font Mono"
+    readonly property int cuerpo: sesion ? sesion.cuerpo : 13
+    readonly property bool arrancado: vivas.length > 0
+
+    property Instantiator criadero: Instantiator {
+        model: self.listaSesiones
+        delegate: SesionIsla {
+            required property int sid
+            numero: sid
+            onDonde: function (ruta) { self.alDecirDonde(ruta) }
+            onDifunta: self.alMorir(numero)
+        }
+        onObjectAdded: function (indice, objeto) {
+            const v = self.vivas.slice()
+            v.splice(indice, 0, objeto)
+            self.vivas = v
+        }
+        onObjectRemoved: function (indice, objeto) {
+            const v = self.vivas.slice()
+            v.splice(indice, 1)
+            self.vivas = v
+            if (self.actual >= v.length)
+                self.actual = Math.max(0, v.length - 1)
+            if (v.length === 0)
                 self.abierto = false
-                K4.Sistema.lanzar(Consola.abrir(m.ruta || ""))
+        }
+    }
+
+    function nueva() {
+        listaSesiones.append({ sid: ++contador })
+        actual = vivas.length - 1
+        //  Recogida: cada terminal nueva empieza pequeña, como al abrir.
+        objetivo = filasMinimas
+        filasReales = filasMinimas
+        return vivas[actual]
+    }
+
+    function irA(n) {
+        if (n >= 0 && n < vivas.length) {
+            actual = n
+            mandar({ que: "pinta" })
+        }
+    }
+
+    function siguiente() { if (vivas.length > 1) irA((actual + 1) % vivas.length) }
+    function anterior() { if (vivas.length > 1) irA((actual - 1 + vivas.length) % vivas.length) }
+
+    function cerrarSesion(n) {
+        if (n >= 0 && n < listaSesiones.count)
+            listaSesiones.remove(n)
+    }
+
+    function alMorir(numero) {
+        for (let i = 0; i < listaSesiones.count; ++i)
+            if (listaSesiones.get(i).sid === numero) {
+                listaSesiones.remove(i)
+                return
             }
-        }
-        //  Si la sesión se cae —la shell salió con exit— se olvida lo pintado
-        //  y la siguiente apertura arranca una nueva.
-        onTerminado: {
-            self.marco = null
-            self.arrancado = false
-            self.abierto = false
-        }
+    }
+
+    //  La sesión contesta dónde está: solo interesa si se lo hemos preguntado
+    //  para sacarla, no vaya a abrirse una ventana por un mensaje rezagado.
+    function alDecirDonde(ruta) {
+        if (!sacando)
+            return
+        sacando = false
+        abierto = false
+        K4.Sistema.lanzar(Consola.abrir(ruta || ""))
     }
 
     //  Despierta a los dos servicios que le hacen falta: un singleton de QML
@@ -460,6 +494,13 @@ K4Plugin {
         function onInvocado(id) {
             if (String(id).indexOf("terminal.") !== 0)
                 return
+            //  El de las terminales abiertas no lleva a ninguna ventana: abre
+            //  la island por donde la dejaste.
+            if (id === self.idAbiertas) {
+                self.abierto = true
+                self.mandar({ que: "pinta" })
+                return
+            }
             //  Ir a la ventana quita el aviso de que te espera: ya la has
             //  atendido, que es lo que el indicador estaba pidiendo.
             const espera = String(id).indexOf("terminal.espera.") === 0
@@ -471,6 +512,29 @@ K4Plugin {
             buscar.running = true
         }
     }
+
+    //  ── «tienes terminales abiertas» ──────────────────────────────
+    //
+    //  Con la vista escondida no hay NADA que recuerde que ahí dentro sigue
+    //  corriendo algo, y una sesión que sobrevive a su propia vista es
+    //  justamente la que se olvida. Un indicador con la cuenta lo dice, y
+    //  pulsarlo la trae de vuelta.
+    //
+    //  Solo cuando está escondida: teniéndola delante, contarte que la tienes
+    //  abierta sobra.
+    readonly property string idAbiertas: "terminal.abiertas"
+
+    function refrescarAbiertas() {
+        if (vivas.length === 0 || abierto) {
+            K4.Pildora.quitar(idAbiertas)
+            return
+        }
+        K4.Pildora.registrar(idAbiertas, String(vivas.length),
+                             0xF018D, Theme.muted, 31, true)
+    }
+
+    onVivasChanged: refrescarAbiertas()
+    onAbiertoChanged: refrescarAbiertas()
 
     //  Trabajos largos: la terminal avisa al terminar y aquí se convierte en
     //  notificación, que es la vía por la que la casa entera enseña avisos.
@@ -545,6 +609,27 @@ K4Plugin {
 
         //  La terminal de la island, para lo rápido.
         function isla(): void { self.toggle() }
+
+        //  Las de tener varias: abrir otra, moverse entre ellas y cerrar la
+        //  que sobra. Lo mismo que las teclas, para quien prefiera un guion.
+        function nueva(): void {
+            if (!Consola.hayIsla)
+                return
+            self.nueva()
+            self.abierto = true
+        }
+
+        function siguiente(): void { self.siguiente() }
+        function anterior(): void { self.anterior() }
+        function irA(n: string): void { self.irA(parseInt(n, 10) - 1) }
+        function cerrarTerminal(): void { self.cerrarSesion(self.actual) }
+
+        //  Teclear en la que tengas delante, sin abrir ninguna nueva. Es lo
+        //  que distingue esto de `ejecutar`, que siempre estrena terminal.
+        function escribir(texto: string): void {
+            if (texto)
+                self.mandar({ que: "texto", valor: texto })
+        }
 
         //  Una terminal que toca la campana sin tener el foco casi siempre es
         //  un agente que ha terminado su turno y te espera. Se apunta en la

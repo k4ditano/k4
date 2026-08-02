@@ -110,6 +110,10 @@ What you get by having it is what needs both sides:
 
 - a real terminal **inside the island** (`SUPER + Shift + T`), whose session
   outlives the view — closing it does not stop what is running;
+- **several of them at once**, one per tab: `alt`+`←`/`→` to switch, `alt`+`T`
+  for a new one, `alt`+`1`…`9` to jump. Keep an agent in one and a build in
+  another; a pill in the bar counts them while the view is hidden, and clicking
+  it brings them back;
 - `SUPER + Alt + T` to pop that same session out into a window, in the
   directory it was left in;
 - a pill in the bar counting long commands, and a notice when an agent rings
@@ -143,7 +147,7 @@ equivalent `k4.conf` for the legacy Hyprland format):
 | `SUPER + C` | Capture a region |
 | `SUPER + Shift + C` | Start/stop recording |
 | `SUPER + Shift + E` | Open the video editor |
-| `SUPER + Shift + T` | Terminal in the island (same session, kept alive) |
+| `SUPER + Shift + T` | Terminal in the island (sessions kept alive) |
 | `SUPER + Alt + T` | Pop that session out into a window |
 | `Print` / `Shift + Print` / `Ctrl + Print` | Region / screen / window capture |
 
@@ -171,7 +175,7 @@ Important targets include:
 | `k4.captura` | `menu`, `region`, `grabar`, `parar`, `grande` |
 | `k4.editor` | `abrir`, `editar`, `retomar`, `imagen`, `formato`, `silencios` |
 | `k4.game` | `toggle`, `nueva`, `pausa`, `ver`, `cofre`, `estado` |
-| `k4.term` | `isla`, `sacar`, `abrir`, `aqui`, `abrirEn`, `ejecutar` |
+| `k4.term` | `isla`, `nueva`, `siguiente`, `anterior`, `irA`, `escribir`, `sacar`, `ejecutar` |
 
 Plugin management is also available from the host:
 

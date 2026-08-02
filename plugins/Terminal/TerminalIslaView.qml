@@ -6,8 +6,11 @@
 //  por eso cerrarla no para nada y volver a abrirla te deja donde estabas.
 //
 //  Del teclado: mientras está abierta se lo queda entero, como el lanzador o
-//  la pregunta a la IA. ESC cierra, que es la convención de la casa; si algún
-//  día hace falta mandar un ESC de verdad a la sesión, será con otra tecla.
+//  la pregunta a la IA. Pero ESC NO cierra —va a la terminal—, y ahí se rompe
+//  la convención de la casa a propósito: ESC es la tecla de cancelar de
+//  claude, de codex y de vim, y quedárnosla dejaba a esos programas sin
+//  ninguna forma de recibirla. Para esconder la vista está el botón de la
+//  cabecera y la misma tecla que la abrió.
 
 import QtQuick
 import QtQuick.Controls
@@ -99,6 +102,114 @@ Item {
         onTriggered: campo.forceActiveFocus()
     }
 
+    //  ── la cabecera: qué terminales hay y cómo esconderlas ────────────
+    //
+    //  Una tira siempre, aunque solo haya una sesión: con una hace de título
+    //  —dice qué corre dentro y dónde— y con varias es el selector. Que
+    //  aparezca y desaparezca según cuántas haya movería la rejilla entera de
+    //  sitio cada vez que abres una terminal nueva.
+    readonly property int altoCabecera: 22
+
+    Item {
+        id: cabecera
+        x: vista.margen
+        y: 6
+        width: vista.width - vista.margen * 2
+        height: vista.altoCabecera
+
+        Row {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 6
+
+            Repeater {
+                model: vista.plugin.vivas
+
+                delegate: Rectangle {
+                    required property var modelData
+                    required property int index
+
+                    readonly property bool esta: index === vista.plugin.actual
+                    //  Lo que diga la aplicación de dentro; si no ha dicho
+                    //  nada, dónde está; y si tampoco, su número.
+                    readonly property string nombre: modelData.titulo
+                        ? modelData.titulo
+                        : (modelData.cwd ? vista.corto(modelData.cwd)
+                                         : Idioma.t("terminal") + " " + (index + 1))
+
+                    height: vista.altoCabecera - 4
+                    width: etiqueta.implicitWidth + 18
+                    radius: height / 2
+                    color: esta ? Theme.surfaceHi : "transparent"
+
+                    Behavior on color { ColorAnimation { duration: 120 } }
+
+                    IslandLabel {
+                        id: etiqueta
+                        anchors.centerIn: parent
+                        text: (index + 1) + "  " + parent.nombre
+                        color: parent.esta ? Theme.ink : Theme.muted
+                        font.pixelSize: 10
+                        elide: Text.ElideRight
+                        //  Un nombre largo no puede empujar al resto fuera.
+                        width: Math.min(implicitWidth, 190)
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+                        onClicked: function (raton) {
+                            //  El botón de en medio cierra, como en cualquier
+                            //  pestaña; el izquierdo va a ella.
+                            if (raton.button === Qt.MiddleButton)
+                                vista.plugin.cerrarSesion(parent.index)
+                            else
+                                vista.plugin.irA(parent.index)
+                        }
+                    }
+                }
+            }
+
+            //  Una más.
+            IconGlyph {
+                anchors.verticalCenter: parent.verticalCenter
+                text: String.fromCodePoint(0xF0415)
+                color: masRaton.containsMouse ? Theme.ink : Theme.dim
+                font.pixelSize: 13
+
+                MouseArea {
+                    id: masRaton
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: vista.plugin.nueva()
+                }
+            }
+        }
+
+        //  Esconderla sin tocar lo que corre dentro. Existe porque ESC ya no
+        //  cierra: se la lleva la terminal.
+        IconGlyph {
+            id: menos
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            text: String.fromCodePoint(0xF0374)
+            color: menosRaton.containsMouse ? Theme.ink : Theme.dim
+            font.pixelSize: 14
+
+            MouseArea {
+                id: menosRaton
+                anchors.fill: parent
+                anchors.margins: -5
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: vista.plugin.cerrar()
+            }
+        }
+    }
+
     //  ── la rejilla ────────────────────────────────────────────────────
     //
     //  Un terminal NO es texto encadenado: es una cuadrícula de celdas
@@ -117,7 +228,7 @@ Item {
     Column {
         id: rejilla
         x: vista.margen
-        y: vista.margen
+        y: vista.margen + vista.altoCabecera
         spacing: 0
 
         Repeater {
@@ -177,7 +288,7 @@ Item {
     //  con su aceleración, así que se guarda por dónde ha pasado en vez de
     //  interpolarlo al pintar. Por eso hay un latido en vez de una animación.
     readonly property real destinoX: margen + (marco ? (marco.cursor[0] - 1) : 0) * anchoCelda
-    readonly property real destinoY: margen + (marco ? (marco.cursor[1] - 1) : 0) * altoLinea
+    readonly property real destinoY: margen + altoCabecera + (marco ? (marco.cursor[1] - 1) : 0) * altoLinea
 
     //  Se inicializan a mano y no con un enlace a `destino`: un enlace haría
     //  que el cursor se plantara en el destino ANTES del primer latido, y ese
@@ -353,8 +464,28 @@ Item {
                 e.accepted = true
             }
 
+            //  ── cambiar de terminal ────────────────────────────────
+            //
+            //  Con Alt, que Alt+Tab se lo queda el compositor para las
+            //  ventanas y aquí no llega nunca. Ojo: algunos programas usan
+            //  Alt+flechas para moverse por palabras, y desde aquí ya no les
+            //  llegarán — es el precio de tenerlo a mano.
+            if (mods.alt && !mods.control) {
+                if (e.key === Qt.Key_Right) { vista.plugin.siguiente(); e.accepted = true; return }
+                if (e.key === Qt.Key_Left)  { vista.plugin.anterior();  e.accepted = true; return }
+                if (e.key === Qt.Key_T)     { vista.plugin.nueva();     e.accepted = true; return }
+                if (e.key >= Qt.Key_1 && e.key <= Qt.Key_9) {
+                    vista.plugin.irA(e.key - Qt.Key_1)
+                    e.accepted = true
+                    return
+                }
+            }
+
             switch (e.key) {
-            case Qt.Key_Escape:       vista.plugin.cerrar(); e.accepted = true; return
+            //  ESC va A LA TERMINAL, que es donde hace falta: es la tecla de
+            //  cancelar de claude, de codex y de vim, y mientras la island se
+            //  la quedaba no había forma de mandársela. Para esconder la vista
+            //  está el botón de arriba y la misma tecla que la abrió.
             case Qt.Key_Return:
             case Qt.Key_Enter:        return conNombre("enter")
             case Qt.Key_Backspace:    return conNombre("backspace")
@@ -403,7 +534,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.rightMargin: vista.margen
         anchors.bottomMargin: 6
-        text: Idioma.t("ESC cierra")
+        text: Idioma.t("alt+← → cambia · alt+T nueva")
         color: Theme.dim
         font.pixelSize: 10
     }
