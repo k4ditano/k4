@@ -182,7 +182,8 @@
    "version": "1.0.0",
    "title": "Terminal",
    "enabledByDefault": true,
-   "icono": "0xF018D"
+   "icono": "0xF018D",
+   "aplicacion": true
   }
  ],
  "version": "1.1.0"

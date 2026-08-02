@@ -4,3 +4,4 @@
 #  `python3 tools/plugins.py` comprueba que esté completo.
 
 TerminalPlugin 1.0 TerminalPlugin.qml
+TerminalIslaView 1.0 TerminalIslaView.qml

@@ -144,6 +144,7 @@ Important targets include:
 | `k4.captura` | `menu`, `region`, `grabar`, `parar`, `grande` |
 | `k4.editor` | `abrir`, `editar`, `retomar`, `imagen`, `formato`, `silencios` |
 | `k4.game` | `toggle`, `nueva`, `pausa`, `ver`, `cofre`, `estado` |
+| `k4.term` | `isla`, `abrir`, `aqui`, `abrirEn`, `ejecutar` |
 
 Plugin management is also available from the host:
 

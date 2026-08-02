@@ -21,8 +21,69 @@ K4Plugin {
 
     name: "terminal"
     title: Idioma.t("Terminal")
-    priority: 50
-    active: false
+    //  Por encima del reproductor y del reloj, por debajo del lanzador: si
+    //  estás escribiendo en ella, ninguna canción te la quita.
+    priority: 75
+    active: abierto
+
+    //  ── la terminal de la island ──────────────────────────────────
+    //
+    //  Para lo rápido: un `systemctl restart`, un `git status`, mirar cómo va
+    //  algo. La sesión vive en k4term-isla, fuera de la barra, así que cerrar
+    //  la vista no para nada y volver a abrirla te devuelve donde estabas.
+    property bool abierto: false
+    property bool arrancado: false
+    property var marco: null
+
+    grabKeyboard: abierto
+    islandWidth: 900
+    islandHeight: 420
+    closeOnHoverExit: false
+    handlesBackgroundTap: true
+    onBackgroundTapped: {}
+
+    view: Component { TerminalIslaView { plugin: self } }
+
+    function mandar(orden) {
+        if (arrancado)
+            sesion.escribir(JSON.stringify(orden) + "\n")
+    }
+
+    function cerrar() { abierto = false }
+
+    function toggle() {
+        //  La sesión no se arranca hasta que la pides por primera vez: quien
+        //  no use la terminal de la island no paga ni un proceso.
+        arrancado = true
+        abierto = !abierto
+        if (abierto)
+            mandar({ que: "pinta" })
+    }
+
+    K4.Process {
+        id: sesion
+        command: ["k4term-isla"]
+        running: self.arrancado
+        porLineas: true
+        entradaAbierta: true
+        onLinea: function (linea) {
+            let m = null
+            try {
+                m = JSON.parse(linea)
+            } catch (e) {
+                return
+            }
+            if (m && m.que === "marco")
+                self.marco = m
+        }
+        //  Si la sesión se cae —la shell salió con exit— se olvida lo pintado
+        //  y la siguiente apertura arranca una nueva.
+        onTerminado: {
+            self.marco = null
+            self.arrancado = false
+            self.abierto = false
+        }
+    }
 
     //  Despierta al servicio que publica el ambiente: un singleton de QML no
     //  se instancia hasta que alguien lo mira, y su único cliente de hoy es
@@ -177,6 +238,9 @@ K4Plugin {
 
         //  La ventana se cierra con algo dentro: se lleva su indicador.
         function limpiar(pid: string): void { self.olvidar(pid) }
+
+        //  La terminal de la island, para lo rápido.
+        function isla(): void { self.toggle() }
     }
 
     function avisar(mandato, salida, segundos) {

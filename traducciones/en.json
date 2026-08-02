@@ -729,5 +729,6 @@
  "dejadas para luego": "left for later",
  "Terminal": "Terminal",
  "Falló el mandato": "Command failed",
- "Mandato terminado": "Command finished"
+ "Mandato terminado": "Command finished",
+ "ESC para cerrar · la sesión sigue viva": "ESC to close · the session stays alive"
 }
