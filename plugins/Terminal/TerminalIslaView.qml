@@ -30,7 +30,7 @@ Item {
     //  cuántas filas caben, y esos dos números TIENEN que salir del mismo
     //  sitio. Cuando no lo hacían —18 allí, 17 aquí— la island pedía una fila
     //  más de las que tenía y no volvía a crecer nunca.
-    readonly property int cuerpo: 13
+    readonly property int cuerpo: plugin.cuerpo
     readonly property real anchoCelda: plugin.anchoCelda
     readonly property real altoLinea: plugin.altoLinea
     readonly property int margen: 14
@@ -84,6 +84,21 @@ Item {
         onTriggered: campo.forceActiveFocus()
     }
 
+    //  ── la rejilla ────────────────────────────────────────────────────
+    //
+    //  Un terminal NO es texto encadenado: es una cuadrícula de celdas
+    //  iguales, y cada tramo va en la columna que le toca. Que se pinte por
+    //  columna y no por ancho natural no es una manía —es la única forma de
+    //  que cuadre—: en cuanto aparece un glifo que no mide lo mismo que los
+    //  demás (los marcos de las cajas de claude, un icono de la Nerd Font, un
+    //  espacio duro), encadenar avances desplaza la línea a la derecha
+    //  mientras el cursor, que sí va por columna, se queda donde debe. El
+    //  resultado era exactamente eso: el cursor «se iba» respecto del texto.
+    //
+    //  Así que el ancho del glifo se usa para elegir el dibujo y la REJILLA
+    //  decide dónde va. Cada fila es un lienzo y cada tramo se ancla en
+    //  `(columna - 1) * anchoCelda`, así que un tramo torcido no arrastra a
+    //  los de después.
     Column {
         id: rejilla
         x: vista.margen
@@ -93,18 +108,20 @@ Item {
         Repeater {
             model: vista.marco ? vista.marco.filas : []
 
-            delegate: Row {
+            delegate: Item {
                 required property var modelData
+                width: vista.width - vista.margen * 2
                 height: vista.altoLinea
-                spacing: 0
 
                 Repeater {
                     model: parent.modelData
 
                     delegate: Item {
                         required property var modelData
-                        implicitWidth: letras.implicitWidth
-                        implicitHeight: vista.altoLinea
+                        //  Su sitio en la rejilla, no donde acabara el vecino.
+                        x: (modelData.c - 1) * vista.anchoCelda
+                        width: modelData.t.length * vista.anchoCelda
+                        height: vista.altoLinea
 
                         Rectangle {
                             anchors.fill: parent
@@ -113,11 +130,10 @@ Item {
                         }
 
                         Text {
-                            id: letras
                             anchors.verticalCenter: parent.verticalCenter
                             text: modelData.t
                             color: modelData.f
-                            font.family: Theme.iconFont
+                            font.family: plugin.fuente
                             font.pixelSize: vista.cuerpo
                             //  El bit 0x02 del VT es la negrita.
                             font.weight: (modelData.n & 0x02) ? Font.Bold : Font.Normal

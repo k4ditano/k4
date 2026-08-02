@@ -41,6 +41,13 @@ K4Plugin {
     //  tocando un solo sitio, en vez de dos parecidas que se separan.
     property int estela: 8
 
+    //  Con qué letra se pinta la rejilla. Lo dice la sesión, que lee los
+    //  ajustes de k4term, para que la isla y la ventana usen LA MISMA. Con la
+    //  de iconos de la barra no vale: es la variante ancha de la Nerd Font, y
+    //  medir la celda con ella deja el cursor separándose del texto.
+    property string fuente: "MesloLGS Nerd Font Mono"
+    property int cuerpo: 13
+
     grabKeyboard: abierto
     islandWidth: 900
 
@@ -67,11 +74,28 @@ K4Plugin {
     //  El margen y el pie ocupan lo que ocupan; el resto son filas enteras.
     readonly property int chrome: 40
     readonly property real altoLinea: Math.ceil(metricas.height)
-    readonly property real anchoCelda: metricas.advanceWidth("M")
+
+    //  El ancho de celda, en píxeles ENTEROS y recalculado cuando cambia la
+    //  letra. Las dos primeras líneas del bloque no sobran, y costaron caro:
+    //  `advanceWidth` es una FUNCIÓN, y un enlace de QML solo se reevalúa
+    //  cuando cambia una PROPIEDAD que haya leído. Sin nombrar la familia y el
+    //  cuerpo, esto se calculaba UNA vez —con la fuente todavía sin resolver—
+    //  y se quedaba con el ancho de la tipografía de reserva para siempre:
+    //  13,8 px de celda para una letra que mide 7,8. El texto se pintaba a su
+    //  ancho y el cursor a casi el doble, así que se separaba hacia la derecha
+    //  cuanto más larga era la línea.
+    //
+    //  Y entero porque así se pinta: con `NativeRendering` los avances se
+    //  redondean a píxel, o sea que una celda fraccionaria no la respeta nadie.
+    readonly property real anchoCelda: {
+        const _familia = metricas.font.family
+        const _cuerpo = metricas.font.pixelSize
+        return Math.max(1, Math.round(metricas.advanceWidth("M")))
+    }
 
     property FontMetrics metricas: FontMetrics {
-        font.family: Theme.iconFont
-        font.pixelSize: 13
+        font.family: self.fuente
+        font.pixelSize: self.cuerpo
     }
 
     readonly property int filasMinimas: 6
@@ -163,6 +187,10 @@ K4Plugin {
             }
             if (m.que === "config") {
                 self.estela = m.estela
+                if (m.fuente)
+                    self.fuente = m.fuente
+                if (m.tamano)
+                    self.cuerpo = Math.round(m.tamano)
                 return
             }
             //  La sesión contesta dónde está: solo interesa si se lo hemos
