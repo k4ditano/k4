@@ -218,6 +218,61 @@ K4Plugin {
 
     function cerrar() { abierto = false }
 
+    //  ── correr un mandato de la casa aquí dentro ──────────────────
+    //
+    //  Actualizar el sistema abría una ventana aparte. Teniendo esto, lo suyo
+    //  es verlo en la island: se asoma sola, lo enseña, y si la cierras el
+    //  mandato sigue corriendo — que es justo para lo que sirve una sesión que
+    //  no depende de la vista.
+    //
+    //  Se ofrece a Consola en vez de que Consola nos busque: un servicio no
+    //  puede depender de que un plugin exista, y este se apaga desde Ajustes
+    //  como cualquier otro. Al apagarlo se retira la oferta y todo vuelve a
+    //  abrirse en ventana.
+    Component.onCompleted: Consola.registrarIsla(function (guion) {
+        self.correrAqui(guion)
+    })
+    Component.onDestruction: Consola.registrarIsla(null)
+
+    function correrAqui(guion) {
+        if (!Consola.hayIsla) {
+            K4.Sistema.lanzar(Consola.orden(guion))
+            return
+        }
+        const yaEstaba = arrancado
+        arrancado = true
+        abierto = true
+        mandar({ que: "pinta" })
+        //  Si la sesión acaba de nacer hay que dejar que la shell saque su
+        //  prompt: el texto que llegue antes lo repite el tty en crudo y se ve
+        //  el mandato dos veces, una suelta arriba y otra en su sitio.
+        if (yaEstaba)
+            escribirMandato(guion)
+        else {
+            pendiente = guion
+            esperarPrompt.restart()
+        }
+    }
+
+    property string pendiente: ""
+
+    function escribirMandato(guion) {
+        //  Ctrl-U delante: si habías dejado algo a medio escribir, el mandato
+        //  se pegaría detrás y saldría un engendro.
+        mandar({ que: "texto", valor: String.fromCharCode(0x15) + guion + "\n" })
+    }
+
+    Timer {
+        id: esperarPrompt
+        interval: 450
+        onTriggered: {
+            if (!self.pendiente)
+                return
+            self.escribirMandato(self.pendiente)
+            self.pendiente = ""
+        }
+    }
+
     function toggle() {
         //  Sin k4term-isla no hay mini-terminal —habla un protocolo que es
         //  nuestro— pero tampoco hay por qué no hacer nada: se abre una
@@ -449,9 +504,12 @@ K4Plugin {
             K4.Sistema.lanzar(Consola.abrir(ruta))
         }
 
+        //  Donde la casa corra las cosas: la island si la hay, y si no una
+        //  ventana. Antes esto abría ventana siempre, y era incoherente con
+        //  que Actualizar sí se vea en la island.
         function ejecutar(mandato: string): void {
             if (mandato)
-                K4.Sistema.lanzar(Consola.orden(mandato))
+                Consola.ejecutar(mandato)
         }
 
         //  Lo de la island, a lo grande y en el mismo sitio.

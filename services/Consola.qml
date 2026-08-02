@@ -30,6 +30,37 @@ Singleton {
 
     readonly property bool esNuestra: binario === "k4term"
 
+    //  ── correr algo, donde mejor esté ─────────────────────────────
+    //
+    //  Actualizar el sistema abría siempre una ventana. Teniendo una terminal
+    //  DENTRO de la barra eso es dar un rodeo: lo suyo es verlo ahí mismo, sin
+    //  que nada te tape lo que estabas haciendo.
+    //
+    //  El plugin de la terminal se ofrece al cargarse y este servicio no sabe
+    //  nada de él: si no está —o si el usuario no tiene k4term-isla— esto
+    //  sigue abriendo una ventana como toda la vida. Al revés no valdría, que
+    //  un servicio no puede depender de que exista un plugin.
+    property var enIsla: null
+
+    function registrarIsla(f) {
+        enIsla = f
+    }
+
+    readonly property bool usaIsla: enIsla !== null && hayIsla
+
+    //  Lo que hay que poner al final de un guion para que la ventana no se
+    //  cierre con el error a medio leer. En la island sobra —la sesión se
+    //  queda ahí— y encima estorbaría: dejaría la terminal esperando un Intro.
+    readonly property string cierre: usaIsla
+        ? "" : " printf '\\nPulsa Enter para cerrar…'; read _;"
+
+    function ejecutar(guion) {
+        if (usaIsla)
+            enIsla(guion)
+        else
+            Quickshell.execDetached(orden(guion))
+    }
+
     //  Se lanza por uwsm como todo lo que abre la barra: así la ventana
     //  hereda el ámbito de la sesión y no muere con quickshell.
     function envoltura(orden) {

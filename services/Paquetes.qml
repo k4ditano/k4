@@ -134,8 +134,8 @@ Singleton {
             + fuera.length + " " + Idioma.t("dejadas para luego") + ")'"
             + " || { notify-send -a 'Actualizar' -u critical '"
             + Idioma.t("La actualización falló") + "';"
-            + " printf '\\nPulsa Enter para cerrar…'; read _; }"
-        Quickshell.execDetached(Consola.orden(script))
+            + Consola.cierre + " }"
+        Consola.ejecutar(script)
         comprobadoEn = 0
     }
 
@@ -145,8 +145,8 @@ Singleton {
             + Idioma.t("Sistema al día") + "'"
             + " || { notify-send -a 'Actualizar' -u critical '"
             + Idioma.t("La actualización falló") + "';"
-            + " printf '\\nPulsa Enter para cerrar…'; read _; }"
-        Quickshell.execDetached(Consola.orden(script))
+            + Consola.cierre + " }"
+        Consola.ejecutar(script)
         comprobadoEn = 0
     }
 }
