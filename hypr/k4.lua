@@ -19,6 +19,7 @@ local k4 = "quickshell ipc -p " .. raiz .. "/shell.qml call k4 "
 local captura = "quickshell ipc -p " .. raiz .. "/shell.qml call k4.captura "
 local editor = "quickshell ipc -p " .. raiz .. "/shell.qml call k4.editor "
 local apps = "quickshell ipc -p " .. raiz .. "/shell.qml call k4.apps "
+local term = "quickshell ipc -p " .. raiz .. "/shell.qml call k4.term "
 
 ----------------------------------------------------------------------------
 -- Arranque
@@ -51,6 +52,19 @@ hl.bind(mod .. " + B",           hl.dsp.exec_cmd(k4 .. "files"))
 hl.bind(mod .. " + K",           hl.dsp.exec_cmd(k4 .. "keys"))
 hl.bind(mod .. " + L",           hl.dsp.exec_cmd(k4 .. "lock"))
 hl.bind(mod .. " + ALT + C",     hl.dsp.exec_cmd(k4 .. "session"))
+
+----------------------------------------------------------------------------
+-- La terminal
+----------------------------------------------------------------------------
+-- Nada de SUPER+T a secas: esa abre tu terminal de siempre y no se toca. La
+-- de la island va con SHIFT, como el editor con SHIFT+E: misma letra, y la
+-- que lleva SHIFT es la de la casa.
+--
+-- Son la misma sesión vista de dos maneras, y por eso el par tiene sentido:
+-- SHIFT la asoma en la island para lo rápido, ALT la saca a una ventana
+-- grande —en el directorio donde estuviera— cuando la cosa se alarga.
+hl.bind(mod .. " + SHIFT + T",   hl.dsp.exec_cmd(term .. "isla"))
+hl.bind(mod .. " + ALT + T",     hl.dsp.exec_cmd(term .. "sacar"))
 
 ----------------------------------------------------------------------------
 -- El asistente

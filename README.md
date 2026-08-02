@@ -118,6 +118,8 @@ equivalent `k4.conf` for the legacy Hyprland format):
 | `SUPER + C` | Capture a region |
 | `SUPER + Shift + C` | Start/stop recording |
 | `SUPER + Shift + E` | Open the video editor |
+| `SUPER + Shift + T` | Terminal in the island (same session, kept alive) |
+| `SUPER + Alt + T` | Pop that session out into a window |
 | `Print` / `Shift + Print` / `Ctrl + Print` | Region / screen / window capture |
 
 The generated Hyprland file is owned by k4. User-specific overrides should be
