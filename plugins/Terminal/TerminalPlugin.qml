@@ -54,7 +54,26 @@ K4Plugin {
     //  Lo que funciona es al revés: se abre pequeña y se ensancha cuando se
     //  LLENA, y se recoge cuando se queda medio vacía —después de un `clear`,
     //  por ejemplo—. Con margen entre las dos condiciones para que no baile.
-    readonly property int altoLinea: 18
+    //
+    //  La medida de la letra se toma AQUÍ y la vista la usa de aquí, aunque
+    //  quien pinta es ella. Tenerla en los dos sitios costó caro: el alto de
+    //  la island se calculaba con 18 y la vista dividía por la métrica de
+    //  verdad, 17. Salía una fila más de las que cabían, o sea que `usadas`
+    //  nunca llegaba a `filas_n`, o sea que la condición de crecer no se
+    //  cumplía NUNCA: la island se quedaba en su tamaño mínimo para siempre y
+    //  un programa de pantalla completa —claude, vim— se pintaba aplastado en
+    //  siete filas con el cursor al fondo de la caja.
+    //
+    //  El margen y el pie ocupan lo que ocupan; el resto son filas enteras.
+    readonly property int chrome: 40
+    readonly property real altoLinea: Math.ceil(metricas.height)
+    readonly property real anchoCelda: metricas.advanceWidth("M")
+
+    property FontMetrics metricas: FontMetrics {
+        font.family: Theme.iconFont
+        font.pixelSize: 13
+    }
+
     readonly property int filasMinimas: 6
     readonly property int filasMaximas: 26
     property int filasDeseadas: filasMinimas
@@ -62,7 +81,13 @@ K4Plugin {
     onMarcoChanged: {
         if (!marco)
             return
-        if (marco.usadas >= marco.filas_n && filasDeseadas < filasMaximas)
+        //  «Se ha llenado» es llegar a la última fila o a la penúltima. Lo de
+        //  la penúltima no es una concesión: un programa de pantalla completa
+        //  se ajusta SIEMPRE al hueco que le das, así que nunca se desborda y
+        //  nunca pide más — y si su última fila queda en blanco, como el
+        //  diálogo de claude, con la condición estricta la island no crecería
+        //  jamás y el programa se quedaría apretado para siempre.
+        if (marco.usadas >= marco.filas_n - 1 && filasDeseadas < filasMaximas)
             filasDeseadas = Math.min(filasMaximas, filasDeseadas + 5)
         else if (marco.usadas * 2 <= marco.filas_n && filasDeseadas > filasMinimas)
             filasDeseadas = Math.max(filasMinimas, marco.usadas + 2)
@@ -71,7 +96,7 @@ K4Plugin {
     //  Cada sesión nueva empieza recogida.
     onArrancadoChanged: if (!arrancado) filasDeseadas = filasMinimas
 
-    islandHeight: Math.min(560, 40 + filasDeseadas * altoLinea)
+    islandHeight: Math.min(560, chrome + filasDeseadas * altoLinea)
     Behavior on islandHeight { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
     closeOnHoverExit: false
     handlesBackgroundTap: true

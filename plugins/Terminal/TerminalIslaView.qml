@@ -24,16 +24,16 @@ Item {
 
     //  La misma fuente que la terminal de ventana: es monoespaciada de
     //  verdad, así que el ancho de celda sale de medir una eme.
+    //
+    //  Medida la mide el plugin, no esta vista, aunque la use ella para todo:
+    //  con ella decide él el alto de la island y con ella se calcula aquí
+    //  cuántas filas caben, y esos dos números TIENEN que salir del mismo
+    //  sitio. Cuando no lo hacían —18 allí, 17 aquí— la island pedía una fila
+    //  más de las que tenía y no volvía a crecer nunca.
     readonly property int cuerpo: 13
-    readonly property real anchoCelda: metricas.advanceWidth("M")
-    readonly property real altoLinea: Math.ceil(metricas.height)
+    readonly property real anchoCelda: plugin.anchoCelda
+    readonly property real altoLinea: plugin.altoLinea
     readonly property int margen: 14
-
-    FontMetrics {
-        id: metricas
-        font.family: Theme.iconFont
-        font.pixelSize: vista.cuerpo
-    }
 
     //  La casa con virgulilla y sin más de tres tramos: en un pie de diez
     //  píxeles, una ruta entera no se lee, se estorba.
@@ -67,6 +67,7 @@ Item {
         pintadoX = destinoX
         pintadoY = destinoY
     }
+
 
     Timer {
         id: medir
