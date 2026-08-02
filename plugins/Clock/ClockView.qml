@@ -74,6 +74,10 @@ FadeIn {
                     onAbrir: if (view.juego) view.juego.toggle()
                 }
 
+                PluginPildora {
+                    interactive: true
+                    Layout.alignment: Qt.AlignVCenter
+                }
 
                 // La island ya está desplegada y quieta: aquí sí se pincha.
                 TrayRow {

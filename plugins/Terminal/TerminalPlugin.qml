@@ -36,6 +36,85 @@ K4Plugin {
         K4.Sistema.lanzar(["uwsm", "app", "--", "k4term"].concat(args || []))
     }
 
+    //  ── trabajos en curso ─────────────────────────────────────────
+    //
+    //  Lo que se está cociendo ahora mismo, por pid de la ventana que lo
+    //  corre. La terminal solo cuenta los que llevan unos segundos vivos, así
+    //  que aquí no llega el ruido de un `ls`: si algo está apuntado, es
+    //  porque de verdad merece un hueco en la píldora.
+    property var trabajos: ({})
+
+    //  La cuenta va aparte y no calculada del mapa: reasignar a una propiedad
+    //  `var` el MISMO objeto que ya tenía no notifica a nadie, y el latido se
+    //  quedaba parado con el indicador clavado en cero. De ahí también que
+    //  aquí se copie el mapa en vez de tocarlo por dentro.
+    property int enCurso: 0
+
+    //  De aquí para arriba, además del indicador, un aviso al terminar.
+    readonly property int avisoSegundos: 20
+
+    function idDe(pid) { return "terminal." + pid }
+
+    //  Un reloj de píldora: cabe en dos dedos de ancho y no baila al pasar de
+    //  los sesenta, que es lo que importa cuando está al lado de la hora.
+    function reloj(ms) {
+        const s = Math.max(0, Math.round(ms / 1000))
+        if (s < 60)
+            return s + " s"
+        const m = Math.floor(s / 60)
+        return m + ":" + String(s % 60).padStart(2, "0")
+    }
+
+    //  `llevaba` son los segundos que el mandato acumulaba cuando la terminal
+    //  se decidió a contarlo: el reloj de la píldora arranca ahí y no en cero,
+    //  o enseñaría menos tiempo del que de verdad lleva trabajando.
+    function apuntar(pid, mandato, llevaba) {
+        const t = Object.assign({}, trabajos)
+        t[pid] = { mandato: String(mandato),
+                   desde: Date.now() - (Number(llevaba) || 0) * 1000 }
+        trabajos = t
+        enCurso = Object.keys(t).length
+        K4.Pildora.registrar(idDe(pid), reloj(0), 0xF018D, Theme.blue, 30, true)
+    }
+
+    function olvidar(pid) {
+        if (trabajos[pid] === undefined)
+            return
+        const t = Object.assign({}, trabajos)
+        delete t[pid]
+        trabajos = t
+        enCurso = Object.keys(t).length
+        K4.Pildora.quitar(idDe(pid))
+    }
+
+    function tictac() {
+        const ahora = Date.now()
+        for (const pid in trabajos)
+            K4.Pildora.actualizar(idDe(pid), { texto: reloj(ahora - trabajos[pid].desde) })
+    }
+
+    //  Solo late mientras hay algo que contar: sin trabajos, ni un despertar.
+    property Timer latido: Timer {
+        interval: 1000
+        repeat: true
+        running: self.enCurso > 0
+        onTriggered: self.tictac()
+    }
+
+    //  Pulsar el indicador lleva a la ventana que está trabajando. Se
+    //  pregunta primero por ella: si ya no existe —la mataron sin avisar— el
+    //  indicador se cura solo, y pulsarlo es el único momento en el que
+    //  compensa comprobarlo.
+    property Connections clics: Connections {
+        target: K4.Pildora
+        function onInvocado(id) {
+            if (String(id).indexOf("terminal.") !== 0)
+                return
+            buscar.pid = String(id).substring("terminal.".length)
+            buscar.running = true
+        }
+    }
+
     //  Trabajos largos: la terminal avisa al terminar y aquí se convierte en
     //  notificación, que es la vía por la que la casa entera enseña avisos.
     //  El mandato se recorta porque un `find` con veinte argumentos no cabe
@@ -80,16 +159,70 @@ K4Plugin {
         //  cwd. Si algo falla, cae en abrir sin más.
         function aqui(): void { donde.running = true }
 
-        function trabajo(mandato: string, salida: string, segundos: string): void {
-            const fallo = String(salida) !== "0"
-            const cuerpo = self.resumir(mandato) + " · " + self.duracion(segundos)
-            const orden = ["notify-send", "-a", "k4term",
+        //  Empieza algo largo: a la píldora. Quien decide qué es «largo» es
+        //  la terminal, que es la que tiene el reloj puesto.
+        function inicio(pid: string, mandato: string, llevaba: string): void {
+            self.apuntar(pid, mandato, llevaba)
+        }
+
+        //  Y al acabar: fuera de la píldora, y aviso si de verdad ha llevado
+        //  su rato. El indicador aparece antes que el aviso a propósito —
+        //  primero enterarse de que trabaja, luego de que terminó.
+        function fin(pid: string, mandato: string, salida: string,
+                     segundos: string): void {
+            self.olvidar(pid)
+            if (Number(segundos) >= self.avisoSegundos)
+                self.avisar(mandato, salida, segundos)
+        }
+
+        //  La ventana se cierra con algo dentro: se lleva su indicador.
+        function limpiar(pid: string): void { self.olvidar(pid) }
+    }
+
+    function avisar(mandato, salida, segundos) {
+        const fallo = String(salida) !== "0"
+        const cuerpo = resumir(mandato) + " · " + duracion(segundos)
+        K4.Sistema.lanzar(["notify-send", "-a", "k4term",
                            fallo ? "-u" : "-t", fallo ? "critical" : "6000",
                            fallo ? Idioma.t("Falló el mandato") + " (" + salida + ")"
                                  : Idioma.t("Mandato terminado"),
-                           cuerpo]
-            K4.Sistema.lanzar(orden)
+                           cuerpo])
+    }
+
+    K4.Process {
+        id: buscar
+        property string pid: ""
+        command: ["hyprctl", "clients", "-j"]
+        onSalida: function (texto) {
+            let ventanas = []
+            try {
+                ventanas = JSON.parse(texto)
+            } catch (e) {
+                return
+            }
+            const viva = ventanas.some(function (v) {
+                return String(v.pid) === buscar.pid
+            })
+            if (!viva) {
+                self.olvidar(buscar.pid)
+                return
+            }
+            enfoque.pid = buscar.pid
+            enfoque.running = true
         }
+        onTerminado: running = false
+    }
+
+    //  Hyprland 0.56 ya no traga `dispatch focuswindow pid:N`: su parser Lua
+    //  se atraganta con los dos puntos del selector. La vía viva es `eval`,
+    //  la misma que usa el tema de Hyprland en esta casa.
+    K4.Process {
+        id: enfoque
+        property string pid: ""
+        command: ["hyprctl", "eval",
+                  "local v = hl.get_window(\"pid:" + pid + "\")"
+                  + " if v then hl.dispatch(hl.dsp.focus({ window = v })) end"]
+        onTerminado: running = false
     }
 
     K4.Process {

@@ -98,6 +98,11 @@ FadeIn {
                 onAbrir: if (view.juego) view.juego.toggle()
             }
 
+            PluginPildora {
+                interactive: true
+                Layout.leftMargin: 2
+                Layout.alignment: Qt.AlignVCenter
+            }
 
             // Igual que en el reloj: es aquí, con la island ya desplegada,
             // donde los iconos de bandeja se pueden pulsar.
