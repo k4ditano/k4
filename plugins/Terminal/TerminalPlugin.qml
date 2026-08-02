@@ -368,6 +368,90 @@ K4Plugin {
                            cuerpo])
     }
 
+    //  ── los ajustes de k4term, en los Ajustes de la casa ──────────
+    //
+    //  k4term los lee de ~/.config/k4term/k4term.conf y los sigue en
+    //  caliente, así que tocar aquí un interruptor se ve en las ventanas
+    //  abiertas sin reabrir nada. Se escribe LÍNEA A LÍNEA y no el fichero
+    //  entero a propósito: quien lo haya editado a mano tiene derecho a que
+    //  no se le borren sus comentarios ni sus claves.
+
+    readonly property string ficheroConf: K4.Sistema.entorno("HOME") + "/.config/k4term/k4term.conf"
+
+    property var conf: ({ tamaño: "13", opacidad: "0.92", estela: "si",
+                          tranquilo: "no" })
+
+    function leerConf() {
+        const texto = fConf.text() || ""
+        const nuevo = Object.assign({}, conf)
+        texto.split("\n").forEach(function (linea) {
+            const limpia = linea.split("#")[0].trim()
+            const corte = limpia.indexOf("=")
+            if (corte < 0)
+                return
+            nuevo[limpia.slice(0, corte).trim()] = limpia.slice(corte + 1).trim()
+        })
+        conf = nuevo
+    }
+
+    function poner(clave, valor) {
+        const nuevo = Object.assign({}, conf)
+        nuevo[clave] = String(valor)
+        conf = nuevo
+
+        let texto = fConf.text() || ""
+        const patron = new RegExp("^[ \\t]*" + clave + "[ \\t]*=.*$", "m")
+        if (patron.test(texto))
+            texto = texto.replace(patron, clave + " = " + valor)
+        else
+            texto = (texto.length && texto.slice(-1) !== "\n" ? texto + "\n" : texto)
+                  + clave + " = " + valor + "\n"
+        fConf.setText(texto)
+    }
+
+    property K4.Fichero fConf: K4.Fichero {
+        path: self.ficheroConf
+        onLoaded: self.leerConf()
+    }
+
+    K4.Ajustes {
+        plugin: "terminal"
+        grupo: Idioma.t("Terminal")
+        opciones: [
+            { id: "tamaño", nombre: Idioma.t("Tamaño de letra"),
+              desc: Idioma.t("De la ventana; en la island manda el hueco"),
+              glifo: 0xF0207, tipo: "eleccion",
+              alternativas: [{ codigo: "11", nombre: "11" },
+                             { codigo: "13", nombre: "13" },
+                             { codigo: "15", nombre: "15" },
+                             { codigo: "18", nombre: "18" }] },
+            { id: "opacidad", nombre: Idioma.t("Cristal"),
+              desc: Idioma.t("Cuánto se ve del fondo por detrás"),
+              glifo: 0xF00B5, tipo: "eleccion",
+              alternativas: [{ codigo: "1", nombre: Idioma.t("Opaca") },
+                             { codigo: "0.94", nombre: Idioma.t("Suave") },
+                             { codigo: "0.88", nombre: Idioma.t("Media") },
+                             { codigo: "0.8", nombre: Idioma.t("Mucha") }] },
+            { id: "estela", nombre: Idioma.t("Estela del cursor"),
+              desc: Idioma.t("Deja rastro al moverse"), glifo: 0xF05D8 },
+            { id: "tranquilo", nombre: Idioma.t("Modo tranquilo"),
+              desc: Idioma.t("Atenúa lo anterior al último mandato"),
+              glifo: 0xF0335 }
+        ]
+        valores: ({
+            "tamaño": self.conf["tamaño"] || "13",
+            opacidad: self.conf.opacidad || "0.94",
+            estela: self.conf.estela !== "no" && self.conf.estela !== "0",
+            tranquilo: self.conf.tranquilo === "si" || self.conf.tranquilo === "1"
+        })
+        onCambiado: function (id, valor) {
+            if (id === "estela" || id === "tranquilo")
+                self.poner(id, valor ? "si" : "no")
+            else
+                self.poner(id, valor)
+        }
+    }
+
     K4.Process {
         id: buscar
         property string pid: ""

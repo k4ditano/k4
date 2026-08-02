@@ -731,5 +731,16 @@
  "Falló el mandato": "Command failed",
  "Mandato terminado": "Command finished",
  "Te está esperando": "Waiting for you",
- "ESC cierra": "ESC closes"
+ "ESC cierra": "ESC closes",
+ "Tamaño de letra": "Font size",
+ "De la ventana; en la island manda el hueco": "Window only; the island uses its own space",
+ "Cristal": "Glass",
+ "Cuánto se ve del fondo por detrás": "How much shows through",
+ "Opaca": "Opaque",
+ "Media": "Medium",
+ "Mucha": "Strong",
+ "Estela del cursor": "Cursor trail",
+ "Deja rastro al moverse": "Leaves a trail when moving",
+ "Modo tranquilo": "Quiet mode",
+ "Atenúa lo anterior al último mandato": "Dims everything before the last command"
 }
