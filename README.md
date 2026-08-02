@@ -97,6 +97,29 @@ The installer is the source of truth. The main runtime requirements include:
 Optional packages provide Whisper transcription, AUR support, NVIDIA metrics,
 Codex integration and other enhancements.
 
+### k4term, optional but well fitted
+
+[k4term](https://github.com/k4ditano/k4term) is this project's own terminal.
+The bar does not require it and never assumes it: `services/Consola.qml` looks
+for a terminal once at startup — `k4term`, then `$TERMINAL`, then the usual
+suspects — and everything that opens one goes through it, so with any other
+terminal installed the update flow, the launcher and the Terminal plugin all
+work the same.
+
+What you get by having it is what needs both sides:
+
+- a real terminal **inside the island** (`SUPER + Shift + T`), whose session
+  outlives the view — closing it does not stop what is running;
+- `SUPER + Alt + T` to pop that same session out into a window, in the
+  directory it was left in;
+- a pill in the bar counting long commands, and a notice when an agent rings
+  the bell with its window unfocused;
+- k4term's own settings inside k4's Settings, and the bar's tint reaching the
+  terminal background live.
+
+Without k4term, the island terminal and the pill simply do not appear, and the
+Terminal plugin opens your default terminal instead.
+
 ## Default shortcuts
 
 The installer writes these bindings to `~/.config/hypr/config/k4.lua` (or the

@@ -427,7 +427,17 @@ K4Plugin {
     K4.Ajustes {
         plugin: "terminal"
         grupo: Idioma.t("Terminal")
-        opciones: [
+
+        //  Solo si hay k4term. Son SUS ajustes: sin él, esta sección ofrecía
+        //  cambiar el tamaño de letra y el cristal de una terminal que no está
+        //  instalada, y lo escribía en un fichero que no lee nadie. Con la
+        //  lista vacía, la sección entera no sale.
+        //
+        //  La detección de Consola tarda —es un proceso que corre al
+        //  arrancar—, así que esto vale «no» durante los primeros
+        //  milisegundos; lo que hace que aparezca después es que K4.Ajustes se
+        //  vuelve a registrar cuando `opciones` cambia.
+        opciones: !Consola.esNuestra ? [] : [
             { id: "tamaño", nombre: Idioma.t("Tamaño de letra"),
               desc: Idioma.t("De la ventana; en la island manda el hueco"),
               glifo: 0xF0207, tipo: "eleccion",

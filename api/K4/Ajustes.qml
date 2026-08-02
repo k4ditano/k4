@@ -51,10 +51,22 @@ QtObject {
     //  El usuario ha tocado una: guárdalo y actualiza `valores`.
     signal cambiado(string id, var valor)
 
-    Component.onCompleted: {
+    function _registrar() {
         if (Puente.enganches)
             Puente.enganches.registrarAjustes(aporte)
     }
+
+    Component.onCompleted: _registrar()
+
+    //  Y otra vez cada vez que cambien, que lo de arriba es una FOTO: la barra
+    //  se queda con la lista tal como estaba al nacer el plugin. Sin esto, un
+    //  plugin cuyas opciones dependan de algo que se averigua después —si un
+    //  programa está instalado, si hay red— o las enseña siempre o no las
+    //  enseña nunca, según qué hubiera en ese instante. Dejar `opciones` vacío
+    //  esconde la sección entera, que es la forma de decir «esto ahora mismo
+    //  no aplica».
+    onOpcionesChanged: _registrar()
+    onGrupoChanged: _registrar()
 
     Component.onDestruction: {
         if (Puente.enganches)
