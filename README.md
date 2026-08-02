@@ -114,6 +114,8 @@ What you get by having it is what needs both sides:
   directory it was left in;
 - a pill in the bar counting long commands, and a notice when an agent rings
   the bell with its window unfocused;
+- system updates and AUR installs running **inside the island** instead of
+  opening a window — close the view and they keep going;
 - k4term's own settings inside k4's Settings, and the bar's tint reaching the
   terminal background live.
 

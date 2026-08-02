@@ -208,13 +208,16 @@ K4Plugin {
             return
 
         // yay no puede correr como root (makepkg se niega), y AUR pide revisar
-        // PKGBUILD y responder preguntas: por eso va en una terminal de verdad.
+        // PKGBUILD y responder preguntas: por eso va en una terminal de verdad
+        // y no en un proceso mudo. La island lo es, así que vale igual — y si
+        // se queda corta para leer un PKGBUILD, SUPER+ALT+T la saca a ventana
+        // con la instalación dentro, sin cortarla.
         const script = "yay -S --needed " + pkg.name
             + " && notify-send -a 'Instalar' '" + pkg.name + "' 'Instalado correctamente'"
             + " || { notify-send -a 'Instalar' -u critical '" + pkg.name + "' 'La instalación falló';"
-            + " printf '\\nPulsa Enter para cerrar…'; read _; }"
+            + Consola.cierre + " }"
 
-        K4.Sistema.lanzar(Consola.orden(script))
+        Consola.ejecutar(script)
         close()
     }
 
