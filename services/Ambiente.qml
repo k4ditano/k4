@@ -30,6 +30,13 @@ Singleton {
     property color fondo: Theme.islandBg
     onFondoChanged: if (listo) retardo.restart()
 
+    //  Y el estado del depósito de chispa, para quien quiera enterarse de
+    //  que se ha quedado seco sin abrir la mazmorra. Solo cuenta con el modo
+    //  encendido: con él apagado nadie llena el depósito y «seco» no
+    //  significaría nada.
+    readonly property bool seco: Settings.juegoActivo && !Tokens.hay
+    onSecoChanged: if (listo) retardo.restart()
+
     property bool listo: false
 
     function contenido() {
@@ -52,6 +59,10 @@ Singleton {
                 dueno: Theme.tinteDueno,
                 color: String(Theme.tinteColor),
                 fuerza: Theme.tinteFuerza
+            },
+            tokens: {
+                seco: ambiente.seco,
+                resto: Settings.juegoActivo ? Tokens.resto() : ""
             }
         }, null, 1)
     }

@@ -37,7 +37,36 @@ K4Plugin {
 
     grabKeyboard: abierto
     islandWidth: 900
-    islandHeight: 420
+
+    //  La island crece con lo que hay dentro, que es lo que se espera de
+    //  ella: un `ls` de tres líneas no tiene por qué abrir un cajón de medio
+    //  monitor.
+    //
+    //  Ojo al lazo, que es la trampa de esto: la island decide cuántas filas
+    //  tiene el PTY, así que «lo escrito» nunca puede pasar de lo que cabe y
+    //  medir el contenido para decidir el tamaño no lleva a ninguna parte.
+    //  Lo que funciona es al revés: se abre pequeña y se ensancha cuando se
+    //  LLENA, y se recoge cuando se queda medio vacía —después de un `clear`,
+    //  por ejemplo—. Con margen entre las dos condiciones para que no baile.
+    readonly property int altoLinea: 18
+    readonly property int filasMinimas: 6
+    readonly property int filasMaximas: 26
+    property int filasDeseadas: filasMinimas
+
+    onMarcoChanged: {
+        if (!marco)
+            return
+        if (marco.usadas >= marco.filas_n && filasDeseadas < filasMaximas)
+            filasDeseadas = Math.min(filasMaximas, filasDeseadas + 5)
+        else if (marco.usadas * 2 <= marco.filas_n && filasDeseadas > filasMinimas)
+            filasDeseadas = Math.max(filasMinimas, marco.usadas + 2)
+    }
+
+    //  Cada sesión nueva empieza recogida.
+    onArrancadoChanged: if (!arrancado) filasDeseadas = filasMinimas
+
+    islandHeight: Math.min(560, 40 + filasDeseadas * altoLinea)
+    Behavior on islandHeight { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
     closeOnHoverExit: false
     handlesBackgroundTap: true
     onBackgroundTapped: {}
@@ -159,13 +188,28 @@ K4Plugin {
     //  `llevaba` son los segundos que el mandato acumulaba cuando la terminal
     //  se decidió a contarlo: el reloj de la píldora arranca ahí y no en cero,
     //  o enseñaría menos tiempo del que de verdad lleva trabajando.
+    //  Los agentes de consola son otra cosa que un mandato largo: no están
+    //  «tardando», están pensando, y uno los deja correr a propósito. Se les
+    //  da su propio glifo para distinguirlos de un vistazo.
+    readonly property var agentes: ["claude", "codex", "aider", "gemini", "opencode", "goose"]
+
+    function esAgente(mandato) {
+        const primero = String(mandato).trim().split(/\s+/)[0] || ""
+        const limpio = primero.split("/").pop()
+        return agentes.indexOf(limpio) >= 0
+    }
+
     function apuntar(pid, mandato, llevaba) {
         const t = Object.assign({}, trabajos)
         t[pid] = { mandato: String(mandato),
                    desde: Date.now() - (Number(llevaba) || 0) * 1000 }
         trabajos = t
         enCurso = Object.keys(t).length
-        K4.Pildora.registrar(idDe(pid), reloj(0), 0xF018D, Theme.blue, 30, true)
+
+        const agente = esAgente(mandato)
+        K4.Pildora.registrar(idDe(pid), reloj(0),
+                             agente ? Theme.ico.ask.codePointAt(0) : 0xF018D,
+                             agente ? Theme.green : Theme.blue, 30, true)
     }
 
     //  Los que te esperan van con el id aparte: un mandato largo y un agente
@@ -304,6 +348,13 @@ K4Plugin {
         //  largo— y se avisa una vez.
         function campana(pid: string, titulo: string): void {
             self.esperando(pid, titulo)
+        }
+
+        //  Un recado suelto de la terminal: no tiene dónde decir «guardado»
+        //  sin taparse a sí misma, y la isla sí.
+        function decir(titulo: string, cuerpo: string): void {
+            K4.Sistema.lanzar(["notify-send", "-a", "k4term", "-t", "5000",
+                               titulo, cuerpo])
         }
     }
 

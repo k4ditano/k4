@@ -34,6 +34,16 @@ Item {
         font.pixelSize: vista.cuerpo
     }
 
+    //  La casa con virgulilla y sin más de tres tramos: en un pie de diez
+    //  píxeles, una ruta entera no se lee, se estorba.
+    function corto(ruta) {
+        const casa = String(ruta).replace(/^\/home\/[^/]+/, "~")
+        const partes = casa.split("/").filter(function (x) { return x.length > 0 })
+        if (partes.length <= 3)
+            return casa
+        return (casa.charAt(0) === "~" ? "" : "…/") + partes.slice(-3).join("/")
+    }
+
     //  Cuántas columnas y filas caben de verdad. Se le dice a la sesión, que
     //  es quien redimensiona el PTY: la shell tiene que saber su ancho o
     //  parte las líneas donde no toca.
@@ -187,15 +197,26 @@ Item {
         }
     }
 
-    //  Pie discreto: qué es esto y cómo se sale. Con el mismo margen que la
-    //  rejilla, que la island tiene las esquinas redondeadas y lo que se pega
-    //  al borde se sale por debajo del recorte.
+    //  Pie discreto: dónde estás, que es lo que uno mira, y el recordatorio
+    //  de salida en pequeño a la derecha. Con el mismo margen que la rejilla,
+    //  que la island tiene las esquinas redondeadas y lo que se pega al borde
+    //  se sale por debajo del recorte.
+    IslandLabel {
+        anchors.left: parent.left
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: vista.margen
+        anchors.bottomMargin: 6
+        text: vista.marco && vista.marco.cwd ? vista.corto(vista.marco.cwd) : ""
+        color: Theme.muted
+        font.pixelSize: 10
+    }
+
     IslandLabel {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.rightMargin: vista.margen
         anchors.bottomMargin: 6
-        text: Idioma.t("ESC cierra · la sesión sigue viva")
+        text: Idioma.t("ESC cierra")
         color: Theme.dim
         font.pixelSize: 10
     }
