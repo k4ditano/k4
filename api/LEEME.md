@@ -86,6 +86,7 @@ not be declared inside the view.
 | `K4.Boton` | Round single-glyph button |
 | `K4.Rodillo` | Scroll area that obeys the wheel, house scroll bar included |
 | `K4.Desplazador` | The house scroll bar, for your own lists |
+| `K4.Estela` | The house caret with its trail, as a `cursorDelegate` |
 | `K4.Aparicion` | Fade in instead of popping |
 | `K4.FocoInicial` | Move the caret into your text field |
 | `K4.Audio` | Volume and mute (writing needs `audio`) |

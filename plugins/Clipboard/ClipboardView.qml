@@ -43,6 +43,7 @@ FadeIn {
 
             TextInput {
                 id: entrada
+                cursorDelegate: IslandCursor {}
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
 

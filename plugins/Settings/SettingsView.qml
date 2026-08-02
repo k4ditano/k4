@@ -337,6 +337,7 @@ FadeIn {
 
                                         TextInput {
                                             id: campo
+                                            cursorDelegate: IslandCursor {}
                                             anchors.fill: parent
                                             anchors.leftMargin: 11
                                             anchors.rightMargin: 11

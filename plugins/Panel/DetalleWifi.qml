@@ -118,6 +118,7 @@ IslandTile {
 
                     TextInput {
                         id: pskInput
+                        cursorDelegate: IslandCursor {}
                         anchors.fill: parent
                         verticalAlignment: TextInput.AlignVCenter
                         echoMode: TextInput.Password

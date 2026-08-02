@@ -152,6 +152,7 @@ FadeIn {
 
                         TextInput {
                             id: cityInput
+                            cursorDelegate: IslandCursor {}
                             anchors.fill: parent
                             verticalAlignment: TextInput.AlignVCenter
                             color: Theme.ink

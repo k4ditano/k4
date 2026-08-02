@@ -597,6 +597,7 @@ Item {
             //  las peores cosas que pueden pasar tecleando.
             TextInput {
                 id: rotuloVivo
+                cursorDelegate: IslandCursor {}
                 visible: capa.esTexto && capa.editandoTexto
                 x: capa.relleno
                 y: capa.relleno

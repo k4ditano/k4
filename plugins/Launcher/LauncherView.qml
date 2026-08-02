@@ -73,6 +73,7 @@ FadeIn {
 
                 TextInput {
                     id: launcherInput
+                    cursorDelegate: IslandCursor {}
                     anchors.fill: parent
                     verticalAlignment: TextInput.AlignVCenter
                     color: Theme.ink

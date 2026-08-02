@@ -196,6 +196,7 @@ always opening instead of toggling.
 | `K4.Boton` | round one-glyph button |
 | `K4.Rodillo` | a scrolling area **that actually obeys the wheel**, house scroll bar included |
 | `K4.Desplazador` | the house scroll bar — thin, fades away; attach it to your own lists |
+| `K4.Estela` | the house caret, with the trail k4term leaves — use it as `cursorDelegate` |
 | `K4.Aparicion` | enters with a fade instead of popping |
 | `K4.FocoInicial` | moves the cursor to your text field on open |
 | `K4.Idioma` | `t()` and `f()` — with no dictionary they return the text as is |

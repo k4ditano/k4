@@ -269,6 +269,7 @@ FadeIn {
 
                 TextInput {
                     id: ensayo
+                    cursorDelegate: IslandCursor {}
                     width: parent.width - 56
                     anchors.verticalCenter: parent.verticalCenter
 

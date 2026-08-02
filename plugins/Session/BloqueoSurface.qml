@@ -138,6 +138,7 @@ K4.SuperficieBloqueo {
 
                     TextInput {
                         id: clave
+                        cursorDelegate: IslandCursor {}
                         width: parent.width - 60
                         anchors.verticalCenter: parent.verticalCenter
 

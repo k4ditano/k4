@@ -538,6 +538,7 @@ ColumnLayout {
 
                     TextInput {
                         id: inspectorCampo
+                        cursorDelegate: IslandCursor {}
                         anchors.fill: parent
                         anchors.leftMargin: 6
                         anchors.rightMargin: 4
@@ -712,6 +713,7 @@ ColumnLayout {
 
         TextInput {
             id: campoTexto
+            cursorDelegate: IslandCursor {}
             anchors.fill: parent
             anchors.leftMargin: 9
             anchors.rightMargin: 9
