@@ -214,7 +214,7 @@ K4Plugin {
             + " || { notify-send -a 'Instalar' -u critical '" + pkg.name + "' 'La instalación falló';"
             + " printf '\\nPulsa Enter para cerrar…'; read _; }"
 
-        K4.Sistema.lanzar(["uwsm", "app", "--", "k4term", "-e", "sh", "-c", script])
+        K4.Sistema.lanzar(Consola.orden(script))
         close()
     }
 

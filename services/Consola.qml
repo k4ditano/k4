@@ -1,0 +1,91 @@
+pragma Singleton
+
+//  Qué terminal usa la casa.
+//
+//  k4 abre terminales para cosas que no caben en la barra: actualizar el
+//  sistema, instalar del AUR, sacar una sesión a lo grande. La nuestra
+//  —k4term— es la primera opción, pero **k4 tiene que funcionar sin ella**:
+//  quien clone la barra no tiene por qué tener instalada la terminal, y
+//  quedarse sin poder actualizar el sistema por eso sería absurdo.
+//
+//  Así que se busca una y se recuerda cuál: k4term si está, si no la que el
+//  usuario declare en $TERMINAL, y si tampoco, la primera de las de siempre.
+//  La mini-terminal de la island es aparte (`hayIsla`): esa sí necesita
+//  k4term-isla concretamente, porque habla un protocolo que es nuestro.
+//
+//  El «-e mandato» lo entienden casi todas igual; las dos que no —wezterm y
+//  gnome-terminal— tienen su forma aquí. Añadir una nueva es tocar solo esta
+//  función.
+
+import QtQuick
+import Quickshell
+import Quickshell.Io
+
+Singleton {
+    id: consola
+
+    //  La terminal elegida, y si tenemos la sesión de la island.
+    property string binario: ""
+    property bool hayIsla: false
+
+    readonly property bool esNuestra: binario === "k4term"
+
+    //  Se lanza por uwsm como todo lo que abre la barra: así la ventana
+    //  hereda el ámbito de la sesión y no muere con quickshell.
+    function envoltura(orden) {
+        return ["uwsm", "app", "--"].concat(orden)
+    }
+
+    //  Correr un guion en una terminal, con la ventana abierta hasta que
+    //  termine.
+    function orden(guion) {
+        const bin = binario || "k4term"
+        if (bin === "wezterm")
+            return envoltura(["wezterm", "start", "--", "sh", "-c", guion])
+        if (bin === "gnome-terminal")
+            return envoltura(["gnome-terminal", "--", "sh", "-c", guion])
+        return envoltura([bin, "-e", "sh", "-c", guion])
+    }
+
+    //  Una terminal a secas, en un directorio si se pide. La nuestra sabe
+    //  `-d`; a las demás se les entra por la puerta de siempre, con la ruta
+    //  como argumento para no pelearse con las comillas.
+    function abrir(ruta) {
+        const bin = binario || "k4term"
+        if (!ruta)
+            return envoltura([bin])
+        if (bin === "k4term")
+            return envoltura(["k4term", "-d", ruta])
+
+        const guion = "cd \"$0\" && exec ${SHELL:-/bin/sh}"
+        if (bin === "wezterm")
+            return envoltura(["wezterm", "start", "--", "sh", "-c", guion, ruta])
+        if (bin === "gnome-terminal")
+            return envoltura(["gnome-terminal", "--", "sh", "-c", guion, ruta])
+        return envoltura([bin, "-e", "sh", "-c", guion, ruta])
+    }
+
+    //  Una sola pasada al arrancar: qué hay instalado no cambia mientras la
+    //  barra vive, y si cambia, un reinicio de la barra es más barato que
+    //  vigilar el PATH para siempre.
+    Process {
+        running: true
+        command: ["sh", "-c",
+            "elegida=''\n" +
+            "for t in k4term \"$TERMINAL\" kitty alacritty foot wezterm konsole gnome-terminal xterm; do\n" +
+            "  [ -z \"$t\" ] && continue\n" +
+            "  command -v \"$t\" >/dev/null 2>&1 && { elegida=\"$t\"; break; }\n" +
+            "done\n" +
+            "isla=no\n" +
+            "command -v k4term-isla >/dev/null 2>&1 && isla=si\n" +
+            "printf '%s %s\\n' \"$elegida\" \"$isla\"\n"]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const trozos = this.text.trim().split(/\s+/)
+                consola.binario = trozos[0] || ""
+                consola.hayIsla = trozos[1] === "si"
+            }
+        }
+    }
+}

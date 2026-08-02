@@ -173,15 +173,15 @@ Item {
         }
     }
 
-    //  Pie discreto: qué es esto y cómo se sale.
+    //  Pie discreto: qué es esto y cómo se sale. Con el mismo margen que la
+    //  rejilla, que la island tiene las esquinas redondeadas y lo que se pega
+    //  al borde se sale por debajo del recorte.
     IslandLabel {
-        anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        anchors.margins: 6
-        anchors.leftMargin: vista.margen
-        horizontalAlignment: Text.AlignRight
-        text: Idioma.t("ESC para cerrar · la sesión sigue viva")
+        anchors.rightMargin: vista.margen
+        anchors.bottomMargin: 6
+        text: Idioma.t("ESC cierra · la sesión sigue viva")
         color: Theme.dim
         font.pixelSize: 10
     }

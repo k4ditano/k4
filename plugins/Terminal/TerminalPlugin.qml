@@ -52,6 +52,13 @@ K4Plugin {
     function cerrar() { abierto = false }
 
     function toggle() {
+        //  Sin k4term-isla no hay mini-terminal —habla un protocolo que es
+        //  nuestro— pero tampoco hay por qué no hacer nada: se abre una
+        //  ventana con la terminal que haya.
+        if (!Consola.hayIsla) {
+            K4.Sistema.lanzar(Consola.abrir(""))
+            return
+        }
         //  La sesión no se arranca hasta que la pides por primera vez: quien
         //  no use la terminal de la island no paga ni un proceso.
         arrancado = true
@@ -59,6 +66,21 @@ K4Plugin {
         if (abierto)
             mandar({ que: "pinta" })
     }
+
+    //  Sacarla a lo grande: se le pregunta a la sesión dónde está y se abre
+    //  una ventana ahí mismo. La sesión de la island NO se mueve —sigue
+    //  viva, con lo que estuviera corriendo— porque es suya y de nadie más;
+    //  lo que se hereda es el sitio.
+    function sacar() {
+        if (!arrancado) {
+            K4.Sistema.lanzar(Consola.abrir(""))
+            return
+        }
+        sacando = true
+        mandar({ que: "donde" })
+    }
+
+    property bool sacando: false
 
     K4.Process {
         id: sesion
@@ -73,8 +95,20 @@ K4Plugin {
             } catch (e) {
                 return
             }
-            if (m && m.que === "marco")
+            if (!m)
+                return
+            if (m.que === "marco") {
                 self.marco = m
+                return
+            }
+            //  La sesión contesta dónde está: solo interesa si se lo hemos
+            //  preguntado para sacarla, no vaya a abrirse una ventana por un
+            //  mensaje rezagado.
+            if (m.que === "donde" && self.sacando) {
+                self.sacando = false
+                self.abierto = false
+                K4.Sistema.lanzar(Consola.abrir(m.ruta || ""))
+            }
         }
         //  Si la sesión se cae —la shell salió con exit— se olvida lo pintado
         //  y la siguiente apertura arranca una nueva.
@@ -85,17 +119,13 @@ K4Plugin {
         }
     }
 
-    //  Despierta al servicio que publica el ambiente: un singleton de QML no
-    //  se instancia hasta que alguien lo mira, y su único cliente de hoy es
-    //  la terminal. Apagar este plugin deja de publicar el tema, que es
-    //  justo lo que tiene que pasar.
+    //  Despierta a los dos servicios que le hacen falta: un singleton de QML
+    //  no se instancia hasta que alguien lo mira. El del ambiente publica el
+    //  tema para la terminal —apagar este plugin deja de publicarlo, que es
+    //  justo lo que tiene que pasar— y el de la consola averigua qué
+    //  terminal hay instalada, que lo necesita hasta el actualizador.
     readonly property string ambiente: Ambiente.ruta
-
-    //  Se lanza por uwsm como todo lo que abre la barra: así la ventana
-    //  hereda el ámbito de la sesión y no muere con quickshell.
-    function lanzar(args) {
-        K4.Sistema.lanzar(["uwsm", "app", "--", "k4term"].concat(args || []))
-    }
+    readonly property string cual: Consola.binario
 
     //  ── trabajos en curso ─────────────────────────────────────────
     //
@@ -201,18 +231,20 @@ K4Plugin {
         //  hereda al lanzar desde aquí es el directorio de la barra, que no
         //  le importa a nadie.
         function abrir(): void {
-            const casa = K4.Sistema.entorno("HOME")
-            self.lanzar(casa ? ["-d", casa] : [])
+            K4.Sistema.lanzar(Consola.abrir(K4.Sistema.entorno("HOME")))
         }
 
         function abrirEn(ruta: string): void {
-            self.lanzar(ruta ? ["-d", ruta] : [])
+            K4.Sistema.lanzar(Consola.abrir(ruta))
         }
 
         function ejecutar(mandato: string): void {
             if (mandato)
-                self.lanzar(["-e", "sh", "-c", mandato])
+                K4.Sistema.lanzar(Consola.orden(mandato))
         }
+
+        //  Lo de la island, a lo grande y en el mismo sitio.
+        function sacar(): void { self.sacar() }
 
         //  Abrir donde estás mirando: se pregunta a Hyprland por la ventana
         //  con foco y se baja por el árbol de procesos hasta el último hijo
@@ -297,8 +329,7 @@ K4Plugin {
             " while c=$(pgrep -P \"$p\" -n 2>/dev/null); [ -n \"$c\" ]; do p=$c; done;" +
             " readlink /proc/$p/cwd 2>/dev/null"]
         onSalida: function (texto) {
-            const ruta = texto.trim()
-            self.lanzar(ruta ? ["-d", ruta] : [])
+            K4.Sistema.lanzar(Consola.abrir(texto.trim()))
         }
         onTerminado: running = false
     }

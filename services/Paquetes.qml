@@ -135,8 +135,7 @@ Singleton {
             + " || { notify-send -a 'Actualizar' -u critical '"
             + Idioma.t("La actualización falló") + "';"
             + " printf '\\nPulsa Enter para cerrar…'; read _; }"
-        Quickshell.execDetached(["uwsm", "app", "--", "k4term", "-e", "sh",
-                                 "-c", script])
+        Quickshell.execDetached(Consola.orden(script))
         comprobadoEn = 0
     }
 
@@ -147,8 +146,7 @@ Singleton {
             + " || { notify-send -a 'Actualizar' -u critical '"
             + Idioma.t("La actualización falló") + "';"
             + " printf '\\nPulsa Enter para cerrar…'; read _; }"
-        Quickshell.execDetached(["uwsm", "app", "--", "k4term", "-e", "sh",
-                                 "-c", script])
+        Quickshell.execDetached(Consola.orden(script))
         comprobadoEn = 0
     }
 }
