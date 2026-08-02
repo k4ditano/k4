@@ -127,9 +127,13 @@ K4.Plugin {
                         && a.nombre.toLowerCase().indexOf(q) >= 0
                 })
                 .map(function (a) {
+                    //  Cada una con SU icono, en los dos campos que el
+                    //  lanzador entiende. Iba en `icono`, que es el nombre de
+                    //  un icono del escritorio, y ninguna aplicación de la
+                    //  barra tiene uno: salían todas sin icono.
                     return { id: a.id, titulo: a.nombre,
                              desc: K4.Idioma.t("Aplicación de la barra"),
-                             icono: a.imagen }
+                             imagen: a.imagen, glifo: a.glifo }
                 })
         }
 

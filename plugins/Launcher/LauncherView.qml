@@ -157,6 +157,12 @@ FadeIn {
                 id: appRow
                 required property var modelData
                 required property int index
+
+                //  ¿Trae icono propio —imagen o códice— o hay que buscarle
+                //  uno en el tema del escritorio por su nombre?
+                readonly property bool propio: !!modelData._imagen
+                                            || !!modelData._glifo
+
                 width: ListView.view.width
                 height: 42
                 radius: 10
@@ -170,13 +176,30 @@ FadeIn {
                     anchors.rightMargin: 12
                     spacing: 12
 
+                    //  Una aplicación del sistema trae un nombre de icono del
+                    //  escritorio; un aporte de un plugin trae el suyo, que es
+                    //  una imagen o un códice de la Nerd Font. Son dos cosas
+                    //  distintas y por eso son dos piezas: la misma no sabe
+                    //  pintar las dos. Manda quien tenga icono propio.
                     K4.Icono {
                         Layout.preferredWidth: 26
                         Layout.preferredHeight: 26
                         Layout.alignment: Qt.AlignVCenter
                         visible: appRow.modelData.isInstall !== true
+                            && !appRow.propio
                         source: appRow.modelData.icon.length > 0
                             ? K4.Apps.icono(appRow.modelData.icon, true) : ""
+                    }
+
+                    K4.IconoPlugin {
+                        visible: appRow.propio
+                        imagen: appRow.modelData._imagen || ""
+                        glifo: appRow.modelData._glifo || 0
+                        tamano: 22
+                        color: Theme.ink
+                        Layout.preferredWidth: 26
+                        Layout.preferredHeight: 26
+                        Layout.alignment: Qt.AlignVCenter
                     }
 
                     IconGlyph {

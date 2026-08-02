@@ -248,9 +248,25 @@ K4Plugin {
         //  venía a buscar. Para las cosas de la barra está su propio cajón
         //  (SUPER+SHIFT+Space); aquí salen para que se puedan ENCONTRAR, no
         //  para competir.
+        //  Tres maneras de tener icono, en este orden: el que trae el propio
+        //  resultado —`imagen` o `glifo`—, el nombre de icono del escritorio
+        //  si lo que aporta ES una aplicación instalada, y si no el de su
+        //  plugin. Antes solo existía la segunda, así que un aporte de un
+        //  plugin salía con el hueco vacío: la fila esperaba un nombre de
+        //  icono del escritorio y lo que un plugin tiene es otra cosa. Un
+        //  hueco entre filas que sí tienen icono se lee como «esto está a
+        //  medias», que era justo lo contrario de lo que pasaba.
         const extras = (Enganches.resultados || []).map(function (r) {
+            let imagen = r.imagen || ""
+            let glifo = r.glifo || 0
+            if (!imagen && !glifo && !r.icono) {
+                const suyo = PluginManager.iconoDe(r._plugin || "")
+                imagen = suyo.imagen
+                glifo = suyo.glifo
+            }
             return { name: r.titulo || "", genericName: r.desc || "",
-                     icon: r.icono || "", _enganche: r }
+                     icon: r.icono || "", _enganche: r,
+                     _imagen: imagen, _glifo: glifo }
         })
         const list = found.slice(0, 40).concat(extras)
 

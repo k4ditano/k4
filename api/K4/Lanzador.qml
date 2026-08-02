@@ -32,7 +32,14 @@ QtObject {
 
     required property string plugin
 
-    //  `[{ id, titulo, desc, glifo }]` — lo que se pinta ahora mismo.
+    //  `[{ id, titulo, desc }]` — lo que se pinta ahora mismo.
+    //
+    //  El icono de una fila, en este orden: `glifo` —un códice de la Nerd
+    //  Font— o `imagen` —una ruta `file://` tuya—; `icono`, el NOMBRE de un
+    //  icono del escritorio, si lo que aportas es una aplicación instalada;
+    //  y si no dices nada, el de tu plugin, que casi siempre es lo que
+    //  quieres. Sin icono ninguno la fila sale con un hueco, y un hueco entre
+    //  filas que sí lo tienen se lee como que algo está roto.
     property var resultados: []
 
     //  El usuario está escribiendo. Llega con cada tecla, así que si lo tuyo
