@@ -100,7 +100,45 @@ K4Plugin {
 
     readonly property int filasMinimas: 6
     readonly property int filasMaximas: 26
-    property int filasDeseadas: filasMinimas
+
+    //  Crecer y recoger, a ritmo constante y con UN solo número.
+    //
+    //  Antes esto iba a empujones: cada marco que llegaba lleno subía el
+    //  destino unas filas y una animación corría detrás. Y se veía, porque el
+    //  destino solo se mueve cuando llega un marco —cada 30 a 120 ms—: la
+    //  animación llegaba, se paraba y esperaba al siguiente empujón. Medido en
+    //  una sola crecida: 555, 111, 938 y 733 px/s. Eso es la escalera.
+    //
+    //  Peor era lo otro: el alto animado y las filas del PTY se calculaban por
+    //  separado, así que la caja y el texto de dentro no se movían a la vez —
+    //  encogía uno y luego el otro.
+    //
+    //  Ahora hay un solo número, `filasReales`, que avanza hacia `objetivo` a
+    //  ritmo fijo. De él salen LAS DOS COSAS: el alto de la island y las filas
+    //  que se le piden a la sesión. Al salir del mismo sitio no pueden ir
+    //  desacompasados, y al avanzar de continuo no hay escalones.
+    //  Crecer es una cosa y recoger es otra. Crecer acompaña a algo que está
+    //  pasando —la salida del mandato llegando— y quiere ir a su ritmo. Al
+    //  recoger ya no hay nada que mirar: lo que sobra es hueco vacío, y
+    //  arrastrarlo a la misma velocidad se hace largo.
+    readonly property real filasPorSegundo: 22
+    readonly property real filasPorSegundoAlRecoger: 65
+    property real velocidad: filasPorSegundo
+
+    property real objetivo: filasMinimas
+    property real filasReales: objetivo
+    readonly property int filasDeseadas: Math.max(filasMinimas, Math.round(filasReales))
+
+    //  Lo mueve el motor de animación y no un Timer, y no es un detalle: un
+    //  Timer de 16 ms no dispara a sesenta por segundo —medido, salía a menos
+    //  de la mitad del ritmo pedido—, mientras que esto va con el refresco de
+    //  la pantalla.
+    //
+    //  Y en `Behavior`, no en `SmoothedAnimation on`: esa segunda forma corre
+    //  UNA vez y al terminar se apaga, así que cambiar el destino después no
+    //  hacía nada. Se vio claro — la island crecía hasta la mitad y se
+    //  plantaba ahí.
+    Behavior on filasReales { SmoothedAnimation { velocity: self.velocidad } }
 
     onMarcoChanged: {
         if (!marco)
@@ -111,17 +149,49 @@ K4Plugin {
         //  nunca pide más — y si su última fila queda en blanco, como el
         //  diálogo de claude, con la condición estricta la island no crecería
         //  jamás y el programa se quedaría apretado para siempre.
-        if (marco.usadas >= marco.filas_n - 1 && filasDeseadas < filasMaximas)
-            filasDeseadas = Math.min(filasMaximas, filasDeseadas + 5)
-        else if (marco.usadas * 2 <= marco.filas_n && filasDeseadas > filasMinimas)
-            filasDeseadas = Math.max(filasMinimas, marco.usadas + 2)
+        if (marco.usadas >= marco.filas_n - 1) {
+            //  Mientras siga llena, hacia arriba sin parar. En cuanto deje de
+            //  estarlo se queda donde esté: no hay destino que perseguir a
+            //  saltos, solo una dirección.
+            recoger.stop()
+            velocidad = filasPorSegundo
+            objetivo = filasMaximas
+        } else if (marco.usadas * 2 <= marco.filas_n && filasReales > filasMinimas) {
+            //  Recoger espera. Al pulsar Intro la pantalla se queda un
+            //  instante casi vacía antes de que llegue la salida del mandato,
+            //  y reaccionar a ese hueco daba un tirón hacia abajo justo antes
+            //  de crecer — medido: 26 px de bajada y 73 de subida a
+            //  continuación. Si medio segundo después sigue medio vacía, sí.
+            objetivo = filasReales
+            recoger.restart()
+        } else {
+            recoger.stop()
+            objetivo = filasReales
+        }
+    }
+
+    Timer {
+        id: recoger
+        interval: 500
+        onTriggered: {
+            if (!self.marco)
+                return
+            if (self.marco.usadas * 2 <= self.marco.filas_n
+                    && self.filasReales > self.filasMinimas) {
+                self.velocidad = self.filasPorSegundoAlRecoger
+                self.objetivo = Math.max(self.filasMinimas, self.marco.usadas + 2)
+            }
+        }
     }
 
     //  Cada sesión nueva empieza recogida.
-    onArrancadoChanged: if (!arrancado) filasDeseadas = filasMinimas
+    onArrancadoChanged: if (!arrancado) { filasReales = filasMinimas; objetivo = filasMinimas }
 
-    islandHeight: Math.min(560, chrome + filasDeseadas * altoLinea)
-    Behavior on islandHeight { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+    //  Sin animación por encima: `filasReales` YA se mueve de continuo, y
+    //  ponerle una animación detrás solo añadiría un retardo entre el alto y
+    //  las filas que se le piden a la sesión, que es justo lo que hacía que la
+    //  caja y el texto no fueran al unísono.
+    islandHeight: Math.min(560, chrome + filasReales * altoLinea)
     closeOnHoverExit: false
     handlesBackgroundTap: true
     onBackgroundTapped: {}

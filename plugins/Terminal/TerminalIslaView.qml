@@ -18,6 +18,11 @@ import "../../services"
 Item {
     id: vista
 
+    //  Recortado, que ahora hace falta: el contenido va al tamaño de destino
+    //  desde el primer momento y la caja llega detrás, así que mientras crece
+    //  hay filas de más que no deben salirse por abajo.
+    clip: true
+
     required property var plugin
 
     readonly property var marco: plugin.marco
@@ -45,17 +50,25 @@ Item {
         return (casa.charAt(0) === "~" ? "" : "…/") + partes.slice(-3).join("/")
     }
 
-    //  Cuántas columnas y filas caben de verdad. Se le dice a la sesión, que
-    //  es quien redimensiona el PTY: la shell tiene que saber su ancho o
-    //  parte las líneas donde no toca.
+    //  Cuántas columnas y filas se le piden a la sesión, que es quien
+    //  redimensiona el PTY: la shell tiene que saber su ancho o parte las
+    //  líneas donde no toca.
+    //
+    //  Las filas son el DESTINO de la island, no las que caben en el alto de
+    //  ahora mismo. La diferencia se veía: como el alto va animado, pedirlas
+    //  según el alto actual hacía que el PTY se redimensionara a cachos
+    //  persiguiendo a la animación, y el texto llegaba tarde y a trompicones —
+    //  primero se movía la caja y después el contenido, o al revés. Pidiendo
+    //  el destino desde el primer instante, el contenido ya está donde va a
+    //  estar y la caja se limita a descubrirlo.
     readonly property int cols: Math.max(20, Math.floor((width - margen * 2) / anchoCelda))
-    readonly property int filas: Math.max(4, Math.floor((height - margen * 2) / altoLinea))
+    readonly property int filas: Math.max(4, plugin.filasDeseadas)
 
     //  Dónde estás dentro del historial, tal cual lo cuenta la sesión: la fila
     //  por la que empieza lo que se ve y cuántas hay en total.
     readonly property int arriba: marco ? marco.scroll[0] : 0
     readonly property int historial: marco ? Math.max(1, marco.scroll[1]) : 1
-    readonly property real recorrido: Math.min(1, filas / historial)
+    readonly property real recorrido: Math.min(1, (marco ? marco.filas_n : filas) / historial)
     readonly property real asomado: arriba / historial
 
     onColsChanged: medir.restart()
@@ -71,7 +84,9 @@ Item {
 
     Timer {
         id: medir
-        interval: 60
+        //  Corto a propósito: solo está para juntar el cambio de filas con el
+        //  de columnas si llegan a la vez, no para esperar a nada.
+        interval: 16
         onTriggered: vista.plugin.mandar({ que: "medida", cols: vista.cols,
                                            filas: vista.filas })
     }
