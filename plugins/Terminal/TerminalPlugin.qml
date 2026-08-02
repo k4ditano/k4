@@ -348,9 +348,12 @@ K4Plugin {
     function nueva() {
         listaSesiones.append({ sid: ++contador })
         actual = vivas.length - 1
-        //  Recogida: cada terminal nueva empieza pequeña, como al abrir.
+        //  Recogida: cada terminal nueva empieza pequeña, como al abrir. Se
+        //  toca SOLO el objetivo: escribir en `filasReales` rompería su
+        //  enlace con él —y con `nueva()` corriendo la primera vez que abres
+        //  la isla, la caja se quedaba desenganchada desde el minuto uno y no
+        //  volvía a crecer nunca—.
         objetivo = filasMinimas
-        filasReales = filasMinimas
         return vivas[actual]
     }
 
