@@ -174,6 +174,18 @@ FadeIn {
 
                         Item { Layout.fillWidth: true }
 
+                        //  De dónde salió la cifra. Solo se dice cuando es de
+                        //  la caché de la herramienta, que es cuando puede
+                        //  llevar horas de retraso: preguntado al servidor,
+                        //  «hace un momento» ya lo dice todo y añadir «en
+                        //  vivo» sería ruido en la fila.
+                        IslandLabel {
+                            visible: tarjeta.modelData.fuente === "cache"
+                            text: Idioma.t("caché")
+                            color: Theme.dim
+                            font.pixelSize: 9
+                        }
+
                         IslandLabel {
                             text: view.frescura(tarjeta.modelData.actualizado, view.ahora)
                             color: Theme.dim

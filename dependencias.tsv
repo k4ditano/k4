@@ -67,4 +67,5 @@ kitty	kitty	opcional	Terminal donde instalar paquetes desde el lanzador
 uwsm	uwsm	opcional	Lanzar aplicaciones en su propio ámbito de systemd
 yay	yay	opcional	Buscar e instalar paquetes de AUR desde el lanzador
 nvidia-smi	nvidia-utils	opcional	Temperatura y uso de la GPU NVIDIA
-codex	-	opcional	El asistente del plugin Ask
+claude	-	opcional	Sus límites de uso, en el plugin Agentes
+codex	-	opcional	El asistente del plugin Ask, y sus límites en Agentes

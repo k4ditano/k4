@@ -6,18 +6,27 @@ semana, y en Claude además un cupo aparte por modelo— y cada uno lo cuenta a
 su manera y en su rincón del disco. Esto los lee a los dos y los deja en la
 misma forma para que la barra los pinte iguales.
 
-La cifra no se le pide a nadie por la red: ambos programas ya guardan lo que
-el servidor les contestó la última vez, así que aquí solo se lee lo que hay.
+De dónde sale cada uno:
 
-  · Claude → `~/.claude.json`, campo `cachedUsageUtilization`. Trae los tres
-    límites ya calculados, con su porcentaje y cuándo reinicia cada uno.
+  · Claude → se le pregunta al servidor, con el token que Claude Code ya tiene
+    en disco. Es una consulta de lectura de TU propia cuenta y no gasta cupo:
+    la misma que hace la herramienta para pintar su `/usage`.
   · Codex  → el último `token_count` de los rollouts de `~/.codex/sessions`,
-    donde viaja el `rate_limits` que devolvió la API.
+    donde viaja el `rate_limits` que devolvió la API. No hace falta más: eso
+    se reescribe en cada turno, así que está fresco justo mientras lo usas.
 
-Eso tiene una consecuencia que hay que enseñar y no esconder: **el dato es de
-la última vez que corrió la herramienta**. Por eso cada agente sale con su
-`actualizado`, y la vista dice de cuándo es. Un porcentaje viejo presentado
-como si fuera de ahora es peor que no tenerlo.
+Con Claude sí hacía falta. Su caché de disco —`cachedUsageUtilization` en
+`~/.claude.json`— se refresca de tarde en tarde: midiendo en este equipo,
+decía 6% cuando el servidor decía 24%, con 131 minutos de retraso y una
+sesión trabajando por delante. Un módulo de límites que va dos horas por
+detrás no sirve para lo único que sirve un módulo de límites, que es decidir
+si te queda para lo siguiente.
+
+La caché sigue ahí como respaldo, y esa es la regla: se pregunta, y si no se
+puede —sin red, sin token, token caducado— se usa lo último que dejó escrito
+la herramienta. Cada agente dice de cuándo es su cifra y por qué vía llegó
+(`fuente`), porque un porcentaje viejo presentado como si fuera de ahora es
+peor que no tenerlo. Con `--sin-red` no se pregunta nunca.
 
 Salida, un JSON por vuelta:
 
@@ -34,10 +43,53 @@ import json
 import os
 import shutil
 import sys
+import time
+import urllib.request
 from datetime import datetime
 
-CLAUDE_JSON = os.path.expanduser("~/.claude.json")
-CODEX_SESIONES = os.path.expanduser("~/.codex/sessions")
+#  Dónde guarda su estado cada herramienta. Las dos dejan mover su carpeta con
+#  una variable de entorno, y quien la mueve suele ser justo quien tiene el
+#  disco ordenado a su manera: dar por hecho `~/.claude.json` funcionaría en
+#  este equipo y en ningún otro de esos. Se prueban por orden y gana la
+#  primera que exista.
+CLAUDE_JSONS = [
+    os.path.join(os.environ["CLAUDE_CONFIG_DIR"], ".claude.json")
+    if os.environ.get("CLAUDE_CONFIG_DIR") else None,
+    os.path.expanduser("~/.claude.json"),
+]
+
+CODEX_SESIONES = [
+    os.path.join(os.environ["CODEX_HOME"], "sessions")
+    if os.environ.get("CODEX_HOME") else None,
+    os.path.expanduser("~/.codex/sessions"),
+]
+
+CLAUDE_CREDENCIALES = [
+    os.path.join(os.environ["CLAUDE_CONFIG_DIR"], ".credentials.json")
+    if os.environ.get("CLAUDE_CONFIG_DIR") else None,
+    os.path.expanduser("~/.claude/.credentials.json"),
+]
+
+CLAUDE_USO_URL = "https://api.anthropic.com/api/oauth/usage"
+
+#  La barra sondea cada 20 s con el módulo abierto. Preguntar al servidor cada
+#  vez sería maleducado y no serviría de nada: el porcentaje no se mueve tan
+#  deprisa. Se guarda la última respuesta y se reusa mientras sea joven, así
+#  que da igual cuántas veces se llame a esto — al servidor se va una vez por
+#  minuto como mucho.
+CLAUDE_CACHE = os.path.join(
+    os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")),
+    "k4", "agentes-uso.json")
+CLAUDE_CACHE_SEGUNDOS = 60
+CLAUDE_ESPERA = 6
+
+
+def primero(rutas, comprueba=os.path.exists):
+    """La primera ruta de la lista que exista de verdad."""
+    for ruta in rutas:
+        if ruta and comprueba(ruta):
+            return ruta
+    return None
 
 #  Cuántos rollouts recientes se miran antes de rendirse. Una sesión recién
 #  abierta todavía no ha recibido ningún `rate_limits`, así que el más nuevo
@@ -79,29 +131,10 @@ NOMBRES_CLAUDE = {
 }
 
 
-def lee_claude():
-    """`~/.claude.json` → los tres límites de la suscripción.
-
-    El fichero es el estado entero de Claude Code —proyectos, banderas,
-    historial— y el trozo que interesa es `cachedUsageUtilization`, que la
-    herramienta refresca cada vez que habla con el servidor.
-    """
-    try:
-        with open(CLAUDE_JSON, encoding="utf-8") as f:
-            datos = json.load(f)
-    except (OSError, ValueError):
-        return None
-
-    cache = datos.get("cachedUsageUtilization")
-    if not isinstance(cache, dict):
-        return {"limites": [], "razon": "sin datos todavía"}
-
-    uso = cache.get("utilization") or {}
-    cuenta = datos.get("oauthAccount") or {}
-    tier = cuenta.get("userRateLimitTier") or cuenta.get("organizationRateLimitTier")
-
+def limites_claude(uso):
+    """La lista `limits` de Claude, en la forma de la casa."""
     limites = []
-    for lim in uso.get("limits") or []:
+    for lim in (uso or {}).get("limits") or []:
         if not isinstance(lim, dict):
             continue
 
@@ -126,21 +159,122 @@ def lee_claude():
             "reinicia": epoca(lim.get("resets_at")),
             "activo": bool(lim.get("is_active")),
         })
+    return limites
+
+
+def token_claude():
+    """El token de Claude Code, si está en disco y no ha caducado.
+
+    No se refresca aquí ni de lejos: refrescarlo ROTA el token, y el siguiente
+    que lo intente —la propia herramienta, a mitad de una sesión tuya— se
+    encuentra con que el suyo ya no vale. Caducado significa que hoy toca la
+    caché, y ya lo renovará quien lo hizo.
+    """
+    ruta = primero(CLAUDE_CREDENCIALES)
+    if not ruta:
+        return None
+    try:
+        with open(ruta, encoding="utf-8") as f:
+            oauth = (json.load(f) or {}).get("claudeAiOauth") or {}
+    except (OSError, ValueError):
+        return None
+
+    caduca = oauth.get("expiresAt")
+    if isinstance(caduca, (int, float)) and caduca / 1000 <= time.time():
+        return None
+    return oauth.get("accessToken") or None
+
+
+def uso_en_vivo():
+    """Le pregunta al servidor por el uso, con la última respuesta guardada.
+
+    Devuelve `(utilization, instante)` o None. Nunca levanta: quedarse sin red
+    tiene que degradar a la caché, no dejar el módulo en blanco.
+    """
+    #  Lo guardado, si todavía vale. Se mira antes que el token para no leer
+    #  el fichero de credenciales sin necesidad.
+    try:
+        with open(CLAUDE_CACHE, encoding="utf-8") as f:
+            guardado = json.load(f)
+        if time.time() - guardado.get("cuando", 0) < CLAUDE_CACHE_SEGUNDOS:
+            return guardado.get("uso"), guardado.get("cuando")
+    except (OSError, ValueError):
+        guardado = None
+
+    tok = token_claude()
+    if not tok:
+        return None
+
+    peticion = urllib.request.Request(CLAUDE_USO_URL, headers={
+        "Authorization": "Bearer " + tok,
+        "anthropic-beta": "oauth-2025-04-20",
+        "User-Agent": "k4-agentes/1.0",
+    })
+    try:
+        with urllib.request.urlopen(peticion, timeout=CLAUDE_ESPERA) as r:
+            uso = json.loads(r.read().decode("utf-8"))
+    except Exception:                                       # noqa: BLE001
+        return None
+
+    if not isinstance(uso, dict) or "limits" not in uso:
+        return None
+
+    cuando = time.time()
+    try:
+        os.makedirs(os.path.dirname(CLAUDE_CACHE), exist_ok=True)
+        with open(CLAUDE_CACHE, "w", encoding="utf-8") as f:
+            #  Se guarda la RESPUESTA, nunca el token: este fichero no tiene
+            #  por qué estar tan protegido como el de credenciales.
+            json.dump({"cuando": cuando, "uso": uso}, f)
+    except OSError:
+        pass
+    return uso, cuando
+
+
+def lee_claude(con_red=True):
+    """Los límites de la suscripción: del servidor, y si no de la caché."""
+    ruta = primero(CLAUDE_JSONS)
+    if not ruta:
+        return None
+
+    try:
+        with open(ruta, encoding="utf-8") as f:
+            datos = json.load(f)
+    except (OSError, ValueError):
+        return None
+
+    cuenta = datos.get("oauthAccount") or {}
+    tier = cuenta.get("userRateLimitTier") or cuenta.get("organizationRateLimitTier")
+    plan = PLANES_CLAUDE.get(tier, tier or "")
+
+    if con_red:
+        vivo = uso_en_vivo()
+        if vivo:
+            uso, cuando = vivo
+            return {"plan": plan, "actualizado": cuando, "fuente": "vivo",
+                    "limites": limites_claude(uso)}
+
+    #  El respaldo: lo último que la herramienta dejó escrito. Se refresca de
+    #  tarde en tarde, así que aquí importa más que nunca decir de cuándo es.
+    cache = datos.get("cachedUsageUtilization")
+    if not isinstance(cache, dict):
+        return {"limites": [], "plan": plan, "razon": "sin datos todavía"}
 
     fetched = cache.get("fetchedAtMs")
     return {
-        "plan": PLANES_CLAUDE.get(tier, tier or ""),
+        "plan": plan,
         "actualizado": fetched / 1000 if isinstance(fetched, (int, float)) else None,
-        "limites": limites,
+        "fuente": "cache",
+        "limites": limites_claude(cache.get("utilization") or {}),
     }
 
 
 # ── Codex ────────────────────────────────────────────────────────────
 
-def rollouts_recientes():
+def rollouts_recientes(carpeta):
     """Los rollouts de Codex, del más nuevo al más viejo."""
     encontrados = []
-    for raiz, _, ficheros in os.walk(CODEX_SESIONES):
+    for raiz, _, ficheros in os.walk(carpeta):
         for nombre in ficheros:
             if nombre.startswith("rollout-") and nombre.endswith(".jsonl"):
                 ruta = os.path.join(raiz, nombre)
@@ -214,11 +348,12 @@ def ventana(datos, ident):
 
 def lee_codex():
     """El `rate_limits` que Codex dejó escrito en su último turno."""
-    if not os.path.isdir(CODEX_SESIONES):
+    carpeta = primero(CODEX_SESIONES, os.path.isdir)
+    if not carpeta:
         return None
 
     hallazgo = None
-    for ruta in rollouts_recientes():
+    for ruta in rollouts_recientes(carpeta):
         hallazgo = ultimo_limite(ruta)
         if hallazgo:
             break
@@ -255,7 +390,7 @@ AGENTES = [
 ]
 
 
-def mira():
+def mira(con_red=True):
     """Todos los agentes instalados, con lo que sepamos de cada uno."""
     salida = []
     for ident, nombre, binario, lector in AGENTES:
@@ -264,7 +399,9 @@ def mira():
         if not shutil.which(binario):
             continue
         try:
-            datos = lector()
+            #  Solo el de Claude tiene a quién preguntar; los demás leen disco
+            #  y no quieren saber nada de esto.
+            datos = lector(con_red) if lector is lee_claude else lector()
         except Exception as e:                              # noqa: BLE001
             datos = {"limites": [], "razon": str(e)}
         if datos is None:
@@ -278,5 +415,5 @@ def mira():
 
 
 if __name__ == "__main__":
-    json.dump(mira(), sys.stdout, ensure_ascii=False)
+    json.dump(mira("--sin-red" not in sys.argv), sys.stdout, ensure_ascii=False)
     sys.stdout.write("\n")

@@ -751,5 +751,12 @@
   "créditos ": "credits ",
   "Sin datos todavía — úsalo una vez y aparecerán": "No data yet — use it once and it will show up",
   "Mirando…": "Looking…",
-  "No hay ningún CLI de agentes instalado": "No agent CLI is installed"
+  "No hay ningún CLI de agentes instalado": "No agent CLI is installed",
+  "Avisar cuando aprieta": "Warn when it gets tight",
+  "Un porcentaje en la píldora cuando el límite más apurado pasa del umbral": "A percentage on the pill when the tightest limit crosses the threshold",
+  "Umbral del aviso": "Warning threshold",
+  "A partir de cuánto gastado merece la pena enterarse": "How much spent is worth hearing about",
+  "Preguntar al servidor": "Ask the server",
+  "Tu uso real, al momento. Apagado se lee la caché de la herramienta, que va con horas de retraso": "Your real usage, right now. Off, it reads the tool's cache, which lags by hours",
+  "caché": "cached"
 }
