@@ -324,6 +324,10 @@ K4Plugin {
             numero: sid
             onDonde: function (ruta) { self.alDecirDonde(ruta) }
             onDifunta: self.alMorir(numero)
+            onTrabajo: function (estado, mandato, salida, segundos) {
+                self.alTrabajar(numero, estado, mandato, salida, segundos)
+            }
+            onCampana: function (titulo) { self.alLlamar(numero, titulo) }
         }
         onObjectAdded: function (indice, objeto) {
             const v = self.vivas.slice()
@@ -504,13 +508,62 @@ K4Plugin {
             //  Ir a la ventana quita el aviso de que te espera: ya la has
             //  atendido, que es lo que el indicador estaba pidiendo.
             const espera = String(id).indexOf("terminal.espera.") === 0
-            const pid = String(id).substring(espera ? "terminal.espera.".length
-                                                    : "terminal.".length)
+            const resto = String(id).substring(espera ? "terminal.espera.".length
+                                                      : "terminal.".length)
             if (espera)
                 K4.Pildora.quitar(id)
-            buscar.pid = pid
+
+            //  Si es de la isla, no hay ventana a la que ir: se abre la
+            //  terminal por esa misma sesión.
+            if (resto.indexOf("isla.") === 0) {
+                const donde = self.indiceDe(parseInt(resto.substring(5), 10))
+                if (donde >= 0) {
+                    self.actual = donde
+                    self.abierto = true
+                    self.mandar({ que: "pinta" })
+                }
+                return
+            }
+
+            buscar.pid = resto
             buscar.running = true
         }
+    }
+
+    //  ── lo que se cuece en las terminales de la isla ──────────────
+    //
+    //  Lo mismo que ya hacía la ventana, pero llegando por el canal de la
+    //  sesión en vez de por el IPC. Y con una ventaja que el IPC no daba:
+    //  sabemos de QUÉ terminal viene, así que pulsar el indicador te trae a
+    //  ella en vez de buscar una ventana que no existe.
+    function claveIsla(numero) { return "isla." + numero }
+
+    function indiceDe(numero) {
+        for (let i = 0; i < vivas.length; ++i)
+            if (vivas[i].numero === numero)
+                return i
+        return -1
+    }
+
+    function alTrabajar(numero, estado, mandato, salida, segundos) {
+        const clave = claveIsla(numero)
+        if (estado === "empieza") {
+            apuntar(clave, mandato, segundos)
+            return
+        }
+        olvidar(clave)
+        if (segundos >= avisoSegundos)
+            avisar(mandato, salida, segundos)
+    }
+
+    //  La campana solo merece aviso si NO la estás viendo. Teniendo esa
+    //  terminal delante ya te has enterado, y avisarte sería ruido — que es
+    //  justo la regla que la ventana aplica con el foco.
+    function alLlamar(numero, titulo) {
+        const mirando = abierto && vivas[actual] && vivas[actual].numero === numero
+        if (mirando)
+            return
+        esperando(claveIsla(numero), titulo || Idioma.t("Terminal"))
     }
 
     //  ── «tienes terminales abiertas» ──────────────────────────────

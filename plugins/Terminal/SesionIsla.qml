@@ -34,6 +34,12 @@ QtObject {
     //  ventana con esta misma sesión dentro.
     signal donde(string ruta)
 
+    //  Lo que se está cociendo aquí dentro. La sesión cuenta hechos; qué se
+    //  enseña y cuándo lo decide el plugin, que es el único que sabe si estás
+    //  mirando esta terminal ahora mismo.
+    signal trabajo(string estado, string mandato, int salida, int segundos)
+    signal campana(string titulo)
+
     //  Se murió sola —un `exit`, la shell cerrada—, para que el plugin la
     //  quite de la lista en vez de dejar un hueco muerto.
     signal difunta()
@@ -70,6 +76,10 @@ QtObject {
                     sesion.cuerpo = Math.round(m.tamano)
             } else if (m.que === "donde") {
                 sesion.donde(m.ruta || "")
+            } else if (m.que === "trabajo") {
+                sesion.trabajo(m.estado, m.mandato || "", m.salida || 0, m.segundos || 0)
+            } else if (m.que === "campana") {
+                sesion.campana(m.titulo || "")
             }
         }
 
