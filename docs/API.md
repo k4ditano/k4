@@ -184,6 +184,23 @@ operations are permission-gated (see the manifest permissions below):
 A short effect — `fuente` points at the audio file, `volumen` scales it.
 Requires the `sonido` permission: a plugin that can make noise says so.
 
+```qml
+K4.Sonido {
+    id: campana
+    fuente: campana.delSistema("bell")
+    volumen: 0.4
+}
+```
+
+Then `campana.sonar()` plays it.
+`delSistema(name)` resolves a desktop theme sound already installed on the
+machine — `bell`, `message`, `complete`, `dialog-error` — so a plugin can
+have sound without shipping audio files. Note it is a method **of the
+object**, not of the type: `campana.delSistema(…)`, never
+`K4.Sonido.delSistema(…)`, which fails silently inside the binding and
+leaves you with no sound and no error. `listo` tells you whether it can
+actually play.
+
 ## IPC, windows and shortcuts
 
 Expose commands with `K4.Ipc`:

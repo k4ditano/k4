@@ -18,9 +18,17 @@
 //  Requiere declarar el permiso `sonido`: hacer ruido en el escritorio de
 //  alguien es un efecto, y los efectos se declaran.
 //
-//      K4.Sonido { id: campana; fuente: K4.Sonido.delSistema("bell") }
+//      K4.Sonido { id: campana; fuente: campana.delSistema("bell") }
 //      // …
 //      campana.sonar()
+//
+//  Ojo con esa línea, que aquí ponía `K4.Sonido.delSistema("bell")` y NO
+//  funciona: `delSistema` es un método del objeto, no del tipo. Llamarlo
+//  sobre `K4.Sonido` da «Property 'delSistema' of object Sonido is not a
+//  function», y como el fallo ocurre dentro de un enlace, no rompe nada: te
+//  deja sin sonido y en silencio. Se tardó en ver porque hasta hoy ningún
+//  módulo de la barra usaba esto — el primero que lo estrenó copió el
+//  ejemplo y se comió el fallo.
 
 import QtQuick
 import QtMultimedia
@@ -39,10 +47,22 @@ QtObject {
     readonly property bool _esWav: fuente.toLowerCase().indexOf(".wav") ===
                                    fuente.length - 4 && fuente.length >= 4
 
-    //  Listo para sonar. Con un WAV que no existe esto se queda en false, y
-    //  ahí es donde se mira cuando «no suena y no dice nada».
+    //  Listo para sonar, y ahí es donde se mira cuando «no suena y no dice
+    //  nada». Cada motor sabe fallar de una manera:
+    //
+    //  - el WAV avisa en cuanto carga, así que se espera a `Ready`;
+    //  - el resto solo se entera al abrir el fichero, así que se mira su
+    //    `error`. Se mira el error y NO se espera a `LoadedMedia` a
+    //    propósito: hay motores que no cargan hasta que se les pide
+    //    reproducir, y esperando la carga esto se quedaría en false para
+    //    siempre — que es peor mentira que la de antes.
+    //
+    //  Antes, para todo lo que no fuera WAV, esto valía `true` con solo tener
+    //  la propiedad puesta: un .oga inexistente daba `listo` igual, y quien
+    //  lo usara de guarda no se enteraba de nada.
     readonly property bool listo: fuente.length > 0
-        && (!_esWav || _efecto.status === SoundEffect.Ready)
+        && (_esWav ? _efecto.status === SoundEffect.Ready
+                   : _repro.error === MediaPlayer.NoError)
 
     property SoundEffect _efecto: SoundEffect {
         source: sonido._esWav ? sonido.fuente : ""
