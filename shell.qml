@@ -335,11 +335,26 @@ Scope {
                 //  siempre. Un atajo que empieza a ir cuando has usado otra
                 //  cosa es peor que uno que no va: parece cosa tuya.
                 //
-                //  Va una sola vez y antes de que exista ninguna vista, así
-                //  que no le quita el foco a nadie: quien lo quiera —el
-                //  lanzador, la clave del wifi— lo pide después y gana.
-                //  (Se pide abajo, en el `Component.onCompleted` que ya
-                //  había: uno por objeto, o el QML no carga.)
+                //  Va una vez al crearse —en el `Component.onCompleted` de
+                //  abajo, que uno por objeto o el QML no carga— y antes de que
+                //  exista ninguna vista, así que no le quita el foco a nadie:
+                //  quien lo quiera lo pide después y gana.
+                //
+                //  Y hay que RECUPERARLO, que es la otra mitad. Cuando el que
+                //  lo tenía se va sin devolverlo —un campo que se oculta al
+                //  cerrar su buscador, una vista que se destruye— la ventana
+                //  se queda sin foco activo y a partir de ahí el ESC no lo
+                //  recibe nadie otra vez. Se vigila quién lo tiene y, cuando
+                //  no lo tiene nadie, vuelve aquí. Solo cuando no hay nadie:
+                //  si alguien lo pidió, es suyo.
+                readonly property var focoVentana: island.Window.activeFocusItem
+
+                onFocoVentanaChanged: if (!focoVentana) Qt.callLater(reclamarFoco)
+
+                function reclamarFoco() {
+                    if (!island.Window.activeFocusItem)
+                        island.forceActiveFocus()
+                }
 
                 Keys.onPressed: function (ev) {
                     if (ev.key !== Qt.Key_Escape)

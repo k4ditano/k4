@@ -24,9 +24,11 @@ K4Plugin {
     islandWidth: 820
     islandHeight: 420
 
-    // solo hace falta el teclado mientras se escribe una ciudad
-    grabKeyboard: searchOpen
-    tecladoOpcional: open
+    //  El teclado entero mientras está abierto: «opcional» es OnDemand y
+    //  el compositor solo lo da si PINCHAS la superficie, así que abierto
+    //  desde el centro de aplicaciones o por atajo no llegaba ni el ESC.
+    //  Ver `tecladoOpcional` en api/K4/Plugin.qml.
+    grabKeyboard: open
 
     handlesBackgroundTap: true
     onBackgroundTapped: {}   // se traga el clic: cerrar es cosa del botón

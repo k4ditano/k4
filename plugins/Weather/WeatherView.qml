@@ -158,7 +158,12 @@ FadeIn {
                             color: Theme.ink
                             font.family: Theme.uiFont
                             font.pixelSize: 17
-                            focus: true
+                            //  Atado al buscador, y no un `true` fijo: un
+                            //  TextInput NO suelta el foco al ocultarse —
+                            //  medido, la ventana lo seguía dando por
+                            //  enfocado—, así que se quedaba con él para
+                            //  siempre y se tragaba todos los ESC ahí abajo.
+                            focus: view.plugin.searchOpen
                             clip: true
                             selectByMouse: true
                             cursorVisible: true
@@ -169,7 +174,20 @@ FadeIn {
                                 debounce.restart()
                             }
 
-                            Component.onCompleted: Qt.callLater(function () { cityInput.forceActiveFocus() })
+                            //  El foco, solo cuando el buscador está DELANTE.
+                            //
+                            //  Este campo se instancia siempre —el bloque de
+                            //  arriba se oculta con `visible`, no se destruye—,
+                            //  así que pedirlo al completarse se lo llevaba
+                            //  nada más abrir el tiempo, con el buscador
+                            //  cerrado y el campo invisible. Y entonces se
+                            //  tragaba todos los ESC en su `Keys.onPressed`
+                            //  —cerrar un buscador ya cerrado no hace nada,
+                            //  pero marca la tecla como atendida—, así que el
+                            //  ESC que cierra el módulo no llegaba nunca.
+                            //  Invisible y mudo, pero se lo quedaba todo.
+                            onVisibleChanged: if (visible)
+                                Qt.callLater(function () { cityInput.forceActiveFocus() })
 
                             Keys.onPressed: function (event) {
                                 if (event.key === Qt.Key_Escape) {

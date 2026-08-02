@@ -17,7 +17,11 @@ K4Plugin {
     title: Idioma.t("Bandeja")
     priority: 63
     active: habilitado && open
-    tecladoOpcional: open
+    //  El teclado entero mientras está abierto: «opcional» es OnDemand y
+    //  el compositor solo lo da si PINCHAS la superficie, así que abierto
+    //  desde el centro de aplicaciones o por atajo no llegaba ni el ESC.
+    //  Ver `tecladoOpcional` en api/K4/Plugin.qml.
+    grabKeyboard: open
 
     property bool open: false
     property var selected: null

@@ -32,8 +32,11 @@ K4Plugin {
     islandHeight: tab === "controls" ? 268 : 400
 
     // solo mientras se escribe la contraseña de una red
-    grabKeyboard: Wifi.pskTarget !== null
-    tecladoOpcional: open
+    //  El teclado entero mientras está abierto: «opcional» es OnDemand y
+    //  el compositor solo lo da si PINCHAS la superficie, así que abierto
+    //  desde el centro de aplicaciones o por atajo no llegaba ni el ESC.
+    //  Ver `tecladoOpcional` en api/K4/Plugin.qml.
+    grabKeyboard: open
 
     handlesBackgroundTap: true
     onBackgroundTapped: toggle()

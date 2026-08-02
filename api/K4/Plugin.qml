@@ -61,9 +61,19 @@ QtObject {
     property bool grabKeyboard: false
 
     // Foco BAJO DEMANDA: la capa recibe teclas si interactúas con ella y se las
-    // devuelve al escritorio si no. Es lo que quiere un módulo que solo
-    // necesita enterarse de un ESC sin secuestrarte el teclado mientras lo
-    // tienes abierto de fondo.
+    // devuelve al escritorio si no. Es lo que quiere un módulo que se queda
+    // abierto de fondo mientras trabajas en otra ventana —la mazmorra— y que
+    // solo necesita el teclado cuando lo miras.
+    //
+    // OJO CON EL ESC, que costó encontrarlo: «bajo demanda» significa que el
+    // compositor da el teclado SOLO cuando PINCHAS la superficie. Si te abren
+    // desde el centro de aplicaciones, desde el lanzador o por un atajo, nadie
+    // la pincha, así que no recibes ni una tecla y el ESC que cierra el módulo
+    // no te llega. Cierra con ESC solo si antes te habían puesto el ratón
+    // encima, que parece que funciona hasta que alguien lo usa.
+    //
+    // Si lo tuyo se abre, se mira y se cierra, lo que quieres es
+    // `grabKeyboard`, aunque parezca de más para un módulo que no se escribe.
     property bool tecladoOpcional: false
 
     // Clic en el fondo de la island. Si el plugin no lo marca, el host aplica
