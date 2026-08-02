@@ -168,6 +168,20 @@ K4Plugin {
         K4.Pildora.registrar(idDe(pid), reloj(0), 0xF018D, Theme.blue, 30, true)
     }
 
+    //  Los que te esperan van con el id aparte: un mandato largo y un agente
+    //  que ha acabado su turno son dos cosas distintas y pueden coincidir.
+    function idEspera(pid) { return "terminal.espera." + pid }
+
+    function esperando(pid, titulo) {
+        const nombre = String(titulo || "").trim() || Idioma.t("Terminal")
+        //  La campana del tema: dice «te llaman» sin necesidad de leerlo, y
+        //  en amarillo, que reclama sin alarmar.
+        K4.Pildora.registrar(idEspera(pid), nombre.slice(0, 18), Theme.ico.bell.codePointAt(0),
+                             Theme.yellow, 29, true)
+        K4.Sistema.lanzar(["notify-send", "-a", "k4term", "-t", "8000",
+                           Idioma.t("Te está esperando"), nombre])
+    }
+
     function olvidar(pid) {
         if (trabajos[pid] === undefined)
             return
@@ -201,7 +215,14 @@ K4Plugin {
         function onInvocado(id) {
             if (String(id).indexOf("terminal.") !== 0)
                 return
-            buscar.pid = String(id).substring("terminal.".length)
+            //  Ir a la ventana quita el aviso de que te espera: ya la has
+            //  atendido, que es lo que el indicador estaba pidiendo.
+            const espera = String(id).indexOf("terminal.espera.") === 0
+            const pid = String(id).substring(espera ? "terminal.espera.".length
+                                                    : "terminal.".length)
+            if (espera)
+                K4.Pildora.quitar(id)
+            buscar.pid = pid
             buscar.running = true
         }
     }
@@ -269,10 +290,21 @@ K4Plugin {
         }
 
         //  La ventana se cierra con algo dentro: se lleva su indicador.
-        function limpiar(pid: string): void { self.olvidar(pid) }
+        function limpiar(pid: string): void {
+            self.olvidar(pid)
+            K4.Pildora.quitar(self.idEspera(pid))
+        }
 
         //  La terminal de la island, para lo rápido.
         function isla(): void { self.toggle() }
+
+        //  Una terminal que toca la campana sin tener el foco casi siempre es
+        //  un agente que ha terminado su turno y te espera. Se apunta en la
+        //  píldora —con su propio glifo, que no es lo mismo que un mandato
+        //  largo— y se avisa una vez.
+        function campana(pid: string, titulo: string): void {
+            self.esperando(pid, titulo)
+        }
     }
 
     function avisar(mandato, salida, segundos) {

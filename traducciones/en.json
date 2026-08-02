@@ -730,5 +730,6 @@
  "Terminal": "Terminal",
  "Falló el mandato": "Command failed",
  "Mandato terminado": "Command finished",
- "ESC cierra · la sesión sigue viva": "ESC closes · the session stays alive"
+ "ESC cierra · la sesión sigue viva": "ESC closes · the session stays alive",
+ "Te está esperando": "Waiting for you"
 }
