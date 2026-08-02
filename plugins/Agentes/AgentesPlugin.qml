@@ -81,11 +81,21 @@ K4Plugin {
         return alto + 8 * (agentes.length - 1)
     }
 
-    //  Sin esto la capa no recibe una tecla y el ESC que el host ya trae —el
-    //  que cierra el módulo que esté abierto, sea cual sea— no llegaba nunca.
-    //  Opcional y no exclusivo: esto se mira, no se escribe en ello, y
-    //  secuestrar el teclado del escritorio para leer un porcentaje sobra.
-    tecladoOpcional: abierto
+    //  El teclado entero mientras está abierto, y no `tecladoOpcional`.
+    //
+    //  Parece de más para un módulo que solo se mira, y lo probé así primero.
+    //  Pero «opcional» es OnDemand, y OnDemand significa que el compositor da
+    //  el teclado SOLO si pinchas la superficie: abriéndolo desde el centro de
+    //  aplicaciones, desde el lanzador o por atajo no la pinchas nunca, así
+    //  que el ESC que el host ya trae no llegaba jamás. Cerraba con ESC solo
+    //  si antes le habías puesto el ratón encima, que es la clase de arreglo
+    //  que parece que funciona hasta que lo usas.
+    //
+    //  Se paga tenerlo: mientras esté abierto, ninguna ventana recibe teclas.
+    //  Se paga a gusto porque esto se abre, se mira y se cierra —el centro de
+    //  aplicaciones hace lo mismo por la misma razón— y porque la tecla con
+    //  la que se cierra tiene que funcionar siempre, no casi siempre.
+    grabKeyboard: abierto
 
     closeOnHoverExit: true
     hoverExitDelay: 1000

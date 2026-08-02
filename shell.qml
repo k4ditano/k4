@@ -326,6 +326,21 @@ Scope {
                 // solo después cierra el módulo.
                 focus: true
 
+                //  Y pedirlo de verdad una vez, que `focus: true` a secas no
+                //  basta: hasta que ALGUIEN dentro de esta ventana toma el
+                //  foco activo, no hay foco activo, y las teclas que llegan a
+                //  la capa no las recibe nadie. Se veía así: el ESC no cerraba
+                //  ningún módulo hasta que abrías el lanzador —que sí lo pide,
+                //  para su campo de texto— y a partir de ahí funcionaba para
+                //  siempre. Un atajo que empieza a ir cuando has usado otra
+                //  cosa es peor que uno que no va: parece cosa tuya.
+                //
+                //  Va una sola vez y antes de que exista ninguna vista, así
+                //  que no le quita el foco a nadie: quien lo quiera —el
+                //  lanzador, la clave del wifi— lo pide después y gana.
+                //  (Se pide abajo, en el `Component.onCompleted` que ya
+                //  había: uno por objeto, o el QML no carga.)
+
                 Keys.onPressed: function (ev) {
                     if (ev.key !== Qt.Key_Escape)
                         return
@@ -359,7 +374,10 @@ Scope {
                 onXChanged: publicarRect()
                 onWidthChanged: publicarRect()
                 onHeightChanged: publicarRect()
-                Component.onCompleted: publicarRect()
+                Component.onCompleted: {
+                    publicarRect()
+                    forceActiveFocus()      // el ESC de arriba; ver por qué
+                }
 
                 function publicarRect() {
                     Island.publicarRect(panelWindow.screen.name, {
