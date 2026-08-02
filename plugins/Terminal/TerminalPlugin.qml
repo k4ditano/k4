@@ -335,6 +335,10 @@ K4Plugin {
             self.vivas = v
         }
         onObjectRemoved: function (indice, objeto) {
+            //  Lo que esa terminal tuviera anunciado se va con ella. Aquí y no
+            //  en `cerrarSesion`, que este es el único sitio por el que pasan
+            //  LOS DOS finales: el que cierras tú y el que se muere solo.
+            self.limpiarIsla(objeto.numero)
             const v = self.vivas.slice()
             v.splice(indice, 1)
             self.vivas = v
@@ -548,6 +552,14 @@ K4Plugin {
         return -1
     }
 
+    //  Un indicador de una terminal que ya no está es una puerta a ninguna
+    //  parte: pulsarlo no puede llevarte a nada.
+    function limpiarIsla(numero) {
+        const clave = claveIsla(numero)
+        olvidar(clave)
+        K4.Pildora.quitar(idEspera(clave))
+    }
+
     function alTrabajar(numero, estado, mandato, salida, segundos) {
         const clave = claveIsla(numero)
         if (estado === "empieza") {
@@ -566,7 +578,13 @@ K4Plugin {
         const mirando = abierto && vivas[actual] && vivas[actual].numero === numero
         if (mirando)
             return
-        esperando(claveIsla(numero), titulo || Idioma.t("Terminal"))
+        //  Con quién te llama, no un «Terminal» a secas: el sentido de esto es
+        //  saber CUÁL de tus agentes ha acabado su turno. El título que pide
+        //  la aplicación es lo que mejor lo dice; el mandato, si no lo hay.
+        const donde = indiceDe(numero)
+        const quien = (donde >= 0 && vivas[donde].titulo)
+            || titulo || Idioma.t("Terminal")
+        esperando(claveIsla(numero), quien)
     }
 
     //  ── «tienes terminales abiertas» ──────────────────────────────
