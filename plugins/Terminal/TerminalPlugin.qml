@@ -157,30 +157,43 @@ K4Plugin {
             velocidad = filasPorSegundo
             objetivo = filasMaximas
         } else if (marco.usadas * 2 <= marco.filas_n && filasReales > filasMinimas) {
-            //  Recoger espera. Al pulsar Intro la pantalla se queda un
-            //  instante casi vacía antes de que llegue la salida del mandato,
-            //  y reaccionar a ese hueco daba un tirón hacia abajo justo antes
-            //  de crecer — medido: 26 px de bajada y 73 de subida a
-            //  continuación. Si medio segundo después sigue medio vacía, sí.
-            objetivo = filasReales
-            recoger.restart()
+            //  Vaciada del todo —un `clear`, salir de un programa— se recoge
+            //  YA: no hay nada que confirmar, y esperar ahí es lo que se
+            //  sentía como un retraso raro antes de que la caja reaccionara.
+            //
+            //  Medio vacía es otra cosa y esa sí espera un poco: al pulsar
+            //  Intro la pantalla se queda un instante con menos de lo que
+            //  tenía antes de que llegue la salida del mandato, y reaccionar a
+            //  ese hueco daba un tirón hacia abajo justo antes de crecer
+            //  —medido: 26 px de bajada y 73 de subida a continuación—. Con
+            //  esperar dos marcos basta para distinguirlo.
+            if (marco.usadas <= 2) {
+                recoger.stop()
+                encoger()
+            } else {
+                objetivo = filasReales
+                recoger.restart()
+            }
         } else {
             recoger.stop()
             objetivo = filasReales
         }
     }
 
+    function encoger() {
+        velocidad = filasPorSegundoAlRecoger
+        objetivo = Math.max(filasMinimas, marco.usadas + 2)
+    }
+
     Timer {
         id: recoger
-        interval: 500
+        interval: 180
         onTriggered: {
             if (!self.marco)
                 return
             if (self.marco.usadas * 2 <= self.marco.filas_n
-                    && self.filasReales > self.filasMinimas) {
-                self.velocidad = self.filasPorSegundoAlRecoger
-                self.objetivo = Math.max(self.filasMinimas, self.marco.usadas + 2)
-            }
+                    && self.filasReales > self.filasMinimas)
+                self.encoger()
         }
     }
 
