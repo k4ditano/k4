@@ -111,7 +111,8 @@ What you get by having it is what needs both sides:
 - a real terminal **inside the island** (`SUPER + Shift + T`), whose session
   outlives the view — closing it does not stop what is running;
 - **several of them at once**, one per tab: `alt`+`←`/`→` to switch, `alt`+`T`
-  for a new one, `alt`+`1`…`9` to jump. Keep an agent in one and a build in
+  for a new one, `alt`+`W` to close it, `alt`+`1`…`9` to jump (or the `✕` on
+  the tab, middle-click, or plain `exit`). Keep an agent in one and a build in
   another; a pill in the bar counts them while the view is hidden, and clicking
   it brings them back;
 - `SUPER + Alt + T` to pop that same session out into a window, in the

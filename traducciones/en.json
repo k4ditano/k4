@@ -743,6 +743,6 @@
   "Deja rastro al moverse": "Leaves a trail when moving",
   "Modo tranquilo": "Quiet mode",
   "Atenúa lo anterior al último mandato": "Dims everything before the last command",
-  "alt+← → cambia · alt+T nueva": "alt+← → switch · alt+T new",
-  "terminal": "terminal"
+  "terminal": "terminal",
+  "alt+← → cambia · alt+T nueva · alt+W cierra": "alt+← → switch · alt+T new · alt+W close"
 }

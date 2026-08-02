@@ -138,7 +138,11 @@ Item {
                                          : Idioma.t("terminal") + " " + (index + 1))
 
                     height: vista.altoCabecera - 4
-                    width: etiqueta.implicitWidth + 18
+                    //  El hueco de la aspa va SIEMPRE reservado aunque el aspa
+                    //  no se vea: si apareciera al pasar el ratón, la pestaña
+                    //  crecería y empujaría a las demás justo cuando vas a
+                    //  pulsarlas.
+                    width: etiqueta.width + 18 + 14
                     radius: height / 2
                     color: esta ? Theme.surfaceHi : "transparent"
 
@@ -146,7 +150,9 @@ Item {
 
                     IslandLabel {
                         id: etiqueta
-                        anchors.centerIn: parent
+                        anchors.left: parent.left
+                        anchors.leftMargin: 9
+                        anchors.verticalCenter: parent.verticalCenter
                         text: (index + 1) + "  " + parent.nombre
                         color: parent.esta ? Theme.ink : Theme.muted
                         font.pixelSize: 10
@@ -156,7 +162,9 @@ Item {
                     }
 
                     MouseArea {
+                        id: pestanaRaton
                         anchors.fill: parent
+                        hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
                         onClicked: function (raton) {
@@ -166,6 +174,28 @@ Item {
                                 vista.plugin.cerrarSesion(parent.index)
                             else
                                 vista.plugin.irA(parent.index)
+                        }
+                    }
+
+                    //  Cerrar esta terminal. Solo al acercarse: en reposo la
+                    //  cabecera dice qué hay, no ofrece botones.
+                    IslandLabel {
+                        anchors.right: parent.right
+                        anchors.rightMargin: 7
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "✕"
+                        font.pixelSize: 10
+                        color: aspaRaton.containsMouse ? Theme.ink : Theme.muted
+                        opacity: pestanaRaton.containsMouse || aspaRaton.containsMouse ? 1 : 0
+                        Behavior on opacity { NumberAnimation { duration: 120 } }
+
+                        MouseArea {
+                            id: aspaRaton
+                            anchors.fill: parent
+                            anchors.margins: -4
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: vista.plugin.cerrarSesion(parent.parent.index)
                         }
                     }
                 }
@@ -474,6 +504,14 @@ Item {
                 if (e.key === Qt.Key_Right) { vista.plugin.siguiente(); e.accepted = true; return }
                 if (e.key === Qt.Key_Left)  { vista.plugin.anterior();  e.accepted = true; return }
                 if (e.key === Qt.Key_T)     { vista.plugin.nueva();     e.accepted = true; return }
+                //  Cerrar la de delante. Con `exit` también se va —la sesión
+                //  muere y la pestaña con ella—, pero eso pide que la shell
+                //  esté libre; esto vale aunque tengas algo corriendo.
+                if (e.key === Qt.Key_W) {
+                    vista.plugin.cerrarSesion(vista.plugin.actual)
+                    e.accepted = true
+                    return
+                }
                 if (e.key >= Qt.Key_1 && e.key <= Qt.Key_9) {
                     vista.plugin.irA(e.key - Qt.Key_1)
                     e.accepted = true
@@ -534,7 +572,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.rightMargin: vista.margen
         anchors.bottomMargin: 6
-        text: Idioma.t("alt+← → cambia · alt+T nueva")
+        text: Idioma.t("alt+← → cambia · alt+T nueva · alt+W cierra")
         color: Theme.dim
         font.pixelSize: 10
     }
