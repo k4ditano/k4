@@ -51,16 +51,24 @@ Singleton {
         return null
     }
 
+    //  Solo reemplaza SU entrada de ajustes. Antes barría con `quitarDe`, que
+    //  es la escoba de «este plugin ha muerto» y se lleva también su enganche
+    //  del lanzador — y como K4.Ajustes se vuelve a registrar cada vez que
+    //  cambian sus `opciones`, un plugin con las dos cosas perdía la del
+    //  lanzador al primer cambio, sin un solo error por ningún lado. No se
+    //  notó antes porque hasta ahora ningún plugin tenía las dos.
     function registrarAjustes(fuente) {
         if (!fuente || !fuente.plugin)
             return
-        quitarDe(fuente.plugin)
-        ajustes = ajustes.concat([{ plugin: fuente.plugin,
-                                    grupo: fuente.grupo,
-                                    opciones: fuente.opciones || [],
-                                    fuente: fuente }])
+        ajustes = ajustes.filter(function (x) {
+            return x.plugin !== fuente.plugin
+        }).concat([{ plugin: fuente.plugin,
+                     grupo: fuente.grupo,
+                     opciones: fuente.opciones || [],
+                     fuente: fuente }])
     }
 
+    //  Esta sí barre las dos: es para cuando el plugin se va.
     function quitarDe(plugin) {
         const quedan = ajustes.filter(function (x) { return x.plugin !== plugin })
         if (quedan.length !== ajustes.length)

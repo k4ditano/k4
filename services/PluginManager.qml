@@ -211,6 +211,15 @@ Singleton {
         Theme.destintar(id)
         Island.soltar(id)
 
+        //  Y sus indicadores, por la misma razón. Esto solo se hacía al
+        //  APAGAR un plugin, así que recargarlo dejaba en la píldora un
+        //  indicador huérfano: con el número congelado en el del momento de
+        //  recargar, sin nadie que lo actualice ni lo quite, y llamando al
+        //  pulsarlo a un objeto que ya no existe. Va aquí, que es el único
+        //  sitio por el que pasan las tres formas de morir —apagado, recarga
+        //  y desaparecer del catálogo—, y no en una de ellas.
+        Indicadores.quitarDe(id)
+
         //  Y APAGAR sus IpcHandler, que es lo que desregistra sus targets.
         //
         //  Destruir no desregistra —medido: ni tres segundos después—, así que
@@ -359,8 +368,8 @@ Singleton {
         const d = Object.assign({}, habilitados)
         d[id] = !!valor
         habilitados = d
-        if (!valor)
-            Indicadores.quitarDe(id)
+        //  Los indicadores los barre `_destruir`, por donde pasa apagar
+        //  también. Estaba aquí y solo cubría este camino.
         guardar()
         cambiado(id, !!valor)
     }
@@ -380,6 +389,28 @@ Singleton {
         const d = Object.assign({}, errores)
         delete d[id]
         errores = d
+    }
+
+    //  El icono de un plugin por su id, en los dos campos que entiende
+    //  `K4.IconoPlugin`: su imagen si trae una, su códice si no.
+    //
+    //  Existe porque el lanzador enseñaba los aportes de los plugins SIN
+    //  icono. La fila esperaba un nombre de icono del escritorio —lo que
+    //  traen las aplicaciones del sistema— y lo que un plugin declara es otra
+    //  cosa: un códice de la Nerd Font o un fichero suyo. Ni encajaba ni
+    //  fallaba: salía el hueco. Y un hueco entre filas que sí tienen icono se
+    //  lee como «esto está a medias», que era justo lo contrario de lo que
+    //  pasaba.
+    function iconoDe(id) {
+        for (let i = 0; i < catalogo.length; ++i) {
+            const m = catalogo[i]
+            if (m.id !== id)
+                continue
+            return { imagen: m.iconoFichero ? "file://" + m.iconoFichero : "",
+                     glifo: m.icono ? parseInt(m.icono, 16)
+                          : (m.externo ? 0xF0431 : 0xF06A5) }
+        }
+        return { imagen: "", glifo: 0xF06A5 }
     }
 
     //  Las filas del grupo «Plugins» de Ajustes. Para uno de fuera, la
