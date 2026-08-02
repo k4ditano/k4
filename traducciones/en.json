@@ -726,5 +726,8 @@
  "los puntos del vídeo y los rombos del bloque se arrastran · clic derecho quita": "drag the dots on the video and the diamonds on the block · right-click removes",
  "Sistema al día": "System up to date",
  "La actualización falló": "The update failed",
- "dejadas para luego": "left for later"
+ "dejadas para luego": "left for later",
+ "Terminal": "Terminal",
+ "Falló el mandato": "Command failed",
+ "Mandato terminado": "Command finished"
 }

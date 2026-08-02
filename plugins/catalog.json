@@ -175,6 +175,14 @@
    "title": "Aplicaciones",
    "enabledByDefault": true,
    "icono": "0xF02C1"
+  },
+  {
+   "id": "terminal",
+   "entry": "Terminal/TerminalPlugin.qml",
+   "version": "1.0.0",
+   "title": "Terminal",
+   "enabledByDefault": true,
+   "icono": "0xF018D"
   }
  ],
  "version": "1.1.0"

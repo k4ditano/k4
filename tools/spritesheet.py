@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Parte una hoja de sprites generada con Codex en PNG sueltos y transparentes.
 
-    python3 tools/spritesheet.py hoja.png plugins/Game/assets/monstruos --filas 4 --columnas 5
+    python3 tools/spritesheet.py hoja.png plugins/Medabots/assets/robots/poses --filas 2 --columnas 4 --lado 96 --colores 32
 
-Las hojas se piden con fondo de color plano (ver tools/generar-assets.sh). El
-fondo NO se quita buscando ese color por toda la imagen: eso se come los
-sprites que lo llevan encima —una oruga morada sobre magenta pierde el cuerpo—.
-Se rellena por inundación desde los bordes de cada celda, que es donde el fondo
-siempre está y el bicho nunca. Así da igual de qué color sea el monstruo.
+Las hojas se generan fuera de este script, con una herramienta visual o a mano,
+y deben llevar fondo de color plano. El fondo NO se quita buscando ese color
+por toda la imagen: eso se come los sprites que lo llevan encima —una oruga
+morada sobre magenta pierde el cuerpo—. Se rellena por inundación desde los
+bordes de cada celda, que es donde el fondo siempre está y el bicho nunca. Así
+da igual de qué color sea el personaje.
 
 Después se escala con vecino más próximo y se cuantiza la paleta: lo que
 devuelve el generador es un render suave de ~280 px, no pixel art, y al bajarlo
