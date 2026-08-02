@@ -203,6 +203,7 @@ always opening instead of toggling.
 | `K4.Guardado` | your state as JSON, in YOUR directory, with `cargado`/`guardar` |
 | `K4.Ipc` | your IPC target (`k4.<id>`) |
 | `K4.Process` | external processes — requires the `procesos` permission |
+| `K4.Terminal` | the house terminal: run a script where it best fits, open one — `ejecutar`/`abrir` require `procesos` |
 | `K4.Sonido` | a short sound — requires the `sonido` permission |
 | `K4.Fichero` | reading and writing files — requires `ficheros` |
 | `K4.Pildora` | an indicator on the folded pill |
@@ -308,6 +309,17 @@ opciones: [
 ]
 ```
 
+`opciones` is live: change it and the section redraws. An **empty list hides
+the whole section**, which is how you say "this does not apply right now" —
+useful when your options depend on something you only learn later, like
+whether a program is installed or whether there is network. It has to be a
+binding for that, not a value computed once:
+
+```qml
+//  Sin el programa detrás, la sección entera no sale.
+opciones: !Consola.esNuestra ? [] : [ /* … */ ]
+```
+
 A choice shows its `alternativas` as chips and `cambiado` delivers the
 chosen `codigo`. A text is a free field — a URL, a model, a key: `pista` is
 the empty field's gray, `secreto: true` masks it with dots once typing
@@ -396,7 +408,7 @@ The manifest declares what you use; the bar checks it **before listing**:
 
 | Permission | What betrays it |
 |---|---|
-| `procesos` | `K4.Process` |
+| `procesos` | `K4.Process`, `K4.Terminal.ejecutar`, `K4.Terminal.abrir` |
 | `red` | `XMLHttpRequest`, `WebSocket` |
 | `ficheros` | `K4.Fichero` |
 | `sonido` | `K4.Sonido` |

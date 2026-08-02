@@ -52,6 +52,7 @@ Sonido 1.0 Sonido.qml
 Process 1.0 Process.qml
 Ipc 1.0 Ipc.qml
 singleton Sistema 1.0 Sistema.qml
+singleton Terminal 1.0 Terminal.qml
 singleton Apps 1.0 Apps.qml
 Fichero 1.0 Fichero.qml
 Icono 1.0 Icono.qml

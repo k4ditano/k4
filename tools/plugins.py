@@ -39,7 +39,11 @@ RE_ID = re.compile(r"[a-z0-9][a-z0-9-]*")
 #  portapapeles es la excepción y va al revés — ahí lo delicado es LEER, que
 #  guarda contraseñas y tokens, así que basta con nombrarlo.
 PERMISOS = {
-    "procesos": re.compile(r"\bK4\.Process\b|\bexecDetached\b"),
+    #  `K4.Terminal.ejecutar` y `.abrir` corren un guion; que lo lance otro
+    #  por ti no lo hace menos correr un guion. Mirar qué terminal hay
+    #  —`cual`, `enLaIsla`, `cierre`— no delata nada y va libre.
+    "procesos": re.compile(r"\bK4\.Process\b|\bexecDetached\b"
+                           r"|\bK4\.Terminal\.(ejecutar|abrir)\b"),
     "red": re.compile(r"\bXMLHttpRequest\b|\bWebSocket\b"),
     "ficheros": re.compile(r"\bK4\.Fichero\b"),
     "audio": re.compile(r"\bK4\.Audio\.(ponerVolumen|alternarSilencio)\b"),

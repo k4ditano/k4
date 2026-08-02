@@ -43,4 +43,8 @@ QtObject {
 
     //  La huella: datos personales agregados, con doble llave.
     property var huella: null
+
+    //  Qué terminal hay instalada y dónde conviene correr las cosas. Lo sabe
+    //  el servicio, y sin esto un plugin tendría que adivinarlo.
+    property var consola: null
 }

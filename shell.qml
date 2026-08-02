@@ -97,6 +97,7 @@ Scope {
         K4.Puente.enganches = Enganches
         K4.Puente.isla = Island
         K4.Puente.huella = Huella
+        K4.Puente.consola = Consola
 
         void Audio.volume
         void Wifi.name

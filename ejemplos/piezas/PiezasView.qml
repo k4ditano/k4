@@ -126,6 +126,36 @@ K4.Aparicion {
                 }
             }
 
+            // ── Estela: el cursor de la casa ──────────────────────
+            //
+            //  Va de `cursorDelegate` y ya: el campo lo coloca, la pieza
+            //  decide cómo se pinta. Escribe aquí y mira el rastro.
+            K4.Etiqueta {
+                text: K4.Idioma.t("Estela — escribe y mira el cursor")
+                font.pixelSize: 11
+                color: K4.Tema.apagado
+            }
+
+            Rectangle {
+                width: parent.width
+                height: 34
+                radius: 10
+                color: K4.Tema.superficie
+
+                TextInput {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    verticalAlignment: TextInput.AlignVCenter
+                    color: K4.Tema.tinta
+                    font.pixelSize: 13
+                    selectByMouse: true
+                    cursorVisible: true
+                    cursorDelegate: K4.Estela {}
+                    text: K4.Idioma.t("escribe algo")
+                }
+            }
+
             // ── Relleno, para que haya algo que rodar ─────────────
             Repeater {
                 model: 6
