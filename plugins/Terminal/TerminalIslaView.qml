@@ -64,6 +64,8 @@ Item {
         plugin.mandar({ que: "medida", cols: cols, filas: filas })
         plugin.mandar({ que: "pinta" })
         forzarFoco.start()
+        pintadoX = destinoX
+        pintadoY = destinoY
     }
 
     Timer {
@@ -129,11 +131,109 @@ Item {
         }
     }
 
-    //  El cursor va aparte de las filas: es de la sesión, no del texto.
+    //  ── el cursor y su estela ─────────────────────────────────────────
+    //
+    //  El cursor va aparte de las filas: es de la sesión, no del texto. Y no
+    //  se teletransporta, se desliza dejando rastro — la misma estela que la
+    //  ventana, con la misma curva, porque son la misma terminal y no se
+    //  entendería que una tuviera el efecto y la otra no.
+    //
+    //  Cuántos fantasmas lo dice la sesión, que lee los ajustes de k4term:
+    //  aquí no se decide nada, solo se pinta.
+    //
+    //  Nada de `Behavior on x`: lo que se quiere enseñar es el camino REAL,
+    //  con su aceleración, así que se guarda por dónde ha pasado en vez de
+    //  interpolarlo al pintar. Por eso hay un latido en vez de una animación.
+    readonly property real destinoX: margen + (marco ? (marco.cursor[0] - 1) : 0) * anchoCelda
+    readonly property real destinoY: margen + (marco ? (marco.cursor[1] - 1) : 0) * altoLinea
+
+    //  Se inicializan a mano y no con un enlace a `destino`: un enlace haría
+    //  que el cursor se plantara en el destino ANTES del primer latido, y ese
+    //  primer movimiento —el único que se ve al abrir— saldría sin estela.
+    property real pintadoX: 0
+    property real pintadoY: 0
+    property var fantasmas: []
+
+    onDestinoXChanged: latido.start()
+    onDestinoYChanged: latido.start()
+
+    Timer {
+        id: latido
+        interval: 16
+        repeat: true
+        onTriggered: {
+            const dx = Math.abs(vista.destinoX - vista.pintadoX)
+            const dy = Math.abs(vista.destinoY - vista.pintadoY)
+            const anterior = { x: vista.pintadoX, y: vista.pintadoY }
+
+            //  Cuanto más lejos, más rápido: así un salto de línea no se
+            //  arrastra y mover una letra sigue siendo suave. Y un salto
+            //  enorme es una pantalla nueva, no un movimiento: ahí se planta.
+            const lejos = (dx + dy) / Math.max(1, vista.altoLinea)
+            const paso = Math.min(0.35 + lejos * 0.06, 0.75)
+            const enorme = dy > vista.altoLinea * 12
+
+            if (enorme) {
+                vista.pintadoX = vista.destinoX
+                vista.pintadoY = vista.destinoY
+            } else {
+                vista.pintadoX += (vista.destinoX - vista.pintadoX) * paso
+                vista.pintadoY += (vista.destinoY - vista.pintadoY) * paso
+            }
+
+            //  A menos de medio píxel ya está en su sitio. Dejar de latir
+            //  aquí es lo que evita quemar un temporizador para siempre.
+            const quieto = Math.abs(vista.pintadoX - vista.destinoX) < 0.5
+                        && Math.abs(vista.pintadoY - vista.destinoY) < 0.5
+            if (quieto) {
+                vista.pintadoX = vista.destinoX
+                vista.pintadoY = vista.destinoY
+            }
+
+            let rastro = vista.fantasmas.slice()
+            if (vista.plugin.estela > 0) {
+                if (quieto) {
+                    //  Parado, la estela se recoge sola: uno menos por latido
+                    //  hasta vaciarse. Nada de seguir apuntando la posición
+                    //  quieta —eso deja el rastro pegado al cursor para
+                    //  siempre y el latido no para nunca.
+                    rastro.shift()
+                } else {
+                    rastro.push(anterior)
+                    if (rastro.length > vista.plugin.estela)
+                        rastro = rastro.slice(rastro.length - vista.plugin.estela)
+                }
+            } else {
+                rastro = []
+            }
+            vista.fantasmas = rastro
+
+            if (quieto && rastro.length === 0)
+                latido.stop()
+        }
+    }
+
+    //  Los fantasmas, del más viejo al más nuevo y cada vez más presentes.
+    //  Van antes que el cursor para que él quede encima.
+    Repeater {
+        model: vista.fantasmas
+
+        delegate: Rectangle {
+            required property var modelData
+            required property int index
+            x: modelData.x
+            y: modelData.y
+            width: 2
+            height: vista.altoLinea
+            color: Theme.ink
+            opacity: (index + 1) / Math.max(1, vista.fantasmas.length) * 0.35
+        }
+    }
+
     Rectangle {
         visible: vista.marco !== null
-        x: vista.margen + (vista.marco ? (vista.marco.cursor[0] - 1) : 0) * vista.anchoCelda
-        y: vista.margen + (vista.marco ? (vista.marco.cursor[1] - 1) : 0) * vista.altoLinea
+        x: vista.pintadoX
+        y: vista.pintadoY
         width: 2
         height: vista.altoLinea
         color: Theme.ink

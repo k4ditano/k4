@@ -35,6 +35,12 @@ K4Plugin {
     property bool arrancado: false
     property var marco: null
 
+    //  Cuántos fantasmas deja el cursor al moverse. No es una decisión de la
+    //  barra: lo dice la sesión, que lee los ajustes de k4term y los vigila.
+    //  Así la estela de la island y la de la ventana son la misma cosa
+    //  tocando un solo sitio, en vez de dos parecidas que se separan.
+    property int estela: 8
+
     grabKeyboard: abierto
     islandWidth: 900
 
@@ -128,6 +134,10 @@ K4Plugin {
                 return
             if (m.que === "marco") {
                 self.marco = m
+                return
+            }
+            if (m.que === "config") {
+                self.estela = m.estela
                 return
             }
             //  La sesión contesta dónde está: solo interesa si se lo hemos
