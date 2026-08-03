@@ -33,4 +33,20 @@ MultiEffect {
 
     maskEnabled: capaDe && capaDe.mascara.length > 0
     maskSource: molde
+
+    //  La sombra, con la misma cuenta que python: difuminado y caída
+    //  proporcionales al ancho de la capa, para que la misma sombra valga
+    //  igual en un logo pequeño que en una cámara grande.
+    readonly property real fuerza: capaDe && capaDe.sombra ? capaDe.sombra : 0
+    readonly property real sigma: Math.max(2, 0.045 * (capaDe ? capaDe.width : 0))
+
+    //  Sin máscara. Con ella, la sombra la pinta el lienzo con la forma del
+    //  molde: al encender las dos a la vez, el relleno que MultiEffect añade
+    //  para que quepa la sombra estira también el molde, y el círculo salía
+    //  como un cuadrado de esquinas romas.
+    shadowEnabled: fuerza > 0.001 && !maskEnabled
+    shadowColor: Qt.rgba(0, 0, 0, 0.7 * fuerza)
+    shadowBlur: Math.min(1, sigma / 32)
+    shadowHorizontalOffset: sigma * (0.5 + fuerza)
+    shadowVerticalOffset: sigma * (0.5 + fuerza)
 }

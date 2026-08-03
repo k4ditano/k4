@@ -244,8 +244,10 @@ Item {
             readonly property string filtro: String(modelData.filtro || "")
             readonly property string mascara: String(modelData.mascara || "")
             readonly property real marco: Number(modelData.marco || 0)
+            readonly property real sombra: Number(modelData.sombra || 0)
             readonly property bool conAspecto: filtro.length > 0
                                             || mascara.length > 0
+                                            || sombra > 0.001
             readonly property real ladoMenor: Math.min(width, height)
             readonly property real radioMascara: mascara === "circulo"
                 ? ladoMenor / 2 : mascara === "redonda" ? ladoMenor * 0.12 : 0
@@ -600,6 +602,32 @@ Item {
                 hideSource: true
                 visible: false
                 live: true
+            }
+
+            //  La sombra de una capa con máscara: la silueta ES el molde, así
+            //  que se pinta el molde en negro, difuminado y caído. La de una
+            //  capa sin máscara sale del alfa de su contenido y la hace el
+            //  propio efecto, que ahí sí puede.
+            Rectangle {
+                z: -1
+                visible: capa.sombra > 0.001 && capa.mascara.length > 0
+                readonly property real sigma: Math.max(2, 0.045 * capa.width)
+
+                anchors.centerIn: parent
+                anchors.horizontalCenterOffset: sigma * (0.5 + capa.sombra)
+                anchors.verticalCenterOffset: sigma * (0.5 + capa.sombra)
+                width: capa.anchoPintado
+                height: capa.altoPintado
+                radius: capa.mascara === "circulo" ? width / 2
+                                                   : capa.radioMascara
+                color: Qt.rgba(0, 0, 0, 0.7 * capa.sombra)
+
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    blurEnabled: true
+                    blur: Math.min(1, 0.045 * capa.width / 32)
+                    blurMax: 32
+                }
             }
 
             //  El marco, por encima de todo lo que pinte la capa. Va POR FUERA

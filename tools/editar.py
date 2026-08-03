@@ -1293,6 +1293,41 @@ def filtros_aspecto(capa, ancho_capa):
     return salida
 
 
+def filtros_sombra(capa, ancho_capa):
+    """La sombra que proyecta una capa, y cuánto se sale de su huella.
+
+    Devuelve (filtros, margen): el doble de la capa ennegrecido y difuminado, y
+    los píxeles que hay que restar a su sitio para que la mancha quede centrada
+    —se acolcha antes de difuminar, porque si no el desenfoque se corta contra
+    el borde y la sombra sale con esquina—.
+
+    Va sobre el alfa de la capa, así que una capa redonda proyecta una sombra
+    redonda y un logo recortado proyecta su silueta, sin decirle nada a nadie.
+    """
+    fuerza = float(capa.get("sombra", 0.0) or 0.0)
+    if fuerza <= 0.001:
+        return [], 0
+    #  Proporcional a la capa y no en píxeles fijos: la misma sombra tiene que
+    #  valer para un logo de 200 px y para una cámara de 600.
+    sigma = max(2.0, 0.045 * ancho_capa)
+    margen = int(round(3 * sigma))
+    return ([
+        "format=rgba",
+        #  Negro conservando la silueta: los tres canales a cero y el alfa a lo
+        #  que pida la fuerza.
+        "colorchannelmixer=rr=0:gg=0:bb=0:aa=%.3f" % (0.7 * fuerza),
+        "pad=iw+%d:ih+%d:%d:%d:color=black@0" % (2 * margen, 2 * margen,
+                                                 margen, margen),
+        "gblur=sigma=%.2f:planes=15" % sigma,
+    ], margen)
+
+
+def desplazamiento_sombra(capa, ancho_capa):
+    """Cuánto cae la sombra hacia abajo y a la derecha, en píxeles."""
+    fuerza = float(capa.get("sombra", 0.0) or 0.0)
+    return int(round(max(2.0, 0.045 * ancho_capa) * (0.5 + fuerza)))
+
+
 def color_rgb(texto):
     """De «#rrggbb» a los tres números que quiere `geq`."""
     t = str(texto).lstrip("#")
@@ -1400,6 +1435,29 @@ def rama_pip(n, idx, capa, ancho, alto, entra):
 
     sale = "ov%d" % n
     empuje = "".join("+" + d for d in dys_ef)
+
+    #  La sombra va DEBAJO y con su propio overlay, no compuesta con la capa:
+    #  así la mancha puede salirse de la huella —que es lo que hace que
+    #  parezca sombra— sin agrandar la capa ni moverla de sitio.
+    som, _margen = filtros_sombra(capa, ancho_capa)
+    if som:
+        salto = desplazamiento_sombra(capa, ancho_capa)
+        xs = ("%s*W-w/2" % expresion_animada(capa, "x", 0.75)
+              if (capa.get("keyframes") or empuje)
+              else "%.4f*W-w/2" % float(capa.get("x", 0.75)))
+        ys = ("(%s%s)*H-h/2" % (expresion_animada(capa, "y", 0.75), empuje)
+              if (capa.get("keyframes") or empuje)
+              else "%.4f*H-h/2" % float(capa.get("y", 0.75)))
+        lineas.append("[%s]split[cp%d][sm%d]" % (et, n, n))
+        lineas.append("[sm%d]%s[so%d]" % (n, ",".join(som), n))
+        et = "cp%d" % n
+        bajo = "sb%d" % n
+        lineas.append("[%s][so%d]overlay=x='(%s)+%d':y='(%s)+%d':"
+                      "enable='between(t,%.4f,%.4f)'%s[%s]"
+                      % (entra, n, xs, salto, ys, salto,
+                         float(capa.get("t0", 0.0)), float(capa.get("t1", 0.0)),
+                         ':eof_action=pass', bajo))
+        entra = bajo
     if capa.get("keyframes") or empuje:
         linea_overlay = (
             "[%s][%s]overlay=x='%s*W-w/2':y='(%s%s)*H-h/2':"
@@ -1513,6 +1571,29 @@ def rama_capa(n, idx, capa, ancho, alto, entra):
     #  es 0 de fábrica: manda la duración de la entrada principal.
     sale = "ov%d" % n
     empuje = "".join("+" + d for d in dys_ef)
+
+    #  La sombra va DEBAJO y con su propio overlay, no compuesta con la capa:
+    #  así la mancha puede salirse de la huella —que es lo que hace que
+    #  parezca sombra— sin agrandar la capa ni moverla de sitio.
+    som, _margen = filtros_sombra(capa, ancho_capa)
+    if som:
+        salto = desplazamiento_sombra(capa, ancho_capa)
+        xs = ("%s*W-w/2" % expresion_animada(capa, "x", 0.5)
+              if (capa.get("keyframes") or empuje)
+              else "%.4f*W-w/2" % float(capa.get("x", 0.5)))
+        ys = ("(%s%s)*H-h/2" % (expresion_animada(capa, "y", 0.5), empuje)
+              if (capa.get("keyframes") or empuje)
+              else "%.4f*H-h/2" % float(capa.get("y", 0.5)))
+        lineas.append("[%s]split[cp%d][sm%d]" % (et, n, n))
+        lineas.append("[sm%d]%s[so%d]" % (n, ",".join(som), n))
+        et = "cp%d" % n
+        bajo = "sb%d" % n
+        lineas.append("[%s][so%d]overlay=x='(%s)+%d':y='(%s)+%d':"
+                      "enable='between(t,%.4f,%.4f)'%s[%s]"
+                      % (entra, n, xs, salto, ys, salto,
+                         float(capa.get("t0", 0.0)), float(capa.get("t1", 0.0)),
+                         '', bajo))
+        entra = bajo
     if capa.get("keyframes") or empuje:
         linea_overlay = (
             "[%s][%s]overlay=x='%s*W-w/2':y='(%s%s)*H-h/2':"

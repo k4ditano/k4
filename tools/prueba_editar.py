@@ -1014,6 +1014,35 @@ def prueba_capa_sin_aspecto_no_cambia():
         igual("sin %s" % f, f in texto, False)
 
 
+def prueba_sombra_va_debajo_y_desplazada():
+    """Con su propio overlay y no compuesta con la capa: así la mancha puede
+    salirse de la huella, que es lo que hace que parezca sombra."""
+    texto, _ = editar.grafo(con_capas([capa(sombra=0.8)]), carpeta=BORRADOR)
+    igual("se saca un doble de la capa", "split[cp0][sm0]" in texto, True)
+    igual("ennegrecido conservando la silueta",
+          "colorchannelmixer=rr=0:gg=0:bb=0:aa=0.560" in texto, True)
+    igual("con sitio para que el desenfoque no se corte",
+          "pad=iw+" in texto and "gblur=sigma=" in texto, True)
+    igual("y va DEBAJO de la capa",
+          texto.index("[so0]overlay") < texto.index("[cp0]overlay"), True)
+
+
+def prueba_sombra_cae_hacia_abajo_y_a_la_derecha():
+    texto, _ = editar.grafo(con_capas([capa(sombra=0.8)]), carpeta=BORRADOR)
+    #  El overlay ya centra el doble por su propio ancho —que es mayor por el
+    #  acolchado—, así que el desplazamiento es solo la caída. Restarle el
+    #  margen la mandaba arriba y a la izquierda, detrás de la capa.
+    #  Una capa de 480 px de ancho: sigma 21,6 y caída 28 px.
+    igual("la caída es positiva en las dos",
+          "+28':y='(0.5000*H-h/2)+28'" in texto, True)
+
+
+def prueba_sin_sombra_no_hay_doble():
+    texto, _ = editar.grafo(con_capas([capa()]), carpeta=BORRADOR)
+    igual("ni split ni gblur",
+          "split" in texto or "gblur" in texto, False)
+
+
 # ── el sonido del vídeo incrustado ────────────────────────────────
 #
 #  Aquí sí hacen falta ficheros de VERDAD: si el vídeo trae sonido o no se

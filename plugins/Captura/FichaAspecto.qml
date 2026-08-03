@@ -169,6 +169,65 @@ ColumnLayout {
         }
     }
 
+    //  La sombra: la capa se separa del fondo. Cae hacia abajo y a la
+    //  derecha, difuminada, y con la silueta que tenga puesta —una capa
+    //  redonda proyecta una sombra redonda—.
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: 3
+
+        readonly property real puesta: Editor.capaSel
+            && Editor.capaSel.sombra !== undefined ? Editor.capaSel.sombra : 0
+
+        IslandLabel {
+            text: Idioma.t("Sombra")
+            color: Theme.dim
+            font.pixelSize: 9
+            font.capitalization: Font.AllUppercase
+            font.weight: Font.DemiBold
+            Layout.rightMargin: 4
+        }
+
+        Repeater {
+            model: [{ v: 0, nombre: Idioma.t("Sin") },
+                    { v: 0.35, nombre: Idioma.t("Suave") },
+                    { v: 0.6, nombre: Idioma.t("Media") },
+                    { v: 0.9, nombre: Idioma.t("Fuerte") }]
+
+            delegate: Rectangle {
+                id: chipSombra
+                required property var modelData
+
+                readonly property bool elegida:
+                    Math.abs(parent.puesta - chipSombra.modelData.v) < 0.05
+
+                Layout.fillWidth: true
+                Layout.preferredHeight: 24
+                radius: 12
+                color: chipSombra.elegida ? Theme.blue
+                     : sombraRaton.containsMouse ? Theme.surfaceHi
+                                                 : Theme.surface
+
+                IslandLabel {
+                    anchors.centerIn: parent
+                    text: chipSombra.modelData.nombre
+                    color: chipSombra.elegida ? "#ffffff" : Theme.muted
+                    font.pixelSize: 10
+                    font.weight: chipSombra.elegida ? Font.DemiBold : Font.Normal
+                }
+
+                MouseArea {
+                    id: sombraRaton
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Editor.fijarCapa(Editor.idSel,
+                        { sombra: chipSombra.modelData.v })
+                }
+            }
+        }
+    }
+
     //  El color del marco, con las mismas seis muestras que el resto del
     //  editor. Solo cuando hay marco: elegirle color a algo que no está es
     //  ofrecer un botón que no hace nada.
