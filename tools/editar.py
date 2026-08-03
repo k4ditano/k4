@@ -783,6 +783,25 @@ def expresion_animada(capa, campo, defecto):
 #  llegará con el Ken Burns, que la necesita igual.
 
 
+#  Los efectos que existen, y con qué curva corre su rampa.
+#
+#  La duración dice cuánto tarda; la curva, CÓMO reparte ese tiempo. Recta es
+#  velocidad constante —lo de siempre—, «suave» arranca y frena (la misma
+#  smoothstep que ya usan las claves), y «golpe» entra rápido y se posa, que es
+#  lo que hace que un rótulo parezca que llega con intención.
+EFECTOS = ("desvanecer", "deslizar", "maquina", "crecer", "girar")
+
+
+def curvar(u, curva):
+    """Envuelve una rampa 0→1 en su curva. `u` es una expresión de ffmpeg."""
+    if curva == "suave":
+        return "((%s)*(%s)*(3-2*(%s)))" % (u, u, u)
+    if curva == "golpe":
+        #  1-(1-u)³: sale disparada y llega frenando.
+        return "(1-(1-(%s))*(1-(%s))*(1-(%s)))" % (u, u, u)
+    return "(%s)" % u
+
+
 def efecto_de(capa, cual):
     """El efecto de entrada o salida, normalizado, o None si no hay.
 
@@ -792,11 +811,29 @@ def efecto_de(capa, cual):
     """
     e = capa.get(cual) or {}
     tipo = e.get("tipo") or ""
-    if tipo not in ("desvanecer", "deslizar", "maquina"):
+    if tipo not in EFECTOS:
         return None
     ventana = max(0.1, float(capa.get("t1", 0.0)) - float(capa.get("t0", 0.0)))
+    curva = e.get("curva") or "recta"
     return {"tipo": tipo,
+            "curva": curva if curva in ("recta", "suave", "golpe") else "recta",
             "dur": encaja(float(e.get("dur", 0.4)), 0.05, ventana / 2)}
+
+
+def rampa(capa, cual, efecto, var="t"):
+    """La rampa 0→1 del efecto, ya curvada, en expresión de ffmpeg.
+
+    Vale 0 cuando el efecto empieza y 1 cuando ha terminado, tanto al entrar
+    —cuenta desde t0— como al salir —cuenta hacia t1—. Todo lo que anima un
+    efecto se cuelga de aquí, y por eso la curva se aplica en un solo sitio.
+    """
+    if cual == "entrada":
+        u = "clip((%s-%.4f)/%.4f,0,1)" % (var, float(capa.get("t0", 0.0)),
+                                          efecto["dur"])
+    else:
+        u = "clip((%.4f-%s)/%.4f,0,1)" % (float(capa.get("t1", 0.0)), var,
+                                          efecto["dur"])
+    return curvar(u, efecto["curva"])
 
 
 def capa_animada(capa):
@@ -822,20 +859,107 @@ def efectos_video(capa):
     """
     fades, dys = [], []
     t0, t1 = float(capa.get("t0", 0.0)), float(capa.get("t1", 0.0))
-    ent = efecto_de(capa, "entrada")
-    if ent:
-        fades.append("fade=t=in:st=%.4f:d=%.4f:alpha=1" % (t0, ent["dur"]))
-        if ent["tipo"] == "deslizar":
-            dys.append("%.3f*(1-clip((t-%.4f)/%.4f,0,1))"
-                       % (DESLIZA, t0, ent["dur"]))
-    sal = efecto_de(capa, "salida")
-    if sal:
-        fades.append("fade=t=out:st=%.4f:d=%.4f:alpha=1"
-                     % (t1 - sal["dur"], sal["dur"]))
-        if sal["tipo"] == "deslizar":
-            dys.append("%.3f*(1-clip((%.4f-t)/%.4f,0,1))"
-                       % (DESLIZA, t1, sal["dur"]))
+    alfas = []
+    for cual, e in (("entrada", efecto_de(capa, "entrada")),
+                    ("salida", efecto_de(capa, "salida"))):
+        if not e:
+            continue
+        r = rampa(capa, cual, e)
+        #  «Girar» y «crecer» no funden: llegan girando o creciendo, y a tamaño
+        #  y giro completos ya se ven. Fundirlos además sería otro efecto.
+        if e["tipo"] in ("desvanecer", "deslizar", "maquina"):
+            if e["curva"] == "recta":
+                #  Con rampa recta manda `fade`, que es un filtro barato y
+                #  probado. La curva no la sabe hacer, y entonces toca `geq`.
+                if cual == "entrada":
+                    fades.append("fade=t=in:st=%.4f:d=%.4f:alpha=1"
+                                 % (t0, e["dur"]))
+                else:
+                    fades.append("fade=t=out:st=%.4f:d=%.4f:alpha=1"
+                                 % (t1 - e["dur"], e["dur"]))
+            else:
+                alfas.append(r)
+        if e["tipo"] == "deslizar":
+            dys.append("%.3f*(1-%s)" % (DESLIZA, r))
+    if alfas:
+        #  `T` y no `t`: dentro de `geq` el instante se llama así. El resto de
+        #  la capa se copia tal cual y solo se toca el alfa.
+        expr = "*".join(a.replace("(t-", "(T-").replace("-t)", "-T)")
+                        for a in alfas)
+        fades.append("format=rgba")
+        fades.append("geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':"
+                     "a='alpha(X,Y)*%s'" % expr)
     return fades, dys
+
+
+#  Cuánto encoge «crecer» al empezar: la mitad. Sale de la aritmética de
+#  `zoompan`, que no sabe alejar por debajo de 1: se acolcha la capa al doble
+#  con transparente y el zoom recorre 1→2, o sea de media a entera.
+CRECE = 2
+
+
+def medida_pintada(capa, ancho_capa, alto_capa):
+    """Cuánto ocupa la capa DESPUÉS del aspecto, en píxeles.
+
+    Hace falta para `zoompan`, que solo acepta números: la máscara redonda se
+    queda con el cuadrado del centro y el marco añade su grosor por cada lado,
+    así que la medida de después no es la de antes.
+    """
+    an, al = ancho_capa, alto_capa
+    if (capa.get("mascara") or "") == "circulo":
+        an = al = min(an, al)
+    grosor = round(ancho_capa * float(capa.get("marco", 0.0) or 0.0))
+    if grosor > 0.5:
+        an, al = an + 2 * grosor, al + 2 * grosor
+    return max(2, int(an)), max(2, int(al))
+
+
+def hay_crecer(capa):
+    for cual in ("entrada", "salida"):
+        e = efecto_de(capa, cual)
+        if e and e["tipo"] == "crecer":
+            return True
+    return False
+
+
+def filtros_crecer(capa, ancho_capa, alto_capa):
+    """La capa que llega creciendo (o se va encogiendo).
+
+    `scale` no sirve —sus expresiones no avanzan con el tiempo, medido— así
+    que el tamaño animado va como el Ken Burns: por `zoompan`. El truco es el
+    acolchado: con el lienzo al doble, un zoom de 1 enseña la capa a media
+    medida y uno de 2 la enseña entera, y la huella no cambia porque la salida
+    se pide del tamaño de siempre.
+    """
+    partes = []
+    for cual in ("entrada", "salida"):
+        e = efecto_de(capa, cual)
+        if e and e["tipo"] == "crecer":
+            partes.append(rampa(capa, cual, e, var="it"))
+    if not partes:
+        return []
+    #  Con las dos, manda la que esté más cerca de su borde: crece al entrar y
+    #  encoge al salir sin pelearse en el medio, donde las dos valen 1.
+    avance = partes[0] if len(partes) == 1 else "min(%s,%s)" % tuple(partes)
+    return ["format=rgba",
+            "pad=iw*%d:ih*%d:iw/2:ih/2:color=black@0" % (CRECE, CRECE),
+            "zoompan=z='1+%.4f*%s':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':"
+            "d=1:s=%dx%d:fps=25"
+            % (CRECE - 1, avance, ancho_capa, alto_capa)]
+
+
+#  Cuánto gira «girar», en grados.
+GIRO = 20.0
+
+
+def grados_efecto(capa):
+    """Lo que suma el efecto «girar» al ángulo de la capa, o None."""
+    partes = []
+    for cual in ("entrada", "salida"):
+        e = efecto_de(capa, cual)
+        if e and e["tipo"] == "girar":
+            partes.append("%.3f*(1-%s)" % (GIRO, rampa(capa, cual, e)))
+    return "+".join(partes) if partes else None
 
 
 def tamano_imagen(ruta):
@@ -906,14 +1030,10 @@ def alfa_texto(capa):
     con `t`. La caja de detrás se funde con él.
     """
     partes = []
-    ent = efecto_de(capa, "entrada")
-    if ent and ent["tipo"] in ("desvanecer", "deslizar"):
-        partes.append("clip((t-%.4f)/%.4f,0,1)"
-                      % (float(capa.get("t0", 0.0)), ent["dur"]))
-    sal = efecto_de(capa, "salida")
-    if sal and sal["tipo"] in ("desvanecer", "deslizar"):
-        partes.append("clip((%.4f-t)/%.4f,0,1)"
-                      % (float(capa.get("t1", 0.0)), sal["dur"]))
+    for cual in ("entrada", "salida"):
+        e = efecto_de(capa, cual)
+        if e and e["tipo"] in ("desvanecer", "deslizar"):
+            partes.append(rampa(capa, cual, e))
     return "*".join(partes) if partes else None
 
 
@@ -1240,16 +1360,18 @@ def rama_pip(n, idx, capa, ancho, alto, entra):
         filtros.append("despill=type=green")
 
     rotacion = float(capa.get("rotacion", 0.0))
-    hay_rotacion = abs(rotacion) > 0.01 or any(
+    #  El giro de la capa y el que le añade el efecto «girar» son el MISMO
+    #  filtro: dos `rotate` encadenados recortan las esquinas dos veces.
+    giro_ef = grados_efecto(capa)
+    hay_rotacion = abs(rotacion) > 0.01 or giro_ef is not None or any(
         abs(float(k.get("rotacion", 0))) > 0.01
         for k in (capa.get("keyframes") or []))
     if hay_rotacion:
         filtros.append("format=rgba")
-        if capa.get("keyframes"):
-            filtros.append("rotate='%s*PI/180':fillcolor=none" %
-                           expresion_animada(capa, "rotacion", rotacion))
-        else:
-            filtros.append("rotate=%.6f*PI/180:fillcolor=none" % rotacion)
+        base = (expresion_animada(capa, "rotacion", rotacion)
+                if capa.get("keyframes") else "%.6f" % rotacion)
+        angulo = base if giro_ef is None else "(%s)+(%s)" % (base, giro_ef)
+        filtros.append("rotate='%s*PI/180':fillcolor=none" % angulo)
 
     if capa.get("keyframes"):
         filtros.append("scale=w='round(%d*%s)':h=-1:eval=frame" % (ancho, escala_expr))
@@ -1257,6 +1379,12 @@ def rama_pip(n, idx, capa, ancho, alto, entra):
         filtros.append("scale=%d:-1" % ancho_capa)
     filtros.append("setsar=1")
     filtros += filtros_aspecto(capa, ancho_capa)
+    if hay_crecer(capa):
+        #  Aquí la proporción la da el recorte de la fuente, que es lo que se
+        #  está viendo, y no el tamaño del fichero entero.
+        alto_base = max(2, int(round(ancho_capa * al / max(1, an))))
+        filtros += filtros_crecer(
+            capa, *medida_pintada(capa, ancho_capa, alto_base))
 
     opacidad = float(capa.get("opacidad", 1.0))
     if opacidad < 0.999:
@@ -1310,16 +1438,18 @@ def rama_capa(n, idx, capa, ancho, alto, entra):
 
     filtros = []
     rotacion = float(capa.get("rotacion", 0.0))
-    hay_rotacion = abs(rotacion) > 0.01 or any(
+    #  El giro de la capa y el que le añade el efecto «girar» son el MISMO
+    #  filtro: dos `rotate` encadenados recortan las esquinas dos veces.
+    giro_ef = grados_efecto(capa)
+    hay_rotacion = abs(rotacion) > 0.01 or giro_ef is not None or any(
         abs(float(k.get("rotacion", 0))) > 0.01
         for k in (capa.get("keyframes") or []))
     if hay_rotacion:
         filtros.append("format=rgba")
-        if capa.get("keyframes"):
-            filtros.append("rotate='%s*PI/180':fillcolor=none" %
-                           expresion_animada(capa, "rotacion", rotacion))
-        else:
-            filtros.append("rotate=%.6f*PI/180:fillcolor=none" % rotacion)
+        base = (expresion_animada(capa, "rotacion", rotacion)
+                if capa.get("keyframes") else "%.6f" % rotacion)
+        angulo = base if giro_ef is None else "(%s)+(%s)" % (base, giro_ef)
+        filtros.append("rotate='%s*PI/180':fillcolor=none" % angulo)
     #  El Ken Burns: zoom por DENTRO de la huella, con zoompan, que es el
     #  único camino que de verdad anima un tamaño —las expresiones de `scale`
     #  están congeladas, ver arriba—. La capa no cambia de medida: se acerca
@@ -1349,6 +1479,14 @@ def rama_capa(n, idx, capa, ancho, alto, entra):
     else:
         filtros.append("scale=%d:-1" % ancho_capa)
     filtros += filtros_aspecto(capa, ancho_capa)
+    if hay_crecer(capa):
+        #  El alto sale de la propia imagen: `zoompan` solo acepta números, y
+        #  sin poder medirla el efecto se salta y la capa entra quieta.
+        med = dim or tamano_imagen(capa.get("ruta", ""))
+        if med:
+            alto_base = max(2, int(round(ancho_capa * med[1] / max(1, med[0]))))
+            filtros += filtros_crecer(
+                capa, *medida_pintada(capa, ancho_capa, alto_base))
     opacidad = float(capa.get("opacidad", 1.0))
     if opacidad < 0.999:
         #  El alfa hay que tenerlo antes de poder tocarlo: un JPEG llega sin

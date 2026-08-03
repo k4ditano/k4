@@ -1128,11 +1128,27 @@ Singleton {
     //  pintar: media ventana de la capa como mucho, que más que eso ya no es
     //  un efecto sino la capa entera apareciendo.
     function fijarEfecto(id, cual, tipo, dur) {
+        const c = capaPorId(id)
+        const antes = c ? c[cual] : null
         const campos = {}
         campos[cual] = tipo && tipo.length > 0
             ? { tipo: tipo,
-                dur: Math.max(0.1, Math.min(2, Number(dur) || 0.4)) }
+                dur: Math.max(0.1, Math.min(2, Number(dur) || 0.4)),
+                //  La velocidad se conserva al cambiar de efecto: es una
+                //  preferencia tuya, no una propiedad del efecto.
+                curva: antes && antes.curva ? antes.curva : "recta" }
             : null
+        fijarCapa(id, campos)
+    }
+
+    //  Cómo reparte el efecto su tiempo: recta, suave o de golpe. La duración
+    //  dice cuánto tarda; esto, a qué velocidad va por el camino.
+    function fijarCurva(id, cual, curva) {
+        const c = capaPorId(id)
+        if (!c || !c[cual] || !c[cual].tipo)
+            return
+        const campos = {}
+        campos[cual] = Object.assign({}, c[cual], { curva: curva })
         fijarCapa(id, campos)
     }
 

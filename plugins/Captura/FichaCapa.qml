@@ -253,6 +253,13 @@ ColumnLayout {
                             && Editor.capaSel.tipo === "texto")
                             base.push({ id: "maquina",
                                         nombre: Idioma.t("Máquina") })
+                        //  Crecer y girar mueven el dibujo entero, y a un
+                        //  rótulo lo pinta `drawtext` sobre el vídeo: no hay
+                        //  dibujo que mover, así que ahí no se ofrecen.
+                        if (Editor.capaSel && Editor.capaSel.tipo !== "texto") {
+                            base.push({ id: "crecer", nombre: Idioma.t("Crecer") })
+                            base.push({ id: "girar", nombre: Idioma.t("Girar") })
+                        }
                         return base
                     }
 
@@ -288,6 +295,66 @@ ColumnLayout {
                                 filaEfecto.modelData.cual,
                                 chipEfecto.modelData.id,
                                 filaEfecto.puesto ? filaEfecto.puesto.dur : 0.4)
+                        }
+                    }
+                }
+            }
+
+            //  La velocidad: cómo reparte el efecto su tiempo. Recta es
+            //  velocidad constante, suave arranca y frena, y golpe sale
+            //  disparado y se posa —que es lo que hace que un rótulo parezca
+            //  que llega con intención—.
+            RowLayout {
+                visible: filaEfecto.tipoPuesto.length > 0
+                Layout.fillWidth: true
+                spacing: 3
+
+                readonly property string puesta: filaEfecto.puesto
+                    && filaEfecto.puesto.curva ? filaEfecto.puesto.curva : "recta"
+
+                IslandLabel {
+                    Layout.preferredWidth: 58
+                    text: Idioma.t("Velocidad")
+                    color: Theme.muted
+                    font.pixelSize: 9
+                }
+
+                Repeater {
+                    model: [{ id: "recta", nombre: Idioma.t("Recta") },
+                            { id: "suave", nombre: Idioma.t("Suave") },
+                            { id: "golpe", nombre: Idioma.t("Golpe") }]
+
+                    delegate: Rectangle {
+                        id: chipCurva
+                        required property var modelData
+
+                        readonly property bool elegida:
+                            parent.puesta === chipCurva.modelData.id
+
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 22
+                        radius: 11
+                        color: chipCurva.elegida ? Theme.blue
+                             : curvaRaton.containsMouse ? Theme.surfaceHi
+                                                        : Theme.surface
+
+                        IslandLabel {
+                            anchors.centerIn: parent
+                            text: chipCurva.modelData.nombre
+                            color: chipCurva.elegida ? "#ffffff" : Theme.muted
+                            font.pixelSize: 10
+                            font.weight: chipCurva.elegida ? Font.DemiBold
+                                                           : Font.Normal
+                        }
+
+                        MouseArea {
+                            id: curvaRaton
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Editor.fijarCurva(Editor.idSel,
+                                filaEfecto.modelData.cual,
+                                chipCurva.modelData.id)
                         }
                     }
                 }

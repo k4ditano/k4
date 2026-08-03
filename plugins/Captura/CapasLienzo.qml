@@ -171,12 +171,41 @@ Item {
                 const r = esEntrada
                     ? (lienzo.segundos - modelData.t0) / d
                     : (modelData.t1 - lienzo.segundos) / d
-                return Math.max(0, Math.min(1, r))
+                const u = Math.max(0, Math.min(1, r))
+                //  La curva, la misma que `curvar()` en python: la duración
+                //  dice cuánto tarda y esto cómo reparte ese tiempo.
+                if (e.curva === "suave")
+                    return u * u * (3 - 2 * u)
+                if (e.curva === "golpe")
+                    return 1 - (1 - u) * (1 - u) * (1 - u)
+                return u
+            }
+
+            //  Solo funden los que funden: «crecer» y «girar» llegan a tamaño
+            //  y ángulo completos y ya se ven, igual que en el render.
+            function rampaAlfa(e, esEntrada) {
+                if (!e || !e.tipo || e.tipo === "crecer" || e.tipo === "girar")
+                    return 1
+                return rampaEfecto(e, esEntrada)
             }
 
             readonly property real alfaEfecto:
-                rampaEfecto(modelData.entrada, true)
-                * rampaEfecto(modelData.salida, false)
+                rampaAlfa(modelData.entrada, true)
+                * rampaAlfa(modelData.salida, false)
+
+            //  Crecer y girar, con la misma cuenta que el render: de media
+            //  medida a entera, y de veinte grados a ninguno.
+            function porEfecto(tipo, valor) {
+                let v = 1
+                if (modelData.entrada && modelData.entrada.tipo === tipo)
+                    v = Math.min(v, rampaEfecto(modelData.entrada, true))
+                if (modelData.salida && modelData.salida.tipo === tipo)
+                    v = Math.min(v, rampaEfecto(modelData.salida, false))
+                return v
+            }
+
+            readonly property real escalaEfecto: 0.5 + 0.5 * porEfecto("crecer")
+            readonly property real giroEfecto: 20 * (1 - porEfecto("girar"))
 
             readonly property real empujeEfecto:
                 (modelData.entrada && modelData.entrada.tipo === "deslizar"
@@ -298,7 +327,12 @@ Item {
                 ? Math.max(2, Math.round(tamTexto * 0.28)) : 0
 
             opacity: animado("opacidad", 1) * alfaEfecto
-            rotation: animado("rotacion", 0)
+            rotation: animado("rotacion", 0) + giroEfecto
+            //  El «crecer» se hace aquí, sobre la capa entera y desde el
+            //  centro: en el render es un zoompan sobre lienzo acolchado y el
+            //  resultado es el mismo —la huella no cambia, el contenido sí—.
+            scale: escalaEfecto
+            transformOrigin: Item.Center
 
             //  El vídeo de dentro, reproduciéndose.
             //

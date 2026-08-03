@@ -1241,21 +1241,74 @@ def prueba_efecto_dur_acotada_a_media_ventana():
           "fade=t=in:st=2.0000:d=1.0000:alpha=1" in texto, True)
 
 
-def prueba_efecto_crecer_no_existe():
-    """«crecer» no es un tipo: en el ffmpeg de hoy las expresiones de `scale`
-    no avanzan con el tiempo, y un efecto que no puede renderizarse no se
-    ofrece. El tamaño animado llegará por zoompan, con el Ken Burns."""
+def imagen_de_prueba(nombre="cuadro.png", lado=200):
+    """Un PNG de verdad: `zoompan` necesita el alto en números, y eso se lee de
+    la cabecera del fichero. Con los ficheros vacíos del resto de pruebas la
+    capa se queda quieta a propósito, que es justo lo que comprueba
+    `prueba_efecto_crecer_sin_poder_medir_no_anima`."""
+    ruta = os.path.join(BORRADOR, nombre)
+    if not os.path.exists(ruta) or os.path.getsize(ruta) == 0:
+        import subprocess
+        subprocess.run(["magick", "-size", "%dx%d" % (lado, lado),
+                        "xc:orange", ruta], capture_output=True)
+    return ruta
+
+
+def prueba_efecto_crecer_va_por_zoompan():
+    """`scale` no sirve —sus expresiones no avanzan con el tiempo, medido—:
+    el tamaño animado va acolchando la capa y recorriéndola con zoompan."""
     texto, _ = editar.grafo(con_capas(
-        [capa(entrada={"tipo": "crecer", "dur": 0.4})]))
-    igual("un tipo desconocido no anima nada", "fade=" in texto, False)
-    igual("y la escala sigue quieta", "scale=480:-1" in texto, True)
+        [capa(ruta=imagen_de_prueba(), entrada={"tipo": "crecer", "dur": 0.4})]),
+        carpeta=BORRADOR)
+    igual("acolcha al doble con transparente",
+          "pad=iw*2:ih*2:iw/2:ih/2:color=black@0" in texto, True)
+    igual("y el zoom recorre de media a entera",
+          "zoompan=z='1+1.0000*(clip((it-2.0000)/0.4000,0,1))'" in texto, True)
+    igual("sin fundir, que ya se ve entera", "fade=" in texto, False)
+
+
+def prueba_efecto_crecer_sin_poder_medir_no_anima():
+    """Un fichero que no se puede medir no puede tumbar el render: la capa
+    entra quieta y el resto sale."""
+    texto, _ = editar.grafo(con_capas(
+        [capa(entrada={"tipo": "crecer", "dur": 0.4})]), carpeta=BORRADOR)
+    igual("sin zoompan de la capa", "pad=iw*2" in texto, False)
+    igual("pero la capa sale igual", "overlay=" in texto, True)
+
+
+def prueba_efecto_girar_se_suma_al_giro_de_la_capa():
+    """Dos `rotate` encadenados recortan las esquinas dos veces."""
+    texto, _ = editar.grafo(con_capas(
+        [capa(rotacion=15.0, entrada={"tipo": "girar", "dur": 0.4})]),
+        carpeta=BORRADOR)
+    igual("un solo rotate", texto.count("rotate="), 1)
+    igual("con el giro de la capa y el del efecto",
+          "(15.000000)+(20.000*(1-(clip((t-2.0000)/0.4000,0,1))))" in texto, True)
+
+
+def prueba_curva_del_efecto():
+    """La duración dice cuánto tarda; la curva, cómo reparte ese tiempo."""
+    suave, _ = editar.grafo(con_capas(
+        [capa(entrada={"tipo": "deslizar", "dur": 0.4, "curva": "suave"})]),
+        carpeta=BORRADOR)
+    igual("la suave es la smoothstep de siempre",
+          "(3-2*(clip((t-2.0000)/0.4000,0,1)))" in suave, True)
+    #  `fade` no sabe curvar, así que el alfa curvado tiene que ir por geq.
+    igual("y el alfa deja de ir por fade", "fade=" in suave, False)
+    igual("y va por geq con el instante en T",
+          "a='alpha(X,Y)*" in suave and "(T-2.0000)" in suave, True)
+
+    recta, _ = editar.grafo(con_capas(
+        [capa(entrada={"tipo": "deslizar", "dur": 0.4})]), carpeta=BORRADOR)
+    igual("con rampa recta manda fade, que es más barato",
+          "fade=t=in" in recta and "geq=" not in recta, True)
 
 
 def prueba_efecto_deslizar_empuja_y_funde():
     texto, _ = editar.grafo(con_capas(
         [capa(entrada={"tipo": "deslizar", "dur": 0.4})]))
     igual("la y del overlay lleva el empujón",
-          "+0.080*(1-clip((t-2.0000)/0.4000,0,1)))*H-h/2" in texto, True)
+          "+0.080*(1-(clip((t-2.0000)/0.4000,0,1))))*H-h/2" in texto, True)
     igual("y además se funde", "fade=t=in" in texto, True)
 
 
@@ -1266,7 +1319,7 @@ def prueba_efecto_en_rotulo_va_por_alpha():
         [capa(tipo="texto", texto="Hola", tam=0.06,
               entrada={"tipo": "desvanecer", "dur": 0.4})]))
     igual("drawtext lleva alpha con la rampa",
-          "alpha='clip((t-2.0000)/0.4000,0,1)'" in texto, True)
+          "alpha='(clip((t-2.0000)/0.4000,0,1))'" in texto, True)
 
 
 def prueba_efecto_anima_la_entrada_de_la_imagen():
