@@ -141,7 +141,22 @@ Singleton {
                 { requiere: "juegoActivo", id: "juegoEnPildora", nombre: Idioma.t("Mostrar en la píldora"),
                   desc: Idioma.t("Oleada actual y aviso de cofres sin abrir"), glifo: 0xF0BC2 },
                 { requiere: "juegoActivo", id: "juegoPorTokens", nombre: Idioma.t("Pelear con tokens"),
-                  desc: Idioma.t("Avanza solo mientras gastas en Claude o Codex"), glifo: 0xF0241 }
+                  desc: Idioma.t("Avanza solo mientras gastas en Claude o Codex"), glifo: 0xF0241 },
+                //  Borrar la partida va DENTRO de su grupo y no en un cajón
+                //  aparte al final de la pantalla: es un ajuste de la mazmorra
+                //  como los otros cuatro, y buscarlo en otro sitio no tiene
+                //  ningún sentido. Lo que lo distingue no es dónde está, es
+                //  que pide confirmación.
+                { id: "juegoBorrar", tipo: "peligro", glifo: 0xF0026,
+                  nombre: Idioma.t("Empezar la mazmorra de cero"),
+                  desc: Idioma.t("borra niveles, héroes, logros, equipo y reliquias"),
+                  nombreArmado: Idioma.t("¿Seguro? Esto no se puede deshacer"),
+                  descArmado: Idioma.t("pierdes ") + Game.mejorOleada
+                      + Idioma.t(" de récord, nivel ") + Game.nivelMaximo + ", "
+                      + Game.logrosHechos.length + Idioma.t(" logros y ")
+                      + Game.bolsa.length + Idioma.t(" piezas"),
+                  accion: Idioma.t("Reiniciar"),
+                  confirmar: Idioma.t("Sí, borrar todo") }
             ]
         },
         {
@@ -319,6 +334,18 @@ Singleton {
         }
         ajustes[id] = !ajustes[id]
         guardar()
+    }
+
+    //  Una acción con red: la pantalla la arma y la confirma, y aquí se hace.
+    //  Va en el servicio y no en la vista porque es donde se declara la
+    //  opción — la pantalla solo sabe pintar filas.
+    function ejecutar(id) {
+        if (id === "juegoBorrar") {
+            Game.borrarTodo()
+            return
+        }
+        if (String(id).indexOf("ext_") === 0)
+            Enganches.alternarAjuste(id)
     }
 
     function valor(id) {

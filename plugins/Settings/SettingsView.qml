@@ -15,17 +15,8 @@ FadeIn {
 
     required property var plugin
 
-    // El botón de borrar la partida está armado esperando confirmación.
-    property bool armado: false
 
-    Timer {
-        id: desarme
-        interval: 6000
-        onTriggered: view.armado = false
-    }
 
-    // cerrar y volver a abrir no debe dejarlo armado
-    onVisibleChanged: if (!visible) armado = false
 
     ColumnLayout {
         anchors.fill: parent
@@ -160,6 +151,29 @@ FadeIn {
                                 readonly property bool disponible: !modelData.requiere
                                     || Settings.valor(modelData.requiere)
 
+                                //  Las acciones con red van en dos tiempos: el
+                                //  primer toque arma y el segundo ejecuta, y si
+                                //  te lo piensas más de unos segundos se
+                                //  desarma sola. Un diálogo modal sería más
+                                //  aparatoso y no protegería más.
+                                property bool armada: false
+
+                                Timer {
+                                    id: desarmar
+                                    interval: 4000
+                                    onTriggered: opcion.armada = false
+                                }
+
+                                //  Cerrar y volver a abrir no puede dejarla
+                                //  armada esperando un clic despistado.
+                                Connections {
+                                    target: view
+                                    function onVisibleChanged() {
+                                        if (!view.visible)
+                                            opcion.armada = false
+                                    }
+                                }
+
                                 //  Y otras ni siquiera aparecen si no hay con qué.
                                 //
                                 //  Un interruptor de «grabar la cámara» sin cámara
@@ -173,7 +187,10 @@ FadeIn {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: visible ? 40 : 0
                                 radius: 10
-                                color: filaMouse.containsMouse ? Theme.surfaceHi : Theme.surface
+                                color: opcion.armada ? "#2a0f12"
+                                     : (filaMouse.containsMouse ? Theme.surfaceHi : Theme.surface)
+                                border.width: opcion.armada ? 1 : 0
+                                border.color: Theme.red
 
                                 Behavior on color { ColorAnimation { duration: 120 } }
 
@@ -201,18 +218,24 @@ FadeIn {
                                         spacing: 0
 
                                         IslandLabel {
-                                            text: opcion.modelData.nombre
+                                            text: opcion.armada
+                                                ? (opcion.modelData.nombreArmado
+                                                   || Idioma.t("¿Seguro? Esto no se puede deshacer"))
+                                                : opcion.modelData.nombre
+                                            color: opcion.armada ? Theme.red : Theme.ink
                                             font.pixelSize: 12
                                             font.weight: Font.DemiBold
                                         }
 
                                         IslandLabel {
-                                            text: opcion.modelData.desc
+                                            text: opcion.armada
+                                                ? (opcion.modelData.descArmado || opcion.modelData.desc)
+                                                : opcion.modelData.desc
                                             //  El motivo de un plugin roto va
                                             //  en rojo: es la diferencia entre
                                             //  «apagado» y «no puede».
-                                            color: opcion.modelData.error
-                                                ? Theme.red : Theme.muted
+                                            color: opcion.armada ? "#ff9f9f"
+                                                 : (opcion.modelData.error ? Theme.red : Theme.muted)
                                             font.pixelSize: 9
                                             elide: Text.ElideRight
                                             Layout.fillWidth: true
@@ -236,6 +259,71 @@ FadeIn {
                                             cursorShape: Qt.PointingHandCursor
                                             onClicked: PluginManager.reintentar(
                                                 opcion.modelData.pluginId)
+                                        }
+                                    }
+
+                                    //  ── una acción con red ──────────────
+                                    RowLayout {
+                                        visible: opcion.modelData.tipo === "peligro"
+                                        spacing: 8
+                                        Layout.alignment: Qt.AlignVCenter
+
+                                        //  Salida sin sustos: cancelar está al
+                                        //  lado del botón rojo.
+                                        IslandLabel {
+                                            visible: opcion.armada
+                                            text: Idioma.t("cancelar")
+                                            color: Theme.muted
+                                            font.pixelSize: 10
+
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                anchors.margins: -6
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    opcion.armada = false
+                                                    desarmar.stop()
+                                                }
+                                            }
+                                        }
+
+                                        Rectangle {
+                                            Layout.preferredWidth: etiquetaAccion.implicitWidth + 24
+                                            Layout.preferredHeight: 26
+                                            Layout.alignment: Qt.AlignVCenter
+                                            radius: 13
+                                            color: opcion.armada
+                                                ? (accionRaton.containsMouse ? "#ff6961" : Theme.red)
+                                                : (accionRaton.containsMouse ? Theme.surfaceHi : Theme.track)
+
+                                            Behavior on color { ColorAnimation { duration: 120 } }
+
+                                            IslandLabel {
+                                                id: etiquetaAccion
+                                                anchors.centerIn: parent
+                                                text: opcion.armada
+                                                    ? (opcion.modelData.confirmar || Idioma.t("Sí"))
+                                                    : (opcion.modelData.accion || Idioma.t("Hacerlo"))
+                                                font.pixelSize: 11
+                                                font.weight: Font.DemiBold
+                                            }
+
+                                            MouseArea {
+                                                id: accionRaton
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    if (opcion.armada) {
+                                                        Settings.ejecutar(opcion.modelData.id)
+                                                        opcion.armada = false
+                                                        desarmar.stop()
+                                                    } else {
+                                                        opcion.armada = true
+                                                        desarmar.restart()
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
 
@@ -425,126 +513,6 @@ FadeIn {
             }
         }
 
-        // ── zona peligrosa
-        //
-        //  Va en dos tiempos a propósito: el primer toque arma y el segundo
-        //  ejecuta, y si te lo piensas más de unos segundos se desarma solo.
-        //  Un diálogo modal sería más aparatoso y no protegería más.
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.fillHeight: false
-            Layout.preferredHeight: 46
-            radius: 12
-            color: view.armado ? "#2a0f12" : Theme.surface
-            border.width: view.armado ? 1 : 0
-            border.color: Theme.red
-
-            Behavior on color { ColorAnimation { duration: 160 } }
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 12
-                anchors.rightMargin: 10
-                spacing: 10
-
-                IconGlyph {
-                    text: Theme.ico.alert
-                    color: view.armado ? Theme.red : Theme.muted
-                    font.pixelSize: 15
-                    Layout.alignment: Qt.AlignVCenter
-                }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 1
-
-                    IslandLabel {
-                        text: view.armado
-                            ? Idioma.t("¿Seguro? Esto no se puede deshacer")
-                            : Idioma.t("Empezar la mazmorra de cero")
-                        font.pixelSize: 12
-                        font.weight: Font.DemiBold
-                        color: view.armado ? Theme.red : Theme.ink
-                    }
-
-                    IslandLabel {
-                        text: view.armado
-                            ? Idioma.t("pierdes ") + Game.mejorOleada + Idioma.t(" de récord, nivel ")
-                              + Game.nivelMaximo + ", " + Game.logrosHechos.length
-                              + Idioma.t(" logros y ") + Game.bolsa.length + Idioma.t(" piezas")
-                            : Idioma.t("borra niveles, héroes, logros, equipo y reliquias")
-                        color: view.armado ? "#ff9f9f" : Theme.dim
-                        font.pixelSize: 9
-                    }
-                }
-
-                Rectangle {
-                    Layout.preferredWidth: etiquetaBorrar.implicitWidth + 24
-                    Layout.preferredHeight: 26
-                    Layout.alignment: Qt.AlignVCenter
-                    radius: 13
-                    color: view.armado
-                        ? (borrarRaton.containsMouse ? "#ff6961" : Theme.red)
-                        : (borrarRaton.containsMouse ? Theme.surfaceHi : Theme.track)
-
-                    Behavior on color { ColorAnimation { duration: 120 } }
-
-                    IslandLabel {
-                        id: etiquetaBorrar
-                        anchors.centerIn: parent
-                        text: view.armado ? Idioma.t("Sí, borrar todo") : Idioma.t("Reiniciar")
-                        font.pixelSize: 11
-                        font.weight: Font.DemiBold
-                    }
-
-                    MouseArea {
-                        id: borrarRaton
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (view.armado) {
-                                Game.borrarTodo()
-                                view.armado = false
-                                desarme.stop()
-                            } else {
-                                view.armado = true
-                                desarme.restart()
-                            }
-                        }
-                    }
-                }
-
-                // salida sin sustos: cancelar está al lado del botón rojo
-                Rectangle {
-                    visible: view.armado
-                    Layout.preferredWidth: cancelar.implicitWidth + 20
-                    Layout.preferredHeight: 26
-                    Layout.alignment: Qt.AlignVCenter
-                    radius: 13
-                    color: cancelarRaton.containsMouse ? Theme.surfaceHi : Theme.track
-
-                    IslandLabel {
-                        id: cancelar
-                        anchors.centerIn: parent
-                        text: Idioma.t("Cancelar")
-                        color: Theme.muted
-                        font.pixelSize: 11
-                    }
-
-                    MouseArea {
-                        id: cancelarRaton
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            view.armado = false
-                            desarme.stop()
-                        }
-                    }
-                }
-            }
-        }
 
         // ── herramientas del sistema
         RowLayout {
