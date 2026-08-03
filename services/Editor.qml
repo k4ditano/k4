@@ -1004,6 +1004,14 @@ Singleton {
             //  recorta estirando el bloque: `t1 - t0` es lo que se ve, así que el
             //  recorte se deduce de ahí.
             nueva.recorte = [0, medida.dur]
+            //  Y suena, si tiene con qué. Un vídeo que metes en el montaje se
+            //  espera que traiga su sonido; que entrase mudo obligaba a añadir
+            //  el mismo fichero otra vez como capa de audio y a cuadrarlo a
+            //  mano. Los planes viejos no llevan el campo y siguen mudos, que
+            //  cambiarle el sonido a un montaje hecho sería peor.
+            nueva.puedeSonar = !!medida.audio
+            nueva.sonido = !!medida.audio
+            nueva.volumen = 1.0
         }
         capas = capas.concat([nueva])
         persistir()

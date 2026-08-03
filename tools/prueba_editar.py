@@ -955,6 +955,65 @@ def prueba_audio_no_pinta_nada():
     igual("sin overlay", "overlay=" in texto, False)
 
 
+# ── el sonido del vídeo incrustado ────────────────────────────────
+#
+#  Aquí sí hacen falta ficheros de VERDAD: si el vídeo trae sonido o no se
+#  pregunta con ffprobe, y a un fichero vacío le contesta que no. Se fabrican
+#  una vez y se quedan en el borrador.
+def video_de_prueba(nombre, con_sonido):
+    ruta = os.path.join(BORRADOR, nombre)
+    if os.path.exists(ruta) and os.path.getsize(ruta) > 0:
+        return ruta
+    orden = ["ffmpeg", "-y", "-v", "error",
+             "-f", "lavfi", "-i", "color=c=red:s=320x240:r=25:d=2"]
+    if con_sonido:
+        orden += ["-f", "lavfi", "-i", "sine=frequency=440:duration=2",
+                  "-shortest"]
+    orden += ["-pix_fmt", "yuv420p", ruta]
+    import subprocess
+    subprocess.run(orden, capture_output=True)
+    return ruta
+
+
+def pip_sonoro(**campos):
+    #  Sobre el mismo ayudante que el resto de PIP —`pip()`, más arriba— pero
+    #  con un fichero que existe y suena de verdad.
+    d = pip(ruta=video_de_prueba("pip.mp4", True), t0=3.0, t1=5.0, dur=2.0,
+            w=320, h=240, recorte=[0, 2.0], sonido=True, volumen=0.5)
+    d.update(campos)
+    return d
+
+
+def prueba_pip_con_sonido_entra_en_la_mezcla():
+    texto, _ = editar.grafo(con_capas([pip_sonoro()]), carpeta=BORRADOR)
+    igual("se mezcla con el audio de la base",
+          "[mez][ax0]amix=inputs=2" in texto, True)
+    igual("a su volumen", "volume=0.500" in texto, True)
+    igual("colocado en su instante de la línea",
+          "adelay=delays=3000:all=1" in texto, True)
+    #  El mismo recorte que se ve: si el bloque enseña del 0 al 2 del fichero,
+    #  eso es lo que tiene que sonar.
+    igual("y recortado como la imagen",
+          "atrim=start=0.0000:end=2.0000" in texto, True)
+
+
+def prueba_pip_mudo_por_defecto_en_planes_viejos():
+    """Sin el campo, un montaje de antes suena exactamente igual que sonaba."""
+    p = con_capas([pip_sonoro(sonido=False)])
+    texto, _ = editar.grafo(p, carpeta=BORRADOR)
+    igual("no entra en la mezcla", "amix" in texto, False)
+    igual("pero se sigue viendo", "overlay=" in texto, True)
+
+
+def prueba_pip_sin_pista_de_audio_no_tumba_el_grafo():
+    """Pedirle `[N:a]` a un vídeo mudo revienta el filter_complex entero."""
+    editar._CON_SONIDO.clear()
+    p = con_capas([pip_sonoro(ruta=video_de_prueba("pip-mudo.mp4", False))])
+    texto, _ = editar.grafo(p, carpeta=BORRADOR)
+    igual("se queda fuera de la mezcla", "amix" in texto, False)
+    igual("y la imagen sale igual", "overlay=" in texto, True)
+
+
 # ── los rótulos ───────────────────────────────────────────────────
 def rotulo(**campos):
     d = {"id": 1, "tipo": "texto", "banda": 1, "t0": 1.0, "t1": 4.0,

@@ -370,6 +370,87 @@ ColumnLayout {
             { agachar: !Editor.capaSel.agachar })
     }
 
+    //  El sonido del vídeo incrustado.
+    //
+    //  Antes se tiraba: metías una cámara o un trozo de otro vídeo y entraba
+    //  mudo, así que había que añadir el mismo fichero OTRA VEZ como capa de
+    //  audio y cuadrarlo a mano. Ahora es un interruptor, y el recorte y el
+    //  instante son los del bloque, que ya están puestos.
+    //
+    //  Solo se oye al renderizar, como el agachado: la previa no mezcla.
+    BotonAccion {
+        visible: Editor.capaSel && Editor.capaSel.tipo === "video"
+                 && Editor.capaSel.puedeSonar !== false
+        texto: Editor.capaSel && Editor.capaSel.sonido
+            ? Idioma.t("Suena (al renderizar)") : Idioma.t("Traer su sonido")
+        icono: Editor.capaSel && Editor.capaSel.sonido ? 0xF057E : 0xF0581
+        activo: Editor.capaSel && !!Editor.capaSel.sonido
+        onPulsado: Editor.fijarCapa(Editor.idSel,
+            { sonido: !Editor.capaSel.sonido })
+    }
+
+    //  Y a qué volumen. Aparte de la barra de abajo porque en un vídeo esa es
+    //  la opacidad, y las dos hacen falta a la vez: una cámara medio
+    //  transparente que se oye alta es una combinación normal.
+    RowLayout {
+        visible: Editor.capaSel && Editor.capaSel.tipo === "video"
+                 && !!Editor.capaSel.sonido
+        Layout.fillWidth: true
+        spacing: 6
+
+        IslandLabel {
+            text: Idioma.t("Volumen")
+            color: Theme.dim
+            font.pixelSize: 9
+            font.capitalization: Font.AllUppercase
+            font.weight: Font.DemiBold
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 4
+            radius: 2
+            color: Theme.track
+
+            readonly property real valor: Editor.capaSel
+                && Editor.capaSel.volumen !== undefined
+                ? Editor.capaSel.volumen : 1
+
+            Rectangle {
+                // El tope es 2, igual que en las capas de audio: subir al doble
+                // es lo que hace falta cuando el fichero viene bajo.
+                width: parent.width * Math.min(1, parent.valor / 2)
+                height: parent.height
+                radius: parent.radius
+                color: Theme.green
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                anchors.topMargin: -8
+                anchors.bottomMargin: -8
+                cursorShape: Qt.PointingHandCursor
+
+                function poner(x) {
+                    const v = Math.max(0, Math.min(2, x / Math.max(1, width) * 2))
+                    Editor.fijarCapa(Editor.idSel,
+                        { volumen: Math.round(v * 20) / 20 })
+                }
+                onPressed: function (ev) { poner(ev.x) }
+                onPositionChanged: function (ev) { if (pressed) poner(ev.x) }
+            }
+        }
+
+        IslandLabel {
+            Layout.preferredWidth: 30
+            horizontalAlignment: Text.AlignRight
+            text: Editor.capaSel && Editor.capaSel.volumen !== undefined
+                ? Editor.capaSel.volumen.toFixed(2) : "1.00"
+            color: Theme.dim
+            font.pixelSize: 9
+        }
+    }
+
     //  El Ken Burns: la foto quieta que respira. Zoom por dentro de la
     //  huella —la capa no cambia de tamaño— a lo largo de su ventana.
     IslandLabel {

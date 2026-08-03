@@ -1822,6 +1822,55 @@ def grafo(plan, sin_audio=False, carpeta=None, sonoridad=False,
     return ";\n".join(lineas), len(puntos)
 
 
+def suena(ruta):
+    """Si un fichero trae flujo de audio.
+
+    Hace falta preguntarlo antes de pedirle `[N:a]` a ffmpeg: un vídeo mudo
+    —una grabación de pantalla sin micro, un gif convertido— no tiene esa
+    entrada y el `filter_complex` entero se cae con «matches no streams». Un
+    ffprobe por fichero y a la caché, que un plan puede traer la misma cámara
+    en diez trozos.
+    """
+    if ruta in _CON_SONIDO:
+        return _CON_SONIDO[ruta]
+    hay = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "a:0",
+         "-show_entries", "stream=codec_name", "-of", "csv=p=0", ruta],
+        capture_output=True, text=True).stdout.strip() != ""
+    _CON_SONIDO[ruta] = hay
+    return hay
+
+
+_CON_SONIDO = {}
+
+
+def capas_que_suenan(plan):
+    """Las capas que aportan sonido: las de audio y los vídeos que lo pidan.
+
+    Un vídeo incrustado entraba MUDO —su audio se tiraba— y para oírlo había
+    que añadir el mismo fichero otra vez como capa de audio y cuadrarlo a mano.
+    Ahora es un interruptor de la capa. Sigue siendo opcional y apagado en los
+    planes viejos: un montaje hecho antes de esto suena igual que sonaba.
+
+    Las dos clases se tratan igual a partir de aquí —recorte, volumen, retardo—
+    porque para el oído son lo mismo; lo único propio del vídeo es preguntar si
+    de verdad trae sonido.
+    """
+    salida = []
+    for c in capas_de(plan, "audio"):
+        if c.get("ruta") and os.path.exists(c["ruta"]):
+            salida.append(c)
+    for c in capas_de(plan, "video"):
+        if not c.get("sonido"):
+            continue
+        if c.get("ruta") and os.path.exists(c["ruta"]) and suena(c["ruta"]):
+            salida.append(c)
+    #  En el orden de las capas del plan, no primero unas y luego otras: así el
+    #  grafo se lee al lado de la lista del editor.
+    salida.sort(key=lambda c: (float(c.get("t0", 0.0)), c.get("id", 0)))
+    return salida
+
+
 def ramas_audio_extra(plan, idx_capa, sin_audio):
     """Las capas de audio, mezcladas con el sonido del vídeo.
 
@@ -1831,8 +1880,7 @@ def ramas_audio_extra(plan, idx_capa, sin_audio):
     que se produce y no se consume no es «se ignora», es un error que tumba la
     orden entera.
     """
-    extras = [c for c in capas_de(plan, "audio")
-              if c.get("ruta") and os.path.exists(c["ruta"])]
+    extras = [c for c in capas_que_suenan(plan) if c["id"] in idx_capa]
 
     if sin_audio:
         # Ni se molestan en entrar: nadie va a escucharlas.
@@ -2349,7 +2397,10 @@ def orden_medir(args):
     if flujos and flujos[0].get("width"):
         s = flujos[0]
         dur = round(duracion_sonda(s.get("duration"), dur), 3)
-        salir(ok=True, dur=dur, w=int(s["width"]), h=int(s["height"]))
+        #  Y si trae sonido: un vídeo incrustado puede sonar, y el editor no
+        #  debe ofrecer subirle el volumen a una grabación muda.
+        salir(ok=True, dur=dur, w=int(s["width"]), h=int(s["height"]),
+              audio=suena(args.fichero))
     salir(ok=True, dur=dur)
 
 
