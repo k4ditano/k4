@@ -67,7 +67,7 @@ K4Plugin {
 
     //  El alto lo mandan los datos: cada agente es una tarjeta y cada límite
     //  una fila. Las cuentas son las del delegado de la vista —10 de margen,
-    //  18 de cabecera, 6 de hueco y 20+4 por fila—; si allí cambian, aquí
+    //  18 de cabecera, 6 de hueco y 24+4 por fila—; si allí cambian, aquí
     //  también, porque una tarjeta más alta que su hueco se ve cortada.
     islandHeight: {
         if (!cargado || !agentes.length)
@@ -76,7 +76,7 @@ K4Plugin {
         let alto = 51                       // márgenes, cabecera y su hueco
         for (let i = 0; i < agentes.length; i++) {
             const filas = Math.max(1, (agentes[i].limites || []).length)
-            alto += 40 + 24 * filas
+            alto += 40 + 28 * filas
         }
         return alto + 8 * (agentes.length - 1)
     }

@@ -2,7 +2,12 @@
 //
 //  Lo que uno quiere saber son dos números: por dónde va y cuándo se le
 //  perdona. Así que cada fila es el nombre de la ventana, su barra, su
-//  porcentaje y cuánto falta para que reinicie —y nada más.
+//  porcentaje y cuándo reinicia —y nada más.
+//
+//  El reinicio va con las dos formas de decirlo, una encima de otra: el día y
+//  la hora arriba y la cuenta atrás debajo. No sobra ninguna. «En 3 h 25 min»
+//  no se cruza con la agenda de nadie, y «hoy a las 19:59» no dice si te da
+//  tiempo a acabar lo que tienes abierto.
 //
 //  La ventana que está contando ahora mismo va en tinta y las demás en gris:
 //  las cinco horas y la semana no aprietan a la vez, y distinguirlas de un
@@ -56,6 +61,42 @@ FadeIn {
         const dias = Math.round(horas / 24)
         return dias === 1 ? Idioma.t("en 1 día")
                           : Idioma.f("en %1 días", dias)
+    }
+
+    //  Los días por su nombre, y en el idioma de la barra. `Qt.formatDate` los
+    //  saca en el del sistema, que aquí ponía «Sun» en medio de una interfaz
+    //  en español. Empieza en domingo porque así los numera `getDay()`.
+    readonly property var nombresDia: [
+        Idioma.t("dom"), Idioma.t("lun"), Idioma.t("mar"), Idioma.t("mié"),
+        Idioma.t("jue"), Idioma.t("vie"), Idioma.t("sáb")
+    ]
+
+    //  El día y la hora del reinicio. Se dice como lo diría uno: «hoy» y
+    //  «mañana» tienen nombre, la semana que viene se nombra por el día, y más
+    //  allá ya hace falta la fecha.
+    function cuando(segundos, reloj) {
+        if (!segundos)
+            return ""
+
+        const d = new Date(segundos * 1000)
+        const hora = Qt.formatTime(d, "HH:mm")
+
+        //  Los días se cuentan de medianoche a medianoche, no por las horas
+        //  que faltan: a las once de la noche, algo que reinicia dentro de tres
+        //  horas es mañana, y decir «hoy» ahí sería mentira.
+        const suyo = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+        const nuestro = new Date(reloj.getFullYear(), reloj.getMonth(), reloj.getDate())
+        const dias = Math.round((suyo.getTime() - nuestro.getTime()) / 86400000)
+
+        if (dias <= 0)
+            return Idioma.f("hoy %1", hora)
+        if (dias === 1)
+            return Idioma.f("mañana %1", hora)
+        if (dias < 7)
+            return view.nombresDia[d.getDay()] + " " + hora
+        //  Tan lejos no llega ninguna ventana de hoy, pero si mañana aparece
+        //  una de un mes, la fecha en números no depende de ningún idioma.
+        return Qt.formatDate(d, "d/M") + " " + hora
     }
 
     //  De cuándo es el dato. Sale siempre, también cuando es de hace un
@@ -138,7 +179,7 @@ FadeIn {
                 readonly property var limites: modelData.limites || []
 
                 Layout.fillWidth: true
-                Layout.preferredHeight: 40 + 24 * Math.max(1, limites.length)
+                Layout.preferredHeight: 40 + 28 * Math.max(1, limites.length)
                 radius: 11
                 color: Theme.surface
 
@@ -215,7 +256,7 @@ FadeIn {
                             readonly property real pct: Math.max(0, Math.min(100, modelData.pct || 0))
 
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 20
+                            Layout.preferredHeight: 24
                             spacing: 9
 
                             IslandLabel {
@@ -251,12 +292,31 @@ FadeIn {
                                 Layout.preferredWidth: 40
                             }
 
-                            IslandLabel {
-                                text: view.cuanto(fila.modelData.reinicia, view.ahora)
-                                color: Theme.dim
-                                font.pixelSize: 9
-                                horizontalAlignment: Text.AlignRight
-                                Layout.preferredWidth: 86
+                            //  Cuándo se le perdona, en las dos formas. Sin
+                            //  hueco entre las dos líneas: son el mismo dato
+                            //  dicho dos veces, no dos cosas distintas.
+                            ColumnLayout {
+                                spacing: 0
+                                Layout.preferredWidth: 92
+                                Layout.alignment: Qt.AlignVCenter
+
+                                IslandLabel {
+                                    text: view.cuando(fila.modelData.reinicia, view.ahora)
+                                    color: Theme.muted
+                                    font.pixelSize: 10
+                                    horizontalAlignment: Text.AlignRight
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 13
+                                }
+
+                                IslandLabel {
+                                    text: view.cuanto(fila.modelData.reinicia, view.ahora)
+                                    color: Theme.dim
+                                    font.pixelSize: 9
+                                    horizontalAlignment: Text.AlignRight
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 11
+                                }
                             }
                         }
                     }
