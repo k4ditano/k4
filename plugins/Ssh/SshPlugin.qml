@@ -337,7 +337,15 @@ K4Plugin {
             apuntarVisita(h.alias)
 
         if (enVentana === true) {
-            K4.Sistema.lanzar([Consola.binario || "k4term", "-e", "sh", "-c", guion])
+            //  Por `Consola` y no a pelo: es quien sabe que wezterm y
+            //  gnome-terminal no aceptan `-e` como las demás, y quien envuelve
+            //  con uwsm para que la ventana no se muera con la barra. Estaba
+            //  escrito a mano y las dos cosas fallaban.
+            //  Y con la salida de emergencia de la casa detrás: una ventana
+            //  que se cierra sola con el «connection refused» a medio leer no
+            //  sirve de nada. Solo si falla — al salir de una sesión buena,
+            //  cerrarse es lo que uno espera.
+            K4.Sistema.lanzar(Consola.orden(guion + " || { " + Consola.cierre + " }"))
         } else {
             //  Que la terminal sepa que lo que viene es una conexión y pinte
             //  el camino mientras tanto.
