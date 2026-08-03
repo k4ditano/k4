@@ -24,7 +24,24 @@ FadeIn {
     FocoInicial { id: foco; objetivo: entrada }
     Component.onCompleted: foco.reclamar()
 
+    //  Y lo mismo al pasar al formulario: el campo activo se apunta aquí y se
+    //  le reclama el foco con la misma pieza. Sin esto el formulario sale
+    //  pintado pero sordo — se veía perfecto y no recibía ni una tecla.
+    property Item entradaActiva: null
+    FocoInicial { id: focoCampo; objetivo: vista.entradaActiva }
+
+    Connections {
+        target: vista.plugin
+        function onModoChanged() {
+            if (vista.plugin.modo === "editar" && vista.entradaActiva)
+                focoCampo.reclamar()
+            else if (vista.plugin.modo === "lista")
+                foco.reclamar()
+        }
+    }
+
     ColumnLayout {
+        visible: vista.plugin.modo === "lista"
         anchors.fill: parent
         anchors.leftMargin: 14
         anchors.rightMargin: 14
@@ -97,6 +114,10 @@ FadeIn {
                         vista.plugin.elegir(conShift); ev.accepted = true
                     } else if (conCtrl && ev.key === Qt.Key_S) {
                         vista.plugin.guardarActual(); ev.accepted = true
+                    } else if (conCtrl && ev.key === Qt.Key_E) {
+                        vista.plugin.editarActual(); ev.accepted = true
+                    } else if (conCtrl && ev.key === Qt.Key_N) {
+                        vista.plugin.nuevoDesdeBusqueda(); ev.accepted = true
                     } else if (conCtrl && ev.key === Qt.Key_F) {
                         vista.plugin.favoritoActual(); ev.accepted = true
                     } else if (conCtrl && ev.key === Qt.Key_K) {
@@ -299,10 +320,206 @@ FadeIn {
 
             IslandLabel {
                 visible: !vista.plugin.sinClaves
-                text: Idioma.t("intro conecta · shift+intro en ventana · ctrl+S guarda · ctrl+F favorito · supr borra")
+                text: Idioma.t("intro conecta · shift+intro ventana · ctrl+E edita · ctrl+N nuevo · ctrl+F favorito · supr borra")
                 color: Theme.dim
                 font.pixelSize: 10
                 Layout.fillWidth: true
+            }
+        }
+    }
+
+    //  ── configurar un servidor ────────────────────────────────────
+    //
+    //  La misma ventana cambia de cara en vez de abrir un diálogo encima:
+    //  arriba lo que ssh entiende —y que por tanto aprovechan también scp,
+    //  git y compañía— y abajo lo nuestro, separado por una línea para que se
+    //  vea de un vistazo qué va a dónde.
+    ColumnLayout {
+        visible: vista.plugin.modo === "editar"
+        anchors.fill: parent
+        anchors.leftMargin: 14
+        anchors.rightMargin: 14
+        anchors.topMargin: 12
+        anchors.bottomMargin: 10
+        spacing: 6
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            IconGlyph {
+                text: String.fromCodePoint(0xF08C0)
+                color: Theme.muted
+                font.pixelSize: 15
+                Layout.alignment: Qt.AlignVCenter
+            }
+
+            IslandLabel {
+                text: vista.plugin.borrador.original
+                    ? Idioma.t("Editar ") + vista.plugin.borrador.original
+                    : Idioma.t("Servidor nuevo")
+                color: Theme.ink
+                font.pixelSize: 15
+                Layout.fillWidth: true
+            }
+
+            //  Favorito aquí también: es parte de cómo lo quieres, no una
+            //  acción aparte.
+            Rectangle {
+                Layout.preferredWidth: estrella.implicitWidth + 20
+                Layout.preferredHeight: 22
+                radius: 11
+                color: vista.plugin.borrador.favorito ? Theme.surfaceHi : "transparent"
+                border.width: 1
+                border.color: Theme.surfaceHi
+
+                IslandLabel {
+                    id: estrella
+                    anchors.centerIn: parent
+                    text: (vista.plugin.borrador.favorito ? "★ " : "☆ ") + Idioma.t("favorito")
+                    color: vista.plugin.borrador.favorito ? Theme.yellow : Theme.muted
+                    font.pixelSize: 10
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: vista.plugin.ponerCampo("favorito",
+                                                       !vista.plugin.borrador.favorito)
+                }
+            }
+        }
+
+        Repeater {
+            model: vista.plugin.campos
+
+            delegate: ColumnLayout {
+                id: filaCampo
+                required property var modelData
+                required property int index
+
+                readonly property bool activo: index === vista.plugin.campo
+
+                Layout.fillWidth: true
+                spacing: 6
+
+                //  Una raya antes de lo nuestro: arriba lo que entiende ssh,
+                //  abajo lo que solo entendemos aquí. Va en su propia fila —no
+                //  dentro de la del campo— o empujaría la etiqueta a un lado.
+                Rectangle {
+                    visible: filaCampo.modelData.suyo
+                             && !vista.plugin.campos[Math.max(0, filaCampo.index - 1)].suyo
+                    Layout.fillWidth: true
+                    Layout.topMargin: 4
+                    Layout.bottomMargin: 2
+                    Layout.preferredHeight: 1
+                    color: Theme.surfaceHi
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 26
+                    spacing: 8
+
+                IslandLabel {
+                    text: filaCampo.modelData.nombre
+                    color: filaCampo.activo ? Theme.ink : Theme.muted
+                    font.pixelSize: 12
+                    Layout.preferredWidth: 78
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 24
+                    radius: 7
+                    color: filaCampo.activo ? Theme.surfaceHi : Theme.surface
+                    border.width: 1
+                    border.color: filaCampo.activo ? Theme.blue : "transparent"
+
+                    Behavior on color { ColorAnimation { duration: 110 } }
+
+                    TextInput {
+                        id: entradaCampo
+                        anchors.fill: parent
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 8
+                        verticalAlignment: TextInput.AlignVCenter
+                        cursorDelegate: IslandCursor {}
+                        color: Theme.ink
+                        font.family: Theme.uiFont
+                        font.pixelSize: 12
+                        clip: true
+                        selectByMouse: true
+                        selectionColor: Theme.blue
+
+                        text: vista.plugin.borrador[filaCampo.modelData.id] || ""
+                        onTextEdited: vista.plugin.ponerCampo(filaCampo.modelData.id, text)
+
+                        //  El foco lo lleva el campo activo, y se pide cuando
+                        //  cambia: así las flechas mueven de campo y lo que se
+                        //  teclea va siempre al que está marcado.
+                        focus: filaCampo.activo
+                        onActiveFocusChanged: if (activeFocus) vista.plugin.campo = filaCampo.index
+
+                        //  El activo se apunta en la vista para que el foco
+                        //  sepa a quién ir, y se le pide en cuanto cambia.
+                        Component.onCompleted: if (filaCampo.activo) vista.entradaActiva = entradaCampo
+
+                        Connections {
+                            target: vista.plugin
+                            function onCampoChanged() {
+                                if (filaCampo.activo) {
+                                    vista.entradaActiva = entradaCampo
+                                    entradaCampo.forceActiveFocus()
+                                }
+                            }
+                        }
+
+                        IslandLabel {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: entradaCampo.text.length === 0
+                            text: filaCampo.modelData.ayuda
+                            color: Theme.dim
+                            font.pixelSize: 11
+                        }
+
+                        Keys.onPressed: function (ev) {
+                            if (ev.key === Qt.Key_Escape) {
+                                vista.plugin.cancelarEdicion(); ev.accepted = true
+                            } else if (ev.key === Qt.Key_Return || ev.key === Qt.Key_Enter) {
+                                //  Intro guarda desde cualquier campo: es un
+                                //  formulario de ocho líneas, no un trámite.
+                                vista.plugin.guardarBorrador(); ev.accepted = true
+                            } else if (ev.key === Qt.Key_Down
+                                       || (ev.key === Qt.Key_Tab && !(ev.modifiers & Qt.ShiftModifier))) {
+                                vista.plugin.moverCampo(1); ev.accepted = true
+                            } else if (ev.key === Qt.Key_Up || ev.key === Qt.Key_Backtab) {
+                                vista.plugin.moverCampo(-1); ev.accepted = true
+                            }
+                        }
+                    }
+                }
+                }
+            }
+        }
+
+        Item { Layout.fillHeight: true }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            IslandLabel {
+                text: Idioma.t("intro guarda · esc cancela · ↑↓ o tab cambia de campo")
+                color: Theme.dim
+                font.pixelSize: 10
+                Layout.fillWidth: true
+            }
+
+            IslandLabel {
+                text: Idioma.t("lo de arriba va a ~/.ssh/config")
+                color: Theme.dim
+                font.pixelSize: 10
             }
         }
     }

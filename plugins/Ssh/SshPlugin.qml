@@ -41,6 +41,72 @@ K4Plugin {
     property string busqueda: ""
     property int indice: 0
 
+    //  Dos caras de la misma ventana: la lista para elegir y el formulario
+    //  para configurar. Se cambia de una a otra sin cerrar nada, que abrir un
+    //  diálogo encima de un diálogo es de las cosas que hacen que uno deje de
+    //  usar algo.
+    property string modo: "lista"
+    property var borrador: ({})
+    property int campo: 0
+
+    //  Los campos, en el orden en que se rellenan. Los cuatro primeros van a
+    //  `~/.ssh/config` —los entiende ssh y los aprovechan scp, git y todo lo
+    //  demás—; los tres últimos son nuestros y viven en `hosts.json`.
+    readonly property var campos: [
+        { id: "alias",      nombre: Idioma.t("Nombre"),     ayuda: Idioma.t("como lo vas a llamar"),          suyo: false },
+        { id: "host",       nombre: Idioma.t("Máquina"),    ayuda: Idioma.t("dominio o IP"),                  suyo: false },
+        { id: "usuario",    nombre: Idioma.t("Usuario"),    ayuda: Idioma.t("vacío = el tuyo"),               suyo: false },
+        { id: "puerto",     nombre: Idioma.t("Puerto"),     ayuda: Idioma.t("vacío = 22"),                    suyo: false },
+        { id: "clave",      nombre: Idioma.t("Clave"),      ayuda: Idioma.t("ruta de la privada, si no la de siempre"), suyo: false },
+        { id: "salto",      nombre: Idioma.t("Salto"),      ayuda: Idioma.t("pasar por otro servidor (ProxyJump)"), suyo: false },
+        { id: "etiquetas",  nombre: Idioma.t("Etiquetas"),  ayuda: Idioma.t("separadas por espacios, para buscar"), suyo: true },
+        { id: "alConectar", nombre: Idioma.t("Al entrar"),  ayuda: Idioma.t("un mandato que se teclea al conectar"), suyo: true }
+    ]
+
+    function editar(h) {
+        borrador = {
+            original: h && !h.rapido ? h.alias : "",
+            alias: h ? h.alias : "",
+            host: h ? (h.host || h.alias) : "",
+            usuario: h ? h.usuario : "",
+            puerto: h ? h.puerto : "",
+            clave: h ? (h.clave || "") : "",
+            salto: h ? (h.salto || "") : "",
+            etiquetas: h && h.etiquetas ? h.etiquetas.join(" ") : "",
+            alConectar: h && h.alConectar ? h.alConectar : "",
+            favorito: h ? h.favorito === true : false
+        }
+        campo = 0
+        modo = "editar"
+    }
+
+    function editarActual() {
+        const h = lista[indice]
+        if (h)
+            editar(h)
+    }
+
+    function nuevoDesdeBusqueda() {
+        const d = comoDestino(busqueda)
+        editar(d ? { alias: d.host, host: d.host, usuario: d.usuario,
+                     puerto: d.puerto, rapido: true } : null)
+    }
+
+    function ponerCampo(id, valor) {
+        const nuevo = Object.assign({}, borrador)
+        nuevo[id] = String(valor)
+        borrador = nuevo
+    }
+
+    function moverCampo(paso) {
+        campo = Math.max(0, Math.min(campos.length - 1, campo + paso))
+    }
+
+    function cancelarEdicion() {
+        modo = "lista"
+        borrador = ({})
+    }
+
     view: Component { SshView { plugin: self } }
 
     function abrir() {
@@ -172,6 +238,7 @@ K4Plugin {
                  favorito: e.favorito === true,
                  ultimo: Number(e.ultimo) || 0,
                  etiquetas: e.etiquetas || [],
+                 alConectar: e.alConectar || "",
                  rapido: false }
     }
 
@@ -256,9 +323,15 @@ K4Plugin {
     }
 
     function conectar(h, enVentana) {
-        const guion = mandato(h)
+        let guion = mandato(h)
         if (!guion)
             return
+
+        //  Lo que pediste que se corriera al entrar va detrás, en la misma
+        //  línea: así entra por el mismo sitio y no hay que adivinar cuándo
+        //  ha terminado de arrancar la sesión de allí.
+        if (h.alConectar)
+            guion += " -t " + JSON.stringify(String(h.alConectar))
 
         if (!h.rapido)
             apuntarVisita(h.alias)
@@ -296,43 +369,103 @@ K4Plugin {
     //
     //  Se escribe el bloque y se deja el resto del fichero intacto: ahí puede
     //  haber cosas de años que no son nuestras.
-    function guardar(h, alias) {
-        const nombre = String(alias || h.host).trim()
-        if (!nombre)
-            return
+    //  Guardar lo del formulario. Es también EDITAR: si ese host ya estaba
+    //  —o se le ha cambiado el nombre— su bloque viejo se va y se escribe el
+    //  nuevo, para que no haya dos caminos que mantener.
+    function guardarBorrador() {
+        const b = borrador
+        const alias = String(b.alias || b.host || "").trim()
+        if (!alias || !String(b.host || "").trim())
+            return false
 
         let texto = fSsh.text() || ""
+        //  Fuera el bloque anterior: el suyo y, si se ha renombrado, el que
+        //  tuviera el nombre nuevo.
+        texto = sinBloque(texto, alias)
+        if (b.original && b.original !== alias)
+            texto = sinBloque(texto, b.original)
+
         if (texto.length > 0 && texto.slice(-1) !== "\n")
             texto += "\n"
 
-        let bloque = "\nHost " + nombre + "\n"
-        bloque += "    HostName " + h.host + "\n"
-        if (h.usuario)
-            bloque += "    User " + h.usuario + "\n"
-        if (h.puerto)
-            bloque += "    Port " + h.puerto + "\n"
+        let bloque = "\nHost " + alias + "\n"
+        bloque += "    HostName " + String(b.host).trim() + "\n"
+        const deSsh = [["User", b.usuario], ["Port", b.puerto],
+                       ["IdentityFile", b.clave], ["ProxyJump", b.salto]]
+        for (let i = 0; i < deSsh.length; ++i) {
+            const valor = String(deSsh[i][1] || "").trim()
+            if (valor)
+                bloque += "    " + deSsh[i][0] + " " + valor + "\n"
+        }
 
         fSsh.setText(texto + bloque)
         cerrarFichero.running = true
-        //  Y a releer, pero no aquí mismo: `text()` todavía devuelve lo que
-        //  había cuando se cargó, así que leerlo ahora deja la lista en cero
-        //  —se vio— y encima con el fichero ya escrito, que es lo que
-        //  desconcierta. Se recarga y `onLoaded` la rehace.
         relee.restart()
+
+        //  Y lo nuestro, que ssh no sabe guardar.
+        const etiquetas = String(b.etiquetas || "").trim()
+        tocar(alias, {
+            favorito: b.favorito === true,
+            etiquetas: etiquetas ? etiquetas.split(/\s+/) : [],
+            alConectar: String(b.alConectar || "").trim()
+        })
+        if (b.original && b.original !== alias)
+            olvidarExtra(b.original)
+
+        modo = "lista"
+        borrador = ({})
         busqueda = ""
         indice = 0
+        return true
     }
 
+    //  El fichero sin el bloque de ese host. «Host» y luego un separador: ni
+    //  `HostName` ni `HostKeyAlias` empiezan bloque, y darlos por buenos deja
+    //  líneas huérfanas en el fichero de otro.
+    function sinBloque(texto, alias) {
+        const lineas = String(texto).split("\n")
+        const salida = []
+        let dentro = false
+
+        for (let i = 0; i < lineas.length; ++i) {
+            const limpia = lineas[i].replace(/#.*$/, "").trim()
+            if (/^host[\s=]/i.test(limpia)) {
+                const nombres = limpia.slice(4).replace(/^[\s=]+/, "").split(/\s+/)
+                dentro = nombres.length > 0 && nombres[0] === alias
+            }
+            if (!dentro)
+                salida.push(lineas[i])
+        }
+
+        while (salida.length > 0 && salida[salida.length - 1].trim() === "")
+            salida.pop()
+        return salida.length > 0 ? salida.join("\n") + "\n" : ""
+    }
+
+    //  `text()` no ve lo que se acaba de escribir con `setText`: hay que
+    //  recargar y dejar que `onLoaded` rehaga la lista. Leerlo ahí mismo la
+    //  dejaba en cero con el fichero ya escrito.
     Timer {
         id: relee
         interval: 120
         onTriggered: self.fSsh.reload()
     }
 
+    function olvidarExtra(alias) {
+        const nuevo = Object.assign({}, extras)
+        delete nuevo[alias]
+        extras = nuevo
+        fExtras.setText(JSON.stringify(extras, null, 2) + "\n")
+    }
+
+    //  Guardar lo escrito al vuelo no es escribirlo y ya: se abre el
+    //  formulario con lo que se sabe y se completa el resto. Antes se guardaba
+    //  a ciegas con el nombre de la máquina y no había forma de tocar nada
+    //  más, que es justo lo que uno quiere hacer a continuación.
     function guardarActual() {
         const h = lista[indice]
-        if (h && h.rapido)
-            guardar(h, h.host)
+        if (h)
+            editar(h)
     }
 
     function borrarActual() {
@@ -340,25 +473,7 @@ K4Plugin {
         if (!h || h.rapido)
             return
 
-        //  Se corta desde su `Host` hasta el siguiente `Host` (o el final).
-        //  Por líneas y no con una expresión sobre todo el fichero: así lo que
-        //  hay alrededor no corre ningún riesgo.
-        const lineas = (fSsh.text() || "").split("\n")
-        const salida = []
-        let dentro = false
-
-        for (let i = 0; i < lineas.length; ++i) {
-            const limpia = lineas[i].replace(/#.*$/, "").trim()
-            const esHost = /^host[\s=]/i.test(limpia)
-            if (esHost) {
-                const nombres = limpia.slice(4).replace(/^[\s=]+/, "").split(/\s+/)
-                dentro = nombres.length > 0 && nombres[0] === h.alias
-            }
-            if (!dentro)
-                salida.push(lineas[i])
-        }
-
-        fSsh.setText(salida.join("\n"))
+        fSsh.setText(sinBloque(fSsh.text() || "", h.alias))
         relee.restart()
 
         const nuevo = Object.assign({}, extras)
