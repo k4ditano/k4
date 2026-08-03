@@ -14,6 +14,11 @@ import K4 as K4
 QtObject {
     id: sesion
 
+    //  Una sesión que ya existe esperando en ese socket: viene de una ventana
+    //  que la devuelve. Con esto el binario no abre ninguna shell — adopta la
+    //  que hay, con lo que estuviera corriendo dentro.
+    property string heredar: ""
+
     //  Un número que no se repite, para poder referirse a ella aunque se
     //  cierren otras por el medio. No se llama `id` porque en QML esa palabra
     //  está cogida.
@@ -56,6 +61,10 @@ QtObject {
     //  decirle «guardado» sin taparse a sí misma.
     signal aviso(string texto)
 
+    //  «Ahí queda la sesión»: por ese socket se la puede llevar una ventana.
+    //  Hasta que alguien la coja, aquí no se ha soltado nada.
+    signal emigrando(string socket)
+
     //  Se murió sola —un `exit`, la shell cerrada—, para que el plugin la
     //  quite de la lista en vez de dejar un hueco muerto.
     signal difunta()
@@ -68,7 +77,8 @@ QtObject {
     }
 
     property K4.Process proceso: K4.Process {
-        command: ["k4term-isla"]
+        command: sesion.heredar ? ["k4term-isla", "--heredar", sesion.heredar]
+                                : ["k4term-isla"]
         running: sesion.viva
         porLineas: true
         entradaAbierta: true
@@ -104,6 +114,8 @@ QtObject {
                 sesion.buscado(m.hay === true, m.fila || 0)
             } else if (m.que === "aviso") {
                 sesion.aviso(m.texto || "")
+            } else if (m.que === "emigrando") {
+                sesion.emigrando(m.socket || "")
             }
         }
 

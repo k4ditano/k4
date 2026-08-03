@@ -381,20 +381,30 @@ K4Plugin {
             mandar({ que: "pinta" })
     }
 
-    //  Sacarla a lo grande: se le pregunta a la sesión dónde está y se abre
-    //  una ventana ahí mismo. La sesión de la island NO se mueve —sigue
-    //  viva, con lo que estuviera corriendo— porque es suya y de nadie más;
-    //  lo que se hereda es el sitio.
+    //  Sacarla a lo grande: la sesión SE MUDA, no se copia. Se le pide que
+    //  ofrezca su PTY por un socket y se abre una ventana que lo recoge; lo
+    //  que estuviera corriendo dentro —un agente, un `make`— sigue como si
+    //  nada, porque lo que cambia de manos es el maestro y a él lo que lo ata
+    //  es el esclavo, que no se toca.
+    //
+    //  Sin k4term no hay a quién dársela: entonces se abre lo que haya, que es
+    //  lo que se hacía antes de que esto existiera.
     function sacar() {
-        if (!sesion) {
+        if (!sesion || !Consola.esNuestra) {
             K4.Sistema.lanzar(Consola.abrir(""))
             return
         }
-        sacando = true
-        mandar({ que: "donde" })
+        mandar({ que: "emigrar" })
     }
 
-    property bool sacando: false
+    //  La sesión ya está en el socket: se abre la ventana que se la lleva. Al
+    //  cogerla, el proceso de la isla se apaga solo y la pestaña se va con él.
+    function alEmigrar(socket) {
+        if (!socket)
+            return
+        K4.Sistema.lanzar([Consola.binario, "--heredar", socket])
+        abierto = false
+    }
 
     //  ── las sesiones ──────────────────────────────────────────────
     //
@@ -433,7 +443,11 @@ K4Plugin {
         model: self.listaSesiones
         delegate: SesionIsla {
             required property int sid
+            required property string socket
             numero: sid
+            //  Si viene con socket, esta sesión no arranca una shell: adopta
+            //  la que una ventana acaba de soltar.
+            heredar: socket
             onDonde: function (ruta) { self.alDecirDonde(ruta) }
             onDifunta: self.alMorir(numero)
             onTrabajo: function (estado, mandato, salida, segundos) {
@@ -443,6 +457,7 @@ K4Plugin {
             onPortapapeles: function (texto) { self.alCopiar(texto) }
             onTexto: function (contenido, motivo) { self.alRecibirTexto(contenido, motivo) }
             onBuscado: function (hay, fila) { self.hallazgo(hay, fila) }
+            onEmigrando: function (socket) { self.alEmigrar(socket) }
             onAviso: function (texto) { K4.Sistema.avisar(Idioma.t("Terminal"), texto, false) }
         }
         onObjectAdded: function (indice, objeto) {
@@ -465,8 +480,8 @@ K4Plugin {
         }
     }
 
-    function nueva() {
-        listaSesiones.append({ sid: ++contador })
+    function nueva(socket) {
+        listaSesiones.append({ sid: ++contador, socket: socket || "" })
         actual = vivas.length - 1
         //  Recogida: cada terminal nueva empieza pequeña, como al abrir. Se
         //  toca SOLO el objetivo: escribir en `filasReales` rompería su
@@ -500,15 +515,15 @@ K4Plugin {
             }
     }
 
-    //  La sesión contesta dónde está: solo interesa si se lo hemos preguntado
-    //  para sacarla, no vaya a abrirse una ventana por un mensaje rezagado.
+    //  La sesión contesta dónde está. Ya no se usa para sacarla —ahora la
+    //  sesión se muda entera, no se abre otra en su sitio— pero sigue siendo
+    //  la forma de saber en qué directorio anda: lo aprovecha quien quiera
+    //  abrir algo «aquí mismo».
     function alDecirDonde(ruta) {
-        if (!sacando)
-            return
-        sacando = false
-        abierto = false
-        K4.Sistema.lanzar(Consola.abrir(ruta || ""))
+        ultimoDirectorio = String(ruta || "")
     }
+
+    property string ultimoDirectorio: ""
 
     //  Despierta a los dos servicios que le hacen falta: un singleton de QML
     //  no se instancia hasta que alguien lo mira. El del ambiente publica el
@@ -799,6 +814,15 @@ K4Plugin {
 
         //  La terminal de la island, para lo rápido.
         function isla(): void { self.toggle() }
+
+        //  Una ventana devuelve su sesión: se abre una pestaña que la adopta.
+        //  La ventana se cierra sola en cuanto se la hayan quitado.
+        function adoptar(socket: string): void {
+            if (!socket)
+                return
+            self.nueva(socket)
+            self.abierto = true
+        }
 
         //  Las de tener varias: abrir otra, moverse entre ellas y cerrar la
         //  que sobra. Lo mismo que las teclas, para quien prefiera un guion.
