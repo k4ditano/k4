@@ -20,6 +20,7 @@ local captura = "quickshell ipc -p " .. raiz .. "/shell.qml call k4.captura "
 local editor = "quickshell ipc -p " .. raiz .. "/shell.qml call k4.editor "
 local apps = "quickshell ipc -p " .. raiz .. "/shell.qml call k4.apps "
 local term = "quickshell ipc -p " .. raiz .. "/shell.qml call k4.term "
+local ssh = "quickshell ipc -p " .. raiz .. "/shell.qml call k4.ssh "
 
 ----------------------------------------------------------------------------
 -- Arranque
@@ -69,6 +70,14 @@ hl.bind(mod .. " + ALT + C",     hl.dsp.exec_cmd(k4 .. "session"))
 -- sesión se vuelve a la island. Un gesto, no dos.
 hl.bind(mod .. " + SHIFT + T",   hl.dsp.exec_cmd(term .. "isla"))
 hl.bind(mod .. " + ALT + T",     hl.dsp.exec_cmd(term .. "mudar"))
+
+-- Y los servidores de uno, a dos golpes: se abre, se escriben tres letras y
+-- se entra. Los hosts salen de ~/.ssh/config, así que lo que guardes aquí lo
+-- aprovechan también ssh, scp y git.
+--
+-- Va con ALT y no con SHIFT porque SUPER+SHIFT+S ya es tuyo de antes —mandar
+-- la ventana al espacio especial—, y quitártelo por esto sería una faena.
+hl.bind(mod .. " + ALT + S",     hl.dsp.exec_cmd(ssh .. "abrir"))
 
 ----------------------------------------------------------------------------
 -- El asistente

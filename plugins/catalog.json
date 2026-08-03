@@ -1,199 +1,207 @@
 {
- "schema": 1,
- "host": ">=1.0.0",
- "plugins": [
-  {
-   "id": "idle",
-   "entry": "Idle/IdlePlugin.qml",
-   "version": "1.0.0",
-   "title": "Píldora",
-   "enabledByDefault": true,
-   "configurable": false
-  },
-  {
-   "id": "volume",
-   "entry": "Volume/VolumePlugin.qml",
-   "version": "1.0.0",
-   "title": "Volumen",
-   "enabledByDefault": true
-  },
-  {
-   "id": "clock",
-   "entry": "Clock/ClockPlugin.qml",
-   "version": "1.0.0",
-   "title": "Reloj",
-   "enabledByDefault": true
-  },
-  {
-   "id": "player",
-   "entry": "Player/PlayerPlugin.qml",
-   "version": "1.0.0",
-   "title": "Reproductor",
-   "enabledByDefault": true
-  },
-  {
-   "id": "toast",
-   "entry": "Toast/ToastPlugin.qml",
-   "version": "1.0.0",
-   "title": "Notificación",
-   "enabledByDefault": true,
-   "icono": "0xF0369"
-  },
-  {
-   "id": "panel",
-   "entry": "Panel/PanelPlugin.qml",
-   "version": "1.0.0",
-   "title": "Centro de control",
-   "enabledByDefault": true
-  },
-  {
-   "id": "launcher",
-   "entry": "Launcher/LauncherPlugin.qml",
-   "version": "1.0.0",
-   "title": "Lanzador",
-   "enabledByDefault": true
-  },
-  {
-   "id": "ask",
-   "entry": "Ask/AskPlugin.qml",
-   "version": "1.0.0",
-   "title": "Preguntar",
-   "enabledByDefault": true
-  },
-  {
-   "id": "hyprtheme",
-   "entry": "HyprTheme/HyprThemePlugin.qml",
-   "version": "1.0.0",
-   "title": "Tema de Hyprland",
-   "enabledByDefault": true,
-   "icono": "0xF03D8",
-   "aplicacion": true
-  },
-  {
-   "id": "weather",
-   "entry": "Weather/WeatherPlugin.qml",
-   "version": "1.0.0",
-   "title": "El tiempo",
-   "enabledByDefault": true,
-   "icono": "0xF0595",
-   "aplicacion": true
-  },
-  {
-   "id": "tray",
-   "entry": "Tray/TrayPlugin.qml",
-   "version": "1.0.0",
-   "title": "Bandeja",
-   "enabledByDefault": true,
-   "icono": "0xF1296"
-  },
-  {
-   "id": "game",
-   "entry": "Game/GamePlugin.qml",
-   "version": "1.0.0",
-   "title": "Mazmorra",
-   "enabledByDefault": true,
-   "icono": "0xF011A",
-   "aplicacion": true
-  },
-  {
-   "id": "settings",
-   "entry": "Settings/SettingsPlugin.qml",
-   "version": "1.0.0",
-   "title": "Ajustes",
-   "enabledByDefault": true,
-   "configurable": false,
-   "icono": "0xF0493",
-   "aplicacion": true
-  },
-  {
-   "id": "clipboard",
-   "entry": "Clipboard/ClipboardPlugin.qml",
-   "version": "1.0.0",
-   "title": "Portapapeles",
-   "enabledByDefault": true,
-   "icono": "0xF014D",
-   "aplicacion": true
-  },
-  {
-   "id": "system",
-   "entry": "System/SystemPlugin.qml",
-   "version": "1.0.0",
-   "title": "Sistema",
-   "enabledByDefault": true,
-   "icono": "0xF061A",
-   "aplicacion": true
-  },
-  {
-   "id": "files",
-   "entry": "Files/FilesPlugin.qml",
-   "version": "1.0.0",
-   "title": "Archivos",
-   "enabledByDefault": true,
-   "icono": "0xF024B",
-   "aplicacion": true
-  },
-  {
-   "id": "keys",
-   "entry": "Keys/KeysPlugin.qml",
-   "version": "1.0.0",
-   "title": "Atajos",
-   "enabledByDefault": true,
-   "icono": "0xF030C",
-   "aplicacion": true
-  },
-  {
-   "id": "windows",
-   "entry": "Windows/WindowsPlugin.qml",
-   "version": "1.0.0",
-   "title": "Ventanas",
-   "enabledByDefault": true,
-   "icono": "0xF05B2",
-   "aplicacion": true
-  },
-  {
-   "id": "session",
-   "entry": "Session/SessionPlugin.qml",
-   "version": "1.0.0",
-   "title": "Sesión",
-   "enabledByDefault": true,
-   "icono": "0xF0425",
-   "aplicacion": true
-  },
-  {
-   "id": "captura",
-   "entry": "Captura/CapturaPlugin.qml",
-   "version": "1.0.0",
-   "title": "Captura",
-   "enabledByDefault": true,
-   "icono": "0xF0FCE",
-   "aplicacion": true
-  },
-  {
-   "id": "apps",
-   "entry": "Apps/AppsPlugin.qml",
-   "version": "1.0.0",
-   "title": "Aplicaciones",
-   "enabledByDefault": true,
-   "icono": "0xF02C1"
-  },
-  {
-   "id": "terminal",
-   "entry": "Terminal/TerminalPlugin.qml",
-   "version": "1.0.0",
-   "title": "Terminal",
-   "enabledByDefault": true,
-   "icono": "0xF018D",
-   "aplicacion": true
-  },
-  {
-   "id": "agentes",
-   "entry": "Agentes/AgentesPlugin.qml",
-   "version": "1.0.0",
-   "title": "Agentes",
-   "enabledByDefault": true,
-   "icono": "0xF06A9",
-   "aplicacion": true
-  }
- ],
- "version": "1.1.0"
+  "schema": 1,
+  "host": ">=1.0.0",
+  "plugins": [
+    {
+      "id": "idle",
+      "entry": "Idle/IdlePlugin.qml",
+      "version": "1.0.0",
+      "title": "Píldora",
+      "enabledByDefault": true,
+      "configurable": false
+    },
+    {
+      "id": "volume",
+      "entry": "Volume/VolumePlugin.qml",
+      "version": "1.0.0",
+      "title": "Volumen",
+      "enabledByDefault": true
+    },
+    {
+      "id": "clock",
+      "entry": "Clock/ClockPlugin.qml",
+      "version": "1.0.0",
+      "title": "Reloj",
+      "enabledByDefault": true
+    },
+    {
+      "id": "player",
+      "entry": "Player/PlayerPlugin.qml",
+      "version": "1.0.0",
+      "title": "Reproductor",
+      "enabledByDefault": true
+    },
+    {
+      "id": "toast",
+      "entry": "Toast/ToastPlugin.qml",
+      "version": "1.0.0",
+      "title": "Notificación",
+      "enabledByDefault": true,
+      "icono": "0xF0369"
+    },
+    {
+      "id": "panel",
+      "entry": "Panel/PanelPlugin.qml",
+      "version": "1.0.0",
+      "title": "Centro de control",
+      "enabledByDefault": true
+    },
+    {
+      "id": "launcher",
+      "entry": "Launcher/LauncherPlugin.qml",
+      "version": "1.0.0",
+      "title": "Lanzador",
+      "enabledByDefault": true
+    },
+    {
+      "id": "ask",
+      "entry": "Ask/AskPlugin.qml",
+      "version": "1.0.0",
+      "title": "Preguntar",
+      "enabledByDefault": true
+    },
+    {
+      "id": "hyprtheme",
+      "entry": "HyprTheme/HyprThemePlugin.qml",
+      "version": "1.0.0",
+      "title": "Tema de Hyprland",
+      "enabledByDefault": true,
+      "icono": "0xF03D8",
+      "aplicacion": true
+    },
+    {
+      "id": "weather",
+      "entry": "Weather/WeatherPlugin.qml",
+      "version": "1.0.0",
+      "title": "El tiempo",
+      "enabledByDefault": true,
+      "icono": "0xF0595",
+      "aplicacion": true
+    },
+    {
+      "id": "tray",
+      "entry": "Tray/TrayPlugin.qml",
+      "version": "1.0.0",
+      "title": "Bandeja",
+      "enabledByDefault": true,
+      "icono": "0xF1296"
+    },
+    {
+      "id": "game",
+      "entry": "Game/GamePlugin.qml",
+      "version": "1.0.0",
+      "title": "Mazmorra",
+      "enabledByDefault": true,
+      "icono": "0xF011A",
+      "aplicacion": true
+    },
+    {
+      "id": "settings",
+      "entry": "Settings/SettingsPlugin.qml",
+      "version": "1.0.0",
+      "title": "Ajustes",
+      "enabledByDefault": true,
+      "configurable": false,
+      "icono": "0xF0493",
+      "aplicacion": true
+    },
+    {
+      "id": "clipboard",
+      "entry": "Clipboard/ClipboardPlugin.qml",
+      "version": "1.0.0",
+      "title": "Portapapeles",
+      "enabledByDefault": true,
+      "icono": "0xF014D",
+      "aplicacion": true
+    },
+    {
+      "id": "system",
+      "entry": "System/SystemPlugin.qml",
+      "version": "1.0.0",
+      "title": "Sistema",
+      "enabledByDefault": true,
+      "icono": "0xF061A",
+      "aplicacion": true
+    },
+    {
+      "id": "files",
+      "entry": "Files/FilesPlugin.qml",
+      "version": "1.0.0",
+      "title": "Archivos",
+      "enabledByDefault": true,
+      "icono": "0xF024B",
+      "aplicacion": true
+    },
+    {
+      "id": "keys",
+      "entry": "Keys/KeysPlugin.qml",
+      "version": "1.0.0",
+      "title": "Atajos",
+      "enabledByDefault": true,
+      "icono": "0xF030C",
+      "aplicacion": true
+    },
+    {
+      "id": "windows",
+      "entry": "Windows/WindowsPlugin.qml",
+      "version": "1.0.0",
+      "title": "Ventanas",
+      "enabledByDefault": true,
+      "icono": "0xF05B2",
+      "aplicacion": true
+    },
+    {
+      "id": "session",
+      "entry": "Session/SessionPlugin.qml",
+      "version": "1.0.0",
+      "title": "Sesión",
+      "enabledByDefault": true,
+      "icono": "0xF0425",
+      "aplicacion": true
+    },
+    {
+      "id": "captura",
+      "entry": "Captura/CapturaPlugin.qml",
+      "version": "1.0.0",
+      "title": "Captura",
+      "enabledByDefault": true,
+      "icono": "0xF0FCE",
+      "aplicacion": true
+    },
+    {
+      "id": "apps",
+      "entry": "Apps/AppsPlugin.qml",
+      "version": "1.0.0",
+      "title": "Aplicaciones",
+      "enabledByDefault": true,
+      "icono": "0xF02C1"
+    },
+    {
+      "id": "terminal",
+      "entry": "Terminal/TerminalPlugin.qml",
+      "version": "1.0.0",
+      "title": "Terminal",
+      "enabledByDefault": true,
+      "icono": "0xF018D",
+      "aplicacion": true
+    },
+    {
+      "id": "ssh",
+      "entry": "Ssh/SshPlugin.qml",
+      "version": "1.0.0",
+      "title": "Servidores",
+      "enabledByDefault": true,
+      "configurable": false
+    },
+    {
+      "id": "agentes",
+      "entry": "Agentes/AgentesPlugin.qml",
+      "version": "1.0.0",
+      "title": "Agentes",
+      "enabledByDefault": true,
+      "icono": "0xF06A9",
+      "aplicacion": true
+    }
+  ],
+  "version": "1.1.0"
 }
