@@ -49,6 +49,13 @@ QtObject {
     //  una nota — si no, la respuesta no diría a qué venía.
     signal texto(string contenido, string motivo)
 
+    //  Dónde cayó una búsqueda, y si cayó en algo.
+    signal buscado(bool hay, int fila)
+
+    //  Un recado suelto para el usuario: aquí dentro no hay sitio para
+    //  decirle «guardado» sin taparse a sí misma.
+    signal aviso(string texto)
+
     //  Se murió sola —un `exit`, la shell cerrada—, para que el plugin la
     //  quite de la lista en vez de dejar un hueco muerto.
     signal difunta()
@@ -93,6 +100,10 @@ QtObject {
                 sesion.portapapeles(m.texto || "")
             } else if (m.que === "texto") {
                 sesion.texto(m.texto || "", m.motivo || "")
+            } else if (m.que === "buscado") {
+                sesion.buscado(m.hay === true, m.fila || 0)
+            } else if (m.que === "aviso") {
+                sesion.aviso(m.texto || "")
             }
         }
 

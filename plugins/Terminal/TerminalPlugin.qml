@@ -271,6 +271,31 @@ K4Plugin {
         K4.Sistema.abrir(limpio.indexOf("www.") === 0 ? "https://" + limpio : limpio)
     }
 
+    //  ── buscar ────────────────────────────────────────────────────
+    //
+    //  Rebuscar en el historial lo hace la sesión, que es quien lo tiene; aquí
+    //  solo se guarda qué se busca y si lo último cayó en algo, para que la
+    //  caja lo diga. Lo amarillo de la pantalla lo pinta la vista con lo que
+    //  ve, sin preguntar nada.
+    property string aguja: ""
+    property bool sinRastro: false
+    property int filaHallada: -1
+
+    function buscar(hacia) {
+        if (!aguja)
+            return
+        mandar({ que: "buscar", texto: aguja, hacia: hacia })
+    }
+
+    function hallazgo(hay, fila) {
+        sinRastro = !hay
+        filaHallada = hay ? fila : -1
+    }
+
+    //  A la nota del día: el último mandato con su salida, o la sesión entera.
+    //  Si no hay Edinot abierto, la sesión lo dice y aquí sale como aviso.
+    function anotar(entera) { mandar({ que: "nota", entera: entera === true }) }
+
     //  ── modo tranquilo ────────────────────────────────────────────
     //
     //  Atenúa lo anterior al último mandato. En una sesión de agente de dos
@@ -417,6 +442,8 @@ K4Plugin {
             onCampana: function (titulo) { self.alLlamar(numero, titulo) }
             onPortapapeles: function (texto) { self.alCopiar(texto) }
             onTexto: function (contenido, motivo) { self.alRecibirTexto(contenido, motivo) }
+            onBuscado: function (hay, fila) { self.hallazgo(hay, fila) }
+            onAviso: function (texto) { K4.Sistema.avisar(Idioma.t("Terminal"), texto, false) }
         }
         onObjectAdded: function (indice, objeto) {
             const v = self.vivas.slice()

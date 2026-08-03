@@ -196,6 +196,42 @@ Item {
         return ""
     }
 
+    //  ── buscar ────────────────────────────────────────────────────
+    //
+    //  El reparto: rebuscar en el historial es de la sesión, que es quien lo
+    //  guarda; pintar de amarillo lo que se ve es de aquí, que ya tiene el
+    //  texto delante y no necesita preguntar nada.
+    property bool buscando: false
+
+    function abrirBusqueda() {
+        buscando = true
+        campoBusqueda.forceActiveFocus()
+        campoBusqueda.selectAll()
+    }
+
+    function cerrarBusqueda() {
+        buscando = false
+        plugin.aguja = ""
+        plugin.sinRastro = false
+        plugin.filaHallada = -1
+        campo.forceActiveFocus()
+    }
+
+    //  Por qué columnas aparece lo buscado en la fila `i` de la rejilla.
+    function hallazgosEn(i) {
+        const aguja = String(plugin.aguja).toLowerCase()
+        if (!buscando || aguja.length === 0)
+            return []
+        const linea = textoFila(i).toLowerCase()
+        const sitios = []
+        let donde = linea.indexOf(aguja)
+        while (donde >= 0) {
+            sitios.push(donde + 1)
+            donde = linea.indexOf(aguja, donde + aguja.length)
+        }
+        return sitios
+    }
+
     //  ── los bloques ───────────────────────────────────────────────
     //
     //  Lo que la sesión ya sabía y no se veía: dónde empieza cada mandato y
@@ -437,6 +473,34 @@ Item {
             height: vista.altoLinea
             color: Theme.blue
             opacity: 0.3
+        }
+    }
+
+    //  Lo buscado, resaltado en todas las filas donde asome: la activa en
+    //  sólido y las demás insinuadas. Va también por debajo del texto.
+    Repeater {
+        model: vista.buscando && vista.marco ? vista.marco.filas.length : 0
+
+        delegate: Item {
+            id: filaBuscada
+            required property int index
+            readonly property bool esLaBuena: vista.arriba + index === vista.plugin.filaHallada
+
+            Repeater {
+                model: vista.hallazgosEn(filaBuscada.index)
+
+                delegate: Rectangle {
+                    required property var modelData
+
+                    x: vista.margen + (modelData - 1) * vista.anchoCelda
+                    y: vista.margen + vista.altoCabecera
+                       + filaBuscada.index * vista.altoLinea
+                    width: String(vista.plugin.aguja).length * vista.anchoCelda
+                    height: vista.altoLinea
+                    color: Theme.yellow
+                    opacity: filaBuscada.esLaBuena ? 0.5 : 0.25
+                }
+            }
         }
     }
 
@@ -872,6 +936,17 @@ Item {
                 //  La salida del último mandato, sin tener que seleccionarla.
                 case Qt.Key_E: vista.copiarUltimaSalida(); e.accepted = true; return
                 case Qt.Key_Q: vista.plugin.alternarTranquilo(); e.accepted = true; return
+                case Qt.Key_F:
+                    if (vista.buscando)
+                        vista.cerrarBusqueda()
+                    else
+                        vista.abrirBusqueda()
+                    e.accepted = true
+                    return
+                //  A la nota del día: el último mandato con su salida, o la
+                //  sesión entera. Sin Edinot abierto, la sesión lo dice.
+                case Qt.Key_N: vista.plugin.anotar(false); e.accepted = true; return
+                case Qt.Key_M: vista.plugin.anotar(true); e.accepted = true; return
                 case Qt.Key_T: vista.plugin.nueva(); e.accepted = true; return
                 //  Cerrar la de delante. Con `exit` también se va —la sesión
                 //  muere y la pestaña con ella—, pero eso pide que la shell
@@ -989,6 +1064,89 @@ Item {
         }
     }
 
+    //  ── la caja de buscar ─────────────────────────────────────────
+    //
+    //  Vestida como los overlays de la isla y no como una caja de texto gris:
+    //  superficie de la casa, radio de ala partido por dos, y entra
+    //  deslizándose. Se pone arriba a la derecha porque abajo está el pie con
+    //  el directorio, y tapar dónde estás mientras buscas es una faena.
+    Rectangle {
+        id: cajaBusqueda
+
+        visible: opacity > 0
+        anchors.right: parent.right
+        anchors.rightMargin: vista.margen + 10
+        y: vista.margen + vista.altoCabecera - 3 + (vista.buscando ? 0 : -14)
+        width: 250
+        height: 26
+        radius: 8
+        color: Theme.surface
+        border.width: 1
+        border.color: vista.plugin.sinRastro ? Theme.red : Theme.surfaceHi
+        opacity: vista.buscando ? 1 : 0
+
+        Behavior on opacity { NumberAnimation { duration: 180 } }
+        Behavior on y { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+
+        IconGlyph {
+            id: lupa
+            anchors.left: parent.left
+            anchors.leftMargin: 8
+            anchors.verticalCenter: parent.verticalCenter
+            text: String.fromCodePoint(0xF0349)
+            color: Theme.muted
+            font.pixelSize: 12
+        }
+
+        IslandLabel {
+            anchors.left: lupa.right
+            anchors.leftMargin: 7
+            anchors.verticalCenter: parent.verticalCenter
+            visible: campoBusqueda.text.length === 0
+            text: Idioma.t("buscar")
+            color: Theme.dim
+            font.pixelSize: 11
+        }
+
+        TextInput {
+            id: campoBusqueda
+
+            anchors.left: lupa.right
+            anchors.leftMargin: 7
+            anchors.right: parent.right
+            anchors.rightMargin: 8
+            anchors.verticalCenter: parent.verticalCenter
+            verticalAlignment: TextInput.AlignVCenter
+            cursorDelegate: IslandCursor {}
+            color: Theme.ink
+            font.family: Theme.uiFont
+            font.pixelSize: 11
+            clip: true
+            selectByMouse: true
+            selectionColor: Theme.blue
+
+            onTextEdited: {
+                vista.plugin.aguja = text
+                vista.plugin.sinRastro = false
+            }
+
+            Keys.onPressed: function (e) {
+                if (e.key === Qt.Key_Escape) {
+                    vista.cerrarBusqueda()
+                    e.accepted = true
+                    return
+                }
+                //  Intro busca HACIA ATRÁS. En una terminal lo que se busca
+                //  casi siempre acaba de pasar y está por encima; con shift,
+                //  hacia delante.
+                if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+                    vista.plugin.buscar((e.modifiers & Qt.ShiftModifier) ? 1 : -1)
+                    e.accepted = true
+                }
+            }
+        }
+    }
+
     //  Pie discreto: dónde estás, que es lo que uno mira, y el recordatorio
     //  de salida en pequeño a la derecha. Con el mismo margen que la rejilla,
     //  que la island tiene las esquinas redondeadas y lo que se pega al borde
@@ -1008,7 +1166,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.rightMargin: vista.margen
         anchors.bottomMargin: 6
-        text: Idioma.t("ctrl+shift: ← → cambia · T nueva · V pega · C copia")
+        text: Idioma.t("ctrl+shift: ←→ cambia · T nueva · V pega · C copia · F busca")
         color: Theme.dim
         font.pixelSize: 10
     }
