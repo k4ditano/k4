@@ -140,6 +140,18 @@ K4Plugin {
         //  es el eco de lo que se acaba de teclear; a partir de ahí, cualquier
         //  salida —el prompt de allí o un «connection refused»— significa que
         //  la espera terminó. Y un tope, por si no llega nada nunca.
+        //  Y si el `ssh` ha terminado, se sale del sitio: fuera el color y
+        //  fuera la píldora. Lo dice el bloque del mandato —la shell de aquí,
+        //  no la de allí— y vale igual para una salida limpia que para un
+        //  corte de red.
+        if (sesion && sesion.conectadoA && marco.ultimo
+                && marco.ultimo.estado !== "corre") {
+            salirDe(claveIsla(sesion.numero))
+            mandar({ que: "tinte", color: "" })
+            Consola.salioDe(sesion.conectadoA)
+            sesion.conectadoA = ""
+        }
+
         //  Con un mandato aún por escribir no se apaga nada: los marcos que
         //  llegan ahora son de la sesión recién nacida sacando su prompt, no
         //  respuesta de nadie. Apagarlo aquí dejaba el camino sin verse jamás.
@@ -371,8 +383,18 @@ K4Plugin {
         //  a que la shell saque su prompt, así que entre pulsar Intro y esto
         //  pasa casi medio segundo — y el eco llegaba «tarde» y apagaba el
         //  camino antes de empezar.
-        if (Consola.conectando)
+        if (Consola.conectando) {
             Consola.conectandoDesde = Date.now()
+
+            //  El sitio se apunta en la sesión —no en el plugin— porque puede
+            //  haber varias, cada una en su servidor.
+            if (sesion) {
+                sesion.conectadoA = Consola.conectando
+                if (Consola.tinteConexion)
+                    mandar({ que: "tinte", color: Consola.tinteConexion })
+                entrarEn(claveIsla(sesion.numero), Consola.conectando)
+            }
+        }
     }
 
     Timer {
@@ -740,6 +762,39 @@ K4Plugin {
         esperando(claveIsla(numero), quien)
     }
 
+    //  ── a qué estás conectado ─────────────────────────────────────
+    //
+    //  Una píldora por sesión que está dentro de un servidor. Se apunta con la
+    //  clave de quien la abre —el pid de la ventana o la sesión de la isla—
+    //  para que dos conexiones a la vez no se pisen.
+    function idConexion(clave) { return "terminal.ssh." + clave }
+
+    //  A dónde está conectada cada una, por su clave. Hace falta para poder
+    //  decir de QUÉ servidor se ha salido: la ventana solo manda su pid.
+    property var dentroDe: ({})
+
+    function entrarEn(clave, destino) {
+        const nombre = String(destino || "").trim()
+        if (!nombre)
+            return
+        const d = Object.assign({}, dentroDe)
+        d[clave] = nombre
+        dentroDe = d
+        K4.Pildora.registrar(idConexion(clave), nombre.slice(0, 20),
+                             0xF08C0, Theme.blue, 28, true)
+    }
+
+    function salirDe(clave) {
+        K4.Pildora.quitar(idConexion(clave))
+        const destino = dentroDe[clave]
+        if (destino) {
+            const d = Object.assign({}, dentroDe)
+            delete d[clave]
+            dentroDe = d
+            Consola.salioDe(destino)
+        }
+    }
+
     //  ── «tienes terminales abiertas» ──────────────────────────────
     //
     //  Con la vista escondida no hay NADA que recuerde que ahí dentro sigue
@@ -884,6 +939,17 @@ K4Plugin {
         //  largo— y se avisa una vez.
         function campana(pid: string, titulo: string): void {
             self.esperando(pid, titulo)
+        }
+
+        //  Estás dentro de un sitio. Lo dice la ventana al conectar y la
+        //  píldora lo enseña: con tres terminales abiertas, saber a cuál
+        //  máquina pertenece cada una no debería exigir mirar el prompt.
+        function conectado(pid: string, destino: string): void {
+            self.entrarEn(pid, destino)
+        }
+
+        function desconectado(pid: string): void {
+            self.salirDe(pid)
         }
 
         //  Un recado suelto de la terminal: no tiene dónde decir «guardado»

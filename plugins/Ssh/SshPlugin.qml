@@ -60,7 +60,9 @@ K4Plugin {
         { id: "clave",      nombre: Idioma.t("Clave"),      ayuda: Idioma.t("ruta de la privada, si no la de siempre"), suyo: false },
         { id: "salto",      nombre: Idioma.t("Salto"),      ayuda: Idioma.t("pasar por otro servidor (ProxyJump)"), suyo: false },
         { id: "etiquetas",  nombre: Idioma.t("Etiquetas"),  ayuda: Idioma.t("separadas por espacios, para buscar"), suyo: true },
-        { id: "alConectar", nombre: Idioma.t("Al entrar"),  ayuda: Idioma.t("un mandato que se teclea al conectar"), suyo: true }
+        { id: "alConectar", nombre: Idioma.t("Al entrar"),  ayuda: Idioma.t("un mandato que se teclea al conectar"), suyo: true },
+        { id: "tinte",      nombre: Idioma.t("Color"),      ayuda: Idioma.t("rojo, ámbar, verde, azul, morado — para saber dónde estás"), suyo: true },
+        { id: "tuneles",    nombre: Idioma.t("Túneles"),    ayuda: Idioma.t("8080:localhost:80 · socks:1080 · R:9000:localhost:9000"), suyo: true }
     ]
 
     function editar(h) {
@@ -74,6 +76,8 @@ K4Plugin {
             salto: h ? (h.salto || "") : "",
             etiquetas: h && h.etiquetas ? h.etiquetas.join(" ") : "",
             alConectar: h && h.alConectar ? h.alConectar : "",
+            tinte: h && h.tinte ? h.tinte : "",
+            tuneles: h && h.tuneles ? h.tuneles : "",
             favorito: h ? h.favorito === true : false
         }
         campo = 0
@@ -239,6 +243,8 @@ K4Plugin {
                  ultimo: Number(e.ultimo) || 0,
                  etiquetas: e.etiquetas || [],
                  alConectar: e.alConectar || "",
+                 tinte: e.tinte || "",
+                 tuneles: e.tuneles || "",
                  rapido: false }
     }
 
@@ -336,6 +342,10 @@ K4Plugin {
         if (!h.rapido)
             apuntarVisita(h.alias)
 
+        //  Los túneles, con la conexión: se levantan aquí y se caen cuando la
+        //  terminal avise de que se salió.
+        abrirTuneles(h)
+
         if (enVentana === true) {
             //  Por `Consola` y no a pelo: es quien sabe que wezterm y
             //  gnome-terminal no aceptan `-e` como las demás, y quien envuelve
@@ -350,7 +360,8 @@ K4Plugin {
             //  Que la terminal sepa que lo que viene es una conexión y pinte
             //  el camino mientras tanto.
             Consola.conectandoA(h.rapido && h.usuario
-                                ? h.usuario + "@" + h.host : h.alias)
+                                ? h.usuario + "@" + h.host : h.alias,
+                                h.tinte || "")
             K4.Terminal.ejecutar(guion)
         }
 
@@ -420,7 +431,9 @@ K4Plugin {
         tocar(alias, {
             favorito: b.favorito === true,
             etiquetas: etiquetas ? etiquetas.split(/\s+/) : [],
-            alConectar: String(b.alConectar || "").trim()
+            alConectar: String(b.alConectar || "").trim(),
+            tinte: String(b.tinte || "").trim(),
+            tuneles: String(b.tuneles || "").trim()
         })
         if (b.original && b.original !== alias)
             olvidarExtra(b.original)
@@ -521,6 +534,174 @@ K4Plugin {
         const crear = "ssh-keygen -t ed25519 -C k4term"
         K4.Terminal.ejecutar(destino ? crear + " && ssh-copy-id " + destino : crear)
         cerrar()
+    }
+
+    //  ── los túneles ───────────────────────────────────────────────
+    //
+    //  Un túnel es otro `ssh` corriendo por su cuenta (`ssh -N`), así que vive
+    //  fuera de la terminal: no ocupa pestaña, no se ve, y por eso mismo se
+    //  olvida. La píldora es el sitio de la casa para lo que corre por detrás
+    //  —ahí están los mandatos largos y los agentes—, así que ahí van: cada
+    //  túnel el suyo, y pulsarlo lo mata.
+    //
+    //  Se levantan al conectar y se caen al salir. Podrían vivir solos, pero
+    //  entonces habría que acordarse de apagarlos; atados a la sesión, hacen
+    //  lo que uno espera sin pensarlo.
+    property ListModel tuneles: ListModel {}
+
+    //  `8080:localhost:80` (local), `R:9000:localhost:9000` (remoto),
+    //  `socks:1080` o `D:1080` (SOCKS). Separados por espacios o comas.
+    function leerTuneles(texto) {
+        const salida = []
+        String(texto || "").split(/[\s,]+/).forEach(function (trozo) {
+            if (!trozo)
+                return
+            const bajo = trozo.toLowerCase()
+            if (bajo.indexOf("socks:") === 0 || bajo.indexOf("d:") === 0) {
+                const puerto = trozo.split(":").pop()
+                if (puerto)
+                    salida.push({ bandera: "-D", spec: puerto, mote: "socks " + puerto })
+                return
+            }
+            if (bajo.indexOf("r:") === 0) {
+                const spec = trozo.slice(2)
+                if (spec)
+                    salida.push({ bandera: "-R", spec: spec, mote: "↰ " + spec.split(":")[0] })
+                return
+            }
+            const spec = bajo.indexOf("l:") === 0 ? trozo.slice(2) : trozo
+            if (spec.indexOf(":") > 0)
+                salida.push({ bandera: "-L", spec: spec, mote: "↳ " + spec.split(":")[0] })
+        })
+        return salida
+    }
+
+    function abrirTuneles(h) {
+        if (!h || !h.tuneles)
+            return
+        const destino = h.rapido && h.usuario ? h.usuario + "@" + h.host : h.alias
+        const lista = leerTuneles(h.tuneles)
+        for (let i = 0; i < lista.length; ++i) {
+            tuneles.append({ destino: destino, bandera: lista[i].bandera,
+                             spec: lista[i].spec, mote: lista[i].mote })
+        }
+    }
+
+    function cerrarTuneles(destino) {
+        for (let i = tuneles.count - 1; i >= 0; --i)
+            if (tuneles.get(i).destino === String(destino))
+                tuneles.remove(i)
+    }
+
+    property Connections alSalir: Connections {
+        target: Consola
+        function onSalioDe(destino) { self.cerrarTuneles(destino) }
+    }
+
+    //  Cada túnel, su proceso y su píldora. El `Instantiator` los crea y los
+    //  destruye con la lista, que es lo que hace que cerrar la conexión los
+    //  apague sin tener que ir matando nada a mano.
+    property Instantiator tuneleros: Instantiator {
+        model: self.tuneles
+
+        delegate: QtObject {
+            id: tunel
+            required property string destino
+            required property string bandera
+            required property string spec
+            required property string mote
+
+            readonly property string clave: "terminal.tunel." + destino + "." + spec
+
+            //  Reconexión: un túnel que se cae por un corte de red debe volver
+            //  solo, pero con cuidado — si el fallo es del otro lado (puerto
+            //  ocupado, permiso denegado) reintentar cada segundo es una
+            //  ametralladora. Se espera cada vez un poco más, hasta medio
+            //  minuto.
+            property int intentos: 0
+
+            property var proceso: K4.Process {
+                command: ["ssh", "-N", tunel.bandera, tunel.spec, tunel.destino]
+                running: true
+                onTerminado: {
+                    running = false
+                    tunel.intentos += 1
+                    reintento.interval = Math.min(30000, 2000 * tunel.intentos)
+                    reintento.restart()
+                }
+            }
+
+            property var reintento: Timer {
+                onTriggered: tunel.proceso.running = true
+            }
+
+            Component.onCompleted: K4.Pildora.registrar(
+                tunel.clave, tunel.mote, 0xF0BBB, Theme.green, 27, true)
+            Component.onDestruction: {
+                tunel.reintento.stop()
+                tunel.proceso.running = false
+                K4.Pildora.quitar(tunel.clave)
+            }
+        }
+    }
+
+    //  ── llevarle nuestra integración al servidor ──────────────────
+    //
+    //  Los bloques, el filete del margen y el aviso de «te está esperando»
+    //  funcionan porque la shell de aquí los emite. Por SSH, la shell es la de
+    //  ALLÍ: sin esto, entrar en un servidor apaga media terminal.
+    //
+    //  Se manda por una tubería (`k4term --integracion zsh | ssh …`) en vez de
+    //  copiar un fichero: así no hace falta saber dónde vive el repo, que en
+    //  una barra instalada no se sabe. Y se corre EN LA TERMINAL porque puede
+    //  pedirte la contraseña del servidor.
+    function llevarIntegracion() {
+        const h = lista[indice]
+        if (!h || !Consola.esNuestra)
+            return
+        const destino = h.rapido && h.usuario ? h.usuario + "@" + h.host : h.alias
+
+        //  La línea del rc lleva su propia marca para poder quitarla luego, y
+        //  se comprueba antes de escribir: instalarlo dos veces dejaría la
+        //  shell emitiendo cada marcador por duplicado.
+        const guion =
+            "set -e; " +
+            "echo '→ copiando la integración a " + destino + "'; " +
+            "k4term --integracion zsh  | ssh " + destino +
+                " 'mkdir -p ~/.config/k4term && cat > ~/.config/k4term/k4term.zsh'; " +
+            "k4term --integracion fish | ssh " + destino +
+                " 'cat > ~/.config/k4term/k4term.fish'; " +
+            "ssh -t " + destino + " '" +
+                "for par in \"$HOME/.zshrc:zsh\" \"$HOME/.config/fish/config.fish:fish\"; do " +
+                "  rc=${par%:*}; cual=${par#*:}; " +
+                "  [ -f \"$rc\" ] || continue; " +
+                "  grep -q k4term/k4term.$cual \"$rc\" && { echo \"✓ $cual ya estaba\"; continue; }; " +
+                "  printf \"\\n#  k4term: integración de la shell\\n\" >> \"$rc\"; " +
+                "  printf \". ~/.config/k4term/k4term.%s\\n\" \"$cual\" >> \"$rc\"; " +
+                "  echo \"✓ $cual integrada\"; " +
+                "done'; " +
+            "echo '→ listo: vuelve a entrar y los bloques funcionarán también allí'"
+
+        K4.Terminal.ejecutar(guion + K4.Terminal.cierre)
+        cerrar()
+    }
+
+    //  Pulsar la píldora de un túnel lo cierra: es lo que uno espera de algo
+    //  que está ahí precisamente para recordarte que sigue abierto.
+    property Connections clicsPildora: Connections {
+        target: K4.Pildora
+        function onInvocado(id) {
+            const marca = "terminal.tunel."
+            if (String(id).indexOf(marca) !== 0)
+                return
+            for (let i = self.tuneles.count - 1; i >= 0; --i) {
+                const t = self.tuneles.get(i)
+                if ("terminal.tunel." + t.destino + "." + t.spec === String(id)) {
+                    self.tuneles.remove(i)
+                    return
+                }
+            }
+        }
     }
 
     K4.Ipc {

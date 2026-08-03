@@ -19,6 +19,10 @@ QtObject {
     //  que hay, con lo que estuviera corriendo dentro.
     property string heredar: ""
 
+    //  A qué servidor está conectada ahora mismo, si lo está. Lo apunta el
+    //  plugin al mandar el `ssh` y lo borra cuando ese mandato termina.
+    property string conectadoA: ""
+
     //  Un número que no se repite, para poder referirse a ella aunque se
     //  cierren otras por el medio. No se llama `id` porque en QML esa palabra
     //  está cogida.

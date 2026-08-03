@@ -62,15 +62,24 @@ Singleton {
     //  que tarda tres segundos sin decir nada parece una terminal colgada.
     property string conectando: ""
     property double conectandoDesde: 0
+    //  Y de qué color se pone la terminal mientras estés dentro. Viaja con el
+    //  destino porque es parte de «a dónde vas».
+    property string tinteConexion: ""
 
-    function conectandoA(destino) {
+    function conectandoA(destino, tinte) {
         conectando = String(destino || "")
+        tinteConexion = String(tinte || "")
         conectandoDesde = Date.now()
     }
 
     function conectado() {
         conectando = ""
     }
+
+    //  Se ha salido de un servidor. Lo dice quien ve terminar el mandato —el
+    //  plugin de la terminal— y lo escucha quien tenga algo montado sobre esa
+    //  conexión: hoy, los túneles del plugin de servidores.
+    signal salioDe(string destino)
 
     //  Y un tope. Lo apaga la primera salida que llegue, pero si el otro lado
     //  no contesta nunca —una máquina apagada tarda dos minutos en rendirse—

@@ -122,6 +122,8 @@ FadeIn {
                         vista.plugin.favoritoActual(); ev.accepted = true
                     } else if (conCtrl && ev.key === Qt.Key_K) {
                         vista.plugin.crearClave(); ev.accepted = true
+                    } else if (conCtrl && ev.key === Qt.Key_I) {
+                        vista.plugin.llevarIntegracion(); ev.accepted = true
                     } else if (ev.key === Qt.Key_Delete) {
                         vista.plugin.borrarActual(); ev.accepted = true
                     }
@@ -320,7 +322,7 @@ FadeIn {
 
             IslandLabel {
                 visible: !vista.plugin.sinClaves
-                text: Idioma.t("intro conecta · shift+intro ventana · ctrl+E edita · ctrl+N nuevo · ctrl+F favorito · supr borra")
+                text: Idioma.t("intro conecta · shift+intro ventana · ctrl+E edita · ctrl+F favorito · ctrl+I lleva la integración · supr borra")
                 color: Theme.dim
                 font.pixelSize: 10
                 Layout.fillWidth: true
