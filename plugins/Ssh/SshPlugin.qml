@@ -336,10 +336,15 @@ K4Plugin {
         if (!h.rapido)
             apuntarVisita(h.alias)
 
-        if (enVentana === true)
+        if (enVentana === true) {
             K4.Sistema.lanzar([Consola.binario || "k4term", "-e", "sh", "-c", guion])
-        else
+        } else {
+            //  Que la terminal sepa que lo que viene es una conexión y pinte
+            //  el camino mientras tanto.
+            Consola.conectandoA(h.rapido && h.usuario
+                                ? h.usuario + "@" + h.host : h.alias)
             K4.Terminal.ejecutar(guion)
+        }
 
         cerrar()
     }

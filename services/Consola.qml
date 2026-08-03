@@ -54,6 +54,33 @@ Singleton {
     readonly property string cierre: usaIsla
         ? "" : " printf '\\nPulsa Enter para cerrar…'; read _;"
 
+    //  ── una conexión en marcha ────────────────────────────────────
+    //
+    //  Lo apunta quien la lanza (el plugin de servidores) y lo apaga quien ve
+    //  llegar la respuesta (el de la terminal). Va aquí porque son dos plugins
+    //  distintos y este servicio es lo que ya comparten — y porque un `ssh`
+    //  que tarda tres segundos sin decir nada parece una terminal colgada.
+    property string conectando: ""
+    property double conectandoDesde: 0
+
+    function conectandoA(destino) {
+        conectando = String(destino || "")
+        conectandoDesde = Date.now()
+    }
+
+    function conectado() {
+        conectando = ""
+    }
+
+    //  Y un tope. Lo apaga la primera salida que llegue, pero si el otro lado
+    //  no contesta nunca —una máquina apagada tarda dos minutos en rendirse—
+    //  no puede quedarse el camino encendido esperando.
+    property Timer topeConexion: Timer {
+        interval: 25000
+        running: consola.conectando !== ""
+        onTriggered: consola.conectado()
+    }
+
     function ejecutar(guion) {
         if (usaIsla)
             enIsla(guion)

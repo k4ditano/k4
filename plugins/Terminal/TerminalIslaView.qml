@@ -1275,6 +1275,127 @@ Item {
         }
     }
 
+    //  ── el camino de una conexión ─────────────────────────────────
+    //
+    //  Mientras `ssh` negocia no se ve NADA —ni un punto— y tres segundos de
+    //  pantalla quieta parecen una terminal colgada. Esto dice «voy»: de aquí,
+    //  por la llave, hasta allí. Lo enciende el plugin de servidores y lo apaga
+    //  la primera salida que llegue.
+    Item {
+        anchors.fill: parent
+        visible: Consola.conectando !== ""
+        z: 10
+
+        Rectangle {
+            anchors.fill: parent
+            color: Theme.islandBg
+            opacity: 0.82
+        }
+
+        Column {
+            anchors.centerIn: parent
+            spacing: 10
+
+            Item {
+                width: 220
+                height: 26
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                //  La línea, y encima la chispa que la recorre.
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width
+                    height: 2
+                    color: Theme.blue
+                    opacity: 0.25
+                }
+
+                Rectangle {
+                    id: chispa
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 10
+                    height: 2
+                    color: Theme.blue
+
+                    //  De un lado al otro y vuelta a empezar. Va con el motor
+                    //  de animación y no con un Timer, como todo lo que se
+                    //  mueve en esta casa.
+                    NumberAnimation on x {
+                        running: Consola.conectando !== ""
+                        loops: Animation.Infinite
+                        from: 0
+                        to: 210
+                        duration: 1500
+                        easing.type: Easing.InOutSine
+                    }
+                }
+
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 16
+                    height: 16
+                    radius: 8
+                    color: Theme.blue
+                }
+
+                //  La llave: un ojo de cerradura dibujado, no un glifo — una
+                //  letra se apoya en su línea base y dentro de un círculo
+                //  siempre queda descentrada.
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 26
+                    height: 26
+                    radius: 13
+                    color: Theme.blue
+
+                    SequentialAnimation on opacity {
+                        running: Consola.conectando !== ""
+                        loops: Animation.Infinite
+                        NumberAnimation { to: 0.55; duration: 700; easing.type: Easing.InOutQuad }
+                        NumberAnimation { to: 1.0;  duration: 700; easing.type: Easing.InOutQuad }
+                    }
+
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: 7
+                        width: 8
+                        height: 8
+                        radius: 4
+                        color: Theme.islandBg
+                    }
+
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: 13
+                        width: 3
+                        height: 6
+                        radius: 1
+                        color: Theme.islandBg
+                    }
+                }
+
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    x: parent.width - 16
+                    width: 16
+                    height: 16
+                    radius: 8
+                    color: Theme.blue
+                    opacity: chispa.x > 180 ? 1 : 0.25
+
+                    Behavior on opacity { NumberAnimation { duration: 200 } }
+                }
+            }
+
+            IslandLabel {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: Idioma.t("conectando a ") + Consola.conectando + "…"
+                color: Theme.muted
+                font.pixelSize: 12
+            }
+        }
+    }
+
     //  Pie discreto: dónde estás, que es lo que uno mira, y el recordatorio
     //  de salida en pequeño a la derecha. Con el mismo margen que la rejilla,
     //  que la island tiene las esquinas redondeadas y lo que se pega al borde

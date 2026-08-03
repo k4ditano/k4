@@ -134,6 +134,20 @@ K4Plugin {
     onMarcoChanged: {
         if (!marco)
             return
+
+        //  Lo primero que llega del otro lado apaga el camino de la conexión.
+        //  Regla de dedo, y conviene decirlo: lo del primer cuarto de segundo
+        //  es el eco de lo que se acaba de teclear; a partir de ahí, cualquier
+        //  salida —el prompt de allí o un «connection refused»— significa que
+        //  la espera terminó. Y un tope, por si no llega nada nunca.
+        //  Con un mandato aún por escribir no se apaga nada: los marcos que
+        //  llegan ahora son de la sesión recién nacida sacando su prompt, no
+        //  respuesta de nadie. Apagarlo aquí dejaba el camino sin verse jamás.
+        if (Consola.conectando && !pendiente) {
+            const esperado = Date.now() - Consola.conectandoDesde
+            if (esperado > 250)
+                Consola.conectado()
+        }
         //  «Se ha llenado» es llegar a la última fila o a la penúltima. Lo de
         //  la penúltima no es una concesión: un programa de pantalla completa
         //  se ajusta SIEMPRE al hueco que le das, así que nunca se desborda y
@@ -351,6 +365,14 @@ K4Plugin {
         //  espera eso. Con `\n` el mandato se queda escrito y sin ejecutar —
         //  comprobado en vivo, la línea entera ahí quieta.
         mandar({ que: "texto", valor: String.fromCharCode(0x15) + guion + "\r" })
+
+        //  El cuarto de segundo de gracia se cuenta desde AQUÍ, que es cuando
+        //  el mandato sale de verdad: la sesión de la isla se estrena y espera
+        //  a que la shell saque su prompt, así que entre pulsar Intro y esto
+        //  pasa casi medio segundo — y el eco llegaba «tarde» y apagaba el
+        //  camino antes de empezar.
+        if (Consola.conectando)
+            Consola.conectandoDesde = Date.now()
     }
 
     Timer {
