@@ -61,10 +61,14 @@ hl.bind(mod .. " + ALT + C",     hl.dsp.exec_cmd(k4 .. "session"))
 -- que lleva SHIFT es la de la casa.
 --
 -- Son la misma sesión vista de dos maneras, y por eso el par tiene sentido:
--- SHIFT la asoma en la island para lo rápido, ALT la saca a una ventana
--- grande —en el directorio donde estuviera— cuando la cosa se alarga.
+-- SHIFT la asoma en la island para lo rápido, ALT la MUDA a una ventana
+-- grande cuando la cosa se alarga —con lo que esté corriendo dentro, que no
+-- se entera de nada.
+--
+-- Y ALT vale en los dos sentidos: pulsado sobre una ventana de k4term, la
+-- sesión se vuelve a la island. Un gesto, no dos.
 hl.bind(mod .. " + SHIFT + T",   hl.dsp.exec_cmd(term .. "isla"))
-hl.bind(mod .. " + ALT + T",     hl.dsp.exec_cmd(term .. "sacar"))
+hl.bind(mod .. " + ALT + T",     hl.dsp.exec_cmd(term .. "mudar"))
 
 ----------------------------------------------------------------------------
 -- El asistente

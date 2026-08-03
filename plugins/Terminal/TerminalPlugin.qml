@@ -784,6 +784,13 @@ K4Plugin {
         //  Lo de la island, a lo grande y en el mismo sitio.
         function sacar(): void { self.sacar() }
 
+        //  El gesto único: mudar la sesión al otro lado, sea cual sea el otro
+        //  lado. Si estás mirando una ventana de k4term, se vuelve a la
+        //  island; si no, la de la island se va a una ventana. Dos atajos
+        //  para lo mismo no tenían sentido, y encima el de la ventana no
+        //  llegaba mientras la island se quedaba el teclado.
+        function mudar(): void { quien.running = true }
+
         //  Abrir donde estás mirando: se pregunta a Hyprland por la ventana
         //  con foco y se baja por el árbol de procesos hasta el último hijo
         //  —el intérprete que de verdad tiene el directorio— para leerle el
@@ -1002,6 +1009,32 @@ K4Plugin {
         command: ["hyprctl", "eval",
                   "local v = hl.get_window(\"pid:" + pid + "\")"
                   + " if v then hl.dispatch(hl.dsp.focus({ window = v })) end"]
+        onTerminado: running = false
+    }
+
+    //  Quién está delante ahora mismo. Con eso se decide hacia dónde muda la
+    //  sesión: la barra no puede preguntarle a una ventana de GPUI, pero sí
+    //  puede llamarla — y al proceso de una ventana se le llama con una señal.
+    K4.Process {
+        id: quien
+        command: ["hyprctl", "activewindow", "-j"]
+        onSalida: function (texto) {
+            let v = null
+            try {
+                v = JSON.parse(texto)
+            } catch (e) {
+                v = null
+            }
+            if (v && String(v.class) === "k4term" && v.pid > 0) {
+                K4.Sistema.lanzar(["kill", "-USR1", String(v.pid)])
+                return
+            }
+            //  Mudar es mover algo que existe. Sin sesión en la island no hay
+            //  nada que llevarse, y abrir una terminal nueva aquí sería una
+            //  sorpresa: pasó en la primera prueba y no se entiende.
+            if (self.sesion)
+                self.sacar()
+        }
         onTerminado: running = false
     }
 
