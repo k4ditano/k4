@@ -92,7 +92,44 @@ Item {
     //  La fila del HISTORIAL a la que corresponde una de la rejilla. Todo lo
     //  que se guarda —la selección, las marcas— va en estas coordenadas: son
     //  las únicas que no se mueven cuando sigue saliendo salida.
-    function absoluta(filaVista) { return arriba + filaVista - 1 }
+    //
+    //  Y no es una resta: con salidas recogidas, la rejilla ya no es un calco
+    //  del hueco visible —una fila puede valer por cincuenta—, así que la
+    //  correspondencia la manda la sesión, que es quien pliega.
+    function absoluta(filaVista) {
+        if (marco && marco.filas_abs && filaVista >= 1 && filaVista <= marco.filas_abs.length)
+            return marco.filas_abs[filaVista - 1]
+        return arriba + filaVista - 1
+    }
+
+    //  Al revés: en qué fila de la rejilla ha caído una del historial, o -1 si
+    //  ahora mismo no se ve (está recogida, o fuera de la pantalla).
+    function enRejilla(filaAbs) {
+        if (!marco || !marco.filas_abs)
+            return filaAbs - arriba
+        for (let i = 0; i < marco.filas_abs.length; ++i)
+            if (marco.filas_abs[i] === filaAbs)
+                return i
+        return -1
+    }
+
+    //  ¿Esa fila de la rejilla es la línea de una salida recogida?
+    function esResumen(i) {
+        return !!(marco && marco.resumidas && marco.resumidas.indexOf(i) >= 0)
+    }
+
+    //  Recoger o desplegar la salida de un mandato. Se nombra por la fila del
+    //  historial donde empieza: los índices de la rejilla cambian en cuanto
+    //  sale una línea más.
+    function plegar(filaAbs) {
+        if (filaAbs !== undefined && filaAbs >= 0)
+            plugin.mandar({ que: "plegar", fila: filaAbs })
+    }
+
+    function plegarUltimo() {
+        if (ultimoBloque && ultimoBloque.fin > ultimoBloque.fila)
+            plegar(ultimoBloque.fila)
+    }
 
     //  Una fila de la rejilla como texto, rellenando con espacios los huecos
     //  entre tramos: los tramos vienen con su columna, y sin el relleno las
@@ -134,7 +171,7 @@ Item {
         const s = ordenada()
         if (!s)
             return null
-        const abs = arriba + i
+        const abs = absoluta(i + 1)
         if (abs < s.desde.fila || abs > s.hasta.fila)
             return null
         const a = abs === s.desde.fila ? s.desde.col : 1
@@ -180,10 +217,20 @@ Item {
         return { a: a, b: b }
     }
 
-    //  Un enlace bajo esa celda, si lo hay. Se buscan los que se escriben
-    //  enteros; los de OSC 8 —texto con enlace escondido detrás— no llegan
-    //  hasta aquí y quedan pendientes.
+    //  Un enlace bajo esa celda, si lo hay.
+    //
+    //  Primero el de verdad: el de OSC 8, que la aplicación escondió detrás
+    //  del texto y viaja en el tramo. Si no lo hay, se adivina mirando si algo
+    //  parece una dirección, que es lo que salva a `ls` y a los mensajes de
+    //  error de toda la vida.
     function urlEn(filaVista, col) {
+        const tramos = marco && marco.filas[filaVista - 1] ? marco.filas[filaVista - 1] : []
+        for (let k = 0; k < tramos.length; ++k) {
+            const tr = tramos[k]
+            if (tr.u && col >= tr.c && col < tr.c + tr.t.length)
+                return tr.u
+        }
+
         const linea = textoFila(filaVista - 1)
         const patron = /(https?:\/\/|www\.)[^\s"'`<>()\[\]]+/g
         let m
@@ -484,7 +531,7 @@ Item {
         delegate: Item {
             id: filaBuscada
             required property int index
-            readonly property bool esLaBuena: vista.arriba + index === vista.plugin.filaHallada
+            readonly property bool esLaBuena: vista.absoluta(index + 1) === vista.plugin.filaHallada
 
             Repeater {
                 model: vista.hallazgosEn(filaBuscada.index)
@@ -511,18 +558,39 @@ Item {
     Repeater {
         model: vista.marco && vista.marco.bloques ? vista.marco.bloques : []
 
-        delegate: Rectangle {
+        delegate: Item {
             required property var modelData
+            readonly property int enFila: vista.enRejilla(modelData.fila)
 
-            x: vista.margen - 8
-            y: vista.margen + vista.altoCabecera
-               + (modelData.fila - vista.arriba) * vista.altoLinea
-            width: 2
+            visible: enFila >= 0
+            x: vista.margen - 12
+            y: vista.margen + vista.altoCabecera + enFila * vista.altoLinea
+            width: 10
             height: vista.altoLinea
-            radius: 1
-            color: modelData.estado === "bien" ? Theme.green
-                 : (modelData.estado === "mal" ? Theme.red : Theme.muted)
-            opacity: modelData.estado === "corre" ? 0.6 : 0.9
+
+            Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                x: 4
+                width: 2
+                height: parent.height
+                radius: 1
+                color: parent.modelData.estado === "bien" ? Theme.green
+                     : (parent.modelData.estado === "mal" ? Theme.red : Theme.muted)
+                opacity: parent.modelData.estado === "corre" ? 0.6
+                       : (filete.containsMouse ? 1 : 0.9)
+            }
+
+            //  Pulsar el filete recoge la salida de ese mandato. Es el sitio
+            //  natural —marca justo el bloque— pero dos píxeles no se aciertan
+            //  con el ratón, así que la zona sensible es más ancha que la raya.
+            MouseArea {
+                id: filete
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                enabled: parent.modelData.fin > parent.modelData.fila
+                onClicked: vista.plegar(parent.modelData.fila)
+            }
         }
     }
 
@@ -541,11 +609,23 @@ Item {
                 width: vista.width - vista.margen * 2
                 height: vista.altoLinea
 
+                //  La línea de una salida recogida se distingue: un fondo
+                //  suave que dice «aquí hay algo doblado», y el ratón en mano
+                //  al pasar por encima.
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.rightMargin: parent.width * 0.55
+                    visible: vista.esResumen(parent.index)
+                    color: Theme.surfaceHi
+                    opacity: 0.35
+                    radius: 4
+                }
+
                 //  Modo tranquilo: lo anterior al último mandato se atenúa. En
                 //  una sesión larga con un agente dentro, saber dónde empieza
                 //  lo nuevo vale más que cualquier color.
                 opacity: vista.plugin.tranquilo && vista.ultimoBloque
-                         && (vista.arriba + index) < vista.ultimoBloque.fila ? 0.5 : 1
+                         && vista.absoluta(index + 1) < vista.ultimoBloque.fila ? 0.5 : 1
                 Behavior on opacity { NumberAnimation { duration: 140 } }
 
                 Repeater {
@@ -674,22 +754,52 @@ Item {
             required property var modelData
             required property int index
             x: modelData.x
-            y: modelData.y
-            width: 2
-            height: vista.altoLinea
+            y: modelData.y + (vista.figuraCursor === "subrayado"
+                              ? vista.altoLinea - vista.altoCursor : 0)
+            width: vista.anchoCursor
+            height: vista.altoCursor
             color: Theme.ink
             opacity: (index + 1) / Math.max(1, vista.fantasmas.length) * 0.35
         }
     }
 
+    //  La figura que pida el programa (DECSCUSR): barra mientras escribes,
+    //  bloque en el modo normal de vim, subrayado si lo pide. Y si pide que
+    //  parpadee, parpadea — pero solo él: los fantasmas de la estela no, que
+    //  serían una discoteca.
+    readonly property string figuraCursor: marco && marco.cursor_figura
+        ? marco.cursor_figura : "barra"
+    readonly property real anchoCursor: figuraCursor === "bloque" ? anchoCelda : 2
+    readonly property real altoCursor: figuraCursor === "subrayado" ? 2 : altoLinea
+
     Rectangle {
+        id: cursor
+
         visible: vista.marco !== null
         x: vista.pintadoX
-        y: vista.pintadoY
-        width: 2
-        height: vista.altoLinea
+        y: vista.pintadoY + (vista.figuraCursor === "subrayado"
+                             ? vista.altoLinea - vista.altoCursor : 0)
+        width: vista.anchoCursor
+        height: vista.altoCursor
         color: Theme.ink
-        opacity: 0.9
+        //  El bloque va translúcido a propósito: tapa la letra de debajo y
+        //  así se lee igual, que es lo que hace una terminal al invertirla.
+        opacity: vista.figuraCursor === "bloque" ? 0.45 : 0.9
+
+        Behavior on width { NumberAnimation { duration: 90 } }
+        Behavior on height { NumberAnimation { duration: 90 } }
+
+        SequentialAnimation on opacity {
+            running: vista.marco !== null && vista.marco.cursor_parpadea === true
+            loops: Animation.Infinite
+            alwaysRunToEnd: true
+            NumberAnimation { to: 0.05; duration: 530; easing.type: Easing.InOutQuad }
+            NumberAnimation {
+                to: vista.figuraCursor === "bloque" ? 0.45 : 0.9
+                duration: 530
+                easing.type: Easing.InOutQuad
+            }
+        }
     }
 
     //  ── el ratón ──────────────────────────────────────────────────
@@ -717,7 +827,10 @@ Item {
         anchors.topMargin: desfase
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
         hoverEnabled: true
-        cursorShape: enlace ? Qt.PointingHandCursor : Qt.IBeamCursor
+        cursorShape: (enlace || sobreResumen) ? Qt.PointingHandCursor : Qt.IBeamCursor
+        //  Encima de una salida recogida, la mano: ahí se pulsa, no se
+        //  selecciona.
+        property bool sobreResumen: false
 
         //  Un arrastre que aún no ha movido nada no es una selección: si lo
         //  fuera, cada clic suelto copiaría una letra a la primaria.
@@ -777,6 +890,15 @@ Item {
                 return
             }
 
+            //  Pulsar una salida recogida la despliega. Va antes que la
+            //  selección: quien pincha en esa línea quiere abrirla, no coger
+            //  su texto.
+            const filaPulsada = vista.filaDe(e.y + desfase)
+            if (vista.esResumen(filaPulsada - 1)) {
+                vista.plegar(vista.absoluta(filaPulsada))
+                return
+            }
+
             vista.limpiarSeleccion()
             arrastrando = true
             movido = false
@@ -807,8 +929,10 @@ Item {
             //  Sin botón: solo se mira si hay enlace debajo, y solo con Ctrl,
             //  que es lo que lo abre. Subrayar todo lo que parece una URL
             //  mientras paseas el ratón sería ruido.
+            const filaBajoElRaton = vista.filaDe(e.y + desfase)
+            sobreResumen = vista.esResumen(filaBajoElRaton - 1)
             enlace = (e.modifiers & Qt.ControlModifier)
-                ? vista.urlEn(vista.filaDe(e.y + desfase), vista.colDe(e.x)) : ""
+                ? vista.urlEn(filaBajoElRaton, vista.colDe(e.x)) : ""
         }
 
         onReleased: function (e) {
@@ -936,6 +1060,10 @@ Item {
                 //  La salida del último mandato, sin tener que seleccionarla.
                 case Qt.Key_E: vista.copiarUltimaSalida(); e.accepted = true; return
                 case Qt.Key_Q: vista.plugin.alternarTranquilo(); e.accepted = true; return
+                //  Recoger la salida del último mandato. Un `make` de
+                //  trescientas líneas pasa a ser una, y la isla se encoge con
+                //  ella; se despliega pulsándola o repitiendo la tecla.
+                case Qt.Key_Z: vista.plegarUltimo(); e.accepted = true; return
                 case Qt.Key_F:
                     if (vista.buscando)
                         vista.cerrarBusqueda()
