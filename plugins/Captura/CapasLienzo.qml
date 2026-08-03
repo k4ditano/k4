@@ -201,6 +201,37 @@ Item {
                 return z0 + (z1 - z0) * u
             }
 
+            //  ── el aspecto ────────────────────────────────────────
+            //
+            //  Filtro de color, forma y marco, con la misma cuenta que hace
+            //  python: la máscara redondea sobre el cuadrado del centro —que es
+            //  lo que hace `crop=min(iw,ih)` antes del `geq`— y el grosor del
+            //  marco es una fracción del ancho de la capa.
+            //
+            //  Los colores son una aproximación y no la matriz exacta del
+            //  render: `MultiEffect` tiñe, no multiplica matrices. Lo que sí es
+            //  exacto —y es lo que se mira al colocar— son la forma, el marco y
+            //  el encuadre.
+            readonly property string filtro: String(modelData.filtro || "")
+            readonly property string mascara: String(modelData.mascara || "")
+            readonly property real marco: Number(modelData.marco || 0)
+            readonly property bool conAspecto: filtro.length > 0
+                                            || mascara.length > 0
+            readonly property real ladoMenor: Math.min(width, height)
+            readonly property real radioMascara: mascara === "circulo"
+                ? ladoMenor / 2 : mascara === "redonda" ? ladoMenor * 0.12 : 0
+
+            //  Lo que ocupa la capa una vez pintada: el círculo se queda con el
+            //  cuadrado del centro y el marco añade su grosor por cada lado.
+            //  Lo usan el recuadro de selección y sus tiradores, para que lo que
+            //  se agarra sea lo que se ve.
+            readonly property int grosorMarco: marco > 0.001
+                ? Math.max(1, Math.round(width * marco)) : 0
+            readonly property real anchoPintado:
+                (mascara === "circulo" ? ladoMenor : width) + 2 * grosorMarco
+            readonly property real altoPintado:
+                (mascara === "circulo" ? ladoMenor : height) + 2 * grosorMarco
+
             readonly property bool esTexto: modelData.tipo === "texto"
             readonly property bool esPip: modelData.tipo === "video"
             readonly property bool esZona: modelData.tipo === "zona"
@@ -299,9 +330,16 @@ Item {
                     source: capa.esPip && capa.modelData.ruta
                         ? "file://" + capa.modelData.ruta : ""
                     videoOutput: salidaPip
-                    //  Sin sonido: el audio de un pip no entra en el render —eso
-                    //  lo hace una capa de audio— así que oírlo aquí engañaría.
-                    audioOutput: AudioOutput { muted: true }
+                    //  Con sonido si la capa lo trae, y callado si no: desde que
+                    //  un vídeo incrustado puede sonar en el render, silenciarlo
+                    //  aquí sería esconder la mitad de lo que va a salir.
+                    audioOutput: AudioOutput {
+                        muted: !capa.modelData.sonido
+                        //  Qt no pasa de 1; el plan sí llega a 2 y eso solo lo
+                        //  puede dar el render.
+                        volume: Math.min(1, capa.modelData.volumen !== undefined
+                                            ? capa.modelData.volumen : 1)
+                    }
                 }
 
                 // VideoOutput no permite asignar sourceRect. Se recorta con
@@ -311,6 +349,17 @@ Item {
                     id: marcoPip
                     anchors.fill: parent
                     clip: true
+
+                    transform: Scale {
+                        origin.x: marcoPip.width / 2
+                        xScale: capa.modelData.espejo ? -1 : 1
+                    }
+
+                    layer.enabled: capa.conAspecto
+                    layer.effect: AspectoCapa {
+                        capaDe: capa
+                        molde: mascaraFuente
+                    }
 
                     Item {
                         x: -capa.recorteFuente[0] / capa.recorteFuente[2]
@@ -490,11 +539,76 @@ Item {
                 }
             }
 
+            //  El molde de la máscara y su textura. El molde no se dibuja
+            //  —`hideSource` lo esconde— y solo existe para que el efecto
+            //  tenga de dónde sacar la forma. Del tamaño de la capa entera,
+            //  con el cuadrado dentro: si la textura fuera más pequeña, el
+            //  efecto la estiraría y el círculo saldría ovalado.
+            Item {
+                id: molde
+                anchors.fill: parent
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: capa.mascara === "circulo" ? capa.ladoMenor
+                                                      : capa.width
+                    height: capa.mascara === "circulo" ? capa.ladoMenor
+                                                       : capa.height
+                    radius: capa.radioMascara
+                    color: "#ffffff"
+                }
+            }
+
+            ShaderEffectSource {
+                id: mascaraFuente
+                anchors.fill: parent
+                sourceItem: molde
+                hideSource: true
+                visible: false
+                live: true
+            }
+
+            //  El marco, por encima de todo lo que pinte la capa. Va POR FUERA
+            //  —igual que el `pad` del render— y sigue la forma que tenga
+            //  puesta: pintado hacia dentro se comía el borde de la imagen.
+            //
+            //  Con `z`, y no confiando en el orden de los hermanos: escrito
+            //  aquí arriba lo tapaba la propia imagen y no se veía nada. Los
+            //  tiradores de la selección van por 30 y 31, así que 20 lo deja
+            //  encima de la capa y debajo de lo que se agarra con el ratón.
+            Rectangle {
+                z: 20
+                visible: capa.marco > 0.001
+                         && (capa.esPip || (!capa.esTexto && !capa.esZona
+                                            && !capa.esForma))
+                //  Por fuera de la capa, no por dentro: el borde de QML se pinta
+                //  hacia adentro, así que el recuadro se hace más grande que la
+                //  capa justo el grosor y el trazo cae en ese hueco. Es lo mismo
+                //  que hace el `pad` del render.
+                anchors.centerIn: parent
+                width: capa.anchoPintado
+                height: capa.altoPintado
+                radius: capa.mascara === "circulo" ? width / 2
+                      : capa.mascara === "redonda"
+                        ? capa.radioMascara + capa.grosorMarco : 0
+                color: "transparent"
+                border.width: capa.grosorMarco
+                border.color: capa.modelData.colorMarco || "#ffffff"
+            }
+
             Item {
                 anchors.fill: parent
                 clip: true
                 visible: !capa.esTexto && !capa.esPip && !capa.esZona
                     && !capa.esForma
+
+                transform: Scale {
+                    origin.x: capa.width / 2
+                    xScale: capa.modelData.espejo ? -1 : 1
+                }
+
+                layer.enabled: capa.conAspecto
+                layer.effect: AspectoCapa { capaDe: capa; molde: mascaraFuente }
 
                 Image {
                     id: imagen
@@ -626,8 +740,15 @@ Item {
             }
 
             // ── el marco de selección ─────────────────────────────
+            //
+            //  Ciñe lo que de verdad se pinta, que no siempre es la caja de la
+            //  capa: un círculo se queda con el cuadrado del centro y un marco
+            //  la agranda su grosor por cada lado. Con la caja a secas, la
+            //  bola pintada se salía del recuadro de selección.
             Rectangle {
-                anchors.fill: parent
+                anchors.centerIn: parent
+                width: capa.anchoPintado
+                height: capa.altoPintado
                 visible: capa.elegida
                 color: "transparent"
                 border.width: 1
@@ -764,11 +885,15 @@ Item {
             }
 
             // ── escalar, por la esquina ───────────────────────────
+            //
+            //  En la esquina de lo PINTADO, no en la de la caja: con un marco
+            //  o una máscara las dos dejaron de ser la misma, y el tirador se
+            //  quedaba metido para dentro, lejos de la esquina que se ve.
             MouseArea {
                 width: 14
                 height: 14
-                x: capa.width - 12
-                y: capa.height - 12
+                x: (capa.width + capa.anchoPintado) / 2 - 12
+                y: (capa.height + capa.altoPintado) / 2 - 12
                 visible: capa.elegida
                     && !Editor.capaBloqueada(capa.modelData)
                 preventStealing: true

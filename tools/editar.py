@@ -1060,6 +1060,130 @@ def rama_texto(n, capa, ancho, alto, carpeta, entra):
     return ["[%s]%s[%s]" % (entra, ":".join(partes), sale)], sale
 
 
+#  ── el aspecto de una capa ────────────────────────────────────────
+#
+#  Lo que se le hace a una capa por ser ella y no por dónde está: darle la
+#  vuelta, quitarle el color, redondearla, ponerle marco. Vale igual para una
+#  imagen, un vídeo incrustado y una forma, así que vive en un sitio y lo usan
+#  las tres ramas.
+#
+#  Va DESPUÉS de escalar y antes de la opacidad y los fundidos: el marco se mide
+#  en píxeles de la capa ya escalada —si no, un logo pequeño tendría un marco
+#  gordísimo— y el alfa que ponen máscara y fundido tiene que componerse en ese
+#  orden o el fundido se comería el recorte.
+
+FILTROS_COLOR = {
+    "gris": "hue=s=0",
+    #  La matriz clásica del sepia. En rgba porque una capa puede llevar alfa y
+    #  `colorchannelmixer` sin `aa` lo respeta.
+    "sepia": ("colorchannelmixer="
+              "0.393:0.769:0.189:0:0.349:0.686:0.168:0:0.272:0.534:0.131"),
+    "vivo": "eq=saturation=1.6:contrast=1.06",
+    #  Medido sobre un gris neutro, no leído: `colortemperature` BAJA calienta
+    #  (4000 K deja el gris en 128,103,83) y ALTA enfría (9000 K lo deja en
+    #  105,111,128). Es al revés de como suena, y puestos al derecho los dos
+    #  chips hacían lo contrario de lo que decían.
+    "frio": "colortemperature=temperature=8500",
+    "calido": "colortemperature=temperature=4800",
+}
+
+
+def expresion_redondeo(radio_expr, grosor, color):
+    """Máscara redondeada —y su marco— en una sola pasada de `geq`.
+
+    La cuenta es la distancia con signo a un rectángulo de esquinas redondeadas:
+    se aparta el punto hacia la esquina más cercana y se mide contra el radio.
+    Sirve igual para un círculo (radio = medio lado) y para unas esquinas
+    suaves, que es la gracia de hacerlo así y no con dos filtros distintos.
+
+    Fuera de la forma el alfa es cero; en la última franja, el color del marco;
+    dentro, el píxel tal cual. El borde se suaviza un píxel: sin eso el círculo
+    sale con dientes de sierra, que es lo primero que se ve.
+    """
+    dx = "max(abs(X-W/2)-(W/2-%s),0)" % radio_expr
+    dy = "max(abs(Y-H/2)-(H/2-%s),0)" % radio_expr
+    sd = "(hypot(%s,%s)-%s)" % (dx, dy, radio_expr)
+    dentro = "(1-clip(%s+0.5,0,1))" % sd
+    if grosor > 0.5:
+        r, g, b = color
+        marco = "gt(%s,-%.2f)" % (sd, grosor)
+        canal = lambda f, v: "if(%s,%d,%s(X,Y))" % (marco, v, f)
+        #  El alfa del anillo se pone a mano y no se hereda: el marco cae en el
+        #  hueco que abre el `pad`, que es transparente, así que multiplicar por
+        #  el alfa de origen dejaba el marco invisible —pintado y sin verse—.
+        alfa = "if(%s,255*%s,alpha(X,Y)*%s)" % (marco, dentro, dentro)
+        return ("geq=r='%s':g='%s':b='%s':a='%s'"
+                % (canal("r", r), canal("g", g), canal("b", b), alfa))
+    return ("geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='alpha(X,Y)*%s'" % dentro)
+
+
+def filtros_aspecto(capa, ancho_capa):
+    """Espejo, filtro de color, máscara y marco. Devuelve la lista de filtros.
+
+    `ancho_capa` es el ancho ya escalado, en píxeles: de ahí salen el radio y el
+    grosor del marco, que en el plan van en fracción para no depender de la
+    resolución de salida.
+    """
+    salida = []
+    if capa.get("espejo"):
+        salida.append("hflip")
+    filtro = FILTROS_COLOR.get(capa.get("filtro") or "")
+    if filtro:
+        salida.append(filtro)
+
+    mascara = capa.get("mascara") or ""
+    grosor_frac = float(capa.get("marco", 0.0) or 0.0)
+    color = color_rgb(capa.get("colorMarco") or "#ffffff")
+    grosor = round(ancho_capa * grosor_frac)
+
+    #  El marco va POR FUERA, no comiéndose el borde de la imagen: se hace
+    #  sitio con un `pad` y el marco ocupa ESE sitio. Pintarlo hacia dentro
+    #  tapaba justo lo que se quiere enmarcar —lo primero que se ve al usarlo—.
+    #  La capa crece el grosor por cada lado; su centro no se mueve, así que
+    #  ni el sitio ni las claves de movimiento cambian.
+    hueco = ("pad=iw+%d:ih+%d:%d:%d:color=black@0"
+             % (2 * grosor, 2 * grosor, grosor, grosor))
+
+    if mascara == "circulo":
+        #  Un círculo de verdad y no una elipse: se recorta el cuadrado del
+        #  centro y el radio es medio lado. Una cámara 16:9 «en círculo» es
+        #  esto, no el vídeo entero aplastado.
+        salida.append("crop=w='min(iw,ih)':h='min(iw,ih)'")
+        salida.append("format=rgba")
+        if grosor > 0.5:
+            salida.append(hueco)
+        salida.append(expresion_redondeo("W/2", grosor, color))
+    elif mascara == "redonda":
+        salida.append("format=rgba")
+        if grosor > 0.5:
+            salida.append(hueco)
+            #  El radio de fuera es el de dentro más el grosor: así el anillo
+            #  es concéntrico y no un redondeo distinto pegado encima.
+            radio = "((min(W,H)-%d)*0.12+%d)" % (2 * grosor, grosor)
+        else:
+            radio = "min(W,H)*0.12"
+        salida.append(expresion_redondeo(radio, grosor, color))
+    elif grosor > 0.5:
+        #  Sin máscara el marco es un recuadro, y para eso no hace falta pintar
+        #  píxel a píxel: el propio `pad` lo da, del color que sea.
+        salida.append("format=rgba")
+        salida.append("pad=iw+%d:ih+%d:%d:%d:color=%s"
+                      % (2 * grosor, 2 * grosor, grosor, grosor,
+                         capa.get("colorMarco") or "#ffffff"))
+    return salida
+
+
+def color_rgb(texto):
+    """De «#rrggbb» a los tres números que quiere `geq`."""
+    t = str(texto).lstrip("#")
+    if len(t) != 6:
+        return (255, 255, 255)
+    try:
+        return tuple(int(t[i:i + 2], 16) for i in (0, 2, 4))
+    except ValueError:
+        return (255, 255, 255)
+
+
 def rama_pip(n, idx, capa, ancho, alto, entra):
     """Un vídeo dentro del vídeo. Devuelve (líneas, etiqueta de salida).
 
@@ -1132,6 +1256,7 @@ def rama_pip(n, idx, capa, ancho, alto, entra):
     else:
         filtros.append("scale=%d:-1" % ancho_capa)
     filtros.append("setsar=1")
+    filtros += filtros_aspecto(capa, ancho_capa)
 
     opacidad = float(capa.get("opacidad", 1.0))
     if opacidad < 0.999:
@@ -1223,6 +1348,7 @@ def rama_capa(n, idx, capa, ancho, alto, entra):
         filtros.append("scale=w='round(%d*%s)':h=-1:eval=frame" % (ancho, escala_expr))
     else:
         filtros.append("scale=%d:-1" % ancho_capa)
+    filtros += filtros_aspecto(capa, ancho_capa)
     opacidad = float(capa.get("opacidad", 1.0))
     if opacidad < 0.999:
         #  El alfa hay que tenerlo antes de poder tocarlo: un JPEG llega sin

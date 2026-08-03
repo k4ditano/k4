@@ -3,6 +3,7 @@
 #  resolución implícita de hermanos no existe.
 #  `python3 tools/plugins.py` comprueba que esté completo.
 
+AspectoCapa 1.0 AspectoCapa.qml
 AudioExtra 1.0 AudioExtra.qml
 BloqueTiempo 1.0 BloqueTiempo.qml
 BotonAccion 1.0 BotonAccion.qml
@@ -21,6 +22,7 @@ Reproductor 1.0 Reproductor.qml
 SelectorRegion 1.0 SelectorRegion.qml
 SelectorVideo 1.0 SelectorVideo.qml
 FichaAnadir 1.0 FichaAnadir.qml
+FichaAspecto 1.0 FichaAspecto.qml
 FichaCapa 1.0 FichaCapa.qml
 FichaClip 1.0 FichaClip.qml
 FichaFundidos 1.0 FichaFundidos.qml

@@ -955,6 +955,65 @@ def prueba_audio_no_pinta_nada():
     igual("sin overlay", "overlay=" in texto, False)
 
 
+# ── el aspecto de una capa ────────────────────────────────────────
+def prueba_espejo_y_filtro_de_color():
+    texto, _ = editar.grafo(con_capas([capa(espejo=True, filtro="gris")]),
+                            carpeta=BORRADOR)
+    igual("da la vuelta", "hflip" in texto, True)
+    igual("y quita el color", "hue=s=0" in texto, True)
+
+
+def prueba_filtro_desconocido_no_ensucia_el_grafo():
+    """Un plan con un filtro que ya no existe tiene que renderizar igual."""
+    texto, _ = editar.grafo(con_capas([capa(filtro="inventado")]),
+                            carpeta=BORRADOR)
+    igual("la capa sigue saliendo", "overlay=" in texto, True)
+    igual("sin filtro ninguno", "hue=" in texto, False)
+
+
+def prueba_circulo_recorta_el_cuadrado_del_centro():
+    """«En círculo» es el cuadrado del centro redondeado, no el vídeo aplastado."""
+    texto, _ = editar.grafo(con_capas([capa(mascara="circulo")]),
+                            carpeta=BORRADOR)
+    igual("al cuadrado", "crop=w='min(iw,ih)':h='min(iw,ih)'" in texto, True)
+    igual("y con alfa por geq", "geq=" in texto and "alpha(X,Y)" in texto, True)
+
+
+def prueba_marco_sin_mascara_es_un_recuadro():
+    """Por fuera y con `pad`: pintado hacia dentro se comía la imagen."""
+    texto, _ = editar.grafo(
+        con_capas([capa(marco=0.05, colorMarco="#ff0000")]), carpeta=BORRADOR)
+    igual("hace sitio alrededor", "pad=iw+" in texto, True)
+    igual("de su color", "color=#ff0000" in texto, True)
+    igual("y sin pintar píxel a píxel", "geq=" in texto, False)
+
+
+def prueba_marco_con_mascara_va_en_la_misma_pasada():
+    """Un marco redondo no lo puede pintar drawbox: sale con esquinas."""
+    texto, _ = editar.grafo(
+        con_capas([capa(mascara="redonda", marco=0.05, colorMarco="#ff0000")]),
+        carpeta=BORRADOR)
+    igual("una sola geq", texto.count("geq="), 1)
+    igual("con el color del marco dentro", "if(gt(" in texto, True)
+    #  El anillo cae en el hueco que abre el `pad`, no sobre la imagen.
+    igual("y sitio alrededor para él", "pad=iw+" in texto, True)
+
+
+def prueba_aspecto_va_antes_de_la_opacidad():
+    """Si fuera después, el alfa de la máscara pisaría al de la opacidad."""
+    texto, _ = editar.grafo(
+        con_capas([capa(mascara="circulo", opacidad=0.5)]), carpeta=BORRADOR)
+    igual("primero la máscara",
+          texto.index("geq=") < texto.index("colorchannelmixer=aa="), True)
+
+
+def prueba_capa_sin_aspecto_no_cambia():
+    """Lo de siempre tiene que salir exactamente como salía."""
+    texto, _ = editar.grafo(con_capas([capa()]), carpeta=BORRADOR)
+    for f in ("hflip", "geq=", "drawbox=", "hue=", "colortemperature"):
+        igual("sin %s" % f, f in texto, False)
+
+
 # ── el sonido del vídeo incrustado ────────────────────────────────
 #
 #  Aquí sí hacen falta ficheros de VERDAD: si el vídeo trae sonido o no se

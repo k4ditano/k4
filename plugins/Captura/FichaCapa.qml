@@ -370,6 +370,10 @@ ColumnLayout {
             { agachar: !Editor.capaSel.agachar })
     }
 
+    //  Cómo se ve mientras está: filtro de color, forma, marco, espejo. Los de
+    //  arriba dicen cómo entra y cómo se va; esto, cómo es.
+    FichaAspecto { }
+
     //  El sonido del vídeo incrustado.
     //
     //  Antes se tiraba: metías una cámara o un trozo de otro vídeo y entraba
