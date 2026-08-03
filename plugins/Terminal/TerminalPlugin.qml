@@ -208,6 +208,78 @@ K4Plugin {
 
     function cerrar() { abierto = false }
 
+    //  ── el portapapeles ───────────────────────────────────────────
+    //
+    //  La sesión no tiene ninguno: no es una ventana, no habla con el
+    //  compositor y no puede. Lo tiene la barra, así que copiar y pegar pasan
+    //  por aquí — y de propina, lo copiado entra en el historial de copias de
+    //  la casa como cualquier otra copia.
+    //
+    //  Para pegar se le pregunta al compositor en el momento y no a la caché
+    //  del servicio: entre lo que el servicio vio por última vez y lo que hay
+    //  ahora puede haber una copia de otra aplicación, y pegar lo de antes es
+    //  de las cosas que uno no perdona.
+    function alCopiar(texto) {
+        if (texto)
+            K4.Sistema.copiar(texto)
+    }
+
+    function pegar(primaria) {
+        pegador.primaria = primaria === true
+        pegador.running = true
+    }
+
+    property K4.Process pegador: K4.Process {
+        property bool primaria: false
+        command: primaria ? ["wl-paste", "--primary", "--no-newline"]
+                          : ["wl-paste", "--no-newline"]
+        onSalida: function (texto) {
+            if (texto)
+                self.mandar({ que: "pegar", valor: texto })
+        }
+        onTerminado: running = false
+    }
+
+    //  La primaria se pone al soltar la selección, como en cualquier terminal
+    //  de siempre: seleccionas, pegas con el botón de en medio.
+    function copiarPrimaria(texto) {
+        if (texto)
+            K4.Sistema.lanzar(["wl-copy", "--primary", "--", String(texto)])
+    }
+
+    //  Lo que la sesión contesta cuando se le pide un trozo del historial. El
+    //  motivo dice a qué venía: sin él, una copia y una nota llegarían iguales.
+    function alRecibirTexto(contenido, motivo) {
+        if (motivo === "primaria") {
+            copiarPrimaria(contenido)
+            return
+        }
+        if (!contenido) {
+            K4.Sistema.avisar(Idioma.t("Terminal"), Idioma.t("No hay nada que copiar"), false)
+            return
+        }
+        K4.Sistema.copiar(contenido)
+    }
+
+    //  Un enlace escrito en la terminal, abierto con lo que el escritorio
+    //  tenga puesto. El `www.` a secas no es una dirección para nadie: sin
+    //  esquema, xdg-open se lo pasaría al navegador como si fuera un fichero.
+    function abrirEnlace(url) {
+        const limpio = String(url || "")
+        if (!limpio)
+            return
+        K4.Sistema.abrir(limpio.indexOf("www.") === 0 ? "https://" + limpio : limpio)
+    }
+
+    //  ── modo tranquilo ────────────────────────────────────────────
+    //
+    //  Atenúa lo anterior al último mandato. En una sesión de agente de dos
+    //  horas, saber dónde empieza lo nuevo vale más que cualquier color.
+    //  Arranca como lo digan los ajustes de k4term y se enciende y apaga con
+    //  la tecla, que es como se usa: para un rato, no para siempre.
+    property bool tranquilo: conf.tranquilo === "si" || conf.tranquilo === "1"
+    function alternarTranquilo() { tranquilo = !tranquilo }
+
     //  ── correr un mandato de la casa aquí dentro ──────────────────
     //
     //  Actualizar el sistema abría una ventana aparte. Teniendo esto, lo suyo
@@ -248,7 +320,12 @@ K4Plugin {
     function escribirMandato(guion) {
         //  Ctrl-U delante: si habías dejado algo a medio escribir, el mandato
         //  se pegaría detrás y saldría un engendro.
-        mandar({ que: "texto", valor: String.fromCharCode(0x15) + guion + "\n" })
+        //
+        //  Y RETORNO al final, no salto de línea. Parece lo mismo y no lo es:
+        //  la tecla Intro manda un retorno, y el editor de línea de la shell
+        //  espera eso. Con `\n` el mandato se queda escrito y sin ejecutar —
+        //  comprobado en vivo, la línea entera ahí quieta.
+        mandar({ que: "texto", valor: String.fromCharCode(0x15) + guion + "\r" })
     }
 
     Timer {
@@ -314,8 +391,18 @@ K4Plugin {
     readonly property var marco: sesion ? sesion.marco : null
     readonly property int estela: sesion ? sesion.estela : 8
     readonly property string fuente: sesion ? sesion.fuente : "MesloLGS Nerd Font Mono"
-    readonly property int cuerpo: sesion ? sesion.cuerpo : 13
     readonly property bool arrancado: vivas.length > 0
+
+    //  El tamaño de letra sale de los ajustes de k4term —los mismos que la
+    //  ventana— y encima va el zoom de esta vista, que es de aquí y de ahora:
+    //  agrandar para leer un rato no es cambiar tu preferencia. Se guarda
+    //  entre aperturas porque quien lo agranda suele quererlo agrandado.
+    readonly property int cuerpoBase: sesion ? sesion.cuerpo : 13
+    property int zoom: 0
+    readonly property int cuerpo: Math.max(8, Math.min(30, cuerpoBase + zoom))
+
+    function acercar(cuanto) { zoom = Math.max(-5, Math.min(17, zoom + cuanto)) }
+    function zoomNormal() { zoom = 0 }
 
     property Instantiator criadero: Instantiator {
         model: self.listaSesiones
@@ -328,6 +415,8 @@ K4Plugin {
                 self.alTrabajar(numero, estado, mandato, salida, segundos)
             }
             onCampana: function (titulo) { self.alLlamar(numero, titulo) }
+            onPortapapeles: function (texto) { self.alCopiar(texto) }
+            onTexto: function (contenido, motivo) { self.alRecibirTexto(contenido, motivo) }
         }
         onObjectAdded: function (indice, objeto) {
             const v = self.vivas.slice()
@@ -701,8 +790,12 @@ K4Plugin {
         //  Teclear en la que tengas delante, sin abrir ninguna nueva. Es lo
         //  que distingue esto de `ejecutar`, que siempre estrena terminal.
         function escribir(texto: string): void {
+            //  Los saltos de línea se convierten en retornos por lo mismo que
+            //  al pegar: es lo que manda la tecla Intro, y con `\n` la línea
+            //  se queda escrita sin ejecutarse.
             if (texto)
-                self.mandar({ que: "texto", valor: texto })
+                self.mandar({ que: "texto",
+                              valor: String(texto).replace(/\r\n|\n/g, "\r") })
         }
 
         //  Una terminal que toca la campana sin tener el foco casi siempre es

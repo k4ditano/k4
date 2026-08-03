@@ -74,6 +74,171 @@ Item {
     readonly property real recorrido: Math.min(1, (marco ? marco.filas_n : filas) / historial)
     readonly property real asomado: arriba / historial
 
+    //  ── de píxeles a celdas ───────────────────────────────────────
+    //
+    //  Todo lo que hace el ratón pasa por aquí, y por eso está en un sitio: la
+    //  rejilla se pinta anclando cada tramo a `(columna - 1) * anchoCelda`, así
+    //  que leerla al revés tiene que hacer la misma cuenta o el clic caería una
+    //  celda a la izquierda de donde se ve.
+    function colDe(x) {
+        return Math.max(1, Math.min(cols, Math.floor((x - margen) / anchoCelda) + 1))
+    }
+
+    function filaDe(y) {
+        const n = marco ? marco.filas_n : filas
+        return Math.max(1, Math.min(n, Math.floor((y - margen - altoCabecera) / altoLinea) + 1))
+    }
+
+    //  La fila del HISTORIAL a la que corresponde una de la rejilla. Todo lo
+    //  que se guarda —la selección, las marcas— va en estas coordenadas: son
+    //  las únicas que no se mueven cuando sigue saliendo salida.
+    function absoluta(filaVista) { return arriba + filaVista - 1 }
+
+    //  Una fila de la rejilla como texto, rellenando con espacios los huecos
+    //  entre tramos: los tramos vienen con su columna, y sin el relleno las
+    //  posiciones no cuadrarían con lo que se ve.
+    function textoFila(i) {
+        if (!marco || i < 0 || i >= marco.filas.length)
+            return ""
+        const tramos = marco.filas[i]
+        let linea = ""
+        for (let k = 0; k < tramos.length; ++k) {
+            while (linea.length < tramos[k].c - 1)
+                linea += " "
+            linea += tramos[k].t
+        }
+        return linea
+    }
+
+    //  ── la selección ──────────────────────────────────────────────
+    //
+    //  Dos puntas en coordenadas del historial. Se guardan tal cual se
+    //  pinchan, sin ordenar: hacia dónde vas es asunto de quien arrastra, y
+    //  ordenarlas al vuelo es más barato que mantenerlas ordenadas.
+    property var selA: null
+    property var selB: null
+    readonly property bool haySeleccion: selA !== null && selB !== null
+
+    function ordenada() {
+        if (!haySeleccion)
+            return null
+        const antes = selA.fila < selB.fila
+                   || (selA.fila === selB.fila && selA.col <= selB.col)
+        return antes ? { desde: selA, hasta: selB } : { desde: selB, hasta: selA }
+    }
+
+    function limpiarSeleccion() { selA = null; selB = null }
+
+    //  Qué trozo de la fila `i` de la rejilla está seleccionado, o nada.
+    function tramoSeleccion(i) {
+        const s = ordenada()
+        if (!s)
+            return null
+        const abs = arriba + i
+        if (abs < s.desde.fila || abs > s.hasta.fila)
+            return null
+        const a = abs === s.desde.fila ? s.desde.col : 1
+        const b = abs === s.hasta.fila ? s.hasta.col : cols
+        return b >= a ? { a: a, b: b } : null
+    }
+
+    //  El texto lo compone la SESIÓN, que es quien tiene el historial: la
+    //  rejilla solo sabe de lo que se ve, y una selección puede empezar más
+    //  arriba de lo que hay en pantalla.
+    function copiarSeleccion(motivo) {
+        const s = ordenada()
+        if (!s)
+            return false
+        plugin.mandar({ que: "texto_de",
+                        desde: s.desde.fila, hasta: s.hasta.fila,
+                        col_desde: s.desde.col, col_hasta: s.hasta.col,
+                        motivo: motivo || "copiar" })
+        return true
+    }
+
+    function seleccionarTodo() {
+        selA = { fila: absoluta(1), col: 1 }
+        selB = { fila: absoluta(marco ? marco.filas_n : filas), col: cols }
+    }
+
+    //  Doble clic: la palabra de debajo. «Palabra» es lo que no es espacio ni
+    //  comilla — en una terminal lo que uno quiere coger casi siempre es una
+    //  ruta, un hash o una URL, y partirlos por los puntos o las barras sería
+    //  justo lo contrario de lo que se busca.
+    function palabraEn(filaVista, col) {
+        const linea = textoFila(filaVista - 1)
+        if (col > linea.length)
+            return null
+        const corte = /[\s"'`]/
+        if (corte.test(linea.charAt(col - 1)))
+            return null
+        let a = col, b = col
+        while (a > 1 && !corte.test(linea.charAt(a - 2)))
+            --a
+        while (b < linea.length && !corte.test(linea.charAt(b)))
+            ++b
+        return { a: a, b: b }
+    }
+
+    //  Un enlace bajo esa celda, si lo hay. Se buscan los que se escriben
+    //  enteros; los de OSC 8 —texto con enlace escondido detrás— no llegan
+    //  hasta aquí y quedan pendientes.
+    function urlEn(filaVista, col) {
+        const linea = textoFila(filaVista - 1)
+        const patron = /(https?:\/\/|www\.)[^\s"'`<>()\[\]]+/g
+        let m
+        while ((m = patron.exec(linea)) !== null) {
+            const a = m.index + 1
+            const b = m.index + m[0].length
+            if (col >= a && col <= b)
+                return m[0]
+        }
+        return ""
+    }
+
+    //  ── los bloques ───────────────────────────────────────────────
+    //
+    //  Lo que la sesión ya sabía y no se veía: dónde empieza cada mandato y
+    //  cómo acabó. El filete del margen es eso, y nada más — nada hasta que
+    //  significa algo.
+    readonly property var ultimoBloque: marco && marco.ultimo ? marco.ultimo : null
+
+    //  Ctrl+Shift+N para ir a la terminal N. Con Shift, la fila de números da
+    //  otro símbolo según la distribución —en la española `!"·$%&/()`, en la
+    //  americana `!@#$%^&*(`— y Qt entrega ESE símbolo, no el dígito: mirar
+    //  solo los dígitos dejaría el atajo muerto en medio mundo.
+    readonly property var simbolosNumero: [
+        [Qt.Key_Exclam, Qt.Key_QuoteDbl, 0xb7, Qt.Key_Dollar, Qt.Key_Percent,
+         Qt.Key_Ampersand, Qt.Key_Slash, Qt.Key_ParenLeft, Qt.Key_ParenRight],
+        [Qt.Key_Exclam, Qt.Key_At, Qt.Key_NumberSign, Qt.Key_Dollar, Qt.Key_Percent,
+         Qt.Key_AsciiCircum, Qt.Key_Ampersand, Qt.Key_Asterisk, Qt.Key_ParenLeft]
+    ]
+
+    function numeroDe(tecla) {
+        if (tecla >= Qt.Key_1 && tecla <= Qt.Key_9)
+            return tecla - Qt.Key_1 + 1
+        for (let d = 0; d < simbolosNumero.length; ++d) {
+            const donde = simbolosNumero[d].indexOf(tecla)
+            if (donde >= 0)
+                return donde + 1
+        }
+        return 0
+    }
+
+    function copiarUltimaSalida() {
+        if (!ultimoBloque)
+            return
+        //  La marca de arranque cae en la PRIMERA fila de la salida, y la de
+        //  final en la de después de la última —ahí es donde el shell va a
+        //  pintar su siguiente prompt—, así que la última buena es `fin - 1`.
+        //  Mientras el mandato corre no hay final: se copia hasta donde llegue.
+        plugin.mandar({ que: "texto_de",
+                        desde: ultimoBloque.fila,
+                        hasta: ultimoBloque.fin > ultimoBloque.fila
+                             ? ultimoBloque.fin - 1 : 0,
+                        motivo: "copiar" })
+    }
+
     onColsChanged: medir.restart()
     onFilasChanged: medir.restart()
     Component.onCompleted: {
@@ -255,6 +420,48 @@ Item {
     //  decide dónde va. Cada fila es un lienzo y cada tramo se ancla en
     //  `(columna - 1) * anchoCelda`, así que un tramo torcido no arrastra a
     //  los de después.
+    //  Lo seleccionado, POR DEBAJO del texto: va declarado antes que la
+    //  rejilla a propósito, que en QML lo último que se declara es lo que
+    //  queda encima y una selección que tapa las letras no sirve de nada.
+    Repeater {
+        model: vista.marco ? vista.marco.filas.length : 0
+
+        delegate: Rectangle {
+            required property int index
+            readonly property var tramo: vista.tramoSeleccion(index)
+
+            visible: tramo !== null
+            x: vista.margen + ((tramo ? tramo.a : 1) - 1) * vista.anchoCelda
+            y: vista.margen + vista.altoCabecera + index * vista.altoLinea
+            width: tramo ? (tramo.b - tramo.a + 1) * vista.anchoCelda : 0
+            height: vista.altoLinea
+            color: Theme.blue
+            opacity: 0.3
+        }
+    }
+
+    //  El filete de cada mandato: dos píxeles en el margen, verde si salió
+    //  bien y rojo si no. Es el aspecto de los bloques hecho a la manera de la
+    //  casa — no ocupa sitio, no pide nada y solo aparece cuando hay algo que
+    //  decir.
+    Repeater {
+        model: vista.marco && vista.marco.bloques ? vista.marco.bloques : []
+
+        delegate: Rectangle {
+            required property var modelData
+
+            x: vista.margen - 8
+            y: vista.margen + vista.altoCabecera
+               + (modelData.fila - vista.arriba) * vista.altoLinea
+            width: 2
+            height: vista.altoLinea
+            radius: 1
+            color: modelData.estado === "bien" ? Theme.green
+                 : (modelData.estado === "mal" ? Theme.red : Theme.muted)
+            opacity: modelData.estado === "corre" ? 0.6 : 0.9
+        }
+    }
+
     Column {
         id: rejilla
         x: vista.margen
@@ -266,8 +473,16 @@ Item {
 
             delegate: Item {
                 required property var modelData
+                required property int index
                 width: vista.width - vista.margen * 2
                 height: vista.altoLinea
+
+                //  Modo tranquilo: lo anterior al último mandato se atenúa. En
+                //  una sesión larga con un agente dentro, saber dónde empieza
+                //  lo nuevo vale más que cualquier color.
+                opacity: vista.plugin.tranquilo && vista.ultimoBloque
+                         && (vista.arriba + index) < vista.ultimoBloque.fila ? 0.5 : 1
+                Behavior on opacity { NumberAnimation { duration: 140 } }
 
                 Repeater {
                     model: parent.modelData
@@ -413,17 +628,165 @@ Item {
         opacity: 0.9
     }
 
-    //  Un receptor de teclas sin pintar nada: la traducción de tecla a bytes
-    //  la hace la sesión, que para eso lleva el codificador de ghostty
-    //  dentro. Aquí solo se decide si es texto o si tiene nombre.
-    //  La rueda mueve el historial de la sesión, que es quien lo guarda. Tres
-    //  líneas por muesca, como en todas partes.
+    //  ── el ratón ──────────────────────────────────────────────────
+    //
+    //  Dos dueños posibles y una sola regla para decidir: si la aplicación de
+    //  dentro ha pedido el ratón (htop, vim, la interfaz de claude), los clics
+    //  son SUYOS y aquí no se selecciona nada; si no, son de la vista, que los
+    //  usa para seleccionar y copiar. Shift fuerza siempre el segundo caso —
+    //  es la salida de emergencia de toda la vida para poder copiar dentro de
+    //  un programa que se queda el ratón.
+    //
+    //  Va declarado antes que la barra de desplazamiento para que arrastrarla
+    //  siga siendo cosa de ella, y con el margen de arriba justo por debajo de
+    //  la cabecera, que las pestañas tienen sus propios clics.
     MouseArea {
+        id: raton
+
+        //  Lo que este receptor está más abajo que la vista. Los sucesos de
+        //  ratón vienen en coordenadas SUYAS, no de la vista, así que sin
+        //  sumarlo la cuenta de la fila sale casi dos líneas desplazada — se
+        //  vio a la primera: un arrastre sobre una línea seleccionaba tres.
+        readonly property int desfase: vista.altoCabecera + 4
+
         anchors.fill: parent
-        acceptedButtons: Qt.NoButton
+        anchors.topMargin: desfase
+        acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
+        hoverEnabled: true
+        cursorShape: enlace ? Qt.PointingHandCursor : Qt.IBeamCursor
+
+        //  Un arrastre que aún no ha movido nada no es una selección: si lo
+        //  fuera, cada clic suelto copiaría una letra a la primaria.
+        property bool arrastrando: false
+        property bool movido: false
+        property bool reportando: false
+        property string enlace: ""
+
+        function nombreBoton(b) {
+            if (b === Qt.MiddleButton)
+                return "medio"
+            return b === Qt.RightButton ? "derecho" : "izquierdo"
+        }
+
+        function conMods(orden, m) {
+            return Object.assign(orden, {
+                shift: (m & Qt.ShiftModifier) !== 0,
+                control: (m & Qt.ControlModifier) !== 0,
+                alt: (m & Qt.AltModifier) !== 0
+            })
+        }
+
+        function esSuyo(m) {
+            return vista.marco && vista.marco.raton && (m & Qt.ShiftModifier) === 0
+        }
+
+        function contar(tipo, boton, x, y, m) {
+            vista.plugin.mandar(conMods({ que: "raton", tipo: tipo, boton: boton,
+                                          col: vista.colDe(x), fila: vista.filaDe(y + desfase) }, m))
+        }
+
+        onPressed: function (e) {
+            campo.forceActiveFocus()
+
+            if (esSuyo(e.modifiers)) {
+                reportando = true
+                contar("pulsar", nombreBoton(e.button), e.x, e.y, e.modifiers)
+                return
+            }
+            reportando = false
+
+            //  El de en medio pega la selección primaria, como en cualquier
+            //  terminal de siempre.
+            if (e.button === Qt.MiddleButton) {
+                vista.plugin.pegar(true)
+                return
+            }
+            if (e.button !== Qt.LeftButton)
+                return
+
+            //  Ctrl+clic abre el enlace de debajo, y entonces no hay selección
+            //  que empezar.
+            const url = (e.modifiers & Qt.ControlModifier)
+                ? vista.urlEn(vista.filaDe(e.y + desfase), vista.colDe(e.x)) : ""
+            if (url) {
+                vista.plugin.abrirEnlace(url)
+                return
+            }
+
+            vista.limpiarSeleccion()
+            arrastrando = true
+            movido = false
+            const punto = { fila: vista.absoluta(vista.filaDe(e.y + desfase)),
+                            col: vista.colDe(e.x) }
+            vista.selA = punto
+            vista.selB = punto
+        }
+
+        onPositionChanged: function (e) {
+            if (reportando) {
+                contar("mover", nombreBoton(pressedButtons & Qt.MiddleButton ? Qt.MiddleButton
+                                          : (pressedButtons & Qt.RightButton ? Qt.RightButton
+                                                                             : Qt.LeftButton)),
+                       e.x, e.y, e.modifiers)
+                return
+            }
+
+            if (arrastrando) {
+                const punto = { fila: vista.absoluta(vista.filaDe(e.y + desfase)),
+                                col: vista.colDe(e.x) }
+                if (punto.fila !== vista.selA.fila || punto.col !== vista.selA.col)
+                    movido = true
+                vista.selB = punto
+                return
+            }
+
+            //  Sin botón: solo se mira si hay enlace debajo, y solo con Ctrl,
+            //  que es lo que lo abre. Subrayar todo lo que parece una URL
+            //  mientras paseas el ratón sería ruido.
+            enlace = (e.modifiers & Qt.ControlModifier)
+                ? vista.urlEn(vista.filaDe(e.y + desfase), vista.colDe(e.x)) : ""
+        }
+
+        onReleased: function (e) {
+            if (reportando) {
+                contar("soltar", nombreBoton(e.button), e.x, e.y, e.modifiers)
+                reportando = false
+                return
+            }
+            if (!arrastrando)
+                return
+            arrastrando = false
+
+            //  Al soltar, lo seleccionado va a la primaria: es lo que espera
+            //  quien luego pega con el botón de en medio.
+            if (movido)
+                vista.copiarSeleccion("primaria")
+            else
+                vista.limpiarSeleccion()
+        }
+
+        onDoubleClicked: function (e) {
+            if (esSuyo(e.modifiers))
+                return
+            const fila = vista.filaDe(e.y + desfase)
+            const tramo = vista.palabraEn(fila, vista.colDe(e.x))
+            if (!tramo)
+                return
+            vista.selA = { fila: vista.absoluta(fila), col: tramo.a }
+            vista.selB = { fila: vista.absoluta(fila), col: tramo.b }
+            vista.copiarSeleccion("primaria")
+        }
+
+        //  La rueda: tres líneas por muesca, como en todas partes. Quien
+        //  decide si mueve el historial o se la lleva la aplicación es la
+        //  sesión, que es la que sabe qué modos hay puestos; con shift se le
+        //  dice que el historial es nuestro pase lo que pase.
         onWheel: function (rueda) {
             const pasos = rueda.angleDelta.y > 0 ? 3 : -3
-            vista.plugin.mandar({ que: "rueda", lineas: -pasos })
+            vista.plugin.mandar({ que: "rueda", lineas: -pasos,
+                                  col: vista.colDe(rueda.x),
+                                  fila: vista.filaDe(rueda.y + desfase),
+                                  historial: (rueda.modifiers & Qt.ShiftModifier) !== 0 })
             rueda.accepted = true
         }
     }
@@ -494,26 +857,89 @@ Item {
                 e.accepted = true
             }
 
-            //  ── cambiar de terminal ────────────────────────────────
+            //  ── lo que es de la terminal y no de lo que corre dentro ──
             //
-            //  Con Alt, que Alt+Tab se lo queda el compositor para las
-            //  ventanas y aquí no llega nunca. Ojo: algunos programas usan
-            //  Alt+flechas para moverse por palabras, y desde aquí ya no les
-            //  llegarán — es el precio de tenerlo a mano.
-            if (mods.alt && !mods.control) {
-                if (e.key === Qt.Key_Right) { vista.plugin.siguiente(); e.accepted = true; return }
-                if (e.key === Qt.Key_Left)  { vista.plugin.anterior();  e.accepted = true; return }
-                if (e.key === Qt.Key_T)     { vista.plugin.nueva();     e.accepted = true; return }
+            //  Todo con Ctrl+Shift, igual que en la ventana y que en cualquier
+            //  terminal moderna. Antes esto iba con Alt y el precio era caro:
+            //  los programas de dentro se quedaban sin alt+flechas —que es
+            //  como se anda por palabras en media consola— y sin alt+letra
+            //  para sus propios menús. Ahora Alt vuelve a ser suyo entero.
+            if (mods.control && mods.shift) {
+                switch (e.key) {
+                case Qt.Key_V: vista.plugin.pegar(false); e.accepted = true; return
+                case Qt.Key_C: vista.copiarSeleccion("copiar"); e.accepted = true; return
+                case Qt.Key_A: vista.seleccionarTodo(); e.accepted = true; return
+                //  La salida del último mandato, sin tener que seleccionarla.
+                case Qt.Key_E: vista.copiarUltimaSalida(); e.accepted = true; return
+                case Qt.Key_Q: vista.plugin.alternarTranquilo(); e.accepted = true; return
+                case Qt.Key_T: vista.plugin.nueva(); e.accepted = true; return
                 //  Cerrar la de delante. Con `exit` también se va —la sesión
                 //  muere y la pestaña con ella—, pero eso pide que la shell
                 //  esté libre; esto vale aunque tengas algo corriendo.
-                if (e.key === Qt.Key_W) {
+                case Qt.Key_W:
                     vista.plugin.cerrarSesion(vista.plugin.actual)
                     e.accepted = true
                     return
+                case Qt.Key_Right: vista.plugin.siguiente(); e.accepted = true; return
+                case Qt.Key_Left:  vista.plugin.anterior();  e.accepted = true; return
+                //  De un prompt al anterior o al siguiente: en una sesión
+                //  larga es la diferencia entre buscar y encontrar.
+                case Qt.Key_Up:
+                    vista.plugin.mandar({ que: "saltar", hacia: -1 })
+                    e.accepted = true
+                    return
+                case Qt.Key_Down:
+                    vista.plugin.mandar({ que: "saltar", hacia: 1 })
+                    e.accepted = true
+                    return
+                case Qt.Key_Plus:
+                case Qt.Key_Equal:
+                    vista.plugin.acercar(1)
+                    e.accepted = true
+                    return
                 }
-                if (e.key >= Qt.Key_1 && e.key <= Qt.Key_9) {
-                    vista.plugin.irA(e.key - Qt.Key_1)
+
+                const cual = vista.numeroDe(e.key)
+                if (cual > 0) {
+                    vista.plugin.irA(cual - 1)
+                    e.accepted = true
+                    return
+                }
+            }
+
+            //  El historial con el teclado, con shift y las teclas de página
+            //  como en cualquier terminal. Sin esto solo se podía subir con la
+            //  rueda o arrastrando la barrita.
+            if (mods.shift && !mods.control) {
+                const salto = Math.max(1, (vista.marco ? vista.marco.filas_n : vista.filas) - 1)
+                if (e.key === Qt.Key_PageUp || e.key === Qt.Key_PageDown) {
+                    vista.plugin.mandar({ que: "rueda", historial: true,
+                                          lineas: e.key === Qt.Key_PageUp ? -salto : salto })
+                    e.accepted = true
+                    return
+                }
+                if (e.key === Qt.Key_Home || e.key === Qt.Key_End) {
+                    vista.plugin.mandar({ que: "tope", arriba: e.key === Qt.Key_Home })
+                    e.accepted = true
+                    return
+                }
+            }
+
+            //  El tamaño de la letra, aquí y ahora. No toca los ajustes: quien
+            //  agranda para leer un rato no está cambiando su preferencia.
+            if (mods.control && !mods.shift) {
+                if (e.key === Qt.Key_Plus || e.key === Qt.Key_Equal) {
+                    vista.plugin.acercar(1)
+                    e.accepted = true
+                    return
+                }
+                if (e.key === Qt.Key_Minus) {
+                    vista.plugin.acercar(-1)
+                    e.accepted = true
+                    return
+                }
+                if (e.key === Qt.Key_0) {
+                    vista.plugin.zoomNormal()
                     e.accepted = true
                     return
                 }
@@ -547,7 +973,17 @@ Item {
             //  Lo demás va como texto. Qt ya entrega el carácter de control
             //  cuando se pulsa Ctrl+algo, así que un Ctrl+C llega hecho.
             if (e.text.length > 0) {
-                vista.plugin.mandar({ que: "texto", valor: e.text })
+                //  Al escribir se deshace la selección: lo seleccionado dejó
+                //  de tener sentido en cuanto la pantalla cambia debajo.
+                vista.limpiarSeleccion()
+                //  Alt+letra es ESCAPE y luego la letra —lo que en las
+                //  terminales se llama «meta manda escape»—, que es como lo
+                //  esperan emacs, la línea de zsh y los menús de media consola.
+                //  Qt entrega solo la letra: sin poner el escape delante, un
+                //  alt+B llegaba como una «b» a secas.
+                vista.plugin.mandar({ que: "texto",
+                                      valor: (mods.alt ? String.fromCharCode(0x1b) : "")
+                                             + e.text })
                 e.accepted = true
             }
         }
@@ -572,7 +1008,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.rightMargin: vista.margen
         anchors.bottomMargin: 6
-        text: Idioma.t("alt+← → cambia · alt+T nueva · alt+W cierra")
+        text: Idioma.t("ctrl+shift: ← → cambia · T nueva · V pega · C copia")
         color: Theme.dim
         font.pixelSize: 10
     }

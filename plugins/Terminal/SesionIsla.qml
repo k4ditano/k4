@@ -40,6 +40,15 @@ QtObject {
     signal trabajo(string estado, string mandato, int salida, int segundos)
     signal campana(string titulo)
 
+    //  Lo que la aplicación de dentro ha pedido copiar (OSC 52). Aquí no hay
+    //  portapapeles: lo tiene la barra, así que se le pasa a ella.
+    signal portapapeles(string texto)
+
+    //  Un trozo del historial que se pidió con `texto_de`. Vuelve con el
+    //  motivo por el que se pidió, que es lo que distingue copiar de mandar a
+    //  una nota — si no, la respuesta no diría a qué venía.
+    signal texto(string contenido, string motivo)
+
     //  Se murió sola —un `exit`, la shell cerrada—, para que el plugin la
     //  quite de la lista en vez de dejar un hueco muerto.
     signal difunta()
@@ -80,6 +89,10 @@ QtObject {
                 sesion.trabajo(m.estado, m.mandato || "", m.salida || 0, m.segundos || 0)
             } else if (m.que === "campana") {
                 sesion.campana(m.titulo || "")
+            } else if (m.que === "portapapeles") {
+                sesion.portapapeles(m.texto || "")
+            } else if (m.que === "texto") {
+                sesion.texto(m.texto || "", m.motivo || "")
             }
         }
 
