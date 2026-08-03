@@ -78,11 +78,32 @@ Singleton {
 
     signal regionElegida(int x, int y, int w, int h)
 
+    //  ── el escudo ─────────────────────────────────────────────────
+    //
+    //  Entre que pides una captura y que el fotograma está congelado pasan casi
+    //  200 ms, y en ese rato el escritorio está vivo: el clic con el que ibas a
+    //  encuadrar se lo llevaba la aplicación de debajo —pausaba el vídeo que
+    //  querías capturar, por ejemplo—. Y al revés al terminar: el selector se
+    //  quita al soltar y el segundo clic del impaciente cae en la ventana.
+    //
+    //  Así que el cristal se pone ANTES de congelar y se quita un poco DESPUÉS
+    //  de disparar. Es transparente mientras no hay nada que enseñar, así que
+    //  no sale en la foto; lo único que hace es tragarse los clics.
+    property bool tapando: false
+
+    Timer {
+        id: destapar
+        interval: 350
+        onTriggered: captura.tapando = false
+    }
+
     function pedirRegion(motivo) {
         if (ocupado || seleccionando)
             return
         motivoSeleccion = motivo || "foto"
         estado = "capturando"
+        tapando = true
+        destapar.stop()
         Island.escondida = true
 
         //  Pedir a Hyprland las medidas de las ventanas otra vez. Las que trae
@@ -97,6 +118,8 @@ Singleton {
 
     function cancelarRegion() {
         seleccionando = false
+        tapando = false
+        destapar.stop()
         destinoPuntual = ""
         estado = ""
     }
@@ -104,6 +127,7 @@ Singleton {
     function confirmarRegion(x, y, w, h) {
         if (w < 1 || h < 1) {
             seleccionando = false
+            tapando = false
             estado = ""
             return
         }
@@ -131,8 +155,10 @@ Singleton {
         destinoPuntual = ""
 
         // Lo último: bajar esta bandera destruye la ventana del selector, que
-        // es justo desde donde se ha llamado aquí.
+        // es justo desde donde se ha llamado aquí. El cristal se queda un poco
+        // más, tragándose lo que venga detrás del clic que acaba de disparar.
         seleccionando = false
+        destapar.restart()
     }
 
     Timer {
@@ -169,6 +195,9 @@ Singleton {
                 captura.congelado = pendiente
                 captura.seleccionando = true
             } else {
+                // Sin fotograma no hay nada que encuadrar: fuera el cristal, o
+                // el escritorio se queda sordo a los clics sin explicación.
+                captura.tapando = false
                 captura.ultimoFallo = "fallo"
                 captura.fotoFallida("fallo")
             }

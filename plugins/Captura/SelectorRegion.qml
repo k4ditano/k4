@@ -40,6 +40,13 @@ K4.PorPantalla {
             anchors.fill: parent
             focus: true
 
+            //  Mientras no hay fotograma esto es un cristal: ocupa la pantalla
+            //  y se traga los clics, pero no se ve ni se pinta en la foto.
+            //  `opacity: 0` y no `visible: false` a propósito —lo invisible no
+            //  recibe ratón, y recibir el ratón es justo lo que hace falta.
+            readonly property bool activo: Captura.seleccionando
+            opacity: activo ? 1 : 0
+
             // ── la selección, en coordenadas de esta pantalla ─────
             property bool hay: false
             property real rx: 0
@@ -470,6 +477,8 @@ K4.PorPantalla {
                 onEntered: raiz.ventanaSenalada = raiz.ventanaEn(mouseX, mouseY)
 
                 onPositionChanged: function (ev) {
+                    if (!raiz.activo)
+                        return
                     if (!raiz.hay)
                         raiz.ventanaSenalada = raiz.ventanaEn(ev.x, ev.y)
 
@@ -483,6 +492,9 @@ K4.PorPantalla {
                 }
 
                 onPressed: function (ev) {
+                    // De cristal: el clic muere aquí y no pasa a nadie.
+                    if (!raiz.activo)
+                        return
                     if (ev.button === Qt.RightButton) {
                         Captura.cancelarRegion()
                         return
@@ -509,6 +521,8 @@ K4.PorPantalla {
                 }
 
                 onReleased: function (ev) {
+                    if (!raiz.activo)
+                        return
                     if (raiz.moviendo) {
                         raiz.moviendo = false
                         raiz.confirmar()
@@ -543,6 +557,15 @@ K4.PorPantalla {
             //  accesibilidad: es lo único que permite comprobar esta pantalla
             //  desde aquí, porque el compositor no acepta ratón sintético.
             Keys.onPressed: function (ev) {
+                // De cristal solo se sale por Escape; lo demás se traga igual
+                // que los clics, que si no la tecla acaba en la ventana.
+                if (!raiz.activo) {
+                    if (ev.key === Qt.Key_Escape)
+                        Captura.cancelarRegion()
+                    ev.accepted = true
+                    return
+                }
+
                 const paso = (ev.modifiers & Qt.ControlModifier) ? 10 : 1
                 const redimensiona = (ev.modifiers & Qt.ShiftModifier) !== 0
 

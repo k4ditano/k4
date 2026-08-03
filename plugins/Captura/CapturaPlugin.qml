@@ -323,7 +323,10 @@ K4Plugin {
     //  Ojo: la propiedad por defecto de K4.Cargador es `component`, así que el
     //  hijo suelto ES lo que se carga. Es lo que se quiere aquí.
     K4.Cargador {
-        active: Captura.seleccionando
+        // Se carga también mientras solo hay que tapar —antes de que exista el
+        // fotograma y un momento después de disparar—: ahí está transparente y
+        // lo único que hace es que ningún clic caiga en la ventana de debajo.
+        active: Captura.seleccionando || Captura.tapando
         SelectorRegion {}
     }
 
