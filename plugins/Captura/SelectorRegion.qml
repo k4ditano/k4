@@ -83,6 +83,12 @@ K4.PorPantalla {
                         continue
                     if (d.hidden === true || d.mapped === false)
                         continue
+                    // Solo las que están delante. Sin esto, una ventana de otro
+                    // escritorio —que sigue en la lista de Hyprland, y encima
+                    // con `visible: true`— se ofrecía como objetivo y lo que
+                    // recortaba era el vacío.
+                    if (!Ventanas.seVe(d))
+                        continue
                     if (d.size[0] < 2 || d.size[1] < 2)
                         continue
                     salida.push({
@@ -90,21 +96,30 @@ K4.PorPantalla {
                         y: d.at[1] - lienzo.origenY,
                         w: d.size[0],
                         h: d.size[1],
-                        titulo: String(d.title || d.class || "")
+                        titulo: String(d.title || d.class || ""),
+                        // 0 es la que tiene el foco, y de ahí para atrás. Es el
+                        // orden en que Hyprland las apila de verdad.
+                        orden: typeof d.focusHistoryID === "number"
+                            ? d.focusHistoryID : 9999
                     })
                 }
                 return salida
             }
 
+            //  Cuál de las que hay debajo del cursor es la que quieres. El orden
+            //  de la lista de Hyprland es el de creación, no el de apilado: dos
+            //  ventanas solapadas se resolvían al azar. Gana la más reciente en
+            //  el foco, que es la que se ve encima.
             function ventanaEn(x, y) {
-                // De la última a la primera: las de encima ganan, que es el
-                // orden en que Hyprland las apila.
-                for (let i = ventanas.length - 1; i >= 0; --i) {
+                let mejor = -1
+                for (let i = 0; i < ventanas.length; ++i) {
                     const v = ventanas[i]
-                    if (x >= v.x && x <= v.x + v.w && y >= v.y && y <= v.y + v.h)
-                        return i
+                    if (x < v.x || x > v.x + v.w || y < v.y || y > v.y + v.h)
+                        continue
+                    if (mejor < 0 || v.orden < ventanas[mejor].orden)
+                        mejor = i
                 }
-                return -1
+                return mejor
             }
 
             function tomarVentana(i) {
@@ -144,12 +159,40 @@ K4.PorPantalla {
             }
 
             // ── salir ─────────────────────────────────────────────
+            //
+            //  Con el ratón no se confirma: se dispara. Soltar YA es la
+            //  respuesta —esta ventana, este recorte, toda la pantalla— y pedir
+            //  además un Intro era hacer preguntar dos veces lo mismo. El Intro
+            //  se queda para quien encuadra a flechas, que ahí sí hace falta
+            //  decir cuándo has terminado.
             function confirmar() {
                 if (!hay || anc < 2 || alt < 2)
                     return
                 Captura.confirmarRegion(Math.round(izq) + lienzo.origenX,
                                         Math.round(arr) + lienzo.origenY,
                                         Math.round(anc), Math.round(alt))
+            }
+
+            function disparar(x, y, w, h) {
+                if (w < 2 || h < 2)
+                    return
+                rx = x; ry = y; rw = w; rh = h
+                hay = true
+                Captura.confirmarRegion(Math.round(x) + lienzo.origenX,
+                                        Math.round(y) + lienzo.origenY,
+                                        Math.round(w), Math.round(h))
+            }
+
+            function dispararVentana(i) {
+                if (i < 0 || i >= ventanas.length)
+                    return false
+                const v = ventanas[i]
+                disparar(v.x, v.y, v.w, v.h)
+                return true
+            }
+
+            function dispararPantalla() {
+                disparar(0, 0, width, height)
             }
 
             // ── el fotograma congelado ────────────────────────────
@@ -203,16 +246,47 @@ K4.PorPantalla {
                 height: raiz.alt
             }
 
-            // ── la ventana señalada, antes de haber selección ─────
+            // ── lo que se llevaría un clic, ahora mismo ───────────
+            //
+            //  Como el clic ya no se puede deshacer con un Intro que no llega,
+            //  hay que enseñar de antemano qué va a salir: el recuadro de la
+            //  ventana señalada, o el de la pantalla si no hay ninguna debajo.
             Rectangle {
-                visible: !raiz.ensena && raiz.ventanaSenalada >= 0
+                id: presa
+                // Solo en la pantalla donde está el puntero: si no, la otra se
+                // quedaba anunciando «toda la pantalla» sin que nadie apuntase.
+                visible: !raiz.ensena && raton.containsMouse
+                readonly property var v: raiz.ventanaSenalada >= 0
+                    ? raiz.ventanas[raiz.ventanaSenalada] : null
+
                 color: Qt.rgba(10 / 255, 132 / 255, 1, 0.14)
                 border.width: 1
                 border.color: Theme.blue
-                x: visible ? raiz.ventanas[raiz.ventanaSenalada].x : 0
-                y: visible ? raiz.ventanas[raiz.ventanaSenalada].y : 0
-                width: visible ? raiz.ventanas[raiz.ventanaSenalada].w : 0
-                height: visible ? raiz.ventanas[raiz.ventanaSenalada].h : 0
+                x: v ? v.x : 0
+                y: v ? v.y : 0
+                width: v ? v.w : raiz.width
+                height: v ? v.h : raiz.height
+
+                Rectangle {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.min(nombre.implicitWidth + 20, parent.width - 8)
+                    height: 26
+                    radius: 13
+                    color: "#cc000000"
+
+                    IslandLabel {
+                        id: nombre
+                        anchors.centerIn: parent
+                        width: Math.min(implicitWidth, parent.width - 16)
+                        elide: Text.ElideRight
+                        text: presa.v ? presa.v.titulo
+                                      : Idioma.t("toda la pantalla")
+                        color: Theme.ink
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                    }
+                }
             }
 
             // ── el rectángulo ─────────────────────────────────────
@@ -358,7 +432,7 @@ K4.PorPantalla {
                 IslandLabel {
                     id: ayuda
                     anchors.centerIn: parent
-                    text: Idioma.t("arrastra · clic toma la ventana · tab la cambia · esc cancela")
+                    text: Idioma.t("clic captura lo señalado · arrastra para recortar · tab recorre · esc cancela")
                     color: Theme.muted
                     font.pixelSize: 11
                 }
@@ -390,6 +464,10 @@ K4.PorPantalla {
                 hoverEnabled: true
                 cursorShape: Qt.CrossCursor
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+                // Al abrir, el puntero ya está donde está: sin esto la primera
+                // señalada no aparecía hasta mover el ratón un píxel.
+                onEntered: raiz.ventanaSenalada = raiz.ventanaEn(mouseX, mouseY)
 
                 onPositionChanged: function (ev) {
                     if (!raiz.hay)
@@ -433,21 +511,29 @@ K4.PorPantalla {
                 onReleased: function (ev) {
                     if (raiz.moviendo) {
                         raiz.moviendo = false
+                        raiz.confirmar()
                         return
                     }
                     if (!raiz.trazando)
                         return
                     raiz.trazando = false
 
-                    // Un clic sin arrastre es «dame esta ventana entera». El
-                    // umbral de 4 px es para que un temblor de la mano no
-                    // cuente como arrastre de 1 px y te deje sin selección.
-                    if (raiz.anc < 4 && raiz.alt < 4) {
-                        raiz.hay = false
-                        raiz.tomarVentana(raiz.ventanaEn(ev.x, ev.y))
-                    } else {
+                    //  Aquí se decide qué querías, y se dispara sin preguntar
+                    //  más. Arrastrar es un recorte; un clic seco es «entero»,
+                    //  y qué es lo entero depende de dónde hayas pulsado: sobre
+                    //  una ventana, esa ventana; sobre el fondo, la pantalla.
+                    //
+                    //  El umbral de 4 px es para que un temblor de la mano no
+                    //  cuente como un arrastre de 1 px y te deje sin nada.
+                    if (raiz.anc >= 4 || raiz.alt >= 4) {
                         raiz.hay = true
+                        raiz.confirmar()
+                        return
                     }
+
+                    raiz.hay = false
+                    if (!raiz.dispararVentana(raiz.ventanaEn(ev.x, ev.y)))
+                        raiz.dispararPantalla()
                 }
             }
 
@@ -465,17 +551,25 @@ K4.PorPantalla {
                 } else if (ev.key === Qt.Key_Return || ev.key === Qt.Key_Enter) {
                     raiz.confirmar()
                 } else if (ev.key === Qt.Key_Tab || ev.key === Qt.Key_Backtab) {
-                    if (raiz.ventanas.length > 0) {
-                        const d = ev.key === Qt.Key_Tab ? 1 : -1
-                        raiz.ventanaTab = (raiz.ventanaTab + d + raiz.ventanas.length)
-                            % raiz.ventanas.length
+                    //  Una parada más que ventanas hay: la última es la
+                    //  pantalla entera. Así el mismo tabulador recorre los tres
+                    //  objetivos y no hay que acordarse de una tecla aparte.
+                    const paradas = raiz.ventanas.length + 1
+                    const d = ev.key === Qt.Key_Tab ? 1 : -1
+                    raiz.ventanaTab = (raiz.ventanaTab + d + paradas) % paradas
+                    if (raiz.ventanaTab === raiz.ventanas.length) {
+                        raiz.rx = 0; raiz.ry = 0
+                        raiz.rw = raiz.width; raiz.rh = raiz.height
+                        raiz.hay = true
+                    } else {
                         raiz.tomarVentana(raiz.ventanaTab)
                     }
-                } else if (ev.key === Qt.Key_A
-                           && (ev.modifiers & Qt.ControlModifier)) {
-                    raiz.rx = 0; raiz.ry = 0
-                    raiz.rw = raiz.width; raiz.rh = raiz.height
-                    raiz.hay = true
+                } else if (ev.key === Qt.Key_Space
+                           || (ev.key === Qt.Key_A
+                               && (ev.modifiers & Qt.ControlModifier))) {
+                    // Sin rodeos: la pantalla entera es una foto, no una
+                    // propuesta que haya que aprobar.
+                    raiz.dispararPantalla()
                 } else if (ev.key === Qt.Key_Left) {
                     if (redimensiona) raiz.rw = Math.max(1, raiz.anc - paso)
                     else raiz.rx = raiz.izq - paso

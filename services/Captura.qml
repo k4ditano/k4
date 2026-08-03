@@ -84,6 +84,14 @@ Singleton {
         motivoSeleccion = motivo || "foto"
         estado = "capturando"
         Island.escondida = true
+
+        //  Pedir a Hyprland las medidas de las ventanas otra vez. Las que trae
+        //  de serie son las de la última vez que pasó algo, y «algo» puede ser
+        //  de hace horas: al arrancar la barra reserva su franja y las ventanas
+        //  encogen, pero esa lista se quedó con las de antes. Señalar una
+        //  ventana recortaba 34 px de más y salía una tira de escritorio arriba.
+        //  Aquí sobra tiempo —el congelado tarda su rato— para que llegue.
+        Ventanas.refrescar()
         congelar.restart()
     }
 

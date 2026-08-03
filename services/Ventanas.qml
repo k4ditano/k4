@@ -40,6 +40,34 @@ Singleton {
 
     readonly property int count: lista.length
 
+    //  ── cuáles se están viendo ────────────────────────────────────
+    //
+    //  El campo `visible` de un cliente de Hyprland NO sirve para esto: una
+    //  ventana de otro escritorio lo trae en `true` igualmente. Lo que sí vale
+    //  es mirar qué escritorio tiene delante cada monitor —más el especial, si
+    //  hay uno desplegado— y comparar.
+    //
+    //  Quien pinta encima del escritorio necesita esta distinción: ofrecer como
+    //  objetivo una ventana que no está en pantalla es recortar el vacío.
+    readonly property var espaciosVistos: {
+        const ids = ({})
+        const monitores = Hyprland.monitors.values
+        for (let i = 0; i < monitores.length; ++i) {
+            const m = monitores[i]
+            if (m.activeWorkspace)
+                ids[m.activeWorkspace.id] = true
+            const d = m.lastIpcObject
+            if (d && d.specialWorkspace && d.specialWorkspace.id !== 0)
+                ids[d.specialWorkspace.id] = true
+        }
+        return ids
+    }
+
+    function seVe(d) {
+        const w = d ? d.workspace : null
+        return !!(w && espaciosVistos[w.id] === true)
+    }
+
     function refrescar() {
         if (typeof Hyprland.refreshToplevels === "function")
             Hyprland.refreshToplevels()
