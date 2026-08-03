@@ -89,6 +89,63 @@ Singleton {
         sistema: "system"
     })
 
+    //  ── lo que un plugin necesita para tener sentido ──────────────
+    //
+    //  Hay módulos que solo existen si existe otra cosa: la terminal de la
+    //  isla no es «peor» sin k4term, es que no hay nada que enseñar. En vez de
+    //  dejarlos a medio gas —una tecla que no hace nada, una sección de
+    //  ajustes de algo que no está— se declara la dependencia en el catálogo
+    //  (`requiere`) y aquí se comprueba.
+    //
+    //  Se comprueba TARDE a propósito: qué terminal hay instalada lo averigua
+    //  `Consola` con un proceso al arrancar, así que al crear los plugins
+    //  todavía no se sabe. Se crean todos y, cuando la respuesta llega, se
+    //  destruye lo que no puede ser.
+    function requisitoCumplido(m) {
+        if (!m || !m.requiere)
+            return true
+        if (m.requiere === "k4term")
+            return Consola.esNuestra
+        if (m.requiere === "k4term-isla")
+            return Consola.hayIsla
+        return true
+    }
+
+    function motivoDelRequisito(m) {
+        return m && m.requiere === "k4term-isla"
+            ? Idioma.t("necesita k4term con su sesión de isla")
+            : Idioma.t("necesita k4term instalado")
+    }
+
+    //  Cuando `Consola` termina de mirar qué hay, se revisa a quién le falta
+    //  su dependencia. Vale para las dos direcciones: si alguien instala
+    //  k4term y recarga la barra, el módulo aparece solo.
+    property Connections vigilaRequisitos: Connections {
+        target: Consola
+        function onBinarioChanged() { manager.revisarRequisitos() }
+        function onHayIslaChanged() { manager.revisarRequisitos() }
+    }
+
+    function revisarRequisitos() {
+        if (!listo)
+            return
+        for (let i = 0; i < catalogo.length; ++i) {
+            const m = catalogo[i]
+            if (!m.requiere)
+                continue
+            const puede = requisitoCumplido(m)
+            if (!puede && _porId[m.id]) {
+                _destruir(m.id)
+                _publicar()
+            } else if (puede && !_porId[m.id] && estaHabilitado(m.id) && m.cargable !== false) {
+                if (_crear(m)) {
+                    _repartir()
+                    _publicar()
+                }
+            }
+        }
+    }
+
     function arrancar() {
         //  Hacen falta las dos patas: el estado del usuario —qué tiene apagado—
         //  y el catálogo combinado. Llegan en asíncrono y en cualquier orden;
@@ -110,6 +167,12 @@ Singleton {
         _repartir()
         _publicar()
         listo = true
+
+        //  Y una revisión al terminar: si `Consola` ya había contestado antes
+        //  de que existiera un solo plugin —que es lo normal, tarda menos que
+        //  el listado del catálogo— su aviso no encontró a nadie a quien
+        //  destruir. Sin esto, el módulo que necesita k4term se creaba igual.
+        revisarRequisitos()
     }
 
     function _crear(m) {
@@ -427,15 +490,18 @@ Singleton {
                 if (m.permisos && m.permisos.length > 0)
                     desc += "  ·  pide: " + m.permisos.join(", ")
             }
+            const sinRequisito = !requisitoCumplido(m)
             if (m.cargable === false)
                 desc = m.motivo || "no cargable"
+            else if (sinRequisito)
+                desc = motivoDelRequisito(m)
             else if (error.length > 0)
                 desc = error
             return { id: "plugin_" + m.id,
                      pluginId: m.id,
                      nombre: m.title + (m.externo ? "  ·  " + (m.version || "") : ""),
                      desc: desc,
-                     error: m.cargable === false ? "fijo"
+                     error: (m.cargable === false || sinRequisito) ? "fijo"
                           : (error.length > 0 ? "recargable" : ""),
                      //  Su icono si lo declara, y si no el genérico: pieza de
                      //  puzle para los de fuera, enchufe para los de casa. Un

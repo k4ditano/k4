@@ -183,15 +183,15 @@
       "title": "Terminal",
       "enabledByDefault": true,
       "icono": "0xF018D",
-      "aplicacion": true
+      "aplicacion": true,
+      "requiere": "k4term"
     },
     {
       "id": "ssh",
       "entry": "Ssh/SshPlugin.qml",
       "version": "1.0.0",
       "title": "Servidores",
-      "enabledByDefault": true,
-      "configurable": false
+      "enabledByDefault": true
     },
     {
       "id": "agentes",
