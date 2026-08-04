@@ -666,14 +666,33 @@ K4Plugin {
     //  que ha acabado su turno son dos cosas distintas y pueden coincidir.
     function idEspera(pid) { return "terminal.espera." + pid }
 
+    //  Y quiénes la tienen puesta. Al registro de píldoras no se le puede
+    //  preguntar, así que sin esta lista no hay forma de saber a quién hay
+    //  que vigilar: una campana puede quedarse sola mucho después de que su
+    //  mandato acabara, y es justo la que más se nota si sobrevive a su
+    //  ventana. Va aparte de `trabajos` porque son cosas distintas.
+    property var esperas: ({})
+
     function esperando(pid, titulo) {
         const nombre = String(titulo || "").trim() || Idioma.t("Terminal")
         //  La campana del tema: dice «te llaman» sin necesidad de leerlo, y
         //  en amarillo, que reclama sin alarmar.
         K4.Pildora.registrar(idEspera(pid), nombre.slice(0, 18), Theme.ico.bell.codePointAt(0),
                              Theme.yellow, 29, true)
+        const e = Object.assign({}, esperas)
+        e[pid] = true
+        esperas = e
         K4.Sistema.lanzar(["notify-send", "-a", "k4term", "-t", "8000",
                            Idioma.t("Te está esperando"), nombre])
+    }
+
+    function dejarDeEsperar(pid) {
+        K4.Pildora.quitar(idEspera(pid))
+        if (esperas[pid] === undefined)
+            return
+        const e = Object.assign({}, esperas)
+        delete e[pid]
+        esperas = e
     }
 
     function olvidar(pid) {
@@ -761,7 +780,7 @@ K4Plugin {
     function limpiarIsla(numero) {
         const clave = claveIsla(numero)
         olvidar(clave)
-        K4.Pildora.quitar(idEspera(clave))
+        dejarDeEsperar(clave)
     }
 
     function alTrabajar(numero, estado, mandato, salida, segundos) {
@@ -829,23 +848,39 @@ K4Plugin {
     //  queda nada. Se comprueba cada pocos segundos, y SOLO mientras haya
     //  alguna de ventana: las de la isla no lo necesitan, que esas sesiones
     //  son nuestras y sabemos cuándo se van.
-    readonly property var pidsConectados: {
-        const salida = []
-        for (const clave in dentroDe)
+    //
+    //  Y va por las TRES familias, no solo por la de los servidores: el adiós
+    //  de la ventana (`k4.term limpiar`) sale de k4term cuando muere su shell,
+    //  y cerrar la ventana no pasa por ahí —el proceso se va en el acto y la
+    //  shell se entera después, cuando ya no hay quien lo cuente—. Un mandato
+    //  largo o una campana se quedaban entonces en la isla para siempre, con
+    //  el reloj subiendo. Aquí no se confía en que nadie se despida.
+    readonly property var pidsVigilados: {
+        const vistos = ({})
+        const anotar = function (clave) {
+            //  Las de la isla fuera: sus claves son `isla.N`, no pids, y de
+            //  esas sesiones ya sabemos cuándo se van.
             if (String(clave).indexOf("isla.") !== 0)
-                salida.push(String(clave))
-        return salida
+                vistos[String(clave)] = true
+        }
+        for (const dentro in dentroDe)
+            anotar(dentro)
+        for (const curro in trabajos)
+            anotar(curro)
+        for (const llamada in esperas)
+            anotar(llamada)
+        return Object.keys(vistos)
     }
 
     property Timer vigilante: Timer {
         interval: 5000
         repeat: true
-        running: self.pidsConectados.length > 0
+        running: self.pidsVigilados.length > 0
         onTriggered: self.revisarVentanas()
     }
 
     function revisarVentanas() {
-        const pids = pidsConectados
+        const pids = pidsVigilados
         if (pids.length === 0)
             return
         vivos.command = ["sh", "-c",
@@ -853,13 +888,21 @@ K4Plugin {
         vivos.running = true
     }
 
+    //  Al que ya no está se le quitan las tres de golpe: cada una se sabe
+    //  ignorar si no era suya, y así no hay que averiguar de qué murió.
+    function despedir(pid) {
+        salirDe(pid)
+        olvidar(pid)
+        dejarDeEsperar(pid)
+    }
+
     property K4.Process vivos: K4.Process {
         onSalida: function (texto) {
             const siguen = String(texto).trim().split(/\s+/)
-            const pids = self.pidsConectados
+            const pids = self.pidsVigilados
             for (let i = 0; i < pids.length; ++i)
                 if (siguen.indexOf(pids[i]) < 0)
-                    self.salirDe(pids[i])
+                    self.despedir(pids[i])
         }
     }
 
@@ -961,7 +1004,7 @@ K4Plugin {
         //  La ventana se cierra con algo dentro: se lleva su indicador.
         function limpiar(pid: string): void {
             self.olvidar(pid)
-            K4.Pildora.quitar(self.idEspera(pid))
+            self.dejarDeEsperar(pid)
         }
 
         //  La terminal de la island, para lo rápido.
