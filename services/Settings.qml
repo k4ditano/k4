@@ -288,13 +288,23 @@ Singleton {
                     { codigo: "ambos",   nombre: Idioma.t("Los dos") }]
         //  Los dispositivos de verdad, con su etiqueta legible. Los lista
         //  Captura vía pactl; aquí solo se les pone «Automático» delante.
+        //  «Automático» dice a QUIÉN sigue: «Automático (G733)». Sin eso,
+        //  elegirlo es elegir a ciegas, y el día que el defecto del sistema no
+        //  es el micro que tienes delante, la grabación sale muda y no hay
+        //  dónde verlo antes de grabar.
         if (de === "microfonos")
-            return [{ codigo: "auto", nombre: Idioma.t("Automático") }]
+            return [{ codigo: "auto",
+                      nombre: Captura.etiquetaMicroDefecto
+                          ? Idioma.t("Automático") + " (" + Captura.etiquetaMicroDefecto + ")"
+                          : Idioma.t("Automático") }]
                 .concat(Captura.microfonos.map(function (m) {
                     return { codigo: m.nombre, nombre: m.etiqueta }
                 }))
         if (de === "salidas")
-            return [{ codigo: "auto", nombre: Idioma.t("Automático") }]
+            return [{ codigo: "auto",
+                      nombre: Captura.etiquetaSalidaDefecto
+                          ? Idioma.t("Automático") + " (" + Captura.etiquetaSalidaDefecto + ")"
+                          : Idioma.t("Automático") }]
                 .concat(Captura.salidasAudio.map(function (s) {
                     return { codigo: s.nombre, nombre: s.etiqueta }
                 }))

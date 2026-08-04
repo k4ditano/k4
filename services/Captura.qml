@@ -438,6 +438,24 @@ Singleton {
     property var microfonos: []
     property var salidasAudio: []
 
+    //  Y cuáles son los del sistema ahora mismo. Hacen falta para poder decir
+    //  en Ajustes QUÉ va a grabar «automático»: sin el nombre delante, elegir
+    //  automático es elegir a ciegas —y en esta casa el defecto resultó ser el
+    //  micro de unos cascos, así que la grabación salía muda sin una pista de
+    //  por qué—.
+    property string microDefecto: ""
+    property string salidaDefecto: ""
+
+    function etiquetaDe(nombre, lista) {
+        for (let i = 0; i < lista.length; ++i)
+            if (lista[i].nombre === nombre)
+                return lista[i].etiqueta
+        return ""
+    }
+
+    readonly property string etiquetaMicroDefecto: etiquetaDe(microDefecto, microfonos)
+    readonly property string etiquetaSalidaDefecto: etiquetaDe(salidaDefecto, salidasAudio)
+
     function buscarAudios() { buscadorAudios.running = true }
 
     Process {
@@ -452,6 +470,8 @@ Singleton {
                     return
                 captura.microfonos = d.microfonos || []
                 captura.salidasAudio = d.salidas || []
+                captura.microDefecto = d.micro_defecto || ""
+                captura.salidaDefecto = d.salida_defecto || ""
             }
         }
     }
@@ -806,13 +826,32 @@ Singleton {
             //  Las dos pistas van SEPARADAS y no mezcladas: mezclar al grabar
             //  es irreversible, y lo que se quiere es poder bajarle el volumen
             //  a una de las dos más tarde.
+            //  Y DELANTE, una mezcla de las dos.
+            //
+            //  Las dos siguen ahí y separadas —mezclar al grabar es
+            //  irreversible—, pero un reproductor cualquiera pone la primera
+            //  pista y ya: si esa era «Sistema» y no sonaba nada, abrías el
+            //  vídeo y no oías tu voz aunque estuviera grabada. Pasó, y la
+            //  única pista era mirar el fichero con ffprobe.
+            //
+            //  La mezcla va la primera para que sea la que suena sola, y el
+            //  editor la ignora por su título: allí lo que se quiere son las
+            //  dos de verdad, para poder equilibrarlas.
+            //
+            //  `normalize=0`: sumar sin repartir el volumen. Con el reparto de
+            //  fábrica, dos pistas suenan a la mitad cada una y la voz queda
+            //  lejos.
             juntador.command = ["ffmpeg", "-v", "error", "-y",
                                 "-i", captura.rutaVideo,
                                 "-i", captura.rutaMicro,
-                                "-map", "0:v", "-map", "0:a?", "-map", "1:a",
-                                "-c", "copy",
-                                "-metadata:s:a:0", "title=Sistema",
-                                "-metadata:s:a:1", "title=Micrófono",
+                                "-filter_complex",
+                                "[0:a][1:a]amix=inputs=2:normalize=0:duration=longest[mez]",
+                                "-map", "0:v", "-map", "[mez]",
+                                "-map", "0:a", "-map", "1:a",
+                                "-c:v", "copy", "-c:a:1", "copy", "-c:a:2", "copy",
+                                "-metadata:s:a:0", "title=Mezcla",
+                                "-metadata:s:a:1", "title=Sistema",
+                                "-metadata:s:a:2", "title=Micrófono",
                                 salida]
             juntador.running = true
         }

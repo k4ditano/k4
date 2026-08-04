@@ -220,7 +220,18 @@ def listar_audios():
               if (s.get("properties", {}) or {}).get("device.class") != "monitor"]
     salidas = [{"nombre": s["name"], "etiqueta": etiqueta_audio(s)}
                for s in pedir("sinks")]
-    salir(ok=True, microfonos=micros, salidas=salidas)
+
+    #  Y CUÁL es el de por defecto, que es lo que se graba cuando el ajuste
+    #  está en «automático». Sin esto, Ajustes decía «automático» a secas y no
+    #  había forma de ver que iba a grabar del micro de unos cascos en vez del
+    #  de mesa: se descubría al abrir el vídeo y no oír nada.
+    def por_defecto(que):
+        p = subprocess.run(["pactl", que], capture_output=True, text=True)
+        return p.stdout.strip()
+
+    salir(ok=True, microfonos=micros, salidas=salidas,
+          micro_defecto=por_defecto("get-default-source"),
+          salida_defecto=por_defecto("get-default-sink"))
 
 
 def main():

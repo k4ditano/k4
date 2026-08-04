@@ -2392,6 +2392,14 @@ def pistas_audio(video):
     for i, f in enumerate(flujos):
         etiquetas = f.get("tags") or {}
         titulo = etiquetas.get("title") or etiquetas.get("name") or ""
+        #  La mezcla NO es una pista más: es las otras dos sumadas, y existe
+        #  solo para que un reproductor cualquiera suene al abrir el fichero.
+        #  Aquí estorbaría —saldría en la lista y se oiría todo dos veces— así
+        #  que se salta. El índice de las demás es el REAL, no el de la
+        #  enumeración: el grafo mapea `0:a:<i>` y saltarse una sin más
+        #  desplazaría todas las siguientes.
+        if titulo.strip().lower() == "mezcla":
+            continue
         salida.append({"i": i, "titulo": titulo})
     return salida
 
