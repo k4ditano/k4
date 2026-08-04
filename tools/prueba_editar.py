@@ -1510,13 +1510,25 @@ def prueba_sonoridad_pone_loudnorm_al_final():
 def prueba_maquina_de_escribir():
     """El rótulo se teclea: un drawtext por prefijo, todos anclados en el
     MISMO x de la izquierda —centrar cada prefijo lo haría bailar— y el
-    último se queda hasta el final de la capa."""
-    texto, _ = editar.grafo(con_capas(
-        [capa(tipo="texto", texto="Hola", tam=0.06, x=0.5,
-              entrada={"tipo": "maquina", "dur": 0.4})]), carpeta=BORRADOR)
+    último se queda hasta el final de la capa.
+
+    Se suplanta la medida —65 px, que es lo que PIL da para «Hola» a este
+    cuerpo— igual que `prueba_forma_sin_dibujo_no_tumba` suplanta al dibujante.
+    Medir de verdad pide PIL y el TTF de Adwaita en su sitio, y donde no están
+    `ancho_texto` devuelve None y el efecto degrada a rótulo entero a
+    propósito: la prueba veía un solo drawtext y cantaba un fallo que no era.
+    Lo que aquí se comprueba es el reparto en pasos y el ancla común, y eso no
+    depende de cuánto mida la fuente."""
+    de_verdad = editar.ancho_texto
+    editar.ancho_texto = lambda texto, tam: 65.0
+    try:
+        texto, _ = editar.grafo(con_capas(
+            [capa(tipo="texto", texto="Hola", tam=0.06, x=0.5,
+                  entrada={"tipo": "maquina", "dur": 0.4})]), carpeta=BORRADOR)
+    finally:
+        editar.ancho_texto = de_verdad
     igual("cuatro letras, cuatro pasos", texto.count("drawtext"), 4)
-    #  PIL mide «Hola» a 65 px de cuerpo; lo importante es que el ancla sea
-    #  LA MISMA en todos los pasos.
+    #  Lo importante es que el ancla sea LA MISMA en todos los pasos.
     anclas = [l.split("x=")[1].split(":")[0]
               for l in texto.split(";") if "drawtext" in l]
     igual("todos los prefijos arrancan del mismo sitio",
