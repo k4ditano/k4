@@ -10,6 +10,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Services.Pipewire
 
 Singleton {
@@ -79,5 +80,146 @@ Singleton {
         id: overlayTimer
         interval: 1600
         onTriggered: audio.overlayOpen = false
+    }
+
+    //  ── los aparatos: qué hay enchufado y por dónde suena ─────────
+    //
+    //  Hasta aquí este servicio solo sabía subir y bajar el volumen general.
+    //  Elegir por dónde sale el sonido o por dónde entra —y con cuánta
+    //  ganancia— había que hacerlo en pavucontrol, que es salir de la casa
+    //  para algo que la casa debería saber.
+    //
+    //  Todo por Pipewire y sin un solo proceso: los nodos llegan por señal, y
+    //  cambiar el predeterminado es asignar una propiedad.
+    readonly property var todos: Pipewire.nodes ? Pipewire.nodes.values : []
+
+    //  Los aparatos de verdad, sin los flujos de las aplicaciones —un
+    //  «Firefox» no es una salida, es alguien que usa una— y sin los nodos
+    //  internos de Pipewire: «Dummy-Driver», «Freewheel-Driver»,
+    //  «Midi-Bridge» y «BLE MIDI» salían en la lista como si fueran
+    //  micrófonos. Lo que los distingue es tener `device.api`: los de verdad
+    //  vienen de alsa o de bluez, los inventados no vienen de ninguna parte.
+    //  Por el NOMBRE y no por las propiedades.
+    //
+    //  Las propiedades de un nodo llegan vacías al principio y se rellenan
+    //  después —lo publica el rastreador cuando puede—, así que filtrar por
+    //  ellas dejaba la lista en blanco justo al abrir el panel y la llenaba
+    //  medio segundo más tarde. El nombre está desde el primer momento.
+    //
+    //  Lo que se queda: lo que viene de una tarjeta (`alsa_`) o de un aparato
+    //  bluetooth. Lo que se va: los nodos internos de Pipewire
+    //  —«Dummy-Driver», «Freewheel-Driver», «Midi-Bridge», «BLE MIDI»—, que
+    //  salían en la lista como si fueran micrófonos.
+    function esAparato(n) {
+        if (!n || n.isStream)
+            return false
+        const nombre = String(n.name || "")
+        if (nombre.indexOf("alsa_") === 0)
+            return true
+        return nombre.indexOf("bluez_") === 0 && nombre.indexOf("midi") < 0
+    }
+
+    readonly property var salidas: todos.filter(function (n) {
+        return audio.esAparato(n) && n.isSink
+    })
+
+    readonly property var entradas: todos.filter(function (n) {
+        return audio.esAparato(n) && !n.isSink
+    })
+
+    //  Se rastrean todos: un nodo de Pipewire no publica sus propiedades
+    //  —ni el volumen, ni el nombre— mientras nadie lo mire.
+    property PwObjectTracker _rastro: PwObjectTracker {
+        objects: audio.salidas.concat(audio.entradas)
+    }
+
+    readonly property var salidaActiva: Pipewire.defaultAudioSink
+    readonly property var entradaActiva: Pipewire.defaultAudioSource
+
+    function nombreDe(nodo) {
+        if (!nodo)
+            return ""
+        return String(nodo.description || nodo.nickname || nodo.name || "")
+    }
+
+    function elegirSalida(nodo) {
+        if (nodo)
+            Pipewire.preferredDefaultAudioSink = nodo
+    }
+
+    function elegirEntrada(nodo) {
+        if (nodo)
+            Pipewire.preferredDefaultAudioSource = nodo
+    }
+
+    //  El volumen de UN aparato, no el del sistema. Hasta 150 %: por encima
+    //  del 100 % es ganancia por software, que es útil con un micro flojo y
+    //  es justo lo que satura uno que ya venía bien.
+    function volumenDe(nodo) {
+        return nodo && nodo.audio ? Math.round(nodo.audio.volume * 100) : 0
+    }
+
+    function ponerVolumenDe(nodo, pct) {
+        if (!nodo || !nodo.audio)
+            return
+        nodo.audio.volume = Math.max(0, Math.min(150, Math.round(pct))) / 100
+    }
+
+    function mudoDe(nodo) {
+        return !!(nodo && nodo.audio && nodo.audio.muted)
+    }
+
+    function alternarMudoDe(nodo) {
+        if (nodo && nodo.audio)
+            nodo.audio.muted = !nodo.audio.muted
+    }
+
+    //  ── dónde está la unidad de cada aparato ──────────────────────
+    //
+    //  El «volumen base»: el nivel natural del cacharro, sin amplificar ni
+    //  atenuar. Un micro USB con base al 56 % está metiendo +15 dB cuando lo
+    //  pones al 100 % —y entra saturado sin que nada avise—. Esto pasó de
+    //  verdad y por eso se enseña.
+    //
+    //  No lo publica Pipewire: hay que preguntárselo a pactl, una vez y solo
+    //  cuando se abre el panel.
+    property var bases: ({})
+
+    function baseDe(nodo) {
+        const b = bases[nombreDe(nodo)]
+        return b === undefined ? 0 : b
+    }
+
+    function mirarBases() { lector.running = true }
+
+    Process {
+        id: lector
+        //  Dos llamadas y no una: `pactl list` acepta UN tipo, y pedirle
+        //  «sources sinks» se queda con el primero sin decir nada — la mitad
+        //  de las bases no llegaban y la marca no salía en media lista.
+        command: ["sh", "-c",
+            "{ pactl list sources; pactl list sinks; } | "
+            + "grep -E '^[[:space:]]*(Description|Base Volume):'"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                //  Se leen por pares: la descripción y, debajo, su base. Es
+                //  como los saca pactl y no hay que analizar el bloque entero.
+                const nuevo = ({})
+                let quien = ""
+                const lineas = this.text.split("\n")
+                for (let i = 0; i < lineas.length; ++i) {
+                    const l = lineas[i].trim()
+                    if (l.indexOf("Description:") === 0) {
+                        quien = l.slice(12).trim()
+                    } else if (l.indexOf("Base Volume:") === 0 && quien) {
+                        const m = l.match(/(\d+)%/)
+                        if (m)
+                            nuevo[quien] = parseInt(m[1], 10)
+                        quien = ""
+                    }
+                }
+                audio.bases = nuevo
+            }
+        }
     }
 }

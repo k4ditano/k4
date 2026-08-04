@@ -9,7 +9,9 @@ when it has something to show.
 
 - A media player with artwork, transport controls, seeking and a visualizer.
 - A control center for Wi-Fi, Bluetooth, audio, notifications and system
-  actions.
+  actions — including a sound panel that picks the output and input device,
+  sets each one's own level and marks where the device's natural level is, so
+  you can see when you are amplifying instead of turning up.
 - A native notification server with actions, application focusing and recent
   notification history.
 - An application launcher with package search and installation support on Arch.

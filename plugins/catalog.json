@@ -18,6 +18,13 @@
       "enabledByDefault": true
     },
     {
+      "id": "sonido",
+      "entry": "Sonido/SonidoPlugin.qml",
+      "version": "1.0.0",
+      "title": "Sonido",
+      "enabledByDefault": true
+    },
+    {
       "id": "clock",
       "entry": "Clock/ClockPlugin.qml",
       "version": "1.0.0",
