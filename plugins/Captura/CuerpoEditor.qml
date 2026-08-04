@@ -310,6 +310,19 @@ Item {
                 color: "black"
                 clip: true
 
+                //  Pinchar donde no hay nada suelta lo elegido.
+                //
+                //  Sin esto, en cuanto tocabas un trozo o una capa la ficha se
+                //  quedaba con SUS opciones para siempre: no había forma de
+                //  volver a las generales salvo abrir otra cosa. Va la primera
+                //  —o sea, debajo de todo— así que solo recibe el clic que no
+                //  ha querido nadie: las capas, el encuadre y el trazado de
+                //  recorrido lo cogen antes.
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: Editor.seleccionar("", 0)
+                }
+
                 //  El lienzo, con la proporción del vídeo que va a salir.
                 //
                 //  Antes el vídeo se estiraba para llenar la celda, y como la
@@ -570,11 +583,20 @@ Item {
                     // ── lo que se le hace a un trozo ──────────────────
                     FichaClip { view: view }
 
-                    // ── los fundidos ──────────────────────────────────
-                    FichaFundidos { }
+                    //  ── lo general, solo cuando no hay nada elegido ──
+                    //
+                    //  Los fundidos son de la LÍNEA entera, la transcripción es
+                    //  del vídeo y las pistas son del fichero: ninguna de las
+                    //  tres tiene que ver con el trozo o la capa que acabas de
+                    //  pinchar. Salían siempre debajo de las opciones de lo
+                    //  elegido, y lo que hacían era alargar la ficha y confundir
+                    //  sobre a qué se refiere cada cosa.
+                    FichaFundidos { visible: Editor.tipoSel === "" }
 
-                    // ── lo que se dice en el vídeo ────────────────────
-                    FichaTranscripcion { view: view }
+                    FichaTranscripcion {
+                        view: view
+                        visible: Editor.tipoSel === ""
+                    }
 
                     GridLayout {
                         // Los botones del zoom solo pintan algo con un zoom elegido.
@@ -637,7 +659,10 @@ Item {
                     }
 
                     //  Las pistas de audio, con su volumen y su monitor.
-                    FichaPistas { reproductor: reproductor }
+                    FichaPistas {
+                        reproductor: reproductor
+                        visible: Editor.tipoSel === ""
+                    }
 
                     Rectangle {
                         // El trozo y la capa tienen su propio «quitar» arriba.

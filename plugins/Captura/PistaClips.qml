@@ -41,6 +41,9 @@ Rectangle {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
         onPressed: function (ev) {
+            //  Pinchar el hueco es decir «ninguno de estos»: suelta lo elegido
+            //  y la ficha vuelve a las opciones generales.
+            Editor.seleccionar("", 0)
             pista.rascaInicio()
             pista.saltar(pista.px2t(ev.x))
         }

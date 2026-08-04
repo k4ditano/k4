@@ -30,6 +30,10 @@ Pista {
     // arrastrando en un hueco.
     creable: false
 
+    //  Pinchar el hueco suelta lo elegido y devuelve la ficha a las
+    //  opciones generales.
+    onFondoPulsado: Editor.seleccionar("", 0)
+
     //  `Pista` elige por índice y la selección va por id, porque con varias
     //  pistas el índice no dice de qué es. Aquí se traduce.
     elegido: {

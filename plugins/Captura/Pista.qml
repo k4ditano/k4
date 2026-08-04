@@ -45,6 +45,11 @@ Rectangle {
     function px2t(px) { return px / Math.max(1, width) * total }
 
     // ── el fondo ──────────────────────────────────────────────────
+    //  Pulsar el hueco de una pista es decir «ninguno de estos». Quien la usa
+    //  decide qué hacer con eso —en el editor, soltar lo que hubiera elegido—,
+    //  porque esta pieza no conoce al editor y no tiene por qué.
+    signal fondoPulsado()
+
     MouseArea {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
@@ -55,6 +60,7 @@ Rectangle {
         onPressed: function (ev) {
             xIni = ev.x
             dibujando = false
+            pista.fondoPulsado()
             pista.saltar(pista.px2t(ev.x))
         }
 
