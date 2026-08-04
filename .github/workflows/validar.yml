@@ -1,9 +1,10 @@
 #  Los validadores de la casa, en cada push y cada PR.
 #
 #  Son los mismos que pide el README antes de abrir un PR — aquí dejan de
-#  depender de que alguien se acuerde. Todo es python de la biblioteca
-#  estándar; qmllint no está en el runner y guia.py salta esa comprobación
-#  (la compilación de ejemplos se cubre en local, donde vive Quickshell).
+#  depender de que alguien se acuerde. Python de la biblioteca estándar, salvo
+#  las pruebas del editor, que necesitan ffmpeg de verdad; qmllint no está en
+#  el runner y guia.py salta esa comprobación (la compilación de ejemplos se
+#  cubre en local, donde vive Quickshell).
 
 name: validar
 
@@ -30,6 +31,13 @@ jobs:
 
       - name: La documentación no le miente al código
         run: python3 tools/guia.py
+
+      #  Las del editor no son de mentira: sintetizan un vídeo con ffmpeg y le
+      #  preguntan por él a ffprobe. El runner de Ubuntu no los trae, y sin
+      #  ellos la prueba no fallaba —reventaba—, que no es lo mismo: se llevaba
+      #  por delante los dos pasos de después, que no llegaban a correr.
+      - name: ffmpeg, que las pruebas del editor lo usan de verdad
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
 
       - name: Las pruebas del editor
         run: python3 tools/prueba_editar.py
