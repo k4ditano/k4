@@ -316,6 +316,78 @@ Item {
 
     function fijarPistaAudio(i) { mp.activeAudioTrack = i }
 
+    //  La mezcla no cuenta como pista que monitorizar: existe para el mundo de
+    //  fuera. Si es la que está sonando —lo es de fábrica, por ir la primera—
+    //  se cambia a la primera de las que el editor sí enseña.
+    function monitorizarUnaDeVerdad() {
+        const pistas = Editor.pistasAudio
+        if (!pistas || pistas.length === 0)
+            return
+        for (let i = 0; i < pistas.length; ++i)
+            if (pistas[i].i === mp.activeAudioTrack)
+                return
+        fijarPistaAudio(primeraQueSuena(pistas))
+    }
+
+    //  Cuál monitorizar: la primera que no esté silenciada Y QUE SUENE.
+    //
+    //  Lo segundo importa más de lo que parece. En una grabación de pantalla
+    //  con micro es normalísimo que la pista del sistema esté a silencio
+    //  digital —no sonaba nada por los altavoces— y monitorizar esa es abrir
+    //  el editor y no oír nada, que es justo la queja de la que sale todo
+    //  esto. Los niveles ya se miden al abrir; aquí solo se aprovechan.
+    //
+    //  Mientras no hayan llegado, vale la primera no silenciada: mejor eso que
+    //  esperar callado.
+    function primeraQueSuena(pistas) {
+        const niveles = Editor.nivelesPistas
+        for (let i = 0; i < pistas.length; ++i) {
+            const n = niveles[pistas[i].i]
+            if (!pistas[i].mudo && n !== undefined && n.pico > -60)
+                return pistas[i].i
+        }
+        for (let i = 0; i < pistas.length; ++i)
+            if (!pistas[i].mudo)
+                return pistas[i].i
+        return pistas[0].i
+    }
+
+    //  Y si silencias la que estás oyendo, se pasa a otra en el momento: no
+    //  hay que saber que existe un botón de monitor para que esto se porte
+    //  como uno espera.
+    //  Los niveles llegan unos segundos después de abrir —se miden en
+    //  segundo plano—, así que cuando llegan se vuelve a elegir: si la que
+    //  estaba sonando resulta ser la muda, se cambia sola.
+    property Connections nivelesLlegan: Connections {
+        target: Editor
+        function onNivelesPistasChanged() {
+            const pistas = Editor.pistasAudio
+            if (!pistas || pistas.length === 0)
+                return
+            const n = Editor.nivelesPistas[mp.activeAudioTrack]
+            if (n !== undefined && n.pico <= -60)
+                repro.fijarPistaAudio(repro.primeraQueSuena(pistas))
+        }
+    }
+
+    property Connections pistasCambian: Connections {
+        target: Editor
+        function onPistasAudioChanged() {
+            const pistas = Editor.pistasAudio
+            if (!pistas || pistas.length === 0)
+                return
+            //  La lista llega DESPUÉS que el medio —el plan lo trae python—,
+            //  así que al cargar el fichero todavía no había con qué decidir y
+            //  se quedaba sonando la mezcla. Ahora se decide también aquí.
+            repro.monitorizarUnaDeVerdad()
+            for (let i = 0; i < pistas.length; ++i)
+                if (pistas[i].i === mp.activeAudioTrack && pistas[i].mudo) {
+                    repro.fijarPistaAudio(repro.primeraQueSuena(pistas))
+                    return
+                }
+        }
+    }
+
     //  Al cambiar los clips, volver a donde estabas.
     //
     //  Cortar, mover o recortar un trozo cambia el significado de cada instante
@@ -433,6 +505,17 @@ Item {
             if (mediaStatus !== MediaPlayer.LoadedMedia
                     && mediaStatus !== MediaPlayer.BufferedMedia)
                 return
+
+            //  Monitorizar una pista de VERDAD, no la mezcla.
+            //
+            //  Las grabaciones llevan delante una pista mezclada para que
+            //  suenen al abrirlas en cualquier reproductor, y esa es la que
+            //  Qt elige sola por ser la primera. Aquí estorba: se oirían las
+            //  dos siempre, sin saber cuál estás tocando y sin que se note
+            //  cuál has silenciado. Así que si la que suena no está en la
+            //  lista del editor, se pasa a la primera que sí.
+            repro.monitorizarUnaDeVerdad()
+
             if (repro.pendiente >= 0) {
                 position = repro.pendiente * 1000
                 repro.pendiente = -1

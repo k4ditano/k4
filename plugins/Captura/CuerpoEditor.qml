@@ -661,7 +661,11 @@ Item {
                     //  Las pistas de audio, con su volumen y su monitor.
                     FichaPistas {
                         reproductor: reproductor
-                        visible: Editor.tipoSel === ""
+                        //  Las dos condiciones juntas: poner `visible` desde
+                        //  aquí PISA la que la ficha trae dentro —«solo si hay
+                        //  pistas»—, y sin ella se quedaba un hueco con título
+                        //  y nada debajo cuando el vídeo no tiene sonido.
+                        visible: Editor.tipoSel === "" && Editor.pistasAudio.length > 0
                     }
 
                     Rectangle {
