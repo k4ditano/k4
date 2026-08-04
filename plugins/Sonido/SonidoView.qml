@@ -105,6 +105,7 @@ Item {
                         //  ciento. 0 = no se sabe, y entonces no se pinta nada:
                         //  una marca inventada es peor que ninguna.
                         readonly property int base: Audio.baseDe(fila.modelData)
+                        readonly property real db: Audio.dbSobreNatural(fila.modelData)
 
                         Layout.fillWidth: true
                         Layout.preferredHeight: 54
@@ -154,11 +155,15 @@ Item {
                                 }
 
                                 //  El aviso que faltaba: por encima de la
-                                //  unidad esto no sube, amplifica.
+                                //  unidad esto no sube, AMPLIFICA. Y en
+                                //  decibelios, que es lo que significa algo:
+                                //  «+44 %» no le dice nada a nadie, «+15 dB»
+                                //  sí — y es la cifra con la que se entiende
+                                //  por qué el micro entraba saturado.
                                 IslandLabel {
                                     visible: fila.base > 0 && fila.volumen > fila.base
-                                    text: "+" + (fila.volumen - fila.base) + Idioma.t("% de más")
-                                    color: Theme.yellow
+                                    text: "+" + fila.db.toFixed(0) + Idioma.t(" dB de más")
+                                    color: fila.esActivo ? Theme.yellow : Theme.dim
                                     font.pixelSize: 9
                                 }
 
@@ -194,12 +199,17 @@ Item {
                                     color: Theme.track
                                     opacity: fila.mudo ? 0.4 : 1
 
+                                    //  En color solo el que está en uso; los
+                                    //  demás en gris. Cuatro barras verdes a la
+                                    //  vez decían «todo esto suena», y solo
+                                    //  suena uno.
                                     Rectangle {
                                         width: carril.width * Math.min(1, fila.volumen / 150)
                                         height: parent.height
                                         radius: parent.radius
-                                        color: fila.base > 0 && fila.volumen > fila.base
-                                            ? Theme.yellow : Theme.green
+                                        color: !fila.esActivo ? Theme.muted
+                                             : (fila.base > 0 && fila.volumen > fila.base
+                                                ? Theme.yellow : Theme.green)
                                     }
 
                                     //  La unidad del aparato.

@@ -185,6 +185,21 @@ Singleton {
     //  cuando se abre el panel.
     property var bases: ({})
 
+    //  Los decibelios que el aparato está poniendo POR ENCIMA de su nivel
+    //  natural. Es la cifra que significa algo: el porcentaje es un invento
+    //  del mezclador, y «+44 %» no le dice nada a nadie —«+15 dB» sí—.
+    //
+    //  La curva es la de PulseAudio, cúbica: 60·log10(v). Comprobada contra
+    //  los números del propio pactl —56 % da −15 dB clavados— y no sacada de
+    //  ninguna fórmula de cabeza.
+    function dbSobreNatural(nodo) {
+        const base = baseDe(nodo)
+        const v = volumenDe(nodo)
+        if (base <= 0 || v <= 0)
+            return 0
+        return 60 * Math.log(v / base) / Math.LN10
+    }
+
     function baseDe(nodo) {
         const b = bases[nombreDe(nodo)]
         return b === undefined ? 0 : b
