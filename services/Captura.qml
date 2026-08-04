@@ -838,6 +838,14 @@ Singleton {
             //  editor la ignora por su título: allí lo que se quiere son las
             //  dos de verdad, para poder equilibrarlas.
             //
+            //  Ir la primera NO basta: un MP4 se guarda cuál es la pista
+            //  «predeterminada», y las dos que se copian traen esa bandera
+            //  puesta de sus ficheros originales. El reproductor no coge la
+            //  primera, coge la primera marcada —«Sistema»— y si ese día no
+            //  sonaba nada en el ordenador, abrías el vídeo, no oías tu voz y
+            //  parecía que el micro no se había grabado. Estaba grabado. Así
+            //  que la bandera se pone a mano: la mezcla sí, las otras dos no.
+            //
             //  `normalize=0`: sumar sin repartir el volumen. Con el reparto de
             //  fábrica, dos pistas suenan a la mitad cada una y la voz queda
             //  lejos.
@@ -849,6 +857,9 @@ Singleton {
                                 "-map", "0:v", "-map", "[mez]",
                                 "-map", "0:a", "-map", "1:a",
                                 "-c:v", "copy", "-c:a:1", "copy", "-c:a:2", "copy",
+                                "-disposition:a:0", "default",
+                                "-disposition:a:1", "0",
+                                "-disposition:a:2", "0",
                                 "-metadata:s:a:0", "title=Mezcla",
                                 "-metadata:s:a:1", "title=Sistema",
                                 "-metadata:s:a:2", "title=Micrófono",
