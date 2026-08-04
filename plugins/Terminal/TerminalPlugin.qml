@@ -376,6 +376,14 @@ K4Plugin {
         //  la tecla Intro manda un retorno, y el editor de línea de la shell
         //  espera eso. Con `\n` el mandato se queda escrito y sin ejecutar —
         //  comprobado en vivo, la línea entera ahí quieta.
+        //  Si la conexión lleva contraseña, la terminal se la queda ANTES de
+        //  que el mandato salga: cuando el otro lado la pida, la escribe ella.
+        //  Aquí no se guarda ni se enseña; en cuanto se entrega, se borra.
+        if (Consola.claveConexion) {
+            mandar({ que: "clave", valor: Consola.claveConexion })
+            Consola.claveConexion = ""
+        }
+
         mandar({ que: "texto", valor: String.fromCharCode(0x15) + guion + "\r" })
 
         //  El cuarto de segundo de gracia se cuenta desde AQUÍ, que es cuando
@@ -546,12 +554,23 @@ K4Plugin {
     function siguiente() { if (vivas.length > 1) irA((actual + 1) % vivas.length) }
     function anterior() { if (vivas.length > 1) irA((actual - 1 + vivas.length) % vivas.length) }
 
+    //  Cerrar una sesión se lleva TODO lo suyo, y la píldora de conexión es
+    //  lo suyo: la conexión se ha ido con ella. Antes solo se quitaba al
+    //  terminar el `ssh`, así que cerrar la pestaña —o matarla— dejaba la
+    //  píldora anunciando para siempre un servidor del que ya no queda nada.
+    function olvidarSesion(numero) {
+        salirDe(claveIsla(numero))
+    }
+
     function cerrarSesion(n) {
-        if (n >= 0 && n < listaSesiones.count)
-            listaSesiones.remove(n)
+        if (n < 0 || n >= listaSesiones.count)
+            return
+        olvidarSesion(listaSesiones.get(n).sid)
+        listaSesiones.remove(n)
     }
 
     function alMorir(numero) {
+        olvidarSesion(numero)
         for (let i = 0; i < listaSesiones.count; ++i)
             if (listaSesiones.get(i).sid === numero) {
                 listaSesiones.remove(i)
@@ -792,6 +811,45 @@ K4Plugin {
             delete d[clave]
             dentroDe = d
             Consola.salioDe(destino)
+        }
+    }
+
+    //  Una ventana puede irse sin decir adiós —la matan, se cuelga, se va la
+    //  sesión entera— y su píldora se quedaría anunciando un sitio del que no
+    //  queda nada. Se comprueba cada pocos segundos, y SOLO mientras haya
+    //  alguna de ventana: las de la isla no lo necesitan, que esas sesiones
+    //  son nuestras y sabemos cuándo se van.
+    readonly property var pidsConectados: {
+        const salida = []
+        for (const clave in dentroDe)
+            if (String(clave).indexOf("isla.") !== 0)
+                salida.push(String(clave))
+        return salida
+    }
+
+    property Timer vigilante: Timer {
+        interval: 5000
+        repeat: true
+        running: self.pidsConectados.length > 0
+        onTriggered: self.revisarVentanas()
+    }
+
+    function revisarVentanas() {
+        const pids = pidsConectados
+        if (pids.length === 0)
+            return
+        vivos.command = ["sh", "-c",
+            "for p in " + pids.join(" ") + "; do [ -d /proc/$p ] && echo $p; done"]
+        vivos.running = true
+    }
+
+    property K4.Process vivos: K4.Process {
+        onSalida: function (texto) {
+            const siguen = String(texto).trim().split(/\s+/)
+            const pids = self.pidsConectados
+            for (let i = 0; i < pids.length; ++i)
+                if (siguen.indexOf(pids[i]) < 0)
+                    self.salirDe(pids[i])
         }
     }
 

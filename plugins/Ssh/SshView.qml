@@ -457,6 +457,14 @@ FadeIn {
                         text: vista.plugin.borrador[filaCampo.modelData.id] || ""
                         onTextEdited: vista.plugin.ponerCampo(filaCampo.modelData.id, text)
 
+                        //  El campo secreto va con puntos hasta que pidas
+                        //  verlo: nadie quiere su contraseña en pantalla por
+                        //  defecto con alguien detrás.
+                        echoMode: filaCampo.modelData.secreto && !vista.plugin.verClave
+                            ? TextInput.Password : TextInput.Normal
+                        passwordCharacter: "•"
+                        passwordMaskDelay: 0
+
                         //  El foco lo lleva el campo activo, y se pide cuando
                         //  cambia: así las flechas mueven de campo y lo que se
                         //  teclea va siempre al que está marcado.
@@ -492,6 +500,12 @@ FadeIn {
                                 //  Intro guarda desde cualquier campo: es un
                                 //  formulario de ocho líneas, no un trámite.
                                 vista.plugin.guardarBorrador(); ev.accepted = true
+                            } else if ((ev.modifiers & Qt.ControlModifier)
+                                       && ev.key === Qt.Key_O) {
+                                //  El ojo del formulario, con tecla: aquí no
+                                //  hay ratón que llevar hasta un icono.
+                                vista.plugin.verClave = !vista.plugin.verClave
+                                ev.accepted = true
                             } else if (ev.key === Qt.Key_Down
                                        || (ev.key === Qt.Key_Tab && !(ev.modifiers & Qt.ShiftModifier))) {
                                 vista.plugin.moverCampo(1); ev.accepted = true

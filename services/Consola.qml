@@ -66,14 +66,22 @@ Singleton {
     //  destino porque es parte de «a dónde vas».
     property string tinteConexion: ""
 
-    function conectandoA(destino, tinte) {
+    //  Y la contraseña, si ese servidor va con contraseña. Está aquí de paso
+    //  y nada más: la pone quien lanza la conexión, se la lleva la terminal en
+    //  cuanto escribe el mandato y se borra. No se guarda, no se enseña y no
+    //  sale de la sesión que la va a necesitar.
+    property string claveConexion: ""
+
+    function conectandoA(destino, tinte, clave) {
         conectando = String(destino || "")
         tinteConexion = String(tinte || "")
+        claveConexion = String(clave || "")
         conectandoDesde = Date.now()
     }
 
     function conectado() {
         conectando = ""
+        claveConexion = ""
     }
 
     //  Se ha salido de un servidor. Lo dice quien ve terminar el mandato —el

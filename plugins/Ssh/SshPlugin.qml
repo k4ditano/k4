@@ -56,6 +56,10 @@ K4Plugin {
         { id: "alias",      nombre: Idioma.t("Nombre"),     ayuda: Idioma.t("como lo vas a llamar"),          suyo: false },
         { id: "host",       nombre: Idioma.t("Máquina"),    ayuda: Idioma.t("dominio o IP"),                  suyo: false },
         { id: "usuario",    nombre: Idioma.t("Usuario"),    ayuda: Idioma.t("vacío = el tuyo"),               suyo: false },
+        //  La contraseña no va ni al `ssh_config` ni a `hosts.json`: esos dos
+        //  se abren y se copian sin pensar. Vive en `claves.json` con 600, y
+        //  en la ficha se enseña con puntos salvo que pidas verla (ctrl+O).
+        { id: "contrasena", nombre: Idioma.t("Contraseña"), ayuda: Idioma.t("si entra con contraseña en vez de con clave"), suyo: false, secreto: true },
         { id: "puerto",     nombre: Idioma.t("Puerto"),     ayuda: Idioma.t("vacío = 22"),                    suyo: false },
         { id: "clave",      nombre: Idioma.t("Clave"),      ayuda: Idioma.t("ruta de la privada, si no la de siempre"), suyo: false },
         { id: "salto",      nombre: Idioma.t("Salto"),      ayuda: Idioma.t("pasar por otro servidor (ProxyJump)"), suyo: false },
@@ -65,12 +69,19 @@ K4Plugin {
         { id: "tuneles",    nombre: Idioma.t("Túneles"),    ayuda: Idioma.t("8080:localhost:80 · socks:1080 · R:9000:localhost:9000"), suyo: true }
     ]
 
+    //  Si la contraseña se enseña o va con puntos. Se apaga al abrir la ficha
+    //  y al cerrarla: que se quede encendida de la vez anterior es justo lo
+    //  que no se espera.
+    property bool verClave: false
+
     function editar(h) {
+        verClave = false
         borrador = {
             original: h && !h.rapido ? h.alias : "",
             alias: h ? h.alias : "",
             host: h ? (h.host || h.alias) : "",
             usuario: h ? h.usuario : "",
+            contrasena: h ? claveDe(h.alias) : "",
             puerto: h ? h.puerto : "",
             clave: h ? (h.clave || "") : "",
             salto: h ? (h.salto || "") : "",
@@ -185,6 +196,58 @@ K4Plugin {
             }
         }
         onLoadFailed: self.extras = ({})
+    }
+
+    //  ── las contraseñas ───────────────────────────────────────────
+    //
+    //  En su propio fichero y con 600, como en la ventana: `claves.json` no
+    //  sale nunca de aquí, y ni el `ssh_config` ni `hosts.json` lo tocan. Van
+    //  en claro, con el mismo trato que una clave privada sin frase — en este
+    //  equipo no hay servicio de secretos que funcione, y el día que lo haya
+    //  esto es lo único que cambia.
+    readonly property string rutaClaves: K4.Sistema.entorno("HOME") + "/.config/k4term/claves.json"
+
+    property var contrasenas: ({})
+
+    property K4.Fichero fClaves: K4.Fichero {
+        path: self.rutaClaves
+        onLoaded: {
+            try {
+                self.contrasenas = JSON.parse(fClaves.text() || "{}")
+            } catch (e) {
+                self.contrasenas = ({})
+            }
+        }
+        onLoadFailed: self.contrasenas = ({})
+    }
+
+    function claveDe(alias) {
+        const c = contrasenas[String(alias || "")]
+        return c ? String(c) : ""
+    }
+
+    //  Una contraseña vacía BORRA la que hubiera: es la única forma de
+    //  quitarla desde la ficha.
+    function guardarClave(alias, clave) {
+        const nombre = String(alias || "")
+        if (!nombre)
+            return
+        const nuevo = Object.assign({}, contrasenas)
+        if (String(clave).length === 0)
+            delete nuevo[nombre]
+        else
+            nuevo[nombre] = String(clave)
+        contrasenas = nuevo
+        fClaves.setText(JSON.stringify(contrasenas, null, 2) + "\n")
+        cerrarClaves.running = true
+    }
+
+    //  El fichero recién escrito sale con los permisos de todo el mundo, y
+    //  esto no es un fichero cualquiera.
+    property K4.Process cerrarClaves: K4.Process {
+        command: ["sh", "-c",
+                  "chmod 700 ~/.config/k4term 2>/dev/null; " +
+                  "chmod 600 ~/.config/k4term/claves.json 2>/dev/null"]
     }
 
     function leerSsh() {
@@ -361,7 +424,8 @@ K4Plugin {
             //  el camino mientras tanto.
             Consola.conectandoA(h.rapido && h.usuario
                                 ? h.usuario + "@" + h.host : h.alias,
-                                h.tinte || "")
+                                h.tinte || "",
+                                h.rapido ? "" : claveDe(h.alias))
             K4.Terminal.ejecutar(guion)
         }
 
@@ -414,6 +478,10 @@ K4Plugin {
 
         let bloque = "\nHost " + alias + "\n"
         bloque += "    HostName " + String(b.host).trim() + "\n"
+        //  La huella de una máquina nueva se acepta sola; la que CAMBIA sigue
+        //  parando la conexión. Igual que en la ventana, y por lo mismo: así
+        //  no sale la pregunta y no hay que contestarla a la vista de nadie.
+        bloque += "    StrictHostKeyChecking accept-new\n"
         const deSsh = [["User", b.usuario], ["Port", b.puerto],
                        ["IdentityFile", b.clave], ["ProxyJump", b.salto]]
         for (let i = 0; i < deSsh.length; ++i) {
@@ -435,8 +503,11 @@ K4Plugin {
             tinte: String(b.tinte || "").trim(),
             tuneles: String(b.tuneles || "").trim()
         })
-        if (b.original && b.original !== alias)
+        guardarClave(alias, String(b.contrasena || ""))
+        if (b.original && b.original !== alias) {
             olvidarExtra(b.original)
+            guardarClave(b.original, "")
+        }
 
         modo = "lista"
         borrador = ({})
@@ -506,15 +577,19 @@ K4Plugin {
         delete nuevo[h.alias]
         extras = nuevo
         fExtras.setText(JSON.stringify(extras, null, 2) + "\n")
+        //  Y su contraseña: guardar el secreto de una máquina a la que ya no
+        //  vas es lo peor de los dos mundos.
+        guardarClave(h.alias, "")
 
         indice = Math.max(0, Math.min(indice, cuantos - 2))
     }
 
     //  ── la clave, si no tienes ninguna ────────────────────────────
     //
-    //  Sin clave, entrar pide contraseña cada vez y guardar contraseñas es
-    //  justo lo que este plugin no va a hacer. Crear una y mandarla al
-    //  servidor es el paso que lo arregla para siempre, y se hace EN LA
+    //  Sin clave, entrar pide contraseña cada vez. Se puede guardar —está el
+    //  campo, y va a `claves.json` con 600— pero una clave es mejor: no viaja,
+    //  no caduca y no hay que teclearla. Crear una y mandarla al servidor es
+    //  el paso que lo arregla para siempre, y se hace EN LA
     //  TERMINAL a propósito: `ssh-keygen` pregunta por la frase de paso y
     //  `ssh-copy-id` por la contraseña del servidor, y eso lo tienes que
     //  teclear tú, no un diálogo nuestro.

@@ -1286,10 +1286,22 @@ Item {
         visible: Consola.conectando !== ""
         z: 10
 
+        //  Opaco, no translúcido: por debajo pasan el mandato, el saludo de
+        //  la máquina y los avisos de ssh, y verlos correr detrás de la
+        //  animación es lo contrario de lo que la animación viene a decir.
+        //  Es la misma decisión que en la ventana.
+        //
+        //  Y con las esquinas de abajo redondeadas como las de la island: un
+        //  rectángulo a secas la dejaba cuadrada por el pie mientras duraba la
+        //  conexión, que es de las cosas que se ven aunque no se miren. El
+        //  mismo radio que usa la silueta —32, o la mitad del alto si es
+        //  bajita—, y arriba a cero porque ahí no hay esquina que tapar: está
+        //  la cabecera de las pestañas.
         Rectangle {
             anchors.fill: parent
             color: Theme.islandBg
-            opacity: 0.82
+            bottomLeftRadius: Math.min(32, vista.height / 2)
+            bottomRightRadius: Math.min(32, vista.height / 2)
         }
 
         Column {
