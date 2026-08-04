@@ -97,9 +97,19 @@ K4Plugin {
     //  la que se cierra tiene que funcionar siempre, no casi siempre.
     grabKeyboard: abierto
 
-    closeOnHoverExit: true
-    hoverExitDelay: 1000
-    onHoverTimedOut: close()
+    //  NO se cierra al salir el ratón.
+    //
+    //  Esto se abre a propósito —desde el lanzador o por su píldora— y se
+    //  QUEDA MIRANDO: son cinco cifras que hay que leer, y para leerlas uno
+    //  aparta el ratón. Con el cierre por salida, apartarlo lo cerraba al
+    //  segundo. Peor todavía abriéndolo desde el lanzador: el puntero estaba
+    //  dentro de la island —era el lanzador— y al cambiar de plugin quedaba
+    //  fuera, así que se cerraba solo sin que nadie hubiera movido nada.
+    //
+    //  Cerrar sigue siendo fácil y de tres maneras: ESC (que este plugin se
+    //  queda el teclado para que funcione siempre), el aspa de la cabecera, y
+    //  volver a abrirlo.
+    closeOnHoverExit: false
 
     handlesBackgroundTap: true
     onBackgroundTapped: {}   // se traga el clic: cerrar es cosa del botón
