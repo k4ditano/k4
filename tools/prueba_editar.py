@@ -1309,13 +1309,13 @@ def imagen_de_prueba(nombre="cuadro.png", lado=200):
     """Un PNG de verdad: `zoompan` necesita el alto en números, y eso se lee de
     la cabecera del fichero. Con los ficheros vacíos del resto de pruebas la
     capa se queda quieta a propósito, que es justo lo que comprueba
-    `prueba_efecto_crecer_sin_poder_medir_no_anima`."""
-    ruta = os.path.join(BORRADOR, nombre)
-    if not os.path.exists(ruta) or os.path.getsize(ruta) == 0:
-        import subprocess
-        subprocess.run(["magick", "-size", "%dx%d" % (lado, lado),
-                        "xc:orange", ruta], capture_output=True)
-    return ruta
+    `prueba_efecto_crecer_sin_poder_medir_no_anima`.
+
+    Lo pinta `png_de_prueba` y no magick: aquí solo importan los números de la
+    cabecera —de qué color sea da igual—, y el resto de la suite ya se cuida
+    de no depender de magick (se siembra el fichero, se suplanta al dibujante).
+    Esta era la única que sí, y por eso se caía donde no está instalado."""
+    return png_de_prueba(nombre, lado, lado)
 
 
 def prueba_efecto_crecer_va_por_zoompan():
