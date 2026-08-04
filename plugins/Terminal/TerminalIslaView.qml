@@ -374,39 +374,101 @@ Item {
                 model: vista.plugin.vivas
 
                 delegate: Rectangle {
+                    id: pestana
                     required property var modelData
                     required property int index
 
                     readonly property bool esta: index === vista.plugin.actual
-                    //  Lo que diga la aplicación de dentro; si no ha dicho
-                    //  nada, dónde está; y si tampoco, su número.
-                    readonly property string nombre: modelData.titulo
-                        ? modelData.titulo
-                        : (modelData.cwd ? vista.corto(modelData.cwd)
-                                         : Idioma.t("terminal") + " " + (index + 1))
+
+                    //  Lo que corre aquí dentro y si te está llamando. Se leen
+                    //  los MAPAS del plugin, no una función que los mire por
+                    //  dentro: un enlace de QML solo se reevalúa cuando cambia
+                    //  una PROPIEDAD que haya leído, y con `trabajos` metido
+                    //  dentro de una llamada la pestaña se quedaría con lo que
+                    //  hubiera al nacer. Es la trampa de `advanceWidth`.
+                    readonly property string clave: "isla." + modelData.numero
+                    readonly property var trabajo: vista.plugin.trabajos[clave]
+                    readonly property bool llamando:
+                        vista.plugin.esperas[clave] !== undefined
+
+                    //  La campana primero: que un agente haya acabado su turno
+                    //  y te espere urge más que saber que sigue pensando. Sin
+                    //  una cosa ni la otra, la pestaña va limpia.
+                    readonly property var insignia: llamando
+                        ? ({ glifo: Theme.ico.bell.codePointAt(0),
+                             color: Theme.yellow })
+                        : (trabajo ? vista.plugin.insigniaDe(trabajo.mandato)
+                                   : null)
+
+                    //  DÓNDE estás y QUÉ corre, las dos cosas. Antes era una o
+                    //  la otra, y con dos agentes en dos repos el título solo
+                    //  no distingue nada: lo que las separa es el directorio,
+                    //  y lo que dice en qué anda cada una es el mandato.
+                    readonly property string donde: modelData.cwd
+                        ? vista.corto(modelData.cwd)
+                        : Idioma.t("terminal") + " " + (index + 1)
+
+                    //  Qué corre, a secas: el programa, sin ruta ni argumentos,
+                    //  que en dos dedos de pestaña es lo único que se lee. Lo
+                    //  pone el reloj de los trabajos, que solo cuenta lo que
+                    //  lleva unos segundos vivo: por eso esto no parpadea con
+                    //  cada `ls`, y por eso una pestaña en reposo no dice nada
+                    //  de más.
+                    //
+                    //  El título de la aplicación NO entra aquí, aunque fuera
+                    //  la tentación. Un shell en reposo lo pone en
+                    //  `abel@abel:~`, que es el directorio otra vez y con peor
+                    //  letra; y lo que sí tiene título propio —vim, btop— es
+                    //  justo lo que el reloj ya está contando.
+                    readonly property string que: trabajo
+                        ? vista.plugin.programaDe(trabajo.mandato) : ""
+
+                    readonly property string nombre:
+                        que ? donde + "  ·  " + que : donde
 
                     height: vista.altoCabecera - 4
                     //  El hueco de la aspa va SIEMPRE reservado aunque el aspa
                     //  no se vea: si apareciera al pasar el ratón, la pestaña
                     //  crecería y empujaría a las demás justo cuando vas a
                     //  pulsarlas.
-                    width: etiqueta.width + 18 + 14
+                    width: fila.width + 18 + 14
                     radius: height / 2
                     color: esta ? Theme.surfaceHi : "transparent"
 
                     Behavior on color { ColorAnimation { duration: 120 } }
 
-                    IslandLabel {
-                        id: etiqueta
+                    Row {
+                        id: fila
                         anchors.left: parent.left
                         anchors.leftMargin: 9
                         anchors.verticalCenter: parent.verticalCenter
-                        text: (index + 1) + "  " + parent.nombre
-                        color: parent.esta ? Theme.ink : Theme.muted
-                        font.pixelSize: 10
-                        elide: Text.ElideRight
-                        //  Un nombre largo no puede empujar al resto fuera.
-                        width: Math.min(implicitWidth, 190)
+                        spacing: 5
+
+                        //  El mismo glifo que lleva su píldora, y por la misma
+                        //  razón: saber CUÁL de las cuatro tiene al agente
+                        //  esperándote sin ir tabulando por ellas. Una fila
+                        //  se salta sola lo que no se ve, así que sin insignia
+                        //  no queda ni el hueco.
+                        IconGlyph {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: pestana.insignia !== null
+                            text: visible
+                                ? String.fromCodePoint(pestana.insignia.glifo)
+                                : ""
+                            color: visible ? pestana.insignia.color : Theme.dim
+                            font.pixelSize: 11
+                        }
+
+                        IslandLabel {
+                            id: etiqueta
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: (pestana.index + 1) + "  " + pestana.nombre
+                            color: pestana.esta ? Theme.ink : Theme.muted
+                            font.pixelSize: 10
+                            elide: Text.ElideRight
+                            //  Un nombre largo no puede empujar al resto fuera.
+                            width: Math.min(implicitWidth, 190)
+                        }
                     }
 
                     MouseArea {

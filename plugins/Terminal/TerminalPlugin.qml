@@ -643,10 +643,29 @@ K4Plugin {
     //  da su propio glifo para distinguirlos de un vistazo.
     readonly property var agentes: ["claude", "codex", "aider", "gemini", "opencode", "goose"]
 
-    function esAgente(mandato) {
+    //  El programa a secas: sin la ruta por delante y sin sus argumentos.
+    //  `/usr/bin/python3 tools/goteo.py` es «python3», que es lo que se lee
+    //  de un vistazo en una pestaña de dos dedos.
+    function programaDe(mandato) {
         const primero = String(mandato).trim().split(/\s+/)[0] || ""
-        const limpio = primero.split("/").pop()
-        return agentes.indexOf(limpio) >= 0
+        return primero.split("/").pop()
+    }
+
+    function esAgente(mandato) {
+        return agentes.indexOf(programaDe(mandato)) >= 0
+    }
+
+    //  Con qué se dibuja lo que corre: glifo y color. Está aparte porque lo
+    //  usan la píldora y la tira de pestañas de la isla, y dos copias de esta
+    //  decisión acabarían diciendo cosas distintas de lo mismo.
+    //
+    //  Es pura —solo mira el mandato—, así que un enlace de QML puede
+    //  llamarla sin miedo mientras lea por su cuenta el mapa de donde saca el
+    //  mandato: lo que no reevalúa un enlace es la función, no el dato.
+    function insigniaDe(mandato) {
+        const agente = esAgente(mandato)
+        return { glifo: agente ? Theme.ico.ask.codePointAt(0) : 0xF018D,
+                 color: agente ? Theme.green : Theme.blue }
     }
 
     function apuntar(pid, mandato, llevaba) {
@@ -656,10 +675,9 @@ K4Plugin {
         trabajos = t
         enCurso = Object.keys(t).length
 
-        const agente = esAgente(mandato)
+        const insignia = insigniaDe(mandato)
         K4.Pildora.registrar(idDe(pid), reloj(0),
-                             agente ? Theme.ico.ask.codePointAt(0) : 0xF018D,
-                             agente ? Theme.green : Theme.blue, 30, true)
+                             insignia.glifo, insignia.color, 30, true)
     }
 
     //  Los que te esperan van con el id aparte: un mandato largo y un agente
