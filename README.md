@@ -101,10 +101,11 @@ Codex integration and other enhancements.
 
 [k4term](https://github.com/k4ditano/k4term) is this project's own terminal.
 The bar does not require it and never assumes it: `services/Consola.qml` looks
-for a terminal once at startup — `k4term`, then `$TERMINAL`, then the usual
+for a terminal at startup — `k4term`, then `$TERMINAL`, then the usual
 suspects — and everything that opens one goes through it, so with any other
 terminal installed the update flow, the launcher and the Terminal plugin all
-work the same.
+work the same. If k4term shows up later, the bar notices within a minute and
+the island terminal turns itself on; you do not have to restart it.
 
 What you get by having it is what needs both sides:
 
@@ -122,7 +123,14 @@ What you get by having it is what needs both sides:
 - system updates and AUR installs running **inside the island** instead of
   opening a window — close the view and they keep going;
 - k4term's own settings inside k4's Settings, and the bar's tint reaching the
-  terminal background live.
+  terminal background live;
+- **saved passwords** in the Servers plugin (`SUPER + Alt + S`): for machines
+  that ask for one instead of using a key. They live in
+  `~/.config/k4term/claves.json` with `600` permissions and **in clear text** —
+  the same deal as an SSH key without a passphrase — and never touch
+  `~/.ssh/config` or `hosts.json`. The terminal itself types them when the
+  other side asks, watching its own PTY, so the field only shows up when a
+  k4term is installed: no other terminal can do it.
 
 Without k4term, the island terminal and the pill simply do not appear, and the
 Terminal plugin opens your default terminal instead.

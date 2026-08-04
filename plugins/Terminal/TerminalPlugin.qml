@@ -380,7 +380,17 @@ K4Plugin {
         //  que el mandato salga: cuando el otro lado la pida, la escribe ella.
         //  Aquí no se guarda ni se enseña; en cuanto se entrega, se borra.
         if (Consola.claveConexion) {
-            mandar({ que: "clave", valor: Consola.claveConexion })
+            //  Si el binario de enfrente es anterior a esto, la orden se la
+            //  traga en silencio y la contraseña no se teclea nunca. Se dice,
+            //  que quedarse esperando sin saber por qué es lo peor que puede
+            //  pasar aquí.
+            if (sesion && sesion.sabeClaves) {
+                mandar({ que: "clave", valor: Consola.claveConexion })
+            } else {
+                K4.Sistema.lanzar(["notify-send", "-a", "k4",
+                                   Idioma.t("Actualiza k4term"),
+                                   Idioma.t("Esta versión de k4term-isla no sabe teclear contraseñas: la conexión te la pedirá a mano.")])
+            }
             Consola.claveConexion = ""
         }
 

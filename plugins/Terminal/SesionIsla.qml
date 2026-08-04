@@ -31,6 +31,9 @@ QtObject {
     //  Lo último que ha mandado.
     property var marco: null
     property int estela: 8
+    //  Si el binario que hay enfrente sabe teclear contraseñas. Lo dice él al
+    //  arrancar; uno anterior no dice nada y se queda en false.
+    property bool sabeClaves: false
     property string fuente: "MesloLGS Nerd Font Mono"
     property int cuerpo: 13
 
@@ -104,6 +107,11 @@ QtObject {
                     sesion.fuente = m.fuente
                 if (m.tamano)
                     sesion.cuerpo = Math.round(m.tamano)
+                //  Qué sabe hacer el binario que hay enfrente. Un k4term
+                //  anterior a las contraseñas no manda esto, y entonces no se
+                //  le mandan: mejor decirlo que quedarse esperando una
+                //  contraseña que nadie va a teclear.
+                sesion.sabeClaves = m.claves === true
             } else if (m.que === "donde") {
                 sesion.donde(m.ruta || "")
             } else if (m.que === "trabajo") {

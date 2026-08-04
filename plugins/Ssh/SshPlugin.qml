@@ -52,7 +52,17 @@ K4Plugin {
     //  Los campos, en el orden en que se rellenan. Los cuatro primeros van a
     //  `~/.ssh/config` —los entiende ssh y los aprovechan scp, git y todo lo
     //  demás—; los tres últimos son nuestros y viven en `hosts.json`.
-    readonly property var campos: [
+    //  Los campos de la ficha. Es una lista calculada y no una constante por
+    //  un motivo: la contraseña solo se ofrece si hay una terminal NUESTRA
+    //  —la ventana o la de la isla—, porque el tecleo automático lo hace la
+    //  terminal mirando su propio PTY y eso kitty o alacritty no lo hacen.
+    //  Un campo que se rellena y luego no hace nada es peor que no tenerlo.
+    readonly property bool puedeContrasena: Consola.esNuestra || Consola.hayIsla
+
+    readonly property var campos: puedeContrasena ? camposTodos
+        : camposTodos.filter(function (c) { return c.id !== "contrasena" })
+
+    readonly property var camposTodos: [
         { id: "alias",      nombre: Idioma.t("Nombre"),     ayuda: Idioma.t("como lo vas a llamar"),          suyo: false },
         { id: "host",       nombre: Idioma.t("Máquina"),    ayuda: Idioma.t("dominio o IP"),                  suyo: false },
         { id: "usuario",    nombre: Idioma.t("Usuario"),    ayuda: Idioma.t("vacío = el tuyo"),               suyo: false },

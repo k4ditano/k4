@@ -140,10 +140,26 @@ Singleton {
         return envoltura([bin, "-e", "sh", "-c", guion, ruta])
     }
 
-    //  Una sola pasada al arrancar: qué hay instalado no cambia mientras la
-    //  barra vive, y si cambia, un reinicio de la barra es más barato que
-    //  vigilar el PATH para siempre.
+    //  Qué hay instalado.
+    //
+    //  Se mira al arrancar y se VUELVE a mirar mientras falte algo. La regla
+    //  vieja —«una sola pasada, y si cambia reinicias»— dejaba un agujero
+    //  feo: quien instala la barra primero y la terminal después se
+    //  encontraba la terminal de la isla apagada sin saber por qué, y la
+    //  única pista era reiniciar. Ahora, si k4term aparece, la barra se
+    //  entera sola en un minuto.
+    //
+    //  Y en cuanto está todo, el reloj se para: preguntar por lo que ya
+    //  tienes es gastar por gastar.
+    property Timer revisor: Timer {
+        interval: 60000
+        repeat: true
+        running: consola.binario === "" || !consola.hayIsla
+        onTriggered: buscador.running = true
+    }
+
     Process {
+        id: buscador
         running: true
         command: ["sh", "-c",
             "elegida=''\n" +
