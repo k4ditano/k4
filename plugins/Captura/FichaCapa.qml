@@ -83,11 +83,29 @@ ColumnLayout {
         onPulsado: Editor.alternarRuta()
     }
 
+    //  De qué pista es esta capa, si lo es de alguna. «Separar el audio» saca
+    //  una capa por pista y en la línea de tiempo son dos bloques iguales:
+    //  sin decirlo aquí no hay forma de saber cuál es la voz y cuál el
+    //  ordenador más que bajándole el volumen a una y escuchar.
+    function nombrePista(capa) {
+        if (!capa || capa.tipo !== "audio" || capa.pista === undefined)
+            return ""
+        const pistas = Editor.pistasAudio
+        for (let i = 0; i < pistas.length; ++i)
+            if (pistas[i].i === capa.pista && pistas[i].titulo)
+                return pistas[i].titulo
+        return ""
+    }
+
     IslandLabel {
         text: {
             if (!Editor.capaSel) return Idioma.t("Opacidad")
             if (Editor.capaSel.tipo === "texto") return Idioma.t("Fondo")
-            if (Editor.capaSel.tipo === "audio") return Idioma.t("Volumen")
+            if (Editor.capaSel.tipo === "audio") {
+                const cual = fichaCapa.nombrePista(Editor.capaSel)
+                return cual ? Idioma.t("Volumen") + " · " + cual
+                            : Idioma.t("Volumen")
+            }
             if (Editor.capaSel.tipo === "zona") return Idioma.t("Fuerza")
             return Idioma.t("Opacidad")
         }

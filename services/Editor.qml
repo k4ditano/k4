@@ -616,25 +616,49 @@ Singleton {
         if (!tr)
             return 0
 
-        const nueva = {
-            id: nuevoIdCapa(),
-            tipo: "audio",
-            ruta: rutaDe(c.fuente),
-            //  Dónde se oye en la línea, y qué parte del fichero se oye.
-            t0: tr.inicio,
-            t1: tr.fin,
-            recorte: [c.desde, c.hasta],
-            volumen: 1.0,
-            dur: Math.max(0.1, c.hasta - c.desde),
-            banda: bandaLibre(tr.inicio, tr.fin)
+        //  Una capa POR PISTA, no una sola del fichero.
+        //
+        //  Sistema y micro se graban separados justamente para poder
+        //  equilibrarlos después; sacarlos en una capa única los volvía a
+        //  juntar, y encima por la puerta de atrás: una capa que no dice de
+        //  qué pista es se mapeaba `[N:a]`, y eso ffmpeg lo resuelve a la
+        //  PRIMERA del fichero — la Mezcla, que es la suma de las dos. De ahí
+        //  que silenciar una pista no callara nada.
+        //
+        //  Un vídeo de fuera —una pista y sin nombre— sigue dando una capa y
+        //  una sola: es el caso de la lista vacía.
+        const cuales = pistasAudio.length > 0 ? pistasAudio : [{ i: 0 }]
+
+        let primera = 0
+        for (let n = 0; n < cuales.length; ++n) {
+            const nueva = {
+                id: nuevoIdCapa(),
+                tipo: "audio",
+                ruta: rutaDe(c.fuente),
+                //  De qué pista sale. Sin esto se lleva la mezcla.
+                pista: cuales[n].i,
+                //  Dónde se oye en la línea, y qué parte del fichero se oye.
+                t0: tr.inicio,
+                t1: tr.fin,
+                recorte: [c.desde, c.hasta],
+                volumen: 1.0,
+                dur: Math.max(0.1, c.hasta - c.desde),
+                banda: bandaLibre(tr.inicio, tr.fin)
+            }
+            //  Se añade en el momento y no todas al final: `nuevoIdCapa` y
+            //  `bandaLibre` miran la lista, y con dos a la vez saldrían con el
+            //  mismo id y apiladas en la misma banda.
+            capas = capas.concat([nueva])
+            if (n === 0)
+                primera = nueva.id
         }
-        capas = capas.concat([nueva])
+
         clips = clips.map(function (x, j) {
             return j === i ? Object.assign({}, x, { mudo: true }) : x
         })
         persistir()
-        seleccionar("capa", nueva.id)
-        return nueva.id
+        seleccionar("capa", primera)
+        return primera
     }
 
     //  Devolverle el sonido a un trozo. No borra la capa: quitarle a alguien

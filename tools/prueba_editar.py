@@ -454,6 +454,63 @@ def prueba_capa_de_audio_sin_recorte_sigue_igual():
     igual("y el volumen sigue ahí", "volume=0.500" in g, True)
 
 
+#  Una fuente con las dos pistas de una grabación de la casa: la Mezcla no
+#  entra —`pistas_audio` la salta— así que los números empiezan en 1.
+DOS_PISTAS = [{"i": 1, "titulo": "Sistema", "volumen": 1.0, "mudo": False},
+              {"i": 2, "titulo": "Micrófono", "volumen": 1.0, "mudo": False}]
+
+
+def plan_multipista(pistas, capa_audio):
+    """Un plan con el trozo MUDO y una capa de audio, que es como queda un
+    vídeo después de «separar el audio»."""
+    ruta = fichero("multipista.mp4")
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8, "mudo": True}],
+             fuentes=[{"id": 1, "ruta": ruta, "rastro": "", "w": 1920,
+                       "h": 1080, "fps": 30.0, "dur": 20.0, "pistas": pistas}])
+    d = {"id": 5, "tipo": "audio", "ruta": ruta, "t0": 0.0, "t1": 4.0,
+         "volumen": 1.0, "banda": 2}
+    d.update(capa_audio)
+    p["capas"] = [d]
+    return p
+
+
+def prueba_capa_de_audio_no_se_lleva_la_mezcla():
+    """`[N:a]` a secas NO es «el audio del fichero»: ffmpeg lo resuelve a la
+    primera pista, y en una grabación de la casa esa es la Mezcla —sistema y
+    micro ya sumados—, justo la que el editor se salta al listar. Separar el
+    audio devolvía las dos cosas juntas por la puerta de atrás."""
+    g, _ = editar.grafo(plan_multipista(DOS_PISTAS, {}))
+    igual("ninguna rama pide el audio sin decir cuál", ":a]" in g, False)
+    igual("entra el sistema", ":a:1]" in g, True)
+    igual("y el micro", ":a:2]" in g, True)
+    igual("sumados antes del volumen", "axp0_0" in g, True)
+
+
+def prueba_capa_de_audio_con_su_pista():
+    """La que sale de «separar el audio» dice de qué pista es, y es esa."""
+    g, _ = editar.grafo(plan_multipista(DOS_PISTAS, {"pista": 2}))
+    igual("solo el micro", ":a:2]" in g, True)
+    igual("el sistema no entra", ":a:1]" in g, False)
+
+
+def prueba_pista_muda_apaga_su_capa():
+    """Un silencio vale venga de donde venga. Antes la capa seguía sonando
+    —traía la mezcla— y el botón de silencio no callaba nada."""
+    pistas = [DOS_PISTAS[0], dict(DOS_PISTAS[1], mudo=True)]
+    g, _ = editar.grafo(plan_multipista(pistas, {"pista": 2}))
+    igual("el micro no suena", ":a:2]" in g, False)
+    igual("y el grafo sigue en pie", "[mez]anull[amez]" in g, True)
+
+
+def prueba_capa_de_fichero_de_fuera_coge_la_primera():
+    """Una canción añadida no es de ninguna fuente del plan: se coge su primera
+    pista, que es lo que se hacía antes, pero dicho."""
+    p = plan_multipista(DOS_PISTAS, {"ruta": fichero("cancion.m4a")})
+    g, _ = editar.grafo(p)
+    igual("la primera del fichero", ":a:0]" in g, True)
+    igual("y tampoco a secas", ":a]" in g, False)
+
+
 # ── el vídeo es la banda 1 ────────────────────────────────────────
 def prueba_migracion_sube_las_capas():
     """La banda 1 pasa a ser del vídeo, así que las capas suben una."""

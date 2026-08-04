@@ -2237,6 +2237,43 @@ def capas_que_suenan(plan):
     return salida
 
 
+def pistas_vivas_de(plan, capa):
+    """De qué pistas del fichero sale el sonido de una capa, por su número
+    dentro del fichero (el `N` de `0:a:N`).
+
+    Hasta ahora una capa se mapeaba `[N:a]` a secas, y eso NO es «el audio del
+    fichero»: ffmpeg lo resuelve a la primera pista y se queda tan ancho. En
+    una grabación de la casa la primera es la Mezcla —sistema y micro ya
+    sumados—, que es justo la que el editor se salta al listar las pistas. O
+    sea que «separar el audio» te devolvía las dos cosas juntas por la puerta
+    de atrás, y silenciar una pista no callaba nada porque lo que sonaba venía
+    por otro lado. Medido: `[0:a]` da byte a byte lo mismo que `[0:a:0]`.
+
+    Con la pista dicha —lo que hace «separar el audio»— es esa y solo esa, y
+    si está silenciada no suena: un silencio tiene que valer venga de donde
+    venga. Sin decir nada, las que no estén mudas, mezcladas. Y de un fichero
+    que el plan no conoce —una canción, un vídeo de fuera— la primera, que es
+    lo que se hacía antes pero dicho a las claras.
+    """
+    fuente = None
+    for f in plan.get("fuentes", []):
+        if f.get("ruta") and f["ruta"] == capa.get("ruta"):
+            fuente = f
+            break
+    pistas = (fuente or {}).get("pistas") or []
+
+    if capa.get("pista") is not None:
+        n = int(capa["pista"])
+        for p in pistas:
+            if int(p["i"]) == n:
+                return [] if p.get("mudo") else [n]
+        return [n]
+
+    if not pistas:
+        return [0]
+    return [int(p["i"]) for p in pistas if not p.get("mudo")]
+
+
 def ramas_audio_extra(plan, idx_capa, sin_audio):
     """Las capas de audio, mezcladas con el sonido del vídeo.
 
@@ -2247,6 +2284,11 @@ def ramas_audio_extra(plan, idx_capa, sin_audio):
     orden entera.
     """
     extras = [c for c in capas_que_suenan(plan) if c["id"] in idx_capa]
+    #  Y fuera las que no tienen de dónde sonar: una capa de una pista que
+    #  acabas de silenciar no aporta nada, y una rama que no produce etiqueta
+    #  tumba el `amix` del final. Silenciar la pista apaga su capa, que es lo
+    #  que uno espera al pulsar un botón que dice «silencio».
+    extras = [c for c in extras if pistas_vivas_de(plan, c)]
 
     if sin_audio:
         # Ni se molestan en entrar: nadie va a escucharlas.
@@ -2283,10 +2325,34 @@ def ramas_audio_extra(plan, idx_capa, sin_audio):
         #  menos que al revés, y antes del `adelay` porque el retardo cuenta
         #  desde el principio de lo que se oye, no del fichero.
         recorte = capa.get("recorte") or []
-        partes = ["[%d:a]" % idx_capa[capa["id"]]]
+        idx = idx_capa[capa["id"]]
+        recortar = ""
         if len(recorte) == 2 and float(recorte[1]) > float(recorte[0]):
-            partes[0] += ("atrim=start=%.4f:end=%.4f,asetpts=PTS-STARTPTS,"
-                          % (float(recorte[0]), float(recorte[1])))
+            recortar = ("atrim=start=%.4f:end=%.4f,asetpts=PTS-STARTPTS,"
+                        % (float(recorte[0]), float(recorte[1])))
+
+        #  De qué pista sale, DICHO. Ver `pistas_vivas_de`: `[N:a]` a secas se
+        #  llevaba siempre la primera del fichero, que en una grabación de la
+        #  casa es la Mezcla.
+        vivas = pistas_vivas_de(plan, capa)
+        if len(vivas) == 1:
+            partes = ["[%d:a:%d]%s" % (idx, vivas[0], recortar)]
+        else:
+            #  Varias: cada una se recorta por su cuenta y se suman antes de
+            #  nada, que es como lo hace la rama de un trozo. El volumen, el
+            #  retardo y el relleno van luego sobre la suma y no por pista:
+            #  aplicarlos a cada una los aplicaría dos veces.
+            trozos = []
+            for j, n in enumerate(vivas):
+                sub = "axp%d_%d" % (k, j)
+                lineas.append("[%d:a:%d]%s%s[%s]" % (idx, n, recortar,
+                                                     NORMA_AUDIO, sub))
+                trozos.append("[%s]" % sub)
+            #  `normalize=0` por lo de siempre: sumar sin repartir, que si no
+            #  el micro baja al mezclarlo con el sistema.
+            lineas.append("%samix=inputs=%d:normalize=0[axm%d]"
+                          % ("".join(trozos), len(trozos), k))
+            partes = ["[axm%d]" % k]
         partes[0] += "volume=%.3f" % float(capa.get("volumen", 1.0))
         if retardo > 0:
             #  `all=1` y no `delays=N|N`: con un valor por canal hay que saber
