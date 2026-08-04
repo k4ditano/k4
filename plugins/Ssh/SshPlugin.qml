@@ -707,6 +707,10 @@ K4Plugin {
         //  Sin `IdentitiesOnly` ssh ofrece también tus claves y el agente
         //  entraría como tú: justo lo que esta puerta viene a evitar.
         bloque += "    IdentitiesOnly yes\n"
+        //  Y que no pregunte NADA: esta puerta es para lo que no tiene a nadie
+        //  delante, así que una clave que no vale tiene que dar error al
+        //  instante y no dejar al agente esperando un prompt que no ve.
+        bloque += "    BatchMode yes\n"
         bloque += "    StrictHostKeyChecking accept-new\n"
 
         fSsh.setText(texto + bloque)
