@@ -19,6 +19,7 @@ Pista 1.0 Pista.qml
 PistaBanda 1.0 PistaBanda.qml
 PistaClips 1.0 PistaClips.qml
 Reproductor 1.0 Reproductor.qml
+Seccion 1.0 Seccion.qml
 SelectorRegion 1.0 SelectorRegion.qml
 SelectorVideo 1.0 SelectorVideo.qml
 FichaAnadir 1.0 FichaAnadir.qml

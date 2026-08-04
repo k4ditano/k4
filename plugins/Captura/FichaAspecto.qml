@@ -5,6 +5,9 @@
 //  una forma —las tres pasan por la misma tubería al renderizar—, y por eso
 //  está en un fichero y no repetido en la ficha de cada una.
 //
+//  Sin título propio: va dentro de la sección «Aspecto» de la ficha, y dos
+//  cabeceras seguidas diciendo lo mismo es una de más.
+//
 //  Cada control escribe un campo del plan y ya está: `filtro`, `mascara`,
 //  `marco`, `colorMarco`, `espejo`. Python los traduce a filtros de ffmpeg y la
 //  previa hace la misma cuenta, que es la regla de la casa.
@@ -29,14 +32,6 @@ ColumnLayout {
     visible: aplica
     Layout.fillWidth: true
     spacing: 4
-
-    IslandLabel {
-        text: Idioma.t("Aspecto")
-        color: Theme.dim
-        font.pixelSize: 9
-        font.capitalization: Font.AllUppercase
-        font.weight: Font.DemiBold
-    }
 
     //  Las dos filas de chips: el color y la forma. Se pintan con el mismo
     //  molde porque son lo mismo —elegir uno de varios— y así una fila nueva
