@@ -50,6 +50,11 @@ K4Plugin {
         if (open) {
             if (panel) panel.close()
             Notifs.dismissToast()
+            //  Y de paso, volver a mirar qué hay instalado. Aquí es donde se
+            //  lee qué plugins están encendidos y por qué está apagado el que
+            //  lo esté: si has instalado —o desinstalado— k4term desde que
+            //  arrancó la barra, esta lista tiene que decir la verdad.
+            Consola.revisar()
         }
     }
 

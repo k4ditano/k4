@@ -158,6 +158,16 @@ Singleton {
         onTriggered: buscador.running = true
     }
 
+    //  Y a mano, para lo contrario: si k4term DESAPARECE, el reloj de arriba
+    //  ya no corre —está todo puesto, no hay nada que esperar—, así que hay
+    //  que preguntar en los dos momentos en que importa: cuando abres los
+    //  Ajustes (ahí es donde se lee qué está encendido y por qué) y cuando
+    //  una terminal nuestra se muere nada más nacer, que es exactamente lo
+    //  que pasa cuando el binario ya no está.
+    function revisar() {
+        buscador.running = true
+    }
+
     Process {
         id: buscador
         running: true

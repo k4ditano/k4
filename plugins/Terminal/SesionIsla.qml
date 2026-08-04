@@ -10,6 +10,7 @@
 
 import QtQuick
 import K4 as K4
+import "../../services"
 
 QtObject {
     id: sesion
@@ -132,6 +133,12 @@ QtObject {
         }
 
         onTerminado: {
+            //  Muerta sin haber pintado NADA: o el binario ya no está, o no
+            //  arranca. En los dos casos la respuesta es la misma —volver a
+            //  mirar qué hay instalado—, y así el plugin se apaga solo con su
+            //  motivo en vez de intentarlo una y otra vez.
+            if (!sesion.marco)
+                Consola.revisar()
             sesion.viva = false
             sesion.marco = null
             sesion.difunta()

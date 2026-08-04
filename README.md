@@ -105,7 +105,9 @@ for a terminal at startup — `k4term`, then `$TERMINAL`, then the usual
 suspects — and everything that opens one goes through it, so with any other
 terminal installed the update flow, the launcher and the Terminal plugin all
 work the same. If k4term shows up later, the bar notices within a minute and
-the island terminal turns itself on; you do not have to restart it.
+the island terminal turns itself on; if it goes away, the bar finds out when
+you open Settings or when an island session dies stillborn. Either way, you do
+not have to restart it.
 
 What you get by having it is what needs both sides:
 
