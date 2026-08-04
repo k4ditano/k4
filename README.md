@@ -132,7 +132,14 @@ What you get by having it is what needs both sides:
   the same deal as an SSH key without a passphrase — and never touch
   `~/.ssh/config` or `hosts.json`. The terminal itself types them when the
   other side asks, watching its own PTY, so the field only shows up when a
-  k4term is installed: no other terminal can do it.
+  k4term is installed: no other terminal can do it;
+- **the agents' door** (`ctrl+G` on a server): a dedicated key
+  (`~/.ssh/k4-agentes`) and a dedicated alias (`<server>-agentes`, with
+  `IdentitiesOnly`) so that whatever runs inside the terminal — an AI agent, a
+  script — can reach that machine without your password and with whatever you
+  chose to allow it in `authorized_keys`. Revoking is the same key again.
+  Servers with the door open show a `⚙`; every session also gets the names of
+  your servers in `K4_SERVIDORES`.
 
 Without k4term, the island terminal and the pill simply do not appear, and the
 Terminal plugin opens your default terminal instead.

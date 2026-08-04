@@ -120,6 +120,8 @@ FadeIn {
                         vista.plugin.nuevoDesdeBusqueda(); ev.accepted = true
                     } else if (conCtrl && ev.key === Qt.Key_F) {
                         vista.plugin.favoritoActual(); ev.accepted = true
+                    } else if (conCtrl && ev.key === Qt.Key_G) {
+                        vista.plugin.alternarAgentes(); ev.accepted = true
                     } else if (conCtrl && ev.key === Qt.Key_K) {
                         vista.plugin.crearClave(); ev.accepted = true
                     } else if (conCtrl && ev.key === Qt.Key_I) {
@@ -202,6 +204,16 @@ FadeIn {
 
                         RowLayout {
                             spacing: 7
+
+                            //  La puerta de los agentes, si está abierta. Es un
+                            //  permiso: se ve o no se revisa nunca.
+                            IconGlyph {
+                                visible: fila.modelData.agentes === true
+                                text: String.fromCodePoint(0xF0493)   // md-cog
+                                color: Theme.green
+                                font.pixelSize: 11
+                                Layout.alignment: Qt.AlignVCenter
+                            }
 
                             IslandLabel {
                                 text: fila.modelData.rapido
@@ -322,7 +334,7 @@ FadeIn {
 
             IslandLabel {
                 visible: !vista.plugin.sinClaves
-                text: Idioma.t("intro conecta · shift+intro ventana · ctrl+E edita · ctrl+F favorito · ctrl+I lleva la integración · supr borra")
+                text: Idioma.t("intro conecta · shift+intro ventana · ctrl+E edita · ctrl+F favorito · ctrl+G agentes · ctrl+I integración · supr borra")
                 color: Theme.dim
                 font.pixelSize: 10
                 Layout.fillWidth: true

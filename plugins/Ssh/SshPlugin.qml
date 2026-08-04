@@ -326,7 +326,13 @@ K4Plugin {
         const salida = []
 
         for (let i = 0; i < guardados.length; ++i) {
+            //  Los alias de agentes no son un sitio más al que ir: son la
+            //  puerta de atrás de uno que ya está en la lista. Se ven como una
+            //  marca en el suyo, no como una fila aparte.
+            if (esAliasAgentes(guardados[i].alias))
+                continue
             const h = conExtras(guardados[i])
+            h.agentes = tieneAgentes(h.alias)
             const paja = (h.alias + " " + h.host + " " + h.usuario + " "
                           + h.etiquetas.join(" ")).toLowerCase()
             if (q.length === 0 || paja.indexOf(q) >= 0)
@@ -618,6 +624,99 @@ K4Plugin {
         const destino = h ? (h.rapido && h.usuario ? h.usuario + "@" + h.host : h.alias) : ""
         const crear = "ssh-keygen -t ed25519 -C k4term"
         K4.Terminal.ejecutar(destino ? crear + " && ssh-copy-id " + destino : crear)
+        cerrar()
+    }
+
+    //  ── la puerta de los agentes ──────────────────────────────────
+    //
+    //  Un agente que corre en la terminal ya tiene tu shell, así que puede
+    //  lanzar `ssh` él solo; lo que no puede es teclear una contraseña. Darle
+    //  la tuya sería darle TODO, así que se le da otra cosa: una clave propia
+    //  (`~/.ssh/k4-agentes`), un alias propio (`casa-agentes`) y, en el
+    //  servidor, lo que tú quieras dejarle en su `authorized_keys`. Se revoca
+    //  borrando una línea allí, sin tocar nada tuyo.
+    //
+    //  Lo que hace falta hacer ALLÍ —mandar la clave, o quitarla— se corre en
+    //  la terminal, a la vista: pide tu contraseña y toca su fichero, y esas
+    //  dos cosas no se hacen a escondidas.
+    readonly property string claveAgentes: K4.Sistema.entorno("HOME") + "/.ssh/k4-agentes"
+
+    //  El sello de la clave, que es lo que permite quitarla del servidor sin
+    //  adivinar: se busca esa marca en su `authorized_keys` y se borra la
+    //  línea. TIENE que salir igual aquí y en la ventana —el mismo fichero,
+    //  no `$HOSTNAME`, que en la sesión de la barra viene vacío y dejaba dos
+    //  sellos distintos: el puesto por un lado no lo encontraba el otro.
+    property string nombreEquipo: "k4"
+
+    property K4.Fichero fEquipo: K4.Fichero {
+        path: "/etc/hostname"
+        onLoaded: {
+            const t = String(fEquipo.text() || "").trim()
+            if (t.length > 0)
+                self.nombreEquipo = t
+        }
+    }
+
+    readonly property string marcaAgentes: "k4-agentes@" + nombreEquipo
+
+    function aliasAgentes(alias) { return String(alias || "") + "-agentes" }
+
+    function esAliasAgentes(alias) {
+        return String(alias || "").slice(-8) === "-agentes"
+    }
+
+    function tieneAgentes(alias) {
+        const buscado = aliasAgentes(alias)
+        for (let i = 0; i < guardados.length; ++i)
+            if (guardados[i].alias === buscado)
+                return true
+        return false
+    }
+
+    function alternarAgentes() {
+        const h = lista[indice]
+        if (!h || h.rapido)
+            return
+
+        const marca = marcaAgentes
+        let texto = fSsh.text() || ""
+
+        if (tieneAgentes(h.alias)) {
+            fSsh.setText(sinBloque(texto, aliasAgentes(h.alias)))
+            cerrarFichero.running = true
+            relee.restart()
+            //  Y allí: fuera la línea de esa clave. Se busca por su marca, que
+            //  para eso la lleva.
+            K4.Terminal.ejecutar("ssh " + h.alias
+                + " \"sed -i '/" + marca + "/d' ~/.ssh/authorized_keys\"")
+            cerrar()
+            return
+        }
+
+        texto = sinBloque(texto, aliasAgentes(h.alias))
+        if (texto.length > 0 && texto.slice(-1) !== "\n")
+            texto += "\n"
+
+        let bloque = "\nHost " + aliasAgentes(h.alias) + "\n"
+        bloque += "    HostName " + String(h.host || h.alias) + "\n"
+        if (h.usuario)
+            bloque += "    User " + h.usuario + "\n"
+        if (h.puerto)
+            bloque += "    Port " + h.puerto + "\n"
+        bloque += "    IdentityFile " + claveAgentes + "\n"
+        //  Sin `IdentitiesOnly` ssh ofrece también tus claves y el agente
+        //  entraría como tú: justo lo que esta puerta viene a evitar.
+        bloque += "    IdentitiesOnly yes\n"
+        bloque += "    StrictHostKeyChecking accept-new\n"
+
+        fSsh.setText(texto + bloque)
+        cerrarFichero.running = true
+        relee.restart()
+
+        K4.Terminal.ejecutar(
+            "[ -f " + claveAgentes + " ] || ssh-keygen -t ed25519 -N '' -C '"
+            + marca + "' -f " + claveAgentes
+            + "; ssh-copy-id -i " + claveAgentes + ".pub " + h.alias)
         cerrar()
     }
 
