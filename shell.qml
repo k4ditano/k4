@@ -162,6 +162,7 @@ Scope {
         }
         function wifi(): void { _p("panel")?.openTab("wifi") }
         function bluetooth(): void { _p("panel")?.openTab("bluetooth") }
+        function sonido(): void { _p("panel")?.openTab("sonido") }
         function clearNotifications(): void { Notifs.clear() }
         function ask(): void {
             const a = _p("ask")

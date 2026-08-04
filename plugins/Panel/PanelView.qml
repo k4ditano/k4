@@ -42,6 +42,7 @@ FadeIn {
                 text: view.plugin.tab === "notifications" ? Idioma.t("Notificaciones")
                     : view.plugin.tab === "wifi" ? Idioma.t("Wi‑Fi")
                     : view.plugin.tab === "bluetooth" ? Idioma.t("Bluetooth")
+                    : view.plugin.tab === "sonido" ? Idioma.t("Sonido")
                     : Idioma.t("Centro de control")
                 font.pixelSize: 15
                 font.weight: Font.DemiBold
@@ -292,9 +293,13 @@ FadeIn {
             }
 
             IslandTile {
+                id: sonidoTile
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                pulsable: false
+                //  El deslizador se lleva casi todo el azulejo y tiene su
+                //  propio ratón; lo que queda —la fila del título— abre el
+                //  detalle, igual que en el de Wi‑Fi.
+                onPulsada: view.plugin.openTab("sonido")
 
                 ColumnLayout {
                     anchors.left: parent.left
@@ -312,9 +317,22 @@ FadeIn {
                         IslandLabel { text: Idioma.t("Sonido"); font.pixelSize: 12; font.weight: Font.DemiBold }
                         Item { Layout.fillWidth: true }
                         IslandLabel {
-                            text: Audio.muted ? Idioma.t("Silenciado") : Audio.volume + "%"
+                            //  Qué aparato suena, que es lo que se viene a
+                            //  mirar aquí; el volumen ya lo dice la barra.
+                            text: Audio.salidaActiva
+                                ? Audio.nombreDe(Audio.salidaActiva)
+                                : (Audio.muted ? Idioma.t("Silenciado") : Audio.volume + "%")
                             color: Theme.muted
                             font.pixelSize: 11
+                            elide: Text.ElideRight
+                            Layout.maximumWidth: 120
+                        }
+
+                        IconGlyph {
+                            text: Theme.ico.forward
+                            color: sonidoTile.hovered ? Theme.ink : Theme.dim
+                            font.pixelSize: 14
+                            Layout.alignment: Qt.AlignVCenter
                         }
                     }
 
@@ -644,5 +662,8 @@ FadeIn {
 
         // ── detalle Bluetooth, en su propia pieza
         DetalleBluetooth { view: view }
+
+        // ── detalle de Sonido: por dónde sale y por dónde entra
+        DetalleSonido { view: view }
     }
 }
