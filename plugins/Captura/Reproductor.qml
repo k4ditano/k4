@@ -443,7 +443,21 @@ Item {
                             && s <= repro.tramo.hasta + 0.05
                 const enLinea = repro.tramo.inicio
                     + (s - repro.tramo.desde) / (repro.tramo.velocidad || 1)
-                if (!dentro || enLinea + 0.02 < repro.cabezal)
+                //  Y que no vaya MUY por delante de lo que se pidió.
+                //
+                //  Mirar solo si viene por detrás del cabezal filtraba los
+                //  saltos hacia delante —ahí las posiciones viejas quedan
+                //  atrás— pero dejaba pasar los de hacia atrás, que es donde
+                //  las viejas van por DELANTE: pinchabas antes en la línea,
+                //  colaba un aviso del sitio del que venías y el cabezal se
+                //  volvía solo allí. Es la misma tregua, mirada por los dos
+                //  lados: se compara con el sitio PEDIDO y no con una
+                //  dirección. El cuarto de segundo es el que ya usa el
+                //  reintento de abajo, y da de sobra para lo que el medio
+                //  avanza mientras la búsqueda cuaja.
+                const pedido = repro.enFuente(repro.cabezal, repro.tramo)
+                if (!dentro || enLinea + 0.02 < repro.cabezal
+                        || s > pedido + 0.25)
                     return
                 repro.enTregua = false
                 tregua.stop()
