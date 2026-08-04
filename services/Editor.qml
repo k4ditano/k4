@@ -1674,9 +1674,14 @@ Singleton {
 
     //  El plan se llama como el vídeo pero con otra extensión, así que abrir dos
     //  veces el mismo fichero recupera lo que dejaste editado.
+    //
+    //  `.k4v` es el proyecto de k4: un JSON por dentro, pero con nombre propio
+    //  para que se vea de un vistazo en la carpeta que eso es un montaje y no
+    //  un fichero suelto de datos. Los proyectos guardados con el nombre viejo
+    //  —`.k4.json`— se renombran solos al abrirlos, en python.
     function preparar(video) {
         rutaVideo = video
-        rutaPlan = video.replace(/\.[^./]+$/, "") + ".k4.json"
+        rutaPlan = video.replace(/\.[^./]+$/, "") + ".k4v"
         //  Nada de arrastrar el estado del vídeo anterior: los momentos de otra
         //  grabación pintados sobre esta serían un fantasma difícil de
         //  entender.
@@ -1722,6 +1727,10 @@ Singleton {
         //  que se le hace a un vídeo, no el motivo de que exista el editor.
         estado = "editando"
         iniciarHistorial()
+        //  La foto de cómo estaba, para poder volver a ella al cerrar. Va
+        //  aquí y no en `abrir`: hasta que no ha llegado el plan no hay nada
+        //  que fotografiar.
+        planAlAbrir = planSerializado()
         procesos.recalcularCamara()
         nivelesPistas = {}
         procesos.medirNiveles(rutaVideo)
@@ -1924,11 +1933,11 @@ Singleton {
 
     //  Aquí se arma QUÉ se guarda; el cómo —el parcheo del JSON en disco— es
     //  cosa de los procesos. Escrito el plan, la trayectoria se rehace sola.
-    function guardarPlan() {
-        if (rutaPlan.length === 0)
-            return
-        procesos.escribirPlan(
-            JSON.stringify({ momentos: momentos, pistas: pistasAudio,
+    //  Lo que se guarda, armado en un solo sitio: lo escribe el guardado, lo
+    //  fotografía el «tal como estaba al abrir» y lo compara el «¿hay cambios?».
+    //  Tres usos de la misma verdad; con tres copias, una se queda atrás.
+    function planSerializado() {
+        return JSON.stringify({ momentos: momentos, pistas: pistasAudio,
                              clips: clips, capas: capas, bandas: bandas,
                              transcripcion: transcripcion,
                              marcadores: marcadores,
@@ -1938,7 +1947,41 @@ Singleton {
                                          salida: fundidoSalida,
                                          entre: fundidoEntre },
                              transicion: { tipo: transicionTipo,
-                                           dur: transicionDur } }))
+                                           dur: transicionDur } })
+    }
+
+    function guardarPlan() {
+        if (rutaPlan.length === 0)
+            return
+        procesos.escribirPlan(planSerializado())
+    }
+
+    //  ── no perder lo último ───────────────────────────────────────
+    //
+    //  El guardado va con rebote de 200 ms, así que cerrar justo después de
+    //  tocar algo dejaba ese último cambio sin escribir: el temporizador
+    //  saltaba con el plan ya olvidado y no hacía nada. Antes de cerrar, se
+    //  vuelca.
+    function volcar() {
+        if (rutaPlan.length === 0)
+            return
+        persistidor.stop()
+        guardarPlan()
+    }
+
+    //  Cómo estaba el proyecto al abrirlo. Es lo que permite decir «descartar
+    //  los cambios» y que signifique algo teniendo guardado automático: se
+    //  vuelve a escribir esto y el fichero queda como estaba.
+    property string planAlAbrir: ""
+
+    readonly property bool hayCambios: planAlAbrir.length > 0
+                                       && planAlAbrir !== planSerializado()
+
+    function descartarCambios() {
+        if (rutaPlan.length === 0 || planAlAbrir.length === 0)
+            return
+        persistidor.stop()
+        procesos.escribirPlan(planAlAbrir)
     }
 
     // ── renderizar ────────────────────────────────────────────────
@@ -2009,7 +2052,14 @@ Singleton {
     //  forma de librarse de ella.
     //
     //  El vídeo sin tocar sigue guardado; lo que se tira es el plan.
-    function descartar() {
+    //  `volcando` es false cuando se cierra DESHACIENDO la sesión: ahí lo
+    //  último que se ha escrito es la foto de cómo estaba al abrir, y volcar
+    //  encima el estado actual deshacía el deshacer. Pasó, y sin ruido: el
+    //  fichero se quedaba con los cambios que acababas de tirar.
+    function descartar(volcando) {
+        if (volcando !== false)
+            volcar()
+        planAlAbrir = ""
         momentos = []
         pistasAudio = []
         camara = []

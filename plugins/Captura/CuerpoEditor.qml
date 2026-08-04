@@ -967,4 +967,79 @@ Item {
             }
         }
     }
+
+    // ── al cerrar, si has tocado algo ─────────────────────────────
+    //
+    //  No es «¿guardar?» porque el editor guarda solo mientras trabajas: lo
+    //  que se ofrece aquí es lo contrario, poder tirar la sesión entera y
+    //  dejar el proyecto como estaba al abrirlo. Por eso lo dice tal cual, en
+    //  vez de preguntar algo que ya está hecho.
+    Rectangle {
+        id: aviso
+        z: 100
+        visible: view.plugin.preguntandoCierre
+        anchors.fill: parent
+        color: "#cc000000"
+
+        //  Se traga los clics: con el editor detrás, pulsar «renderizar» sin
+        //  querer mientras hay una pregunta encima es de las cosas que peor
+        //  sientan.
+        MouseArea {
+            anchors.fill: parent
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: Math.min(360, parent.width - 40)
+            height: cuerpoAviso.implicitHeight + 28
+            radius: 12
+            color: Theme.surface
+            border.width: 1
+            border.color: Qt.rgba(1, 1, 1, 0.12)
+
+            ColumnLayout {
+                id: cuerpoAviso
+                anchors.centerIn: parent
+                width: parent.width - 28
+                spacing: 8
+
+                IslandLabel {
+                    text: Idioma.t("Cerrar el proyecto")
+                    color: Theme.ink
+                    font.pixelSize: 13
+                    font.weight: Font.DemiBold
+                }
+
+                IslandLabel {
+                    Layout.fillWidth: true
+                    text: Idioma.f(
+                        Idioma.t("Lo editado se guarda solo en %1. Puedes cerrarlo así o deshacer todo lo de esta sesión."),
+                        Editor.rutaPlan.split("/").pop())
+                    color: Theme.muted
+                    font.pixelSize: 10
+                    wrapMode: Text.WordWrap
+                }
+
+                BotonAccion {
+                    texto: Idioma.t("Guardar y cerrar")
+                    icono: 0xF0193                      // md-content_save
+                    activo: true
+                    onPulsado: view.plugin.cerrarProyecto()
+                }
+
+                BotonAccion {
+                    texto: Idioma.t("Deshacer los cambios de esta sesión")
+                    icono: 0xF054C                      // md-undo
+                    peligro: true
+                    onPulsado: view.plugin.cerrarDescartando()
+                }
+
+                BotonAccion {
+                    texto: Idioma.t("Seguir editando")
+                    icono: 0xF0156                      // md-close
+                    onPulsado: view.plugin.preguntandoCierre = false
+                }
+            }
+        }
+    }
 }

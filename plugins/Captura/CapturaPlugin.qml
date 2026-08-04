@@ -135,12 +135,35 @@ K4Plugin {
 
     //  Apartar y descartar son cosas distintas y la cabecera del editor tiene
     //  un botón para cada una. `close()` aparta —es lo que hace también ESC—;
-    //  esto tira el plan y se olvida.
+    //  esto cierra el proyecto.
+    //
+    //  Preguntando, si has tocado algo. El editor guarda solo mientras
+    //  trabajas, así que cerrar no pierde nada: lo que la pregunta ofrece de
+    //  verdad es lo contrario —poder DESHACER la sesión entera y dejar el
+    //  fichero como estaba al abrirlo—. Sin cambios no pregunta, que un
+    //  diálogo que siempre tiene la misma respuesta se acaba pulsando sin
+    //  leerlo.
+    property bool preguntandoCierre: false
+
     function descartar() {
-        Editor.descartar()
+        if (Editor.hayCambios) {
+            preguntandoCierre = true
+            return
+        }
+        cerrarProyecto()
+    }
+
+    function cerrarProyecto(volcando) {
+        preguntandoCierre = false
+        Editor.descartar(volcando)
         grande = false
         modo = "menu"
         open = false
+    }
+
+    function cerrarDescartando() {
+        Editor.descartarCambios()
+        cerrarProyecto(false)
     }
 
     // ── abrir un vídeo del disco ──────────────────────────────────

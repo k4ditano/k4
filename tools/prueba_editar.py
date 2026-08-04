@@ -955,6 +955,41 @@ def prueba_audio_no_pinta_nada():
     igual("sin overlay", "overlay=" in texto, False)
 
 
+# ── el fichero del proyecto ───────────────────────────────────────
+def prueba_carpeta_adjunta_de_los_dos_nombres():
+    """`.k4v` es el nombre de hoy y `.k4.json` el de ayer: los dos proyectos
+    tienen que apuntar a la MISMA carpeta adjunta, o los recortes y las formas
+    de un montaje viejo se buscarían donde no están."""
+    igual("del nombre nuevo", editar.carpeta_de("/tmp/v.k4v"), "/tmp/v.k4")
+    igual("y del viejo", editar.carpeta_de("/tmp/v.k4.json"), "/tmp/v.k4")
+
+
+def prueba_el_proyecto_viejo_se_renombra_al_abrirlo():
+    import json as _json
+    viejo = os.path.join(BORRADOR, "migra.k4.json")
+    nuevo = os.path.join(BORRADOR, "migra.k4v")
+    for f in (viejo, nuevo):
+        if os.path.exists(f):
+            os.remove(f)
+    _json.dump({"marca": 1}, open(viejo, "w"))
+    editar.migrar_nombre(nuevo)
+    igual("el nuevo existe", os.path.exists(nuevo), True)
+    igual("y el viejo ya no", os.path.exists(viejo), False)
+    igual("con lo que tenía dentro",
+          _json.load(open(nuevo)).get("marca"), 1)
+
+
+def prueba_migrar_no_pisa_un_proyecto_ya_migrado():
+    import json as _json
+    viejo = os.path.join(BORRADOR, "dos.k4.json")
+    nuevo = os.path.join(BORRADOR, "dos.k4v")
+    _json.dump({"marca": "viejo"}, open(viejo, "w"))
+    _json.dump({"marca": "nuevo"}, open(nuevo, "w"))
+    editar.migrar_nombre(nuevo)
+    igual("manda el que ya estaba migrado",
+          _json.load(open(nuevo)).get("marca"), "nuevo")
+
+
 # ── el aspecto de una capa ────────────────────────────────────────
 def prueba_espejo_y_filtro_de_color():
     texto, _ = editar.grafo(con_capas([capa(espejo=True, filtro="gris")]),

@@ -525,8 +525,29 @@ def entradas(plan, carpeta=None):
 
 
 def carpeta_de(ruta_plan):
-    """La carpeta adjunta de un plan: `<vídeo>.k4/` para `<vídeo>.k4.json`."""
+    """La carpeta adjunta de un plan: `<vídeo>.k4/` para `<vídeo>.k4v`.
+
+    Se sigue entendiendo el nombre viejo —`<vídeo>.k4.json`— porque los
+    proyectos de antes existen y se abren igual; quitarle el `.json` da la
+    misma carpeta, así que los dos nombres apuntan al mismo sitio.
+    """
+    if ruta_plan.endswith(".k4v"):
+        return ruta_plan[:-1]
     return ruta_plan[:-5] if ruta_plan.endswith(".json") else ruta_plan + ".k4"
+
+
+def migrar_nombre(ruta_plan):
+    """Un proyecto guardado con el nombre viejo pasa a llamarse `.k4v`.
+
+    Se hace al abrir y una sola vez: el fichero es el mismo por dentro, solo
+    cambia cómo se llama. Si por lo que sea ya existe el nuevo, el viejo se
+    deja quieto —no vaya a ser que se pise algo— y manda el nuevo.
+    """
+    if not ruta_plan.endswith(".k4v"):
+        return
+    viejo = ruta_plan[:-4] + ".k4.json"
+    if os.path.exists(viejo) and not os.path.exists(ruta_plan):
+        os.rename(viejo, ruta_plan)
 
 
 def abrir_entradas(plan, rutas):
@@ -2689,6 +2710,8 @@ def orden_abrir(args):
     """
     if not os.path.exists(args.video):
         salir(ok=False, motivo="sin-video")
+    if args.guardar:
+        migrar_nombre(args.guardar)
     if args.guardar and os.path.exists(args.guardar):
         plan = cargar(args.guardar)
         salir(ok=True, **plan)
@@ -2784,8 +2807,8 @@ def escribir_grafo(plan, ruta_plan, sin_audio=False, nombre="grafo.txt",
     De regalo, el grafo se queda en disco: cuando un render falle, ahí está lo
     que se le pidió a ffmpeg, tal cual.
     """
-    #  El plan es `<vídeo>.k4.json` y su carpeta adjunta es `<vídeo>.k4/`, así
-    #  que solo hay que quitarle el `.json`. Con `splitext` + ".k4" salía
+    #  El plan es `<vídeo>.k4v` y su carpeta adjunta es `<vídeo>.k4/`, así
+    #  que solo hay que quitarle la última letra. Con `splitext` + ".k4" salía
     #  `<vídeo>.k4.k4`, que funcionaba pero era un sitio que nadie esperaba.
     carpeta = carpeta_de(ruta_plan)
     os.makedirs(carpeta, exist_ok=True)
