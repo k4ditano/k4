@@ -697,8 +697,10 @@ K4Plugin {
         //  en amarillo, que reclama sin alarmar.
         K4.Pildora.registrar(idEspera(pid), nombre.slice(0, 18), Theme.ico.bell.codePointAt(0),
                              Theme.yellow, 29, true)
+        //  Se guarda CON QUIÉN, no un `true`: al atenderla hay que poder
+        //  retirar su notificación, y para eso hace falta saber cuál era.
         const e = Object.assign({}, esperas)
-        e[pid] = true
+        e[pid] = nombre
         esperas = e
         K4.Sistema.lanzar(["notify-send", "-a", "k4term", "-t", "8000",
                            Idioma.t("Te está esperando"), nombre])
@@ -708,9 +710,40 @@ K4Plugin {
         K4.Pildora.quitar(idEspera(pid))
         if (esperas[pid] === undefined)
             return
+        //  La píldora y la notificación cuentan lo MISMO: quitar una y dejar la
+        //  otra deja la mitad del aviso puesta, y esa mitad es la que sale
+        //  luego en la tira de debajo del reloj.
+        Notifs.descartarDeApp("k4term", esperas[pid])
         const e = Object.assign({}, esperas)
         delete e[pid]
         esperas = e
+    }
+
+    //  ── ir a la terminal ES atenderla ─────────────────────────────
+    //
+    //  La campana pide una cosa concreta: que vayas. Una vez estás ahí ya ha
+    //  hecho lo suyo, y seguir pidiéndolo desde la píldora es ruido. Hasta
+    //  ahora solo se iba pulsándola, que es pedir el mismo gesto dos veces: el
+    //  de ir a la terminal y el de decirle a la barra que has ido.
+    //
+    //  Dos caminos porque hay dos terminales. La de ventana se entera por el
+    //  pid de la que toma el foco —que es la clave con la que se apuntó—; la
+    //  de la isla, por la pestaña que se está viendo, que es la misma regla
+    //  con la que `alLlamar` decide no molestar.
+    //
+    //  El trabajo en curso NO se toca: ese indicador cuenta algo que sigue
+    //  pasando y mirarlo no lo acaba.
+    property Connections foco: Connections {
+        target: Ventanas
+        function onPidActivoChanged() {
+            self.dejarDeEsperar(Ventanas.pidActivo)
+        }
+    }
+
+    function atendidaIsla() {
+        if (!abierto || actual < 0 || actual >= vivas.length || !vivas[actual])
+            return
+        dejarDeEsperar(claveIsla(vivas[actual].numero))
     }
 
     function olvidar(pid) {
@@ -758,8 +791,12 @@ K4Plugin {
             const espera = String(id).indexOf("terminal.espera.") === 0
             const resto = String(id).substring(espera ? "terminal.espera.".length
                                                       : "terminal.".length)
+            //  Por `dejarDeEsperar` y no quitando la píldora a mano: así el
+            //  clic retira también la notificación y borra el apunte, que es
+            //  lo mismo que hace ir a la terminal. Quitando solo la píldora,
+            //  el aviso seguía en el panel y en la tira del reloj.
             if (espera)
-                K4.Pildora.quitar(id)
+                self.dejarDeEsperar(resto)
 
             //  Si es de la isla, no hay ventana a la que ir: se abre la
             //  terminal por esa misma sesión.
@@ -945,7 +982,8 @@ K4Plugin {
     }
 
     onVivasChanged: refrescarAbiertas()
-    onAbiertoChanged: refrescarAbiertas()
+    onAbiertoChanged: { refrescarAbiertas(); atendidaIsla() }
+    onActualChanged: atendidaIsla()
 
     //  Trabajos largos: la terminal avisa al terminar y aquí se convierte en
     //  notificación, que es la vía por la que la casa entera enseña avisos.

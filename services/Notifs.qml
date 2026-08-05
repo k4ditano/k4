@@ -152,11 +152,18 @@ Singleton {
     // haya que buscar en la clase o el título de la ventana. El nombre exacto
     // que manda cada aplicación se lee en la tarjeta del panel, encima del
     // título.
+    //  La terminal de la casa, sea cual sea: quien la cambie no tiene por qué
+    //  venir a corregir esta lista a mano. Estaba clavada en «kitty», y con
+    //  k4term instalada eso mandaba las notificaciones de los agentes a una
+    //  ventana que no existe —así que ni llevaban a ninguna parte ni se
+    //  descartaban—.
+    readonly property string terminal: (Consola.binario || "kitty").toLowerCase()
+
     readonly property var aliases: ({
         // herramientas de terminal: llevan al emulador donde corren
-        "claude code": "kitty",
-        "claude": "kitty",
-        "codex": "kitty"
+        "claude code": terminal,
+        "claude": terminal,
+        "codex": terminal
     })
 
     function focusApp(n) {
@@ -243,6 +250,110 @@ Singleton {
             }
         }
         return false
+    }
+
+    // ── se descartan solas al ir a la aplicación ──────────────────
+    //
+    //  Un aviso está para llevarte a un sitio. Cuando YA estás en ese sitio ha
+    //  hecho su trabajo, y seguir pidiéndote un clic para quitarlo es cobrar
+    //  dos veces por lo mismo: la campana de un agente que ha acabado su turno
+    //  se quedaba puesta —y de paso en la tira de debajo del reloj, que sale al
+    //  pasar el ratón— hasta que uno se acordaba de ir a descartarla.
+    //
+    //  Se mira la ventana que toma el foco y se descarta lo que sea suyo con el
+    //  mismo criterio con el que se la busca al pulsar la notificación, alias
+    //  incluidos: así lo que manda una herramienta de consola se va al volver a
+    //  la terminal donde corre.
+    //
+    //  El título de la ventana NO entra en la comparación, y eso es a
+    //  propósito: al pulsar una notificación es un último recurso razonable
+    //  —lo peor que pasa es que te lleve a la ventana de al lado—, pero
+    //  descartando solo se lleva por delante avisos que no había leído nadie.
+    //  Una pestaña del navegador titulada «Slack» borraría los de Slack.
+    function perteneceA(n, cls, initial) {
+        const raw = (n.desktopEntry && n.desktopEntry.length > 0
+                     ? n.desktopEntry : n.appName) || ""
+        if (raw.length === 0)
+            return false
+
+        const bajo = raw.toLowerCase()
+        const key = aliases[bajo] !== undefined ? String(aliases[bajo]).toLowerCase() : bajo
+        const tail = key.indexOf(".") !== -1 ? key.substring(key.lastIndexOf(".") + 1) : key
+
+        if (cls === key || initial === key || cls === tail || initial === tail)
+            return true
+
+        //  Por debajo de tres letras, «contiene» empareja cualquier cosa con
+        //  cualquier cosa: ahí solo vale la igualdad de arriba.
+        return tail.length >= 3
+            && (cls.indexOf(tail) !== -1 || initial.indexOf(tail) !== -1)
+    }
+
+    function descartarDeVentana(t) {
+        const d = t && t.lastIpcObject ? t.lastIpcObject : null
+        if (!d)
+            return
+
+        const cls = String(d.class || "").toLowerCase()
+        const initial = String(d.initialClass || "").toLowerCase()
+        if (cls.length === 0 && initial.length === 0)
+            return
+
+        // se copia antes: descartar muta la lista mientras se recorre
+        const list = server.trackedNotifications.values.slice()
+        let idas = 0
+        for (let i = 0; i < list.length; ++i) {
+            if (!perteneceA(list[i], cls, initial))
+                continue
+            if (latest === list[i])
+                dismissToast()
+            list[i].dismiss()
+            ++idas
+        }
+
+        //  La cuenta del panel es de las SIN LEER, y estas ya se han atendido:
+        //  dejarla quieta pondría un número rojo sobre una bandeja vacía.
+        if (idas > 0)
+            count = Math.max(0, count - idas)
+    }
+
+    //  Y para lo que no tiene ventana que enfocar. La terminal de la isla vive
+    //  DENTRO de la barra: abrir su pestaña es haber atendido la campana, pero
+    //  ahí no cambia el foco de Hyprland y su notificación se quedaba puesta.
+    //  Quien sepa que algo ya está atendido lo dice, y aquí se retira.
+    function descartarDeApp(app, cuerpo) {
+        const quien = String(app || "").toLowerCase()
+        if (quien.length === 0)
+            return
+
+        const texto = cuerpo === undefined ? null : String(cuerpo)
+        const list = server.trackedNotifications.values.slice()
+        let idas = 0
+        for (let i = 0; i < list.length; ++i) {
+            const n = list[i]
+            if (String(n.appName || "").toLowerCase() !== quien)
+                continue
+            //  Sin cuerpo se va todo lo de esa aplicación; con él, solo la que
+            //  lo lleva: dos agentes esperando son dos avisos distintos y
+            //  atender a uno no atiende al otro.
+            if (texto !== null && String(n.body || "") !== texto)
+                continue
+            if (latest === n)
+                dismissToast()
+            n.dismiss()
+            ++idas
+        }
+        if (idas > 0)
+            count = Math.max(0, count - idas)
+    }
+
+    Connections {
+        target: Hyprland
+
+        function onActiveToplevelChanged() {
+            if (Settings.notificacionesAlEnfocar)
+                notifs.descartarDeVentana(Hyprland.activeToplevel)
+        }
     }
 
     Process {

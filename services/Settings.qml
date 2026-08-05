@@ -85,6 +85,8 @@ Singleton {
     property bool bandejaEnPildora: false
     // widgets/NotifStrip.qml: notificaciones recientes al pasar el ratón
     property bool notificacionesAlPasar: true
+    // services/Notifs.qml: descartar las de una aplicación al ir a su ventana
+    property bool notificacionesAlEnfocar: true
 
     // ── accesos directos ──────────────────────────────────────────
     //  Qué aplicaciones salen en la franja del centro de control, por id de
@@ -252,7 +254,9 @@ Singleton {
                 { id: "bandejaEnPildora", nombre: Idioma.t("Bandeja en la píldora"),
                   desc: Idioma.t("Iconos de las aplicaciones en segundo plano"), glifo: 0xF0FB0 },
                 { id: "notificacionesAlPasar", nombre: Idioma.t("Notificaciones al pasar el ratón"),
-                  desc: Idioma.t("Las recientes, bajo el reloj y el reproductor"), glifo: 0xF009A }
+                  desc: Idioma.t("Las recientes, bajo el reloj y el reproductor"), glifo: 0xF009A },
+                { id: "notificacionesAlEnfocar", nombre: Idioma.t("Descartar al ir a la aplicación"),
+                  desc: Idioma.t("Ponerte en su ventana ya es haberlas atendido"), glifo: 0xF039F }
             ]
         },
         {
@@ -381,7 +385,7 @@ Singleton {
         "zoomAuto", "zoomNivel", "editorCodec", "editorSonoridad",
         "posicionBarra", "alineacionBarra",
         "huellaActiva", "huellaSteam", "huellaPaquetes",
-        "bandejaEnPildora", "notificacionesAlPasar",
+        "bandejaEnPildora", "notificacionesAlPasar", "notificacionesAlEnfocar",
         "accesosDirectos"
     ]
 

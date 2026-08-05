@@ -22,6 +22,18 @@ Singleton {
     // Direcciones en orden de uso, de la más reciente a la más antigua.
     property var recientes: []
 
+    //  El pid de la ventana que tiene el foco ahora mismo.
+    //
+    //  Está aquí y no en quien lo usa porque un plugin no puede preguntarle a
+    //  Hyprland por su cuenta —y con razón: la plataforma se toca desde un
+    //  servicio—. Lo quiere quien tenga algo apuntado por pid y necesite saber
+    //  que ya te has puesto delante: la campana de la terminal, sin ir más
+    //  lejos, pedía que fueras y no tenía forma de enterarse de que fuiste.
+    //
+    //  Cadena y no entero para que el que compara no tenga que convertir: lo
+    //  que llega por IPC son cadenas.
+    property string pidActivo: ""
+
     readonly property var lista: {
         const abiertas = Hyprland.toplevels.values.slice()
         const salida = []
@@ -160,6 +172,10 @@ Singleton {
 
         function onActiveToplevelChanged() {
             const t = Hyprland.activeToplevel
+
+            const pid = ventanas.datos(t).pid
+            ventanas.pidActivo = pid === undefined ? "" : String(pid)
+
             if (!t)
                 return
             const d = ventanas.direccion(t)
