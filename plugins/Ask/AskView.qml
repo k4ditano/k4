@@ -420,24 +420,41 @@ FadeIn {
                                         { g: Theme.ico.forward, t: "abrir" }
                                     ]
 
-                                    delegate: RowLayout {
+                                    //  Item por fuera y la fila dentro: el
+                                    //  MouseArea no puede colgar del layout.
+                                    //  Un hijo directo es una celda más y el
+                                    //  layout le impone la geometría, así que
+                                    //  el `anchors.fill` no se aplicaba y —sin
+                                    //  tamaño implícito— la zona quedaba en
+                                    //  0×0: ni se iluminaban al pasar por
+                                    //  encima ni hacían nada al pulsarlas.
+                                    //  Mismo caso que JuegoPildora.
+                                    delegate: Item {
                                         id: accion
                                         required property var modelData
                                         required property int index
-                                        spacing: 3
 
-                                        IconGlyph {
-                                            text: typeof accion.modelData.g === "number"
-                                                ? String.fromCodePoint(accion.modelData.g)
-                                                : accion.modelData.g
-                                            color: accionMouse.containsMouse ? Theme.blue : Theme.ink
-                                            font.pixelSize: 10
-                                        }
+                                        implicitWidth: filaAccion.implicitWidth
+                                        implicitHeight: filaAccion.implicitHeight
 
-                                        IslandLabel {
-                                            text: accion.modelData.t
-                                            color: accionMouse.containsMouse ? Theme.blue : Theme.ink
-                                            font.pixelSize: 9
+                                        RowLayout {
+                                            id: filaAccion
+                                            anchors.fill: parent
+                                            spacing: 3
+
+                                            IconGlyph {
+                                                text: typeof accion.modelData.g === "number"
+                                                    ? String.fromCodePoint(accion.modelData.g)
+                                                    : accion.modelData.g
+                                                color: accionMouse.containsMouse ? Theme.blue : Theme.ink
+                                                font.pixelSize: 10
+                                            }
+
+                                            IslandLabel {
+                                                text: accion.modelData.t
+                                                color: accionMouse.containsMouse ? Theme.blue : Theme.ink
+                                                font.pixelSize: 9
+                                            }
                                         }
 
                                         MouseArea {
