@@ -372,7 +372,88 @@ Singleton {
         }
     }
 
+    // ── dos pistas de verdad, cuando se puede ─────────────────────
+    //
+    //  wf-recorder solo acepta UN dispositivo de audio. Para tener sistema y
+    //  micro por separado había que arrancar un segundo ffmpeg para el micro y
+    //  juntarlos al final; y ahí estaba el fallo que se oía: dos procesos son
+    //  DOS RELOJES. Cada uno empieza a contar cuando arranca, el juntado los
+    //  pegaba en el instante cero sin compensar nada, y el micro quedaba por
+    //  detrás del vídeo.
+    //
+    //  Medir ese desfase y restarlo sería mentir: el número dependería de esta
+    //  máquina, de este códec y de este día. Lo que se arregla no es el desfase,
+    //  es que haya dos relojes.
+    //
+    //  gpu-screen-recorder acepta `-a` repetido y saca una pista por cada uno
+    //  DESDE UN SOLO PROCESO. Un reloj, ningún desfase que compensar, nada que
+    //  calibrar. Se usa solo cuando hace falta —«ambos»— y solo si está: para
+    //  todo lo demás wf-recorder ya iba bien y no se toca.
+    property bool gsrDisponible: false
+
+    readonly property bool grabaDosPistas: gsrDisponible && audio === "ambos"
+
+    Process {
+        id: comprobarGsr
+        command: ["sh", "-c", "command -v gpu-screen-recorder >/dev/null 2>&1"]
+        running: true
+        onExited: function (codigo) { captura.gsrDisponible = codigo === 0 }
+    }
+
+    //  gpu-screen-recorder charla por stderr aunque vaya todo bien: un «update
+    //  fps» por segundo, más el saludo del servidor de KMS al arrancar. Sin
+    //  filtrar, diez minutos de grabación dejan seiscientos avisos en el log y
+    //  entierran el error del día que sí falle.
+    function ruidoDeGrabador(l) {
+        const t = String(l).trim()
+        return t.length === 0
+                || t.startsWith("gsr info:")
+                || t.startsWith("kms server info:")
+                || t.startsWith("update fps:")
+    }
+
+    function ordenGrabarGsr(ruta) {
+        const orden = ["gpu-screen-recorder"]
+
+        if (regionActual.length > 0) {
+            //  wf-recorder pide «x,y wxh» y gsr pide «WxH+X+Y»: es la misma
+            //  región dicha del revés, y `regionActual` se guarda en el formato
+            //  del primero porque también lo usa la foto.
+            const partes = regionActual.split(" ")
+            const xy = (partes[0] || "0,0").split(",")
+            orden.push("-w", "region",
+                       "-region", (partes[1] || "0x0")
+                                  + "+" + (xy[0] || "0") + "+" + (xy[1] || "0"))
+        } else {
+            orden.push("-w", monitorActual())
+        }
+
+        //  `-fm cfr` por el mismo motivo que el `-D` de wf-recorder: a ritmo
+        //  variable el `t` del vídeo deja de corresponderse con el tiempo real
+        //  y el zoom en posproceso cae descuadrado. El defecto de gsr es vfr.
+        orden.push("-f", String(fps),
+                   "-k", codec === "hevc" ? "hevc" : "h264",
+                   "-q", "very_high",
+                   "-fm", "cfr",
+                   "-ac", "aac",
+                   //  Aquí no se comprueba NVENC a mano: gsr sabe usar la GPU
+                   //  de AMD e Intel además de la de NVIDIA, así que decidirlo
+                   //  nosotros solo podría estropearlo. Si no puede, que baje a
+                   //  CPU en vez de morirse.
+                   "-fallback-cpu-encoding", "yes")
+
+        //  Una pista por cada `-a`, y en este orden: sistema primero y micro
+        //  después, que es como las espera el juntado.
+        orden.push("-a", "device:" + monitorElegido,
+                   "-a", "device:" + microElegido,
+                   "-o", ruta)
+        return orden
+    }
+
     function ordenGrabar(ruta) {
+        if (grabaDosPistas)
+            return ordenGrabarGsr(ruta)
+
         const esNvenc = nvencDisponible
         const codificador = esNvenc
                 ? (codec === "hevc" ? "hevc_nvenc" : "h264_nvenc")
@@ -573,10 +654,16 @@ Singleton {
 
     //  El micro, grabado aparte.
     //
-    //  wf-recorder solo acepta UN dispositivo de audio, así que para tener
-    //  sistema y micro por separado no queda otra que un segundo proceso. Se
-    //  arrancan en el mismo tic y se paran en el mismo tic; el desfase que
-    //  quede son decenas de milisegundos, que en un clip corto no se nota.
+    //  El respaldo para cuando no hay gpu-screen-recorder. wf-recorder solo
+    //  acepta UN dispositivo de audio, así que sistema y micro por separado
+    //  obligan a un segundo proceso.
+    //
+    //  Aquí decía que el desfase eran «decenas de milisegundos, que en un clip
+    //  corto no se nota», y era falso: se oía. Son dos relojes distintos, el
+    //  juntado los pega en el cero sin compensar y el micro va por detrás. No
+    //  tiene arreglo por este camino —cualquier número que se restara valdría
+    //  para una máquina y no para la siguiente—; el arreglo es no tener dos
+    //  procesos, y eso es lo que hace `grabaDosPistas`.
     //
     //  Separado y no mezclado: mezclarlo al grabar es irreversible, y lo que se
     //  quiere es poder bajarle el volumen a uno de los dos después.
@@ -739,7 +826,7 @@ Singleton {
         //  falla, el motivo queda en el log de la barra.
         stderr: SplitParser {
             onRead: function (l) {
-                if (String(l).trim().length > 0)
+                if (!captura.ruidoDeGrabador(l))
                     console.warn("captura:", l)
             }
         }
@@ -761,7 +848,10 @@ Singleton {
                                   "--region", captura.regionActual]
             rastreador.running = true
 
-            if (captura.audio === "ambos") {
+            //  Con gsr el micro ya viene dentro, en su propia pista y con el
+            //  mismo reloj: no hay segundo proceso que arrancar ni fichero
+            //  suelto que juntar.
+            if (captura.audio === "ambos" && !captura.grabaDosPistas) {
                 captura.rutaMicro = captura.rutaVideo.replace(/\.mp4$/, ".micro.m4a")
                 grabadorMicro.command = captura.ordenMicro(captura.rutaMicro)
                 grabadorMicro.running = true
@@ -803,6 +893,14 @@ Singleton {
                 // fichero del micro ya está cerrado de verdad.
                 captura.estado = "cerrando"
                 grabadorMicro.signal(2)
+                return
+            }
+            //  Con gsr no hay a quién esperar —las dos pistas salieron de este
+            //  mismo proceso— pero el juntado se hace igual: es quien pone la
+            //  mezcla delante y les da nombre.
+            if (captura.grabaDosPistas) {
+                captura.estado = "cerrando"
+                captura.juntarPistas()
                 return
             }
             // wf-recorder sale con 0 al recibir el SIGINT que le mandamos: eso
@@ -849,13 +947,26 @@ Singleton {
             //  `normalize=0`: sumar sin repartir el volumen. Con el reparto de
             //  fábrica, dos pistas suenan a la mitad cada una y la voz queda
             //  lejos.
-            juntador.command = ["ffmpeg", "-v", "error", "-y",
-                                "-i", captura.rutaVideo,
-                                "-i", captura.rutaMicro,
+            //
+            //  Dos entradas o una según de dónde vengan las pistas. Con gsr las
+            //  dos están ya dentro del mismo fichero y en el mismo reloj, así
+            //  que esto solo reordena y bautiza; con wf-recorder hay que traer
+            //  el micro de su fichero aparte, y es ahí donde nace el desfase que
+            //  este camino no tiene.
+            const entradas = captura.grabaDosPistas
+                    ? ["-i", captura.rutaVideo]
+                    : ["-i", captura.rutaVideo, "-i", captura.rutaMicro]
+            const fuentes = captura.grabaDosPistas
+                    ? ["[0:a:0]", "[0:a:1]"]
+                    : ["[0:a]", "[1:a]"]
+
+            juntador.command = ["ffmpeg", "-v", "error", "-y"].concat(entradas).concat([
                                 "-filter_complex",
-                                "[0:a][1:a]amix=inputs=2:normalize=0:duration=longest[mez]",
+                                fuentes[0] + fuentes[1]
+                                + "amix=inputs=2:normalize=0:duration=longest[mez]",
                                 "-map", "0:v", "-map", "[mez]",
-                                "-map", "0:a", "-map", "1:a",
+                                "-map", fuentes[0].slice(1, -1),
+                                "-map", fuentes[1].slice(1, -1),
                                 "-c:v", "copy", "-c:a:1", "copy", "-c:a:2", "copy",
                                 "-disposition:a:0", "default",
                                 "-disposition:a:1", "0",
@@ -863,7 +974,7 @@ Singleton {
                                 "-metadata:s:a:0", "title=Mezcla",
                                 "-metadata:s:a:1", "title=Sistema",
                                 "-metadata:s:a:2", "title=Micrófono",
-                                salida]
+                                salida])
             juntador.running = true
         }
     }
@@ -884,10 +995,14 @@ Singleton {
             if (codigo === 0 && destino.length > 0) {
                 // El fichero con las dos pistas ocupa el sitio del original, y
                 // los trozos sueltos se van.
-                limpiador.command = ["sh", "-c",
-                    "mv -f " + captura.entrecomillar(destino) + " "
-                    + captura.entrecomillar(captura.rutaVideo)
-                    + " && rm -f " + captura.entrecomillar(captura.rutaMicro)]
+                //  El borrado del micro solo si hubo micro suelto: por el camino
+                //  de gsr no hay fichero aparte, y un `rm -f ''` es un error
+                //  gratuito en el log.
+                let orden = "mv -f " + captura.entrecomillar(destino) + " "
+                          + captura.entrecomillar(captura.rutaVideo)
+                if (captura.rutaMicro.length > 0)
+                    orden += " && rm -f " + captura.entrecomillar(captura.rutaMicro)
+                limpiador.command = ["sh", "-c", orden]
                 limpiador.running = true
             } else {
                 // Si falla, el vídeo original sigue ahí con su pista de
