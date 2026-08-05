@@ -21,10 +21,36 @@ Singleton {
 
     // ── curvas ────────────────────────────────────────────────────
     readonly property int tickMs: 1000
-    readonly property real enemigoVidaBase: 48
+
+    //  ── por qué estos tres números y no los de antes ──────────────
+    //
+    //  Se llegaba a la oleada 30 sin hacer nada y en cuatro minutos. No era que
+    //  fuese fácil —el muro estaba en la 25-32— sino que no había CUESTA: llano
+    //  gratis y de pronto un ladrillo. Medido sobre el modelo de combate, con
+    //  las tres palancas separadas, porque hacen cosas distintas:
+    //
+    //  · La VIDA BASE (48 → 130) alarga cada oleada, que es lo que mata el
+    //    rusheo. Y no acerca el muro: se muere por daño recibido, no por
+    //    tardar. Con 48, la primera oleada duraba 2 segundos; con 130 dura 6, y
+    //    la décima pasa de 18 a 49.
+    //
+    //  · El CRECIMIENTO DEL DAÑO enemigo (1,095 → 1,072) aleja el muro. Crecía
+    //    más rápido que la vida efectiva del grupo (~1,047), y de ahí el final
+    //    de golpe en vez de una cuesta que se empina.
+    //
+    //  · Y la EXPERIENCIA por muerte, abajo, crecía a 1,11 contra el 1,075 de
+    //    la vida enemiga. Esa era la causa raíz: cada oleada te hacía
+    //    RELATIVAMENTE más fuerte que lo que te tocaba matar, así que el juego
+    //    se aceleraba solo. Compuesto sobre treinta oleadas son ×2,6 de ventaja
+    //    regalada.
+    //
+    //  Juntas dejan el muro donde estaba —la 32, o sea el mismo contenido a la
+    //  vista— pero tardando 18,6 minutos en vez de 3,9, con la oleada 30 a 92
+    //  segundos. La palanca fina para ajustar el ritmo es la vida base.
+    readonly property real enemigoVidaBase: 130
     readonly property real enemigoVidaCrec: 1.075
     readonly property real enemigoDañoBase: 3.2
-    readonly property real enemigoDañoCrec: 1.095
+    readonly property real enemigoDañoCrec: 1.072
     readonly property real oroBase: 11
     readonly property real oroCrec: 1.15
     // Por encima del crecimiento del oro a propósito: si comprar diera daño al
@@ -36,8 +62,11 @@ Singleton {
     readonly property real jefeDaño: 1.8
     readonly property int oleadasPorJefe: 10
     readonly property int topeOfflineSegundos: 8 * 3600
-    readonly property int segundosPorCofre: 900        // uno cada 15 min fuera
-    readonly property int oleadasPorCofre: 5
+    //  Uno cada cuarto de hora, y AHORA a los dos lados: fuera por el tiempo
+    //  que estuvo cerrada y dentro por `goteoPorReloj`. Antes dentro se pagaba
+    //  por oleada —`oleadasPorCofre: 5`—, que a cuatro segundos la oleada era
+    //  un cofre cada veinte segundos.
+    readonly property int segundosPorCofre: 900
 
     // Segundos que espera una habilidad lista antes de lanzarse sola. Da margen
     // para usarla tú si estás mirando, sin castigarte si no.
@@ -271,6 +300,41 @@ Singleton {
     // Revisa si algún reto ya está cumplido y desbloquea a quien toque.
     property var logrosHechos: []
 
+    //  ── no se cobra lo que ya estaba hecho antes de empezar ───────
+    //
+    //  Hay logros que no miden lo que haces en la mazmorra sino lo que ya
+    //  habías hecho fuera: los Vibecoder van por los tokens de IA de todo tu
+    //  historial y los Constante por tu racha de días. Al empezar un perfil
+    //  esos están cumplidos DE ANTES, así que `revisarLogros` los daba todos de
+    //  golpe en la oleada 1.
+    //
+    //  Lo que costaba, medido sobre la partida de este equipo: 2.609 millones
+    //  de tokens completan Vibecoder I a IV y Constante I y II, o sea 8.800
+    //  reliquias y cuatro cofres antes del primer golpe. Con el altar a 40 de
+    //  base y ×1,6 por nivel, eso son DIEZ niveles de una mejora comprables en
+    //  la oleada 1: ×2,16 de daño gratis. La partida arrancaba rota y el
+    //  jugador no llegaba a tocar el bucle —cero cofres abiertos en toda la
+    //  vida de la partida, con treinta y ocho esperando—.
+    //
+    //  La regla se aplica a TODOS y no solo a esos dos, que es lo que la hace
+    //  una regla: un logro que ya se cumple en el momento de estrenar perfil se
+    //  marca como hecho y no paga. Los de la mazmorra parten de cero, así que a
+    //  ellos no les afecta; lo único que caza son los que miden algo de fuera,
+    //  que es exactamente lo que se quería.
+    //
+    //  Se marcan como hechos y no se esconden a propósito: los tienes, salen en
+    //  su panel y cuentan para la colección. Lo que no hacen es financiar una
+    //  economía que no se ganaron.
+    function sellarLogrosPrevios() {
+        const ya = logrosHechos.slice()
+        for (let i = 0; i < Logros.definicion.length; ++i) {
+            const l = Logros.definicion[i]
+            if (ya.indexOf(l.id) === -1 && Logros.progresoDe(l, game) >= 1)
+                ya.push(l.id)
+        }
+        logrosHechos = ya
+    }
+
     // Se revisa tras cada oleada: barato y así la recompensa llega en caliente.
     function revisarLogros() {
         for (let i = 0; i < Logros.definicion.length; ++i) {
@@ -359,6 +423,20 @@ Singleton {
     // Sustituye a las mejoras compradas con oro: los héroes suben solos
     // matando, y al subir aprenden. El oro pasa a comprar cofres, que es
     // decidir qué te llevas y no cuánta vida tienes.
+    //  Lo que suelta un bicho al morir. Crece al MISMO ritmo que su vida
+    //  (`enemigoVidaCrec`) y no más rápido, que es lo que hacía a 1,11: con la
+    //  exp por delante, cada oleada te dejaba relativamente más fuerte que la
+    //  siguiente y la partida se aceleraba sola hasta rushearse. Igualadas, tu
+    //  potencia sigue subiendo pero ya no se dispara.
+    //
+    //  Estaba escrito a pelo en los dos sitios que reparten experiencia —el
+    //  golpe y el veneno—, así que se podían separar sin que nadie lo notara.
+    readonly property real expPorMuerteBase: 8
+
+    function expPorMuerte() {
+        return Math.ceil(expPorMuerteBase * Math.pow(enemigoVidaCrec, oleada - 1))
+    }
+
     readonly property real expBase: 46
     // Sube más rápido a propósito: con los niveles ya permanentes, cada partida
     // empieza donde acabó la anterior y una curva suave dejaba el juego sin
@@ -434,7 +512,6 @@ Singleton {
     property real reliquias: 0
     property int mejorOleada: 0
     property int partidas: 0
-    property int oleadasDesdeCofre: 0
 
     property real ultimoTick: 0
     property bool cargado: false
@@ -940,10 +1017,12 @@ Singleton {
         mejorOleada = 0
         partidas = 0
         inicioElegido = 1
-        oleadasDesdeCofre = 0
 
         // y a jugar, que dejarlo sin grupo montado sería un tablero muerto
         nuevaPartida()
+        //  Antes de que corra un solo tic: empezar de cero no puede volver a
+        //  cobrar los logros que ya estaban cumplidos de fuera.
+        sellarLogrosPrevios()
         guardar()
         borradoTodo()
     }
@@ -956,7 +1035,6 @@ Singleton {
             iniciosDisponibles[iniciosDisponibles.length - 1]))
         oro = 0
         comprados = [0, 0, 0]
-        oleadasDesdeCofre = 0
         finalizada = ""
 
         const g = []
@@ -1068,8 +1146,22 @@ Singleton {
         viva = false
         partidas += 1
 
-        const ganadosCofres = Math.max(1, Math.floor(oleada / 12))
-        const ganadasReliquias = Math.floor(Math.pow(oleada, 1.45))
+        //  ── morir paga lo que has AVANZADO ────────────────────────
+        //
+        //  Pagaba `oleada^1.45` reliquias y `oleada/12` cofres cada vez, y con
+        //  «continuar» encendido la partida se reencadena sola: la forma más
+        //  rentable de farmear era morirse mucho, que es lo contrario de
+        //  progresar. Medido: un día seguido daban 8.300 cofres y 141.000
+        //  reliquias sin haber avanzado una sola oleada de récord.
+        //
+        //  En el género, morir CUESTA —en TBH te resetea la protección de mala
+        //  suerte acumulada—. Aquí no hace falta castigar: basta con pagar por
+        //  lo que se ha ganado. Solo cuenta lo que pasa de tu récord, y por
+        //  cuánto lo pasas; caer otra vez donde ya caíste no paga nada.
+        const avance = Math.max(0, oleada - mejorOleada)
+        const ganadosCofres = avance > 0 ? Math.max(1, Math.floor(avance / 12)) : 0
+        const ganadasReliquias = avance > 0
+            ? Math.floor(Math.pow(oleada, 1.45) * Math.min(1, avance / 20)) : 0
 
         for (let i = 0; i < ganadosCofres; ++i)
             sumarCofre(oleada >= 30 ? 1 : 0)
@@ -1088,11 +1180,34 @@ Singleton {
         guardar()
     }
 
+    //  ── el goteo por reloj ────────────────────────────────────────
+    //
+    //  Fuera ya caía un cofre cada cuarto de hora (`segundosPorCofre`) y
+    //  dentro no: dentro se pagaba por oleada. Eso premia correr, y correr es
+    //  lo que se quería quitar — una oleada dura cuatro segundos, así que
+    //  pagar por oleada es pagar por segundo.
+    //
+    //  Ahora es la misma regla a los dos lados: el tiempo paga igual mires o
+    //  no. Es lo que hace que un idle acompañe en vez de rushearse — dejarlo
+    //  correr paga, correr más rápido no paga más— y de paso quita la razón
+    //  para tener la barra abierta a propósito.
+    property real creditoCofre: 0
+
+    function goteoPorReloj(delta) {
+        creditoCofre += delta
+        while (creditoCofre >= segundosPorCofre) {
+            creditoCofre -= segundosPorCofre
+            sumarCofre(0)
+        }
+    }
+
     // ── combate ───────────────────────────────────────────────────
     // Un tic por segundo: suficiente para que se vea vivo y ridículo en coste.
     function tic(delta) {
         if (!viva || !cargado || pausada)
             return
+
+        goteoPorReloj(delta)
 
         const g = clonar(grupo)
         const e = clonar(enemigos)
@@ -1135,7 +1250,7 @@ Singleton {
                 golpea(i, blanco)
                 if (e[blanco].vida <= 0) {
                     enemigoMuerto(blanco)
-                    aplicarExp(g, Math.ceil(8 * Math.pow(1.11, oleada - 1)))
+                    aplicarExp(g, expPorMuerte())
                     contar(e[blanco].jefe ? "jefes" : "muertes")
                 }
             }
@@ -1212,7 +1327,7 @@ Singleton {
                 e[j].vida -= e[j].veneno * delta
                 if (e[j].vida <= 0) {
                     enemigoMuerto(j)
-                    aplicarExp(g, Math.ceil(8 * Math.pow(1.11, oleada - 1)))
+                    aplicarExp(g, expPorMuerte())
                 }
             }
         }
@@ -1321,7 +1436,7 @@ Singleton {
                 impacto(j, vuelta)
                 if (e[j].vida <= 0) {
                     enemigoMuerto(j)
-                    aplicarExp(g, Math.ceil(8 * Math.pow(1.11, oleada - 1)))
+                    aplicarExp(g, expPorMuerte())
                 }
             }
         }
@@ -1338,18 +1453,35 @@ Singleton {
             oro += ganado
             oleadaSuperada(oleada)
 
-            oleadasDesdeCofre += 1
-            if (oleadasDesdeCofre >= oleadasPorCofre) {
-                oleadasDesdeCofre = 0
-                sumarCofre(0)
-            }
-            if (esJefe)
+            //  ── el botín paga terreno NUEVO ───────────────────────
+            //
+            //  El goteo de un cofre cada cinco oleadas era el grifo principal y
+            //  no miraba nada: ni la oleada, ni si ibas apurado, ni si eso ya lo
+            //  habías hecho veinte veces. Con una oleada durando cuatro
+            //  segundos son veinte segundos por cofre, y de ahí salían treinta
+            //  y ocho cofres sin abrir en media hora — tantos que ninguno
+            //  importaba y no se abría ninguno.
+            //
+            //  Estirar los hitos en número de oleadas no vale: el muro está
+            //  sobre la 30-60, así que un jefe cada cien no lo verías nunca.
+            //  Lo que se estira es lo que CUENTA como hito — la primera vez que
+            //  pisas cada sitio—. Repetir terreno conocido no paga, así que el
+            //  grifo queda atado a cuánto avanzas de verdad, que es justo lo
+            //  que sube despacio. Es lo que el género llama puertas de
+            //  progresión, y de paso mata el farmeo por repetición.
+            //
+            //  Con la barra abierta o cerrada sigue cayendo por reloj —ver
+            //  `creditoCofre`—, que es lo que hace que un idle acompañe: dejarlo
+            //  correr paga, correr más rápido no.
+            const nuevo = oleada > mejorOleada
+
+            if (nuevo && esJefe)
                 sumarCofre(1)
 
             // El megajefe paga como lo que es: tres cofres de acto, un buen
             // pellizco de reliquias, y a partir del segundo la ampliación del
             // crisol. El primero ya tiene bastante con ser el primero.
-            if (esMegajefe) {
+            if (esMegajefe && nuevo) {
                 sumarCofre(2)
                 sumarCofre(2)
                 sumarCofre(2)
@@ -1362,7 +1494,7 @@ Singleton {
                     crisolSoltado()
                 }
             }
-            if (oleada % 50 === 0)
+            if (nuevo && oleada % 50 === 0)
                 sumarCofre(2)
 
             contar("oleadas")
@@ -1611,7 +1743,7 @@ Singleton {
                 curado(i, roba)
                 if (e[quien].vida <= 0) {
                     enemigoMuerto(quien)
-                    aplicarExp(g, Math.ceil(8 * Math.pow(1.11, oleada - 1)))
+                    aplicarExp(g, expPorMuerte())
                 }
             }
 
@@ -1720,7 +1852,7 @@ Singleton {
             crisolAmpliado: crisolAmpliado,
             logrosHechos: logrosHechos,
             mejorOleada: mejorOleada, partidas: partidas,
-            oleadasDesdeCofre: oleadasDesdeCofre,
+            creditoCofre: creditoCofre,
             guardadoEn: ahora()
         }, null, 1)
     }
@@ -1804,7 +1936,7 @@ Singleton {
             logrosHechos = s.logrosHechos || []
             mejorOleada = s.mejorOleada || 0
             partidas = s.partidas || 0
-            oleadasDesdeCofre = s.oleadasDesdeCofre || 0
+            creditoCofre = s.creditoCofre || 0
             comprados = s.comprados || [0, 0, 0]
             finalizada = s.finalizada || ""
             relevoEn = s.relevoEn || 0
@@ -1824,6 +1956,12 @@ Singleton {
 
         ultimoTick = ahora()
         cargado = true
+
+        //  Perfil estrenado —no había guardado que leer—: se sellan los que ya
+        //  vinieran cumplidos antes de que el jugador empiece. Con guardado no
+        //  se toca nada, que ahí los logros ya se ganaron jugando.
+        if (!s)
+            sellarLogrosPrevios()
 
         if (s && s.guardadoEn)
             resumenOffline = recuperarOffline(s.guardadoEn)

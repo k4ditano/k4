@@ -25,7 +25,17 @@ Singleton {
     // esto. Quien no quiera el juego no debe pagar nada por tenerlo instalado.
     property bool juegoActivo: true
     // services/Game.qml: al caer el grupo, ¿arranca sola la siguiente?
-    property bool juegoContinuar: true
+    //  Apagado de fábrica, y es una decisión de diseño y no una preferencia.
+    //
+    //  Encendido, la partida se reencadena sola a los veinte segundos de morir
+    //  y entonces NO INTERVIENES NUNCA: el juego se juega solo de principio a
+    //  fin. Morir es el único momento en que un idle te pide volver —abrir lo
+    //  que se ha acumulado, gastar reliquias, recolocar el equipo y decidir
+    //  otra vuelta— y encadenando se lo salta. Se notaba en los datos: noventa
+    //  y siete cofres guardados y CERO abiertos en toda la vida de la partida.
+    //
+    //  Sigue estando para quien quiera puro ambiente, pero apagado por defecto.
+    property bool juegoContinuar: false
     // widgets/JuegoPildora.qml: oleada y aviso de cofres en la píldora
     property bool juegoEnPildora: true
     // services/Game.qml: el combate solo avanza con tokens de IA gastados
@@ -139,7 +149,7 @@ Singleton {
                 { id: "juegoActivo", nombre: Idioma.t("Mazmorra activa"),
                   desc: Idioma.t("Apagada no corre, no guarda y no ocupa sitio"), glifo: 0xF04E5 },
                 { requiere: "juegoActivo", id: "juegoContinuar", nombre: Idioma.t("Continuar sola al morir"),
-                  desc: Idioma.t("Encadena la siguiente partida tras el resumen"), glifo: 0xF04E5 },
+                  desc: Idioma.t("Encadena sola: no tendrás que volver a intervenir"), glifo: 0xF04E5 },
                 { requiere: "juegoActivo", id: "juegoEnPildora", nombre: Idioma.t("Mostrar en la píldora"),
                   desc: Idioma.t("Oleada actual y aviso de cofres sin abrir"), glifo: 0xF0BC2 },
                 { requiere: "juegoActivo", id: "juegoPorTokens", nombre: Idioma.t("Pelear con tokens"),
