@@ -32,6 +32,13 @@ jobs:
       - name: La documentación no le miente al código
         run: python3 tools/guia.py
 
+      #  Este no compara con nada externo: busca un patrón que ya se coló tres
+      #  veces —un hijo directo de un layout colocándose a mano, que se queda
+      #  en 0×0 y deja de responder sin dar un error—. Se comprueba a sí mismo
+      #  antes de decir que no hay nada.
+      - name: Nadie se coloca a mano dentro de un layout
+        run: python3 tools/layouts.py
+
       #  Las del editor no son de mentira: sintetizan un vídeo con ffmpeg y le
       #  preguntan por él a ffprobe. El runner de Ubuntu no los trae, y sin
       #  ellos la prueba no fallaba —reventaba—, que no es lo mismo: se llevaba
