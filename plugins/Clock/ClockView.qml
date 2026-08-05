@@ -10,6 +10,13 @@ FadeIn {
     property var tray: null
     property var juego: null
 
+    //  Lo que mide de verdad el grupo de la derecha, para que el plugin sepa
+    //  cuánto tiene que reservar. Se mide aquí porque es aquí donde están los
+    //  widgets con su fuente puesta: cuánto ocupa «🔔 claude · k4» no se sabe
+    //  contando constantes, y contándolas era como se sabía —de ahí que las
+    //  píldoras de los agentes acabaran pintadas encima de la hora—.
+    readonly property int anchoDerecho: grupoDer.implicitWidth
+
     ColumnLayout {
         anchors.fill: parent
         anchors.leftMargin: 22
@@ -53,6 +60,7 @@ FadeIn {
             }
 
             RowLayout {
+                id: grupoDer
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 6

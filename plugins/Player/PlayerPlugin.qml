@@ -18,8 +18,13 @@ K4Plugin {
     property var tray: null
     property var juego: null
 
+    //  Las píldoras de los plugins también cuentan: sin ellas en la suma, una
+    //  campana de agente empujaba el grupo de la derecha sobre el título de la
+    //  canción. Mismo problema que tenía el reloj, y misma explicación larga
+    //  está allí.
     islandWidth: 340 + (Tray.count > 0 ? Math.min(Tray.count, 4) * 24 + 8 : 0)
         + (Game.cargado ? 46 : 0)
+        + Indicadores.anchoAproximado
     // crece para dejar sitio a las notificaciones recientes
     //  El base ya lleva sus márgenes de 14 arriba y abajo. La tira añade lo que
     //  mide más el espaciado de 13 del reparto y los 2 de su propio topMargin.
