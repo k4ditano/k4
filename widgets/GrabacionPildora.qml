@@ -12,46 +12,55 @@ import QtQuick.Layouts
 import "../core"
 import "../services"
 
-RowLayout {
+//  Raíz Item y no el propio RowLayout: un MouseArea colgado directamente de un
+//  layout es una celda más, así que el layout le impone la geometría y descarta
+//  el x/y/width/height puesto a mano. Con tamaño implícito cero medía 0×0 y
+//  parar la grabación desde aquí no funcionaba. Ver JuegoPildora, que tenía lo
+//  mismo.
+Item {
     id: indicador
 
     property bool interactive: false
     signal parar()
 
     visible: Captura.grabando || Captura.estado === "cerrando"
-    spacing: 5
 
-    Rectangle {
-        Layout.preferredWidth: 8
-        Layout.preferredHeight: 8
-        Layout.alignment: Qt.AlignVCenter
-        radius: 4
-        color: Theme.red
+    implicitWidth: fila.implicitWidth
+    implicitHeight: fila.implicitHeight
 
-        SequentialAnimation on opacity {
-            running: Captura.grabando
-            loops: Animation.Infinite
-            NumberAnimation { to: 0.25; duration: 700; easing.type: Easing.InOutSine }
-            NumberAnimation { to: 1;    duration: 700; easing.type: Easing.InOutSine }
+    RowLayout {
+        id: fila
+        anchors.fill: parent
+        spacing: 5
+
+        Rectangle {
+            Layout.preferredWidth: 8
+            Layout.preferredHeight: 8
+            Layout.alignment: Qt.AlignVCenter
+            radius: 4
+            color: Theme.red
+
+            SequentialAnimation on opacity {
+                running: Captura.grabando
+                loops: Animation.Infinite
+                NumberAnimation { to: 0.25; duration: 700; easing.type: Easing.InOutSine }
+                NumberAnimation { to: 1;    duration: 700; easing.type: Easing.InOutSine }
+            }
+        }
+
+        IslandLabel {
+            text: Captura.estado === "cerrando"
+                ? Idioma.t("cerrando…") : Captura.duracionTexto
+            color: Theme.muted
+            font.pixelSize: 11
+            font.weight: Font.Medium
+            Layout.alignment: Qt.AlignVCenter
         }
     }
 
-    IslandLabel {
-        text: Captura.estado === "cerrando"
-            ? Idioma.t("cerrando…") : Captura.duracionTexto
-        color: Theme.muted
-        font.pixelSize: 11
-        font.weight: Font.Medium
-        Layout.alignment: Qt.AlignVCenter
-    }
-
-    // Sin anchors: esto vive dentro de un RowLayout, y anclar algo gobernado
-    // por un layout es comportamiento indefinido —Qt avisa en cada arranque—.
     MouseArea {
-        x: -3
-        y: -3
-        width: indicador.width + 6
-        height: indicador.height + 6
+        anchors.fill: parent
+        anchors.margins: -3
         enabled: indicador.interactive
         cursorShape: Qt.PointingHandCursor
         onClicked: indicador.parar()
