@@ -140,50 +140,104 @@ Singleton {
     // ── enfocar la ventana de la aplicación ───────────────────────
     // Hyprland.toplevels llega vacío aquí, así que se pregunta por hyprctl y
     // se busca a mano: clase exacta, luego clase que contenga, luego título.
-    property string pendingMatch: ""
+    property var pendingMatch: []
     property var pendingNotification: null
 
-    // Para lo que no se puede adivinar. Hay notificaciones que no llevan
-    // identidad utilizable —las que manda una herramienta de terminal: ni
-    // desktopEntry, ni una clase de ventana con su nombre— y la única forma de
-    // resolverlas es decir a mano a qué ventana pertenecen.
+    //  ── de quién es una notificación ──────────────────────────────
     //
-    // La clave es el appName o el desktopEntry en minúsculas; el valor, lo que
-    // haya que buscar en la clase o el título de la ventana. El nombre exacto
-    // que manda cada aplicación se lee en la tarjeta del panel, encima del
-    // título.
-    //  La terminal de la casa, sea cual sea: quien la cambie no tiene por qué
-    //  venir a corregir esta lista a mano. Estaba clavada en «kitty», y con
-    //  k4term instalada eso mandaba las notificaciones de los agentes a una
-    //  ventana que no existe —así que ni llevaban a ninguna parte ni se
-    //  descartaban—.
+    //  Lo que una aplicación pone en `appName` casi nunca es su clase de
+    //  ventana: «Zen Browser» abre la ventana `zen` y «Telegram Desktop» abre
+    //  `org.telegram.desktop`. Emparejarlas a mano era el plan y era el plan
+    //  equivocado: la lista no se acaba nunca, es distinta en cada equipo, y
+    //  quien instale algo mañana se queda fuera.
+    //
+    //  El sistema ya lleva la respuesta escrita. `StartupWMClass` de la entrada
+    //  de escritorio existe EXACTAMENTE para decir qué ventana abre cada
+    //  aplicación —lo usan los lanzadores para no abrir dos veces lo mismo— y
+    //  Quickshell lo da en `startupClass`. Así que se busca la entrada por su
+    //  id o por su nombre y se le pregunta a ella.
+    //
+    //  Queda una lista a mano y no es de aplicaciones: son mandatos de consola.
+    //  Un agente no tiene entrada de escritorio ni ventana propia porque no es
+    //  un programa de ventanas, así que no hay a quién preguntarle; lo único
+    //  que se puede decir de él es que vive dentro de la terminal. Por eso
+    //  apunta a la que haya —`Consola.binario`— y no a una escrita a mano.
     readonly property string terminal: (Consola.binario || "kitty").toLowerCase()
 
     readonly property var aliases: ({
-        // herramientas de terminal: llevan al emulador donde corren
+        // herramientas de consola: llevan al emulador donde corren
         "claude code": terminal,
         "claude": terminal,
         "codex": terminal
     })
 
-    function focusApp(n) {
-        const raw = (n.desktopEntry && n.desktopEntry.length > 0 ? n.desktopEntry : n.appName) || ""
+    //  Con qué comparar la clase de una ventana, de lo más fiable a lo más
+    //  flojo. Devuelve varias porque hay entradas con el `StartupWMClass` mal
+    //  puesto —Telegram declara `org.telegram.desktop.desktop`, con el sufijo
+    //  del fichero pegado— y entonces la buena es el id pelado.
+    function clasesDe(n) {
+        const raw = (n && n.desktopEntry && n.desktopEntry.length > 0
+                     ? n.desktopEntry : (n ? n.appName : "")) || ""
         if (raw.length === 0)
+            return []
+
+        const bajo = raw.toLowerCase()
+
+        //  Lo dicho a mano gana, que es justo lo que no se puede deducir.
+        if (aliases[bajo] !== undefined)
+            return [String(aliases[bajo]).toLowerCase()]
+
+        const salida = [bajo]
+        const anotar = function (v) {
+            const s = String(v || "").toLowerCase().replace(/\.desktop$/, "")
+            if (s.length > 0 && salida.indexOf(s) < 0)
+                salida.push(s)
+        }
+
+        const pelado = bajo.replace(/\.desktop$/, "")
+        const apps = DesktopEntries.applications.values
+        for (let i = 0; i < apps.length; ++i) {
+            const a = apps[i]
+            const id = String(a.id || "").toLowerCase().replace(/\.desktop$/, "")
+            //  Por el id o por el nombre visible: unas mandan uno y otras el
+            //  otro, y cuál de los dos es cosa de cada aplicación.
+            if (id !== pelado && String(a.name || "").toLowerCase() !== bajo)
+                continue
+
+            anotar(a.startupClass)
+            anotar(id)
+        }
+        return salida
+    }
+
+    function focusApp(n) {
+        const clases = clasesDe(n)
+        if (clases.length === 0)
             return
 
-        const key = raw.toLowerCase()
-        pendingMatch = aliases[key] !== undefined ? String(aliases[key]).toLowerCase() : key
+        pendingMatch = clases
         pendingNotification = n
         clientQuery.running = true
     }
 
+    //  ¿Es esta ventana de esta notificación? Solo por igualdad, que es lo que
+    //  las candidatas ya resuelven bien. El «contiene» se queda para el último
+    //  recurso de `matchAndFocus`, donde hay un clic detrás que ha pedido ir a
+    //  alguna parte y equivocarse de ventana no cuesta nada.
+    function casa(clases, cls, initial) {
+        for (let i = 0; i < clases.length; ++i)
+            if (clases[i] === cls || clases[i] === initial)
+                return true
+        return false
+    }
+
     function matchAndFocus(json) {
-        const key = pendingMatch
+        const clases = pendingMatch
         const n = pendingNotification
-        pendingMatch = ""
+        pendingMatch = []
         pendingNotification = null
 
-        if (key.length === 0)
+        if (!clases || clases.length === 0)
             return
 
         let list
@@ -193,8 +247,17 @@ Singleton {
             return
         }
 
-        // "org.gnome.Nautilus" → también vale probar con "nautilus"
-        const tail = key.indexOf(".") !== -1 ? key.substring(key.lastIndexOf(".") + 1) : key
+        //  Para el segundo intento: la parte final de un id con puntos
+        //  —«org.gnome.Nautilus» → «nautilus»—, que a veces es la clase de
+        //  verdad. Las de tres letras o menos no valen: «contiene» con una
+        //  cadena así empareja media sesión.
+        const colas = []
+        for (let i = 0; i < clases.length; ++i) {
+            const k = clases[i]
+            const cola = k.indexOf(".") !== -1 ? k.substring(k.lastIndexOf(".") + 1) : k
+            if (cola.length > 3 && colas.indexOf(cola) < 0)
+                colas.push(cola)
+        }
 
         let exact = null
         let partial = null
@@ -205,14 +268,18 @@ Singleton {
             const title = String(c.title || "").toLowerCase()
             const initialTitle = String(c.initialTitle || "").toLowerCase()
 
-            if (cls === key || initial === key || cls === tail || initial === tail) {
+            if (casa(clases, cls, initial)) {
                 exact = c
                 break
             }
-            if (partial === null
-                && (cls.indexOf(tail) !== -1 || initial.indexOf(tail) !== -1
-                    || initialTitle.indexOf(tail) !== -1 || title.indexOf(tail) !== -1))
-                partial = c
+            if (partial === null)
+                for (let j = 0; j < colas.length; ++j)
+                    if (cls.indexOf(colas[j]) !== -1 || initial.indexOf(colas[j]) !== -1
+                        || initialTitle.indexOf(colas[j]) !== -1
+                        || title.indexOf(colas[j]) !== -1) {
+                        partial = c
+                        break
+                    }
         }
 
         const found = exact || partial
@@ -265,30 +332,12 @@ Singleton {
     //  incluidos: así lo que manda una herramienta de consola se va al volver a
     //  la terminal donde corre.
     //
-    //  El título de la ventana NO entra en la comparación, y eso es a
-    //  propósito: al pulsar una notificación es un último recurso razonable
-    //  —lo peor que pasa es que te lleve a la ventana de al lado—, pero
-    //  descartando solo se lleva por delante avisos que no había leído nadie.
-    //  Una pestaña del navegador titulada «Slack» borraría los de Slack.
-    function perteneceA(n, cls, initial) {
-        const raw = (n.desktopEntry && n.desktopEntry.length > 0
-                     ? n.desktopEntry : n.appName) || ""
-        if (raw.length === 0)
-            return false
-
-        const bajo = raw.toLowerCase()
-        const key = aliases[bajo] !== undefined ? String(aliases[bajo]).toLowerCase() : bajo
-        const tail = key.indexOf(".") !== -1 ? key.substring(key.lastIndexOf(".") + 1) : key
-
-        if (cls === key || initial === key || cls === tail || initial === tail)
-            return true
-
-        //  Por debajo de tres letras, «contiene» empareja cualquier cosa con
-        //  cualquier cosa: ahí solo vale la igualdad de arriba.
-        return tail.length >= 3
-            && (cls.indexOf(tail) !== -1 || initial.indexOf(tail) !== -1)
-    }
-
+    //  Aquí se empareja SOLO por igualdad —`casa`, la misma de arriba— y ni el
+    //  título ni las colas entran. Al pulsar una notificación adivinar de más
+    //  es un último recurso razonable, porque lo peor que pasa es que te lleve
+    //  a la ventana de al lado; descartando no hay clic que confirme nada y un
+    //  acierto de más se lleva por delante avisos que no ha leído nadie. Una
+    //  pestaña del navegador titulada «Slack» borraría los de Slack.
     function descartarDeVentana(t) {
         const d = t && t.lastIpcObject ? t.lastIpcObject : null
         if (!d)
@@ -303,7 +352,7 @@ Singleton {
         const list = server.trackedNotifications.values.slice()
         let idas = 0
         for (let i = 0; i < list.length; ++i) {
-            if (!perteneceA(list[i], cls, initial))
+            if (!casa(clasesDe(list[i]), cls, initial))
                 continue
             if (latest === list[i])
                 dismissToast()
