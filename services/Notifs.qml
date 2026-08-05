@@ -141,6 +141,7 @@ Singleton {
     // Hyprland.toplevels llega vacío aquí, así que se pregunta por hyprctl y
     // se busca a mano: clase exacta, luego clase que contenga, luego título.
     property var pendingMatch: []
+    property string pendingPid: ""
     property var pendingNotification: null
 
     //  ── de quién es una notificación ──────────────────────────────
@@ -210,12 +211,59 @@ Singleton {
         return salida
     }
 
+    //  ── cuando se sabe la ventana EXACTA ──────────────────────────
+    //
+    //  Buscar por clase da con «una ventana de esa aplicación», y con una
+    //  abierta eso basta. Con dos no: dos terminales abiertas son dos k4term
+    //  iguales, y la lista de Hyprland va por orden de creación, así que el
+    //  clic en «te está esperando» llevaba siempre a la más vieja — a la de al
+    //  lado, la mitad de las veces.
+    //
+    //  Lo que k4 manda por su cuenta SÍ sabe de quién es: la campana la toca
+    //  una terminal concreta y su pid es la clave con la que se apunta la
+    //  píldora. Aquí se guarda para que el clic vaya a esa y no a su hermana.
+    //  Quien no apunte destino sigue como estaba, buscando por clase.
+    //
+    //  La clave lleva el cuerpo porque dos agentes esperando son dos avisos
+    //  distintos y cada uno es de su ventana.
+    property var destinos: ({})
+
+    function _clave(app, cuerpo) {
+        return String(app || "").toLowerCase() + "\n" + String(cuerpo || "")
+    }
+
+    function apuntarDestino(app, cuerpo, pid) {
+        const p = String(pid || "")
+        if (p.length === 0)
+            return
+        const d = Object.assign({}, destinos)
+        d[_clave(app, cuerpo)] = p
+        destinos = d
+    }
+
+    function olvidarDestino(app, cuerpo) {
+        const k = _clave(app, cuerpo)
+        if (destinos[k] === undefined)
+            return
+        const d = Object.assign({}, destinos)
+        delete d[k]
+        destinos = d
+    }
+
+    function destinoDe(n) {
+        if (!n)
+            return ""
+        const p = destinos[_clave(n.appName, n.body)]
+        return p === undefined ? "" : p
+    }
+
     function focusApp(n) {
         const clases = clasesDe(n)
         if (clases.length === 0)
             return
 
         pendingMatch = clases
+        pendingPid = destinoDe(n)
         pendingNotification = n
         clientQuery.running = true
     }
@@ -234,7 +282,9 @@ Singleton {
     function matchAndFocus(json) {
         const clases = pendingMatch
         const n = pendingNotification
+        const pid = pendingPid
         pendingMatch = []
+        pendingPid = ""
         pendingNotification = null
 
         if (!clases || clases.length === 0)
@@ -261,12 +311,19 @@ Singleton {
 
         let exact = null
         let partial = null
+        let porPid = null
         for (let i = 0; i < list.length; ++i) {
             const c = list[i]
             const cls = String(c.class || "").toLowerCase()
             const initial = String(c.initialClass || "").toLowerCase()
             const title = String(c.title || "").toLowerCase()
             const initialTitle = String(c.initialTitle || "").toLowerCase()
+
+            //  Si se sabe de qué ventana era, no hay nada que adivinar.
+            if (pid.length > 0 && String(c.pid) === pid) {
+                porPid = c
+                break
+            }
 
             if (casa(clases, cls, initial)) {
                 exact = c
@@ -282,7 +339,7 @@ Singleton {
                     }
         }
 
-        const found = exact || partial
+        const found = porPid || exact || partial
         if (found) {
             // Sintaxis Lua, como el resto de la configuración de Hyprland: con
             // el parser nuevo, `dispatch focuswindow address:…` no compila —se

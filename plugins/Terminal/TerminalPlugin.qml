@@ -702,6 +702,15 @@ K4Plugin {
         const e = Object.assign({}, esperas)
         e[pid] = nombre
         esperas = e
+
+        //  De QUÉ ventana es este aviso. Sin esto, pulsarlo buscaba «una
+        //  ventana de k4term» y con dos abiertas se iba a la más vieja, que es
+        //  la de al lado: el aviso te llevaba a la terminal equivocada. Las de
+        //  la isla no tienen ventana —su clave es `isla.N`— y ahí no hay pid
+        //  que apuntar.
+        if (String(pid).indexOf("isla.") !== 0)
+            Notifs.apuntarDestino("k4term", nombre, pid)
+
         K4.Sistema.lanzar(["notify-send", "-a", "k4term", "-t", "8000",
                            Idioma.t("Te está esperando"), nombre])
     }
@@ -714,6 +723,7 @@ K4Plugin {
         //  otra deja la mitad del aviso puesta, y esa mitad es la que sale
         //  luego en la tira de debajo del reloj.
         Notifs.descartarDeApp("k4term", esperas[pid])
+        Notifs.olvidarDestino("k4term", esperas[pid])
         const e = Object.assign({}, esperas)
         delete e[pid]
         esperas = e
