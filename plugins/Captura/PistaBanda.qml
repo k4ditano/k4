@@ -30,6 +30,26 @@ Pista {
     // arrastrando en un hueco.
     creable: false
 
+    //  Y el rótulo del bloque: de qué pista sale, cuando sale de alguna.
+    //  Separar el audio deja dos bloques amarillos idénticos, y sin esto hay
+    //  que ir pinchándolos para saber cuál es el micro. Se pone desde aquí
+    //  porque este fichero sí conoce a `Editor`.
+    etiquetaDe: function (capa) { return Editor.nombreDePista(capa) }
+
+    //  Y el imán: al cabezal, a los bordes de los trozos, a los marcadores y a
+    //  las otras capas. Ver `Editor.ajustarTiempo`.
+    ajustar: function (t, id) { return Editor.ajustarTiempo(t, id) }
+
+    //  Y la onda de los bloques que suenan: capas de audio y vídeos
+    //  incrustados a los que se les ha traído el sonido.
+    ondaDe: function (capa) { return Editor.ondaDe(capa) }
+
+    //  Y si está entre lo elegido con Ctrl, para que se resalte igual que el
+    //  principal: para el bloque los dos casos son «estoy elegido».
+    tambienElegido: function (capa) {
+        return Editor.estaSeleccionado("capa", capa.id)
+    }
+
     //  Pinchar el hueco suelta lo elegido y devuelve la ficha a las
     //  opciones generales.
     onFondoPulsado: Editor.seleccionar("", 0)
@@ -45,10 +65,21 @@ Pista {
 
     onSaltar: function (t) { linea.saltar(t) }
 
-    onElegir: function (i) {
+    //  Al soltar se apaga la guía del imán. Si se quedara encendida, la línea
+    //  amarilla se clavaría donde te pegaste la última vez y parecería un
+    //  marcador que nadie ha puesto.
+    onSoltar: Editor.soltarIman()
+
+    onElegir: function (i, conControl) {
         if (i < 0 || i >= banda.capas.length)
             return
         const c = banda.capas[i]
+        //  Con Ctrl se SUMA a lo elegido en vez de sustituirlo, que es como se
+        //  cogen varias cosas en cualquier sitio.
+        if (conControl) {
+            Editor.alternarEnSeleccion("capa", c.id)
+            return
+        }
         Editor.seleccionar("capa", c.id)
         //  Y si el cabezal está fuera de su tramo, llevarlo dentro: una capa
         //  solo se puede mover y escalar mientras se ve, así que elegirla sin
@@ -63,7 +94,12 @@ Pista {
             return
         const dur = Math.max(0.05, b - a)
         const na = Editor.ajustarTiempo(a, id)
+        //  Lo que se ha movido de verdad, para llevarse con él a lo demás que
+        //  esté elegido. Se calcula ANTES de escribir: después, `c.t0` ya sería
+        //  el nuevo y el desplazamiento saldría cero.
+        const delta = c ? na - c.t0 : 0
         Editor.fijarCapa(id, { t0: na, t1: Math.min(linea.total, na + dur) })
+        Editor.arrastrarSeleccion(id, delta)
     }
 
     //  Sacar una cosa de su capa y llevarla a otra.

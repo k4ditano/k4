@@ -80,17 +80,20 @@ ColumnLayout {
         columnSpacing: 4
         rowSpacing: 4
 
+        //  Arma el gesto en vez de crear el zoom a ciegas.
+        //
+        //  Antes lo creaba ahí mismo: dos segundos desde el cabezal y
+        //  encuadrado al centro. Las tres cosas que importan —dónde, cuánto y
+        //  cuándo— las adivinaba, así que después tocaba ir a la previa a
+        //  apuntar y a la línea a cuadrar. Ahora dice qué vas a hacer y lo dices
+        //  tú dibujándolo encima del vídeo.
         BotonAccion {
-            texto: Idioma.t("Zoom")
+            texto: Editor.herramienta === "zoom"
+                ? Idioma.t("Dibújalo en el vídeo")
+                : Idioma.t("Zoom")
             icono: 0xF1276                   // md-magnify_scan
-            onPulsado: {
-                //  Dos segundos desde donde estés, o lo que
-                //  quepa si estás cerca del final.
-                const a = Math.min(view.segundos,
-                                   Math.max(0, view.total - 2))
-                Editor.seleccionar("momento", Editor.crearMomento(
-                    a, Math.min(view.total, a + 2)))
-            }
+            activo: Editor.herramienta === "zoom"
+            onPulsado: Editor.armar("zoom")
         }
 
         BotonAccion {

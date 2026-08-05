@@ -1047,6 +1047,67 @@ def prueba_migrar_no_pisa_un_proyecto_ya_migrado():
           _json.load(open(nuevo)).get("marca"), "nuevo")
 
 
+def prueba_un_proyecto_renombrado_se_encuentra_por_su_video():
+    """Desde que un proyecto se puede llamar como su dueño quiera, `<vídeo>.k4v`
+    ya no es la única respuesta: abrir el vídeo tiene que encontrar su plan
+    LEYÉNDOLOS, o cada apertura crearía un montaje nuevo en blanco y el trabajo
+    de ayer quedaría en un fichero que nadie vuelve a abrir."""
+    import json as _json
+    casa = os.path.join(BORRADOR, "nombrado")
+    if os.path.isdir(casa):
+        for n in os.listdir(casa):
+            os.remove(os.path.join(casa, n))
+    else:
+        os.makedirs(casa)
+    video = os.path.join(casa, "grabacion.mp4")
+    open(video, "w").close()
+    plan = os.path.join(casa, "Mi tutorial.k4v")
+    _json.dump({"fuentes": [{"id": 1, "ruta": video}]}, open(plan, "w"))
+
+    defecto = os.path.join(casa, "grabacion.k4v")
+    igual("lo encuentra por dentro", editar.plan_de_video(video, defecto), plan)
+
+    #  Y si existe el de fábrica, ese manda: es el más barato de comprobar y
+    #  además es el que se acaba de escribir.
+    _json.dump({"fuentes": []}, open(defecto, "w"))
+    igual("pero manda el de fábrica si está",
+          editar.plan_de_video(video, defecto), defecto)
+
+    #  Un `.k4v` de otro vídeo no se cuela.
+    os.remove(defecto)
+    ajeno = os.path.join(casa, "otro.k4v")
+    _json.dump({"fuentes": [{"id": 1, "ruta": "/no/existe.mp4"}]},
+               open(ajeno, "w"))
+    igual("y el de otro vídeo no se cuela",
+          editar.plan_de_video(video, defecto), plan)
+
+
+def prueba_renombrar_no_pisa_un_proyecto_que_ya_existe():
+    """Reusar un nombre no puede llevarse por delante el montaje de otro: eso no
+    se deshace. Se aparta con un `(2)` y se avisa por el nombre devuelto."""
+    casa = os.path.join(BORRADOR, "choque")
+    if not os.path.isdir(casa):
+        os.makedirs(casa)
+    ocupado = os.path.join(casa, "Tomado.k4v")
+    open(ocupado, "w").close()
+    igual("se aparta", editar.nombre_libre(casa, "Tomado"),
+          os.path.join(casa, "Tomado (2).k4v"))
+    igual("y libre es libre", editar.nombre_libre(casa, "Suelto"),
+          os.path.join(casa, "Suelto.k4v"))
+
+
+def prueba_un_nombre_con_barras_no_se_sale_de_la_carpeta():
+    """El nombre lo escribe una persona en un campo de texto, así que puede
+    traer cualquier cosa. `../../algo` tiene que quedarse dentro."""
+    casa = os.path.join(BORRADOR, "escape")
+    if not os.path.isdir(casa):
+        os.makedirs(casa)
+    igual("no sube de carpeta",
+          os.path.dirname(editar.nombre_libre(casa, "../../fuera")), casa)
+    igual("y vacío tiene apaño",
+          editar.nombre_libre(casa, "   "), os.path.join(casa, "proyecto.k4v"))
+
+
 # ── el aspecto de una capa ────────────────────────────────────────
 def prueba_espejo_y_filtro_de_color():
     texto, _ = editar.grafo(con_capas([capa(espejo=True, filtro="gris")]),

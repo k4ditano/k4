@@ -223,9 +223,12 @@ K4Plugin {
         onArrancado: Island.abrirDialogo()
         onTerminado: Island.cerrarDialogo()
         command: ["zenity", "--file-selection",
-                  "--title=" + Idioma.t("Elegir vídeo"),
-                  "--file-filter=" + Idioma.t("Vídeo")
-                  + " | *.mp4 *.mkv *.mov *.webm *.avi *.m4v"]
+                  "--title=" + Idioma.t("Elegir vídeo o proyecto"),
+                  //  El otro diálogo de más abajo —el de meter un vídeo
+                  //  ENCIMA— no lleva `.k4v` a propósito: un proyecto no es
+                  //  una capa, y ofrecerlo ahí solo puede acabar en un error.
+                  "--file-filter=" + Idioma.t("Vídeo o proyecto")
+                  + " | *.mp4 *.mkv *.mov *.webm *.avi *.m4v *.k4v"]
         onSalida: function (texto) {
             const ruta = String(texto).trim()
             // Sale vacío si le has dado a cancelar, que no es un fallo.

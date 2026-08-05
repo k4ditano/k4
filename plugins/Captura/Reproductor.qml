@@ -93,6 +93,10 @@ Item {
     //  sí funciona.
     property bool enTregua: false
 
+    //  Marca de tiempo del último salto, en ms. La usa el reintento de la
+    //  tregua para saber cuánto ha podido correr el medio desde entonces.
+    property real saltadoEn: 0
+
     Timer {
         id: tregua
         interval: 200
@@ -104,10 +108,36 @@ Item {
             //  posiciones se mapeaban por el tramo nuevo y el cabezal saltaba
             //  hacia atrás. Si está fuera del trozo, se reintenta y se da
             //  otra tregua, las veces que haga falta: converge en una o dos.
+            //
+            //  Y mirar solo si cae DENTRO DEL TROZO no basta, que es lo que
+            //  hacía: saltando atrás dentro del mismo trozo —pinchar antes en
+            //  la línea con el vídeo en marcha, lo más normal— la posición
+            //  vieja sigue estando dentro de ese trozo. La comprobación pasaba,
+            //  la tregua se levantaba dando por bueno un salto que no se había
+            //  hecho, y el primer aviso del medio devolvía el cabezal a donde
+            //  venía y seguía reproduciendo por allí.
+            //
+            //  Así que se compara con dónde tiene que ESTAR, que es la misma
+            //  lección que ya aprendió el filtro de `onPositionChanged` —mirar
+            //  el sitio y no una dirección— y que a este reintento no se le
+            //  había aplicado.
             if (repro.tramo && !repro.tramo.imagen) {
                 const s = mp.position / 1000
+                //  Dónde debería estar YA, no dónde se pidió. Reproduciendo,
+                //  para cuando esto vence el medio lleva un rato corriendo:
+                //  comparando contra el sitio pedido a secas, un salto que
+                //  había ido PERFECTAMENTE se leía como fallido en cuanto
+                //  tardara un poco en informar. Y cada falso fallo cuesta una
+                //  pausa, otra búsqueda y otra tregua — dos de esos son el
+                //  segundo de retraso que se notaba al pinchar.
+                const corrido = repro.sonando
+                    ? (Date.now() - repro.saltadoEn) / 1000
+                      * (repro.tramo.velocidad || 1)
+                    : 0
+                const esperado = repro.enFuente(repro.cabezal, repro.tramo) + corrido
                 if (s < repro.tramo.desde - 0.25
-                        || s > repro.tramo.hasta + 0.25) {
+                        || s > repro.tramo.hasta + 0.25
+                        || Math.abs(s - esperado) > 0.5) {
                     mp.pause()
                     mp.position = repro.enFuente(repro.cabezal,
                                                  repro.tramo) * 1000
@@ -116,7 +146,12 @@ Item {
                 }
             }
             repro.enTregua = false
-            if (repro.sonando && mp.playbackState !== MediaPlayer.PlayingState)
+            //  `!rascando` por lo mismo que en `irA`: mientras arrastras por la
+            //  línea el vídeo tiene que estar quieto, y esta tregua vence en
+            //  mitad del gesto. Reanudar aquí lo ponía en marcha a media
+            //  búsqueda y devolvía el problema por la puerta de atrás.
+            if (repro.sonando && !repro.rascando
+                    && mp.playbackState !== MediaPlayer.PlayingState)
                 mp.play()
         }
     }
@@ -199,6 +234,9 @@ Item {
         objetivo = -1
 
         enTregua = true
+        //  Cuándo se pidió, para que el reintento sepa cuánto DEBERÍA haber
+        //  avanzado ya y no confunda «va bien y ha corrido» con «no saltó».
+        saltadoEn = Date.now()
         tregua.restart()
 
         //  Un trozo que es una imagen no pasa por el medio: se pinta y punto, y
@@ -231,7 +269,20 @@ Item {
             else if (mp.playbackState === MediaPlayer.PlayingState)
                 mp.pause()
             mp.position = enFuente(limpio, tr) * 1000
-            if (sonando)
+            //  Y NO se reanuda si estás rascando.
+            //
+            //  Pinchar la línea es press → `empezarRasca` (que pausa) → `irA` →
+            //  release → `terminarRasca` (que reanuda). Con el `play()` de aquí
+            //  dentro, el paso de en medio volvía a poner el vídeo en marcha
+            //  justo mientras se busca — que es exactamente lo que este fichero
+            //  ya tenía documentado que no se puede hacer: «escribir position
+            //  con el vídeo en marcha se cumple unas veces y otras no». La
+            //  búsqueda se perdía, la tregua la reintentaba, y eso era el
+            //  segundo largo hasta que el vídeo llegaba al sitio pinchado.
+            //
+            //  Soltar el ratón ya reanuda, así que aquí no hace falta: esto es
+            //  para los saltos que no vienen de un rascado.
+            if (sonando && !rascando)
                 mp.play()
         }
     }
@@ -402,7 +453,17 @@ Item {
     MediaPlayer {
         id: mp
         videoOutput: salida
-        audioOutput: AudioOutput { muted: repro.silenciado }
+        //  Callado también si al trozo le han separado el audio.
+        //
+        //  «Separar el audio» deja el trozo mudo y saca su sonido a capas
+        //  aparte, para poder equilibrarlas. Eso el render lo respetaba y la
+        //  previa no: seguía sacando la pista del vídeo —la Mezcla, o sea las
+        //  dos sumadas— mientras las capas separadas sonaban ADEMÁS. De ahí que
+        //  bajar el volumen de una a cero no cambiara nada: lo que oías venía
+        //  de aquí, y esto no escuchaba a nadie.
+        audioOutput: AudioOutput {
+            muted: repro.silenciado || (repro.tramo ? !!repro.tramo.mudo : false)
+        }
 
         //  La previa va a la velocidad del trozo que se esté viendo.
         //

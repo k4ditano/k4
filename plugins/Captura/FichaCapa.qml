@@ -17,10 +17,10 @@ ColumnLayout {
     required property var view
 
     //  La barra vale para varias cosas y cada una tiene su tope: la opacidad y
-    //  el fondo llegan a 1 y el volumen a 2, porque subir la música al doble
-    //  es lo que hace falta cuando viene baja.
+    //  el fondo llegan a 1 y el volumen a donde diga `Editor.volumenMaximo`,
+    //  porque una grabación con el micro lejos necesita bastante más del doble.
     readonly property real topeBarra: Editor.capaSel
-        && Editor.capaSel.tipo === "audio" ? 2 : 1
+        && Editor.capaSel.tipo === "audio" ? Editor.volumenMaximo : 1
 
     readonly property real valorBarra: {
         const c = Editor.capaSel
@@ -87,15 +87,9 @@ ColumnLayout {
     //  una capa por pista y en la línea de tiempo son dos bloques iguales:
     //  sin decirlo aquí no hay forma de saber cuál es la voz y cuál el
     //  ordenador más que bajándole el volumen a una y escuchar.
-    function nombrePista(capa) {
-        if (!capa || capa.tipo !== "audio" || capa.pista === undefined)
-            return ""
-        const pistas = Editor.pistasAudio
-        for (let i = 0; i < pistas.length; ++i)
-            if (pistas[i].i === capa.pista && pistas[i].titulo)
-                return pistas[i].titulo
-        return ""
-    }
+    //  Vive en `Editor` porque la línea de tiempo también lo rotula ahora, y
+    //  dos copias de la misma búsqueda es una de más.
+    function nombrePista(capa) { return Editor.nombreDePista(capa) }
 
     IslandLabel {
         text: {
@@ -168,13 +162,32 @@ ColumnLayout {
             }
         }
 
+        //  Ámbar por encima del 100 %: ahí la previa ya no puede subir más —Qt
+        //  recorta su volumen en 1— y el render sí. Sin el aviso, poner 250 % y
+        //  no oír diferencia parece la barra rota.
+        //
+        //  Se probó a sacarlo por el volumen del nodo de Pipewire, que sí pasa de
+        //  1, y se descartó: WirePlumber lo PERSISTE por aplicación —en escala
+        //  cúbica, un 3× se guarda como 27— y se lo aplica a todos los flujos
+        //  futuros. Dejar la barra a 3× y matarla graba el 3× para siempre.
         IslandLabel {
             Layout.preferredWidth: 34
             horizontalAlignment: Text.AlignRight
             text: Math.round(fichaCapa.valorBarra * 100) + "%"
-            color: Theme.dim
+            color: fichaCapa.valorBarra > 1 ? Theme.yellow : Theme.dim
             font.pixelSize: 9
         }
+    }
+
+    //  Y dicho con letras, no solo con un color.
+    IslandLabel {
+        Layout.fillWidth: true
+        visible: Editor.capaSel && Editor.capaSel.tipo === "audio"
+                 && fichaCapa.valorBarra > 1
+        text: Idioma.t("Por encima del 100 % solo se amplifica al renderizar")
+        color: Theme.yellow
+        font.pixelSize: 9
+        wrapMode: Text.WordWrap
     }
 
     Seccion {
@@ -910,6 +923,22 @@ ColumnLayout {
         aplica: ["audio", "video"].indexOf(Editor.capaSel ? Editor.capaSel.tipo : "") >= 0
         abierta: true
 
+        //  Callar esta capa sin perder su volumen.
+        //
+        //  Faltaba: para comparar el micro con el sistema había que bajar una a
+        //  cero y luego acordarse de a cuánto estaba. Con esto se apaga y se
+        //  enciende, y el volumen sigue donde lo dejaste. Se respeta en la
+        //  previa Y en el render, no como el agachado.
+        BotonAccion {
+            visible: Editor.capaSel && Editor.capaSel.tipo === "audio"
+            texto: Editor.capaSel && Editor.capaSel.mudo
+                ? Idioma.t("Callada") : Idioma.t("Callar esta pista")
+            icono: Editor.capaSel && Editor.capaSel.mudo ? 0xF0581 : 0xF057E
+            activo: Editor.capaSel && !!Editor.capaSel.mudo
+            onPulsado: Editor.fijarCapa(Editor.idSel,
+                { mudo: !Editor.capaSel.mudo })
+        }
+
         //  El sonido del vídeo incrustado.
         //
         //  Antes se tiraba: metías una cámara o un trozo de otro vídeo y entraba
@@ -957,9 +986,10 @@ ColumnLayout {
                     ? Editor.capaSel.volumen : 1
 
                 Rectangle {
-                    // El tope es 2, igual que en las capas de audio: subir al doble
-                    // es lo que hace falta cuando el fichero viene bajo.
-                    width: parent.width * Math.min(1, parent.valor / 2)
+                    // El mismo tope que las capas de audio, para que un vídeo
+                    // incrustado se pueda levantar tanto como ellas.
+                    width: parent.width
+                        * Math.min(1, parent.valor / Editor.volumenMaximo)
                     height: parent.height
                     radius: parent.radius
                     color: Theme.green
@@ -972,7 +1002,9 @@ ColumnLayout {
                     cursorShape: Qt.PointingHandCursor
 
                     function poner(x) {
-                        const v = Math.max(0, Math.min(2, x / Math.max(1, width) * 2))
+                        const tope = Editor.volumenMaximo
+                        const v = Math.max(0, Math.min(tope,
+                            x / Math.max(1, width) * tope))
                         Editor.fijarCapa(Editor.idSel,
                             { volumen: Math.round(v * 20) / 20 })
                     }

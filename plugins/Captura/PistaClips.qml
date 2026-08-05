@@ -295,7 +295,25 @@ Rectangle {
     //  zona de ratón: arrastrar un trozo y estirar un zoom son dos gestos en el
     //  mismo sitio, y separarlos por altura es lo que evita que se peleen. Es lo
     //  mismo que ya hacen las asas de recorte.
-    readonly property int altoZoom: 7
+    //  ── cuánto ocupa la tira del zoom ─────────────────────────────
+    //
+    //  Siete píxeles fijos eran una tira en la que no se acierta: la misma
+    //  lección que ya pagaron las asas de los trozos unas líneas más abajo
+    //  —«nueve píxeles y no cuatro: acertar en una franja de cuatro es pedir
+    //  una puntería que nadie tiene»— y que a estas marcas no se les aplicó.
+    //
+    //  Y ahora la pista ENTERA, como cualquier otro bloque de la línea.
+    //
+    //  Primero fueron siete píxeles, luego el 40% de abajo, y las dos veces por
+    //  el mismo motivo: dejar sitio al trozo de debajo, porque comparten fila.
+    //  Pero media altura es media altura, y un bloque que se arrastra, se estira
+    //  y se elige pide el mismo cuerpo que los demás.
+    //
+    //  Lo que cuesta, dicho claro: donde hay un zoom, el trozo de debajo queda
+    //  tapado y ahí no se puede agarrar ni recortar. Se aparta el zoom y vuelve
+    //  a estar. La alternativa era darle fila propia al zoom, que es lo que hace
+    //  cualquier editor grande, pero en la island cada fila se paga cara.
+    readonly property int altoZoom: height
 
     Repeater {
         model: Editor.momentos
@@ -318,22 +336,87 @@ Rectangle {
             readonly property real b: estirando ? vB : modelData.t1
 
             x: pista.t2px(a)
-            width: Math.max(4, pista.t2px(b - a))
-            y: pista.height - pista.altoZoom - 1
+            //  Veintiséis de mínimo y no cuatro. Un zoom corto salía de cuatro
+            //  píxeles de ancho, y sobre cuatro píxeles no hay nada que pulsar:
+            //  entre las dos asas se lo repartían entero y la zona de elegir
+            //  quedaba en NEGATIVO. Veintiséis es lo que hace falta para que
+            //  quepan dos asas de nueve —el ancho que este fichero ya declaró
+            //  necesario para las de los trozos— y quede centro entre ellas.
+            width: Math.max(26, pista.t2px(b - a))
+            y: 0
             height: pista.altoZoom
-            radius: 3
+            radius: 4
+            //  Semitransparente aposta: ocupa la fila entera, así que si fuera
+            //  opaco no se vería que hay un trozo debajo ni dónde acaba.
+            opacity: 0.85
             color: elegido ? Theme.blue : Qt.rgba(10 / 255, 132 / 255, 1, 0.55)
             border.width: elegido ? 1 : 0
             border.color: Theme.ink
 
+            //  Lo que ocupa cada asa por punta. Nueve, que es lo que este mismo
+            //  fichero declaró necesario para las asas de los trozos —«acertar
+            //  en una franja de cuatro arrastrando es pedir una puntería que
+            //  nadie tiene»— y que a estas nunca se les dio: con seis no salían
+            //  para estirar.
+            //
+            //  Proporcional y con tope, no fijo: con un número fijo por punta,
+            //  una marca más estrecha que dos asas se queda sin centro —margen
+            //  mayor que el ancho es una zona de lado negativo, o sea ninguna
+            //  zona— y no se podía ni elegir. Así el centro existe siempre.
+            readonly property real asa: Math.min(9, width / 3)
+
+            //  El centro elige Y MUEVE el bloque entero.
+            //
+            //  Antes solo elegía: podías estirarlo por las puntas y no llevarlo
+            //  a otro sitio, así que mover un zoom dos segundos a la derecha era
+            //  estirar por un lado y encoger por el otro hasta cuadrarlo. Un
+            //  bloque de una línea de tiempo se arrastra, y punto.
+            //
+            //  En local mientras dura el gesto, como todo lo de este fichero:
+            //  escribir el modelo reasigna el array y el Repeater destruye al
+            //  delegado que tiene el agarre.
             MouseArea {
                 anchors.fill: parent
-                //  Las asas se comen los seis píxeles de cada punta, así que el
-                //  centro es lo que queda para elegir y arrastrar entero.
-                anchors.leftMargin: 6
-                anchors.rightMargin: 6
-                cursorShape: Qt.PointingHandCursor
-                onPressed: Editor.seleccionar("momento", marca.modelData.id)
+                anchors.leftMargin: marca.asa
+                anchors.rightMargin: marca.asa
+                cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                preventStealing: true
+
+                property real xIni: 0
+                property real dur: 0
+
+                onPressed: function (ev) {
+                    Editor.seleccionar("momento", marca.modelData.id)
+                    xIni = mapToItem(pista, ev.x, 0).x
+                    marca.vA = marca.modelData.t0
+                    marca.vB = marca.modelData.t1
+                    dur = marca.vB - marca.vA
+                    marca.estirando = true
+                }
+
+                onPositionChanged: function (ev) {
+                    if (!pressed)
+                        return
+                    const d = pista.px2t(mapToItem(pista, ev.x, 0).x - xIni)
+                    //  Se mueve entero: la duración no cambia al llevarlo de un
+                    //  sitio a otro, y en los topes se para en vez de encogerse.
+                    //  Y con imán, como cualquier otro bloque: un zoom que
+                    //  empieza justo donde acaba un trozo se pega solo.
+                    const crudo = Math.max(0, Math.min(pista.total - dur,
+                                                       marca.modelData.t0 + d))
+                    const a = Math.min(pista.total - dur,
+                        Editor.ajustarTiempo(crudo, marca.modelData.id))
+                    marca.vA = a
+                    marca.vB = a + dur
+                }
+
+                onReleased: {
+                    Editor.fijarMomento(marca.modelData.id,
+                                        { t0: marca.vA, t1: marca.vB })
+                    marca.estirando = false
+                    Editor.soltarIman()
+                }
+                onCanceled: { marca.estirando = false; Editor.soltarIman() }
             }
 
             Repeater {
@@ -342,9 +425,9 @@ Rectangle {
                     required property int index
                     readonly property bool izquierda: index === 0
 
-                    width: 7
+                    width: marca.asa + 2
                     height: parent.height
-                    x: izquierda ? -1 : parent.width - 6
+                    x: izquierda ? -1 : parent.width - marca.asa - 1
                     cursorShape: Qt.SizeHorCursor
                     preventStealing: true
 

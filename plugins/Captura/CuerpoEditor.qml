@@ -43,9 +43,15 @@ Item {
     //  Los 300 son lo que ocupa todo lo demás: cabecera, pie, márgenes y el
     //  mínimo del vídeo. Con menos, el pie acababa por debajo del borde de la
     //  island — que es lo que pasaba con 470 mal contados.
+    //
+    //  En VENTANA se reserva menos, y no es un ajuste fino: ahí el vídeo es
+    //  ancho, así que un poco menos de alto casi no se nota en la imagen y en
+    //  cambio son dos o tres bandas más visibles sin tener que desplazar. En la
+    //  island manda lo contrario —la previa ya es pequeña y encogerla más la
+    //  deja inservible—, así que el número es distinto a propósito.
     readonly property int altoParaLinea: Math.max(
         linea.altoRegla + linea.altoClips + 10,
-        view.height - 300)
+        view.height - (view.enVentana ? 210 : 300))
 
     readonly property var momento: Editor.momentoSel
 
@@ -118,6 +124,35 @@ Item {
         view.irA(Editor.momentos[j].t0)
     }
 
+    //  Quitar lo que esté elegido, sea de la fila que sea.
+    //
+    //  Sale de la tecla porque ahora lo usan dos: Suprimir y Ctrl+X. Con dos
+    //  pistas y cuatro clases de bloque, «quitar» ya no puede querer decir solo
+    //  «quitar el zoom».
+    function borrarSeleccion() {
+        //  Todo lo elegido, no solo lo principal: desde que se pueden coger
+        //  varios con Ctrl, borrar uno de tres sería la mitad del gesto.
+        if (Editor.tipoSel.length > 0) {
+            Editor.quitarSeleccion()
+            return
+        }
+        if (view.momento)
+            Editor.quitarMomento(view.momento.id)
+    }
+
+    //  Cuánto avanza una flecha.
+    //
+    //  UN FOTOGRAMA, que es como se afina en cualquier editor. Antes era un
+    //  segundo entero: a 60 fps eso son sesenta fotogramas de golpe, o sea que
+    //  no había forma de colocar un corte donde va — había que arrastrar el
+    //  cabezal a ojo y conformarse.
+    //
+    //  Con Ctrl, un segundo, para recorrer de verdad. Es el reparto de siempre:
+    //  el gesto pequeño de fábrica y el grande con modificador, no al revés.
+    function paso(ev) {
+        return (ev.modifiers & Qt.ControlModifier) ? 1 : Editor.unFotograma
+    }
+
     Keys.onPressed: function (ev) {
         if ((ev.modifiers & Qt.ControlModifier) && ev.key === Qt.Key_Z) {
             if (ev.modifiers & Qt.ShiftModifier) Editor.rehacer()
@@ -131,32 +166,50 @@ Item {
         } else if (ev.key === Qt.Key_S) {
             //  Cortar por donde vaya el cabezal. Es la tecla de cortar en
             //  cualquier editor de vídeo, y aquí no había otra cosa usándola.
-            Editor.cortar(view.segundos)
+            //
+            //  Y corta lo que esté elegido: con una música o un rótulo cogidos,
+            //  parte esos; sin nada, la pista de vídeo. Antes partía siempre el
+            //  vídeo, así que las capas se quedaban cruzando el corte enteras.
+            Editor.cortarEnCabezal(view.segundos)
         } else if (ev.key === Qt.Key_Left) {
             if ((ev.modifiers & Qt.ShiftModifier) && view.momento)
                 Editor.moverMomento(view.momento.id, -0.2)
             else
-                view.irA(view.segundos - 1)
+                view.irA(view.segundos - view.paso(ev))
         } else if (ev.key === Qt.Key_Right) {
             if ((ev.modifiers & Qt.ShiftModifier) && view.momento)
                 Editor.moverMomento(view.momento.id, 0.2)
             else
-                view.irA(view.segundos + 1)
+                view.irA(view.segundos + view.paso(ev))
         } else if (ev.key === Qt.Key_Down || ev.key === Qt.Key_Tab) {
             view.saltarMomento(1)
         } else if (ev.key === Qt.Key_Up || ev.key === Qt.Key_Backtab) {
             view.saltarMomento(-1)
         } else if (ev.key === Qt.Key_Plus || ev.key === Qt.Key_Equal) {
             if (view.momento) Editor.ajustarNivel(view.momento.id, 0.2)
+        } else if (ev.key === Qt.Key_Escape && Editor.herramienta.length > 0) {
+            //  Antes que soltar la selección: si has armado una herramienta sin
+            //  querer, lo primero que quieres es desarmarla.
+            Editor.desarmar()
+        } else if (ev.key === Qt.Key_Escape && Editor.tipoSel.length > 0) {
+            //  Soltar lo elegido, que es para lo que se pulsa Escape. Solo se
+            //  queda el evento si HAY algo que soltar: sin selección, Escape
+            //  tiene que seguir llegando a quien cierra el editor.
+            Editor.seleccionar("", 0)
+        } else if ((ev.modifiers & Qt.ControlModifier) && ev.key === Qt.Key_C) {
+            //  Copiar lo que esté elegido, sea de la fila que sea.
+            Editor.copiarSeleccion()
+        } else if ((ev.modifiers & Qt.ControlModifier) && ev.key === Qt.Key_V) {
+            //  Y pegarlo DONDE ESTÉ EL CABEZAL, no donde estaba el original:
+            //  la línea de tiempo es el sitio, y el cabezal es dónde miras.
+            Editor.pegar(view.segundos)
+        } else if ((ev.modifiers & Qt.ControlModifier) && ev.key === Qt.Key_X) {
+            //  Cortar es copiar y quitar. Va aquí y no en el Editor porque
+            //  «quitar lo elegido» ya vive en esta tecla de abajo.
+            if (Editor.copiarSeleccion())
+                view.borrarSeleccion()
         } else if (ev.key === Qt.Key_Delete || ev.key === Qt.Key_Backspace) {
-            //  Borra lo que esté elegido, sea de la pista que sea. Con dos
-            //  pistas, «quitar» ya no puede querer decir solo «quitar el zoom».
-            if (Editor.tipoSel === "clip")
-                Editor.quitarClip(Editor.idSel)
-            else if (Editor.tipoSel === "capa")
-                Editor.quitarCapa(Editor.idSel)
-            else if (view.momento)
-                Editor.quitarMomento(view.momento.id)
+            view.borrarSeleccion()
         } else if (ev.key === Qt.Key_Minus) {
             if (view.momento) Editor.ajustarNivel(view.momento.id, -0.2)
         } else if (ev.key === Qt.Key_Return || ev.key === Qt.Key_Enter) {
@@ -242,12 +295,101 @@ Item {
                 font.weight: Font.DemiBold
             }
 
-            IslandLabel {
-                text: Editor.rutaVideo.split("/").pop()
-                color: Theme.dim
-                font.pixelSize: 10
-                elide: Text.ElideMiddle
+            //  El nombre del montaje, y se pulsa para cambiarlo.
+            //
+            //  Aquí salía el nombre del fichero de vídeo, que no se podía tocar
+            //  y encima repetía lo que ya se ve en el reproductor. Ahora es cómo
+            //  se llama el PROYECTO, que es lo que hay que poder decidir para
+            //  luego encontrarlo.
+            //
+            //  El campo de texto está siempre —no es un `Loader`— y solo cambia
+            //  si acepta el ratón: un `TextInput` que nace en el momento de
+            //  pulsarlo no llega a tiempo de recibir ese mismo clic, y había que
+            //  pulsar dos veces sin entender por qué.
+            Item {
                 Layout.fillWidth: true
+                Layout.preferredHeight: 14
+                implicitHeight: 14
+
+                TextInput {
+                    id: nombrePlan
+                    anchors.fill: parent
+                    anchors.rightMargin: confirmarNombre.visible ? 20 : 0
+                    cursorDelegate: IslandCursor {}
+                    verticalAlignment: TextInput.AlignVCenter
+
+                    //  Si lo has tocado, manda lo que hayas escrito; si no,
+                    //  manda el Editor.
+                    //
+                    //  Aquí estaba el fallo por el que renombrar no hacía nada:
+                    //  al perder el foco se reponía el texto viejo, y la
+                    //  confirmación —que llega en ese mismo momento— acababa
+                    //  pidiendo renombrar al nombre que ya tenía. O sea que se
+                    //  pedía, se comparaba consigo mismo y no se hacía nada.
+                    property bool tocado: false
+                    text: Editor.nombreProyecto
+                    onTextEdited: tocado = true
+
+                    readonly property bool cambiado: tocado
+                        && text.trim().length > 0
+                        && text.trim() !== Editor.nombreProyecto
+
+                    function confirmar() {
+                        if (!cambiado) { descartar(); return }
+                        tocado = false
+                        Editor.renombrarProyecto(text)
+                    }
+
+                    function descartar() {
+                        tocado = false
+                        text = Editor.nombreProyecto
+                    }
+
+                    color: activeFocus ? Theme.ink : Theme.dim
+                    font.pixelSize: 10
+                    font.family: Theme.uiFont
+                    selectByMouse: true
+                    selectionColor: Theme.blue
+                    clip: true
+                    enabled: Editor.estado === "editando"
+
+                    onAccepted: confirmar()
+                    Keys.onEscapePressed: { descartar(); focus = false }
+                    onActiveFocusChanged: if (!activeFocus) confirmar()
+
+                    //  Y cuando el nombre cambia por fuera —renombrado, otro
+                    //  montaje— se repone, salvo que estés escribiendo. Con un
+                    //  enlace no bastaba: teclear lo rompe y ya no vuelve.
+                    Connections {
+                        target: Editor
+                        function onNombreProyectoChanged() {
+                            if (!nombrePlan.tocado)
+                                nombrePlan.text = Editor.nombreProyecto
+                        }
+                    }
+
+                    ToolTip.visible: hovered.hovered && !activeFocus
+                    ToolTip.text: Idioma.t("Pulsa para ponerle nombre al montaje")
+                    HoverHandler { id: hovered }
+                }
+
+                //  Y un botón para confirmarlo, que aparece solo si has
+                //  cambiado algo.
+                //
+                //  No es un adorno: en este editor casi cada letra es un atajo
+                //  —M marca, S corta, Espacio reproduce— y fiarlo todo a Intro y
+                //  al foco deja el renombrado a merced de quién se quede la
+                //  tecla. Con un botón, pulsarlo es pulsarlo.
+                MediaButton {
+                    id: confirmarNombre
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: nombrePlan.cambiado
+                    glyph: String.fromCodePoint(0xF012C)   // md-check
+                    glyphSize: 12
+                    glyphColor: Theme.green
+                    onActivated: nombrePlan.confirmar()
+                }
             }
 
             MediaButton {
@@ -305,7 +447,12 @@ Item {
                 Layout.fillHeight: true
                 //  Pero no por debajo de esto: con muchas capas, la línea de
                 //  tiempo se comía el vídeo hasta dejarlo en una raya.
-                Layout.minimumHeight: 180
+                //
+                //  Más alto en ventana, y no menos: ahí el vídeo mide el doble
+                //  de ancho, así que 180 px de alto ya no son una previa sino
+                //  una rendija. El sitio para las bandas sale de reservar menos
+                //  arriba —ver `altoParaLinea`—, no de aplastar la imagen.
+                Layout.minimumHeight: view.enVentana ? 260 : 180
                 radius: 8
                 color: "black"
                 clip: true
@@ -388,28 +535,83 @@ Item {
                     //
                     //  Se agarra el contenido, no la cámara: llevas la imagen
                     //  hacia donde quieres mirar, que es como funciona un mapa.
+                    //  Y si no hay ninguno donde está el cabezal, dibujar uno.
+                    //
+                    //  Antes esto estaba apagado fuera de un momento, así que
+                    //  crear un zoom obligaba a arrastrar en la línea de tiempo
+                    //  y solo DESPUÉS venir aquí a apuntar: el cuándo en un sitio
+                    //  y el dónde en otro, para decir una sola cosa. Ahora el
+                    //  rectángulo dice las dos —dónde y cuánto— y el cuándo
+                    //  empieza donde esté el cabezal.
                     MouseArea {
+                        id: gesto
                         anchors.fill: parent
-                        enabled: view.momento !== null
+
+                        //  Si el cabezal cae dentro de un momento se ARRASTRA
+                        //  ese; si no, se DIBUJA uno nuevo. Un mismo gesto con
+                        //  dos significados según dónde estés, que es lo que ya
+                        //  hace la propia línea de tiempo.
+                        //  Con la herramienta armada se DIBUJA siempre, aunque
+                        //  el cabezal caiga dentro de un zoom que ya existe.
+                        //  Es el sentido de armarla: has dicho que vas a hacer
+                        //  uno nuevo, así que arrastrar no puede significar
+                        //  «mueve el de debajo».
+                        readonly property bool sobreMomento:
+                            Editor.herramienta !== "zoom"
+                            && view.momento !== null
                             && view.segundos >= view.momento.t0
                             && view.segundos <= view.momento.t1
-                        cursorShape: enabled
+
+                        cursorShape: sobreMomento
                             ? (pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
-                            : Qt.ArrowCursor
+                            : Qt.CrossCursor
 
                         property real xIni: 0
                         property real yIni: 0
                         property real cxIni: 0
                         property real cyIni: 0
 
+                        //  El rectángulo que se está dibujando, en píxeles de
+                        //  este marco.
+                        property bool marcando: false
+                        property real mx0: 0
+                        property real my0: 0
+                        property real mx1: 0
+                        property real my1: 0
+
+                        //  De píxeles del marco a píxeles del VÍDEO.
+                        //
+                        //  Hay que contar el encuadre actual: si ya estás con
+                        //  zoom puesto, el punto de arriba a la izquierda del
+                        //  marco no es el 0,0 del vídeo sino la esquina de la
+                        //  ventana visible, que es lo que dice `estadoCamara`.
+                        function aVideo(px, py) {
+                            const f = lente.factor * lente.escala
+                            return [view.estadoCamara[1] + px / f,
+                                    view.estadoCamara[2] + py / f]
+                        }
+
                         onPressed: function (ev) {
-                            xIni = ev.x; yIni = ev.y
-                            cxIni = view.momento.cx
-                            cyIni = view.momento.cy
+                            if (sobreMomento) {
+                                marcando = false
+                                xIni = ev.x; yIni = ev.y
+                                cxIni = view.momento.cx
+                                cyIni = view.momento.cy
+                                return
+                            }
+                            marcando = true
+                            mx0 = ev.x; my0 = ev.y
+                            mx1 = ev.x; my1 = ev.y
                         }
 
                         onPositionChanged: function (ev) {
-                            if (!pressed || !view.momento)
+                            if (!pressed)
+                                return
+                            if (marcando) {
+                                mx1 = ev.x; my1 = ev.y
+                                return
+                            }
+                            if (!view.momento)
                                 return
                             const f = lente.factor * lente.escala
                             const cx = cxIni - (ev.x - xIni) / f
@@ -421,7 +623,30 @@ Item {
                             Editor.moverCentro(view.momento.id, cx, cy)
                         }
 
-                        onReleased: view.camaraForzada = null
+                        onReleased: {
+                            if (!marcando) {
+                                view.camaraForzada = null
+                                return
+                            }
+                            marcando = false
+                            //  Un rectángulo diminuto es un clic con pulso, no
+                            //  una intención. Sin este mínimo, pinchar el vídeo
+                            //  para nada creaba un zoom de ×40 en un píxel.
+                            const an = Math.abs(mx1 - mx0)
+                            const al = Math.abs(my1 - my0)
+                            if (an < 16 || al < 16)
+                                return
+                            //  Usada es desarmada: dejarla puesta convertiría el
+                            //  siguiente arrastre en otro zoom sin querer.
+                            Editor.desarmar()
+                            const a = aVideo(Math.min(mx0, mx1), Math.min(my0, my1))
+                            const b = aVideo(Math.max(mx0, mx1), Math.max(my0, my1))
+                            Editor.crearZoomEn(view.segundos,
+                                               (a[0] + b[0]) / 2,
+                                               (a[1] + b[1]) / 2,
+                                               Editor.anchoVideo
+                                                   / Math.max(1, b[0] - a[0]))
+                        }
 
                         //  La rueda cambia el nivel del momento que esté sonando.
                         //  En el propio MouseArea: un WheelHandler hijo no recibe
@@ -431,6 +656,78 @@ Item {
                                 Editor.ajustarNivel(view.momento.id,
                                                      ev.angleDelta.y > 0 ? 0.1 : -0.1)
                             ev.accepted = true
+                        }
+                    }
+
+                    //  Que la herramienta está armada, dicho encima del vídeo.
+                    //
+                    //  Un modo que solo se nota porque el cursor cambió de
+                    //  forma es un modo escondido, y un modo escondido acaba en
+                    //  «¿por qué no puedo mover el encuadre?». El borde marca la
+                    //  zona donde el gesto significa otra cosa, y el rótulo dice
+                    //  cuál y cómo salirse.
+                    Rectangle {
+                        anchors.fill: parent
+                        visible: Editor.herramienta === "zoom"
+                        color: "transparent"
+                        border.width: 2
+                        border.color: Theme.blue
+                        radius: 8
+
+                        //  Con fondo: el rótulo cae sobre el vídeo, y sobre un
+                        //  fotograma claro el texto blanco no se lee.
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.top: parent.top
+                            anchors.topMargin: 8
+                            width: pista.implicitWidth + 18
+                            height: 22
+                            radius: 11
+                            color: Theme.blue
+
+                            IslandLabel {
+                                id: pista
+                                anchors.centerIn: parent
+                                text: Idioma.t("Arrastra el zoom sobre el vídeo · Esc")
+                                color: Theme.ink
+                                font.pixelSize: 11
+                                font.weight: Font.DemiBold
+                            }
+                        }
+                    }
+
+                    //  Lo que estás dibujando, mientras lo dibujas.
+                    //
+                    //  Sin esto el gesto es a ciegas: sueltas y ya ves dónde ha
+                    //  quedado el zoom. Va DESPUÉS del área para quedar por
+                    //  encima, y no acepta el ratón —no es un control, es lo que
+                    //  se está diciendo—.
+                    Rectangle {
+                        visible: gesto.marcando
+                        x: Math.min(gesto.mx0, gesto.mx1)
+                        y: Math.min(gesto.my0, gesto.my1)
+                        width: Math.abs(gesto.mx1 - gesto.mx0)
+                        height: Math.abs(gesto.my1 - gesto.my0)
+                        color: Qt.rgba(Theme.blue.r, Theme.blue.g, Theme.blue.b, 0.14)
+                        border.width: 1
+                        border.color: Theme.blue
+                        radius: 2
+
+                        //  Cuánto zoom va a salir de este rectángulo, con las
+                        //  mismas cuentas y los mismos topes que al soltar: si
+                        //  el número dijera una cosa y el resultado otra, más
+                        //  valdría no enseñarlo.
+                        IslandLabel {
+                            anchors.centerIn: parent
+                            visible: parent.width > 52 && parent.height > 20
+                            text: "×" + Math.max(1.1, Math.min(4,
+                                     Editor.anchoVideo
+                                     / Math.max(1, parent.width
+                                                   / (lente.factor * lente.escala))
+                                  )).toFixed(2)
+                            color: Theme.ink
+                            font.pixelSize: 11
+                            font.weight: Font.DemiBold
                         }
                     }
 
@@ -449,6 +746,22 @@ Item {
                         //  de debajo es la que YA lleva el zoom: las zonas van
                         //  después del `zoompan` como las demás capas.
                         fuenteVideo: lente
+                    }
+
+                    //  Y el sonido de las capas de audio.
+                    //
+                    //  Estaba escrito y declarado en `qmldir` desde hace tiempo,
+                    //  pero NADIE LO INSTANCIABA: código muerto. No se notaba
+                    //  porque el reproductor principal seguía sacando la pista
+                    //  del vídeo —la Mezcla, las dos sumadas— y eso tapaba el
+                    //  agujero: al separar el audio oías lo mismo de antes, solo
+                    //  que venía del sitio equivocado. En cuanto el reproductor
+                    //  empezó a callarse al separar, como debe, no quedó nadie
+                    //  sonando y el editor se quedó mudo. Aquí está quien suena.
+                    AudioExtra {
+                        segundos: view.segundos
+                        sonando: reproductor.reproduciendo
+                        silenciado: view.silenciado
                     }
 
                     // Que lo que ves lleva zoom, para no confundirlo con el vídeo
@@ -558,11 +871,58 @@ Item {
                     //  Con dos pistas la ficha ya no puede ser siempre la del zoom:
                     //  si acabas de pinchar un trozo, lo que quieres saber es de
                     //  dónde sale y qué le puedes hacer.
-                    IslandLabel {
-                        text: view.tituloSel
-                        color: Theme.ink
-                        font.pixelSize: 13
-                        font.weight: Font.DemiBold
+                    //  El título de lo elegido, y la salida.
+                    //
+                    //  Elegir algo sustituye el panel de AÑADIR por el de lo
+                    //  elegido, y hasta ahora la única forma de volver era
+                    //  pulsar un hueco vacío de una banda. Eso ni se ve ni
+                    //  siempre existe: si la fila está llena de bloques no hay
+                    //  hueco que pulsar, y te quedabas sin poder añadir nada
+                    //  hasta dar con el sitio bueno por casualidad.
+                    //
+                    //  Ahora la salida está escrita al lado del título, que es
+                    //  donde uno mira cuando quiere deshacer lo que acaba de
+                    //  hacer. Y con Escape, que es lo que se pulsa sin pensar.
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        IslandLabel {
+                            text: view.tituloSel
+                            color: Theme.ink
+                            font.pixelSize: 13
+                            font.weight: Font.DemiBold
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+
+                        //  Cuántas cosas hay cogidas, cuando hay más de una.
+                        //  Sin esto, elegir tres y borrar es una sorpresa.
+                        Rectangle {
+                            visible: Editor.todoLoElegido.length > 1
+                            Layout.preferredWidth: Math.max(14,
+                                cuantas.implicitWidth + 10)
+                            Layout.preferredHeight: 14
+                            radius: 7
+                            color: Theme.blue
+
+                            IslandLabel {
+                                id: cuantas
+                                anchors.centerIn: parent
+                                text: String(Editor.todoLoElegido.length)
+                                color: Theme.islandBg
+                                font.pixelSize: 9
+                                font.weight: Font.DemiBold
+                            }
+                        }
+
+                        MediaButton {
+                            visible: Editor.tipoSel.length > 0
+                            glyph: String.fromCodePoint(0xF0156)  // md-close
+                            glyphSize: 13
+                            glyphColor: Theme.muted
+                            onActivated: Editor.seleccionar("", 0)
+                        }
                     }
 
                     IslandLabel {
@@ -792,7 +1152,10 @@ Item {
             }
 
             IslandLabel {
-                text: view.segundos.toFixed(1) + " / " + view.total.toFixed(1) + " s"
+                //  `m:ss.ff`, con el fotograma. Con décimas no se puede decir en
+                //  qué fotograma estás, que es lo que hace falta saber justo
+                //  cuando afinas un corte.
+                text: Editor.reloj(view.segundos) + " / " + Editor.reloj(view.total)
                 color: Theme.muted
                 font.pixelSize: 10
             }

@@ -32,8 +32,13 @@ K4.Ventana {
 
         //  Tamaño: lo más grande que quepa dejando aire, con tope para que en
         //  un monitor enorme no acabe siendo incómodo.
+        //
+        //  Más ALTO que antes —0,70 del ancho en vez de 0,62, y menos aire
+        //  arriba y abajo— porque lo que escaseaba era el alto: la previa se
+        //  llevaba la ventana y las bandas se quedaban en una tira que había que
+        //  desplazar. Un editor de vídeo se pasa el rato mirando abajo.
         width: Math.min(1680, parent.width - 160)
-        height: Math.min(parent.height - 140, Math.round(width * 0.62))
+        height: Math.min(parent.height - 90, Math.round(width * 0.70))
 
         radius: 32
         color: Theme.islandBg

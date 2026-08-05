@@ -84,8 +84,9 @@ ColumnLayout {
                 }
             }
 
-            // El volumen, de 0 a 2: subir el doble es lo que
-            // hace falta cuando el micro quedó bajo.
+            // El volumen, hasta `Editor.volumenMaximo`: un micro que quedó
+            // lejos necesita bastante más del doble, y el tope lo pone quien
+            // escucha, no nosotros.
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 4
@@ -95,7 +96,8 @@ ColumnLayout {
 
                 Rectangle {
                     width: parent.width
-                        * Math.min(1, filaPista.modelData.volumen / 2)
+                        * Math.min(1, filaPista.modelData.volumen
+                                      / Editor.volumenMaximo)
                     height: parent.height
                     radius: parent.radius
                     color: Theme.blue
@@ -108,8 +110,9 @@ ColumnLayout {
                     cursorShape: Qt.PointingHandCursor
 
                     function poner(x) {
-                        const v = Math.max(0, Math.min(2,
-                            x / Math.max(1, width) * 2))
+                        const tope = Editor.volumenMaximo
+                        const v = Math.max(0, Math.min(tope,
+                            x / Math.max(1, width) * tope))
                         Editor.fijarPista(filaPista.modelData.i,
                                            { volumen: Math.round(v * 20) / 20 })
                     }
@@ -120,11 +123,15 @@ ColumnLayout {
                 }
             }
 
+            //  Ámbar por encima del 100 %: ahí se AMPLIFICA, y eso solo pasa en
+            //  el render. Aquí además la previa nunca lo enseñó —monitoriza una
+            //  pista y no le aplica su volumen—, así que este número se cumple
+            //  únicamente en el fichero que sale.
             IslandLabel {
-                Layout.preferredWidth: 30
+                Layout.preferredWidth: 34
                 horizontalAlignment: Text.AlignRight
                 text: Math.round(filaPista.modelData.volumen * 100) + "%"
-                color: Theme.dim
+                color: filaPista.modelData.volumen > 1 ? Theme.yellow : Theme.dim
                 font.pixelSize: 9
             }
 

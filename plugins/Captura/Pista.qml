@@ -25,13 +25,34 @@ Rectangle {
     // Si se pueden crear bloques arrastrando en un hueco.
     property bool creable: true
 
+    //  Cómo se rotula un bloque, si es que lleva rótulo.
+    //
+    //  Lo pone quien usa la pista y no ella: `Pista` sirve para clips, capas y
+    //  momentos de zoom, y no sabe —ni le hace falta— qué hay dentro de un
+    //  bloque. La primera versión llamaba a `Editor` desde aquí y ni siquiera
+    //  fallaba a la vista: este fichero no importa `services`, así que la
+    //  llamada no resolvía, el rótulo salía vacío y no se quejaba nadie.
+    property var etiquetaDe: null
+
+    //  Y a qué se pega el imán al arrastrar. Igual que `etiquetaDe`: lo pone
+    //  quien usa la pista, que es quien conoce al Editor.
+    property var ajustar: null
+
+    //  Y de dónde saca su onda un bloque que suena. Igual que los otros dos
+    //  ganchos: lo pone quien conoce al Editor.
+    property var ondaDe: null
+
+    //  Y si un bloque está en la selección múltiple. Otro gancho, por lo mismo
+    //  que los demás: `Pista` no conoce al Editor.
+    property var tambienElegido: null
+
     //  Si sus bloques se pueden sacar de la fila y llevar a otra. Solo tiene
     //  sentido donde las filas son capas apiladas.
     property bool porFilas: false
     property real pasoFila: 29
 
     signal saltar(real t)
-    signal elegir(int indice)
+    signal elegir(int indice, bool conControl)
     signal editar(int id, real t0, real t1)
     signal soltar()
     signal crear(real t0, real t1)
@@ -117,17 +138,38 @@ Rectangle {
             t0: modelData.t0
             t1: modelData.t1
             total: pista.total
+            //  Resaltado si es EL elegido o si está entre los que se han
+            //  sumado con Ctrl: para el bloque los dos casos son el mismo.
             elegido: index === pista.elegido
+                || (pista.tambienElegido
+                    ? pista.tambienElegido(modelData) : false)
             //  El audio se pinta en amarillo aunque comparta banda con una
             //  imagen: en la línea de tiempo lo que se busca es «dónde suena la
             //  música», y el color lo dice sin leer nada. Los momentos de zoom no
             //  tienen `tipo`, así que se quedan con el tono de la pista.
             tono: modelData.tipo === "audio" ? Theme.yellow : pista.tono
 
+            //  Y su nombre escrito, cuando lo trae: dos bloques de audio
+            //  separados del mismo trozo son idénticos por fuera, y sin el
+            //  rótulo hay que ir pinchándolos para saber cuál es el micro.
+            etiqueta: pista.etiquetaDe ? pista.etiquetaDe(modelData) : ""
+
+            //  El imán se le pasa ya sabiendo QUÉ bloque es, para que no se
+            //  pegue a sus propios bordes y no haya forma de despegarlo.
+            ajustar: pista.ajustar
+                ? function (t) { return pista.ajustar(t, modelData.id) }
+                : null
+
+            onda: pista.ondaDe ? pista.ondaDe(modelData) : null
+
+            //  Media pinta cuando está callado, que es lo que hace un bloque
+            //  mudo distinguible sin tener que seleccionarlo.
+            opacity: modelData.mudo ? 0.45 : 1
+
             y: 5
             height: pista.height - 10
 
-            onPulsado: pista.elegir(index)
+            onPulsado: function (ctrl) { pista.elegir(index, ctrl) }
             porFilas: pista.porFilas
             pasoFila: pista.pasoFila
 

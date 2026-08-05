@@ -41,6 +41,12 @@ RowLayout {
     property real acercamiento: 1
     readonly property real acercamientoMax: 60
 
+    //  El imán mide su radio en píxeles de pantalla, y cuántos segundos son eso
+    //  depende de lo acercada que esté la línea. Solo se sabe aquí, así que se
+    //  lo contamos.
+    onAcercamientoChanged: Editor.acercamientoLinea = acercamiento
+    Component.onCompleted: Editor.acercamientoLinea = acercamiento
+
     function acercar(factor, anclaX) {
         const antes = rodillo.contentWidth
         //  Lo que hay bajo el puntero se queda bajo el puntero. Sin esto,
@@ -261,6 +267,91 @@ RowLayout {
             }
         }
 
+        //  Soltar ficheros encima de la línea.
+        //
+        //  Antes meter una imagen eran tres pasos: abrir la ficha de añadir,
+        //  pulsar el botón, y buscarla en el diálogo del sistema. Y encima el
+        //  instante lo ponía el cabezal, así que había que colocarlo ANTES. Lo
+        //  natural es arrastrar el fichero y soltarlo donde va, que es lo que
+        //  hace cualquier editor.
+        //
+        //  El tipo sale de la extensión y cada uno va por su puerta: una imagen
+        //  se crea directa, un vídeo o un audio hay que medirlos primero. Esas
+        //  puertas ya existían —son las que usan los botones— así que esto no
+        //  añade ninguna forma nueva de crear capas, solo una forma nueva de
+        //  llegar a ellas.
+        DropArea {
+            id: sueltalo
+            anchors.fill: parent
+            z: 40
+            keys: ["text/uri-list"]
+
+            //  Dónde caería, en segundos. Cuenta el desplazamiento del rodillo:
+            //  con la línea acercada, el 0 de la vista no es el 0 del montaje.
+            function instanteEn(x) {
+                return Math.max(0, Math.min(linea.total,
+                    (rodillo.contentX + x) / Math.max(1, rodillo.contentWidth)
+                    * linea.total))
+            }
+
+            property real caeEn: -1
+            onPositionChanged: function (ev) { caeEn = instanteEn(ev.x) }
+            onExited: caeEn = -1
+
+            onDropped: function (ev) {
+                const donde = instanteEn(ev.x)
+                caeEn = -1
+                const urls = ev.urls || []
+                for (let i = 0; i < urls.length; ++i) {
+                    const ruta = String(urls[i]).replace(/^file:\/\//, "")
+                    const ext = ruta.split(".").pop().toLowerCase()
+                    if (["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif",
+                         "tiff"].indexOf(ext) >= 0)
+                        Editor.crearImagen(decodeURIComponent(ruta), donde)
+                    else if (["mp4", "mkv", "mov", "webm", "avi",
+                              "m4v"].indexOf(ext) >= 0)
+                        Editor.crearPip(decodeURIComponent(ruta), donde)
+                    else if (["mp3", "m4a", "aac", "wav", "flac", "ogg", "opus"]
+                             .indexOf(ext) >= 0)
+                        Editor.crearAudio(decodeURIComponent(ruta), donde)
+                    else
+                        Editor.fallo("no-se-puede-soltar")
+                }
+            }
+        }
+
+        //  Y dónde va a caer, mientras lo traes.
+        Rectangle {
+            z: 49
+            visible: sueltalo.containsDrag && sueltalo.caeEn >= 0
+            x: rodillo.contentWidth
+               * (sueltalo.caeEn / Math.max(0.001, linea.total)) - 1
+            width: 2
+            height: contenido.implicitHeight
+            color: Theme.green
+        }
+
+        //  La guía del imán: dónde te acabas de pegar.
+        //
+        //  Va aquí dentro del rodillo y por encima de todo, cruzando las filas
+        //  enteras, porque de eso se trata: ver que el borde que arrastras ha
+        //  quedado a plomo con el cabezal, con el final de un trozo o con el
+        //  principio de otra capa. Sin la línea, el imán es magia negra: se te
+        //  pega y no sabes a qué.
+        //
+        //  No acepta ratón ni ocupa sitio en el layout: es un dibujo.
+        Rectangle {
+            z: 50
+            visible: Editor.imanEn >= 0
+            x: rodillo.contentWidth
+               * (Editor.imanEn / Math.max(0.001, linea.total)) - 1
+            y: 0
+            width: 2
+            height: contenido.implicitHeight
+            color: Theme.yellow
+            opacity: 0.9
+        }
+
         ColumnLayout {
             id: contenido
             width: rodillo.contentWidth
@@ -356,7 +447,13 @@ RowLayout {
                 Repeater {
                     model: Editor.marcadores
                     delegate: Item {
+                        id: marcador
                         required property var modelData
+
+                        readonly property bool elegido:
+                            Editor.tipoSel === "marcador"
+                            && Editor.idSel === modelData.id
+
                         x: regla.width * (Number(modelData.t)
                             / Math.max(0.001, linea.total))
                         width: 1
@@ -364,18 +461,28 @@ RowLayout {
                         z: 4
 
                         Rectangle {
-                            width: 2
+                            width: marcador.elegido ? 3 : 2
                             height: parent.height
                             color: Theme.orange
-                            opacity: 0.7
+                            opacity: marcador.elegido ? 1 : 0.7
                         }
                         IslandLabel {
                             x: 3
                             y: 0
-                            text: modelData.nombre || "M"
+                            text: marcador.modelData.nombre || "M"
                             color: Theme.orange
                             font.pixelSize: 8
+                            font.weight: marcador.elegido
+                                ? Font.DemiBold : Font.Normal
                         }
+
+                        //  Pulsar ELIGE; para borrarlo, Suprimir.
+                        //
+                        //  Antes pulsar lo borraba, sin más. Era la única cosa
+                        //  de la línea de tiempo que se destruía al tocarla
+                        //  —todo lo demás se elige y se borra con Suprimir— y no
+                        //  había forma de señalar uno para copiarlo, que es de
+                        //  lo que salió esto.
                         MouseArea {
                             anchors.top: parent.top
                             anchors.left: parent.left
@@ -383,8 +490,9 @@ RowLayout {
                             height: regla.height
                             anchors.leftMargin: -6
                             anchors.rightMargin: -6
-                            cursorShape: Qt.SizeHorCursor
-                            onClicked: Editor.quitarMarcador(modelData.id)
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Editor.seleccionar("marcador",
+                                                          marcador.modelData.id)
                         }
                     }
                 }

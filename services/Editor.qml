@@ -198,6 +198,13 @@ Singleton {
             r.push({ clip: c.id, fuente: c.fuente, ruta: ruta,
                      inicio: t, fin: t + d, desde: c.desde, hasta: c.hasta,
                      velocidad: v, indice: i,
+                     //  Si el trozo se quedó mudo al separarle el audio. Sin
+                     //  esto la previa no se enteraba: seguía sacando el sonido
+                     //  del vídeo —la Mezcla— mientras las capas separadas
+                     //  sonaban ADEMÁS, así que bajarle el volumen a una no se
+                     //  notaba. El render sí lo respetaba; el que mentía era el
+                     //  reproductor.
+                     mudo: !!c.mudo,
                      //  Un trozo puede ser una imagen —un congelado, una
                      //  portada—, y eso el reproductor tiene que saberlo: un
                      //  `MediaPlayer` no reproduce un PNG.
@@ -239,6 +246,80 @@ Singleton {
         for (let i = 0; i < clips.length; ++i)
             mayor = Math.max(mayor, clips[i].id)
         return mayor + 1
+    }
+
+    //  Partir por el cabezal LO QUE TOQUE.
+    //
+    //  `S` cortaba siempre la pista de vídeo, eligieras lo que eligieras. Con
+    //  una música o un rótulo seleccionado eso no es lo que uno pide: partías el
+    //  vídeo por debajo y la capa seguía entera cruzando el corte, así que había
+    //  que estirarla a mano y crear otra igual al otro lado.
+    //
+    //  Con capas elegidas se parten ESAS —todas las que el cabezal cruce, que
+    //  con selección múltiple es lo que se espera— y el vídeo se queda quieto.
+    //  Sin nada elegido, o con un trozo, sigue partiendo el vídeo como siempre.
+    function cortarEnCabezal(t) {
+        const todo = todoLoElegido
+        const capasElegidas = todo.filter(function (s) {
+            return s.tipo === "capa"
+        })
+        if (capasElegidas.length === 0)
+            return cortar(t)
+
+        let alguna = false
+        for (let i = 0; i < capasElegidas.length; ++i)
+            if (partirCapa(capasElegidas[i].id, t))
+                alguna = true
+        return alguna
+    }
+
+    //  Partir una capa en dos por un instante de la línea.
+    //
+    //  Lo que hay que repartir, y no solo los tiempos:
+    //
+    //  - El RECORTE. Una capa de audio o de vídeo mira un tramo de su fichero;
+    //    la mitad de la derecha tiene que empezar por donde iba, no por el
+    //    principio del fichero. Sin esto la segunda mitad repetiría el mismo
+    //    audio en vez de continuarlo, que es un fallo que suena rarísimo y
+    //    cuesta ver.
+    //  - Los FOTOGRAMAS CLAVE, que van en tiempo de línea: cada uno se queda del
+    //    lado que le toca. Los que caen justo en el corte van al primero.
+    function partirCapa(id, t) {
+        const c = capaPorId(id)
+        if (!c || capaBloqueada(c))
+            return false
+        //  Cortar a menos de una décima de un borde deja un trozo que no se ve
+        //  ni se puede agarrar: eso no es partir, es ensuciar.
+        if (t <= c.t0 + 0.1 || t >= c.t1 - 0.1)
+            return false
+
+        const dentro = t - c.t0
+        const claves = c.keyframes || []
+
+        const izq = Object.assign({}, c, {
+            t1: t,
+            keyframes: claves.filter(function (k) { return k.t <= t })
+        })
+        const der = Object.assign({}, c, {
+            id: nuevoIdCapa(),
+            t0: t,
+            keyframes: claves.filter(function (k) { return k.t > t })
+        })
+        if (c.recorte && c.recorte.length === 2) {
+            //  El recorte va en tiempo de FICHERO, así que el punto de corte se
+            //  traslada con la velocidad de la capa si la tuviera.
+            const v = Number(c.velocidad) > 0 ? Number(c.velocidad) : 1
+            const corteFuente = c.recorte[0] + dentro * v
+            izq.recorte = [c.recorte[0], corteFuente]
+            der.recorte = [corteFuente, c.recorte[1]]
+        }
+
+        capas = capas.map(function (x) {
+            return x.id === id ? izq : x
+        }).concat([der])
+        persistir()
+        seleccionar("capa", der.id)
+        return true
     }
 
     //  Partir en dos el trozo que haya bajo el cabezal.
@@ -594,6 +675,59 @@ Singleton {
         persistir()
         seleccionar("capa", nueva.id)
         return nueva.id
+    }
+
+    // ── cómo se llama el montaje ──────────────────────────────────
+    //
+    //  El nombre ES el del fichero, no una etiqueta guardada aparte. Así lo
+    //  encuentras por su nombre en el buscador, que es para lo que sirve
+    //  ponerle uno; una etiqueta escondida dentro del plan se vería en la
+    //  cabecera y en ningún otro sitio.
+    //
+    //  De fábrica el plan se llama como el vídeo, así que hasta que le pongas
+    //  uno esto enseña el nombre de la grabación. No es un caso especial: es
+    //  literalmente cómo se llama el fichero.
+    readonly property string nombreProyecto: {
+        if (rutaPlan.length === 0)
+            return ""
+        const hoja = rutaPlan.split("/").pop()
+        return hoja.endsWith(".k4v") ? hoja.slice(0, -4) : hoja
+    }
+
+    function renombrarProyecto(nombre) {
+        const limpio = String(nombre || "").trim()
+        if (limpio.length === 0 || limpio === nombreProyecto)
+            return
+        procesos.renombrar(limpio)
+    }
+
+    //  Hasta dónde se puede subir un volumen.
+    //
+    //  Era 2 y se quedaba corto: una grabación con el micro lejos necesita más
+    //  del doble para oírse, y ponerle un techo por si distorsiona es decidir
+    //  por quien está delante. Que distorsione si quiere; el número se ve
+    //  escrito y lo elige él.
+    //
+    //  Lo que NO puede hacer es oírse en la previa por encima del 100 %:
+    //  `AudioOutput.volume` de Qt está limitado a 1 y no hay forma de pasar de
+    //  ahí. En el render sí —el `volume=` de ffmpeg no tiene tope—, así que por
+    //  encima de 100 % el panel lo dice en vez de fingir que se oye.
+    readonly property real volumenMaximo: 4
+
+    //  Cómo se llama la pista de la que sale una capa: «Sistema», «Micrófono».
+    //
+    //  Se resuelve al mirarlo y no se guarda en el plan: el nombre lo trae el
+    //  fichero, y tener una copia dentro del plan es garantizar que un día
+    //  discrepen. Vale también para los planes de antes, que no lo llevaban.
+    //  Devuelve "" para una capa de audio suelta —una canción— que no sale de
+    //  ninguna pista del vídeo.
+    function nombreDePista(capa) {
+        if (!capa || capa.tipo !== "audio" || capa.pista === undefined)
+            return ""
+        for (let i = 0; i < pistasAudio.length; ++i)
+            if (pistasAudio[i].i === capa.pista && pistasAudio[i].titulo)
+                return pistasAudio[i].titulo
+        return ""
     }
 
     //  Sacar el audio de un trozo a su propia capa.
@@ -1269,16 +1403,51 @@ Singleton {
         fijarCapa(id, { keyframes: ks })
     }
 
+    //  Dónde se ha pegado el imán, para poder PINTARLO. -1 si no se ha pegado.
+    //
+    //  Un imán invisible es adivinar: se te pega o no se te pega y no sabes a
+    //  qué. En cualquier editor sale una guía en el punto al que te has
+    //  enganchado, y esa línea es la mitad de por qué el imán se siente bien.
+    property real imanEn: -1
+
+    function soltarIman() { imanEn = -1 }
+
+    //  A qué se pega el imán.
+    //
+    //  Antes solo a los bordes de los TROZOS y a los marcadores. Faltaban las
+    //  dos cosas a las que más se alinea uno:
+    //
+    //  - El CABEZAL. Es el punto de referencia de cualquier editor —lo colocas
+    //    donde quieres que pase algo y arrastras hasta ahí— y no estaba.
+    //  - Los bordes de las otras CAPAS y de los ZOOMS. Encadenar dos rótulos o
+    //    hacer que un zoom empiece donde acaba una música era a ojo, y a ojo en
+    //    una línea de tiempo comprimida son décimas de error.
+    //
+    //  `excluirId` es lo que se está arrastrando: sin eso un bloque se pegaría a
+    //  sus propios bordes y no habría forma de despegarlo de donde está.
     function ajustarTiempo(v, excluirId) {
         let t = Math.max(0, Math.min(duracionLinea, Number(v) || 0))
-        const puntos = [0, duracionLinea]
-        for (let i = 0; i < tramos.length; ++i) {
+        const puntos = [0, duracionLinea, posicionEditor]
+        for (let i = 0; i < tramos.length; ++i)
             puntos.push(tramos[i].inicio, tramos[i].fin)
-        }
         for (let i = 0; i < marcadores.length; ++i)
             puntos.push(Number(marcadores[i].t) || 0)
+        for (let i = 0; i < capas.length; ++i)
+            if (capas[i].id !== excluirId)
+                puntos.push(capas[i].t0, capas[i].t1)
+        for (let i = 0; i < momentos.length; ++i)
+            if (momentos[i].id !== excluirId)
+                puntos.push(momentos[i].t0, momentos[i].t1)
+
+        //  El radio en SEGUNDOS no puede ser fijo: con la línea muy acercada,
+        //  ocho centésimas son medio dedo de pantalla y el imán no te deja
+        //  colocar nada; muy alejada, son un pixel y no se pega nunca. Se
+        //  reparte entre el acercamiento para que en pantalla mida siempre lo
+        //  mismo, unos ocho píxeles.
+        const radio = 0.08 / Math.max(1, acercamientoLinea)
+
         let mejor = t
-        let distancia = 0.08
+        let distancia = radio
         for (let i = 0; i < puntos.length; ++i) {
             const d = Math.abs(puntos[i] - t)
             if (d < distancia) {
@@ -1286,8 +1455,41 @@ Singleton {
                 mejor = puntos[i]
             }
         }
+        imanEn = mejor !== t ? mejor : -1
         return mejor
     }
+
+    //  A cuántos fotogramas por segundo va esto.
+    //
+    //  Sale del plan, que lo trae medido del fichero. Hace falta para poder
+    //  moverse DE FOTOGRAMA EN FOTOGRAMA: un editor se afina así, y saltar de
+    //  segundo en segundo —que es lo que hacían las flechas— es no poder
+    //  colocar un corte donde va.
+    readonly property real fpsVideo: {
+        const f = fuentes.length > 0 ? Number(fuentes[0].fps) : 0
+        return f > 0 && f < 1000 ? f : 30
+    }
+
+    readonly property real unFotograma: 1 / Math.max(1, fpsVideo)
+
+    //  El instante escrito como lo escribe un editor: `m:ss.ff`.
+    //
+    //  Con décimas no se puede decir en qué fotograma estás, que es justo lo
+    //  que hace falta saber cuando afinas un corte.
+    function reloj(t) {
+        const seg = Math.max(0, Number(t) || 0)
+        const m = Math.floor(seg / 60)
+        const s = Math.floor(seg % 60)
+        const f = Math.floor((seg - Math.floor(seg)) * fpsVideo)
+        return m + ":" + (s < 10 ? "0" : "") + s
+                 + "." + (f < 10 ? "0" : "") + f
+    }
+
+    //  Cuánto está acercada la línea de tiempo. Lo escribe la vista.
+    //
+    //  El Editor no pinta nada, pero el radio del imán se mide en píxeles de
+    //  pantalla y eso solo se sabe aquí si alguien lo cuenta.
+    property real acercamientoLinea: 1
 
     function crearMarcador(t, nombre) {
         const a = Math.max(0, Math.min(duracionLinea, Number(t) || 0))
@@ -1303,6 +1505,11 @@ Singleton {
 
     function quitarMarcador(id) {
         marcadores = marcadores.filter(function (m) { return m.id !== id })
+        //  Y soltar la selección si era este: desde que un marcador se puede
+        //  elegir, borrarlo sin soltarla dejaba `tipoSel` apuntando a un id que
+        //  ya no existe, y la siguiente copia habría copiado nada.
+        if (tipoSel === "marcador" && idSel === id)
+            seleccionar("", 0)
         persistir()
     }
 
@@ -1436,8 +1643,19 @@ Singleton {
 
     //  La carpeta que acompaña al plan, donde van los ficheros que hace falta
     //  tener en disco: el texto de los rótulos, el SRT, el grafo.
+    //
+    //  Las mismas cuentas que `carpeta_de()` en tools/editar.py, y aquí no
+    //  estaban: se quitaban cinco letras SIEMPRE, que era lo correcto cuando el
+    //  plan se llamaba `<vídeo>.k4.json` y dejó de serlo al pasar a `.k4v`. Con
+    //  el nombre de hoy daba `<víde>` —el nombre del vídeo con una letra
+    //  comida— en vez de `<vídeo>.k4`, así que los dos lados discrepaban sobre
+    //  dónde vive el SRT y el texto de los rótulos.
     readonly property string carpetaAdjunta:
-        rutaPlan.length > 5 ? rutaPlan.substring(0, rutaPlan.length - 5) : ""
+        rutaPlan.endsWith(".k4v")
+            ? rutaPlan.substring(0, rutaPlan.length - 1)
+        : rutaPlan.endsWith(".json")
+            ? rutaPlan.substring(0, rutaPlan.length - 5)
+        : rutaPlan.length > 0 ? rutaPlan + ".k4" : ""
 
     //  Cada línea del transcriptor: estados intermedios, el fallo con su
     //  remedio, o el fin con los segmentos.
@@ -1510,13 +1728,329 @@ Singleton {
     //
     //  Un solo sitio para toda la línea, y no un índice por pista: con varias
     //  pistas «el elegido» tiene que decir también de qué es.
-    property string tipoSel: ""             // "" · clip · momento
+    property string tipoSel: ""     // "" · clip · capa · momento · marcador
     property int idSel: 0
     property bool recortandoCapa: false
     //  Si se está pinchando el recorrido de la capa sobre el vídeo.
     property bool trazandoRuta: false
 
+    // ── las ondas de los bloques de audio ─────────────────────────
+    //
+    //  Un bloque de audio que es un rectángulo de color no dice dónde habla
+    //  nadie: para saberlo hay que reproducir y esperar. Con la onda pintada se
+    //  ve, y editar deja de ser a ciegas.
+    //
+    //  Se piden cuando cambian las capas y NO desde el binding que las dibuja:
+    //  un binding que lanza procesos se dispara cada vez que se reevalúa, que es
+    //  muchas veces por segundo mientras arrastras. Aquí se pide una vez por
+    //  fichero y pista, y el resultado se queda.
+    property var ondas: ({})
+    property var ondasPedidas: ({})
+
+    function claveOnda(capa) {
+        if (!capa || !capa.ruta)
+            return ""
+        if (capa.tipo !== "audio" && !(capa.tipo === "video" && capa.sonido))
+            return ""
+        return capa.ruta + "|" + (capa.pista !== undefined ? capa.pista : 0)
+    }
+
+    //  Lo que dibuja el bloque: un array de picos, o null si aún no está.
+    function ondaDe(capa) {
+        const c = claveOnda(capa)
+        return c.length > 0 && ondas[c] !== undefined ? ondas[c] : null
+    }
+
+    function asegurarOndas() {
+        for (let i = 0; i < capas.length; ++i) {
+            const c = claveOnda(capas[i])
+            if (c.length === 0 || ondasPedidas[c])
+                continue
+            ondasPedidas[c] = true
+            procesos.pedirOnda(capas[i].ruta,
+                               capas[i].pista !== undefined ? capas[i].pista : 0)
+        }
+    }
+
+    onCapasChanged: asegurarOndas()
+
+    // ── copiar y pegar ────────────────────────────────────────────
+    //
+    //  Vale para las cuatro cosas que viven en la línea —trozo, capa, zoom y
+    //  marcador— porque «copia esto» no debería depender de qué fila hayas
+    //  pulsado. Cada una se pega distinto, y esa diferencia está aquí abajo y no
+    //  repartida por las vistas.
+    //
+    //  Se guarda una COPIA del objeto, no una referencia: si guardáramos el
+    //  original, editarlo o borrarlo después cambiaría —o vaciaría— lo que
+    //  tienes copiado, y nadie espera que el portapapeles se mueva solo.
+    //
+    //  Vive en memoria y no en el plan: un portapapeles guardado en disco es un
+    //  trozo de otro montaje esperando para pegarse donde no toca.
+    property var portapapeles: null
+
+    readonly property bool hayQuePegar:
+        portapapeles !== null && portapapeles.length > 0
+
+    // ── elegir varias cosas a la vez ──────────────────────────────
+    //
+    //  `tipoSel`/`idSel` siguen siendo la selección PRINCIPAL —la que manda en
+    //  la ficha de la derecha, que solo puede enseñar una— y esto es lo que se
+    //  le suma con Ctrl+clic. Se hace así y no cambiando `idSel` por una lista
+    //  porque media docena de ficheros leen esas dos propiedades: convertirlas
+    //  en lista era tocarlo todo para ganar lo mismo.
+    //
+    //  Elegir a secas la vacía. Es lo que uno espera: un clic normal empieza de
+    //  cero, y Ctrl añade.
+    property var seleccionExtra: []
+
+    function claveSel(tipo, id) { return tipo + ":" + id }
+
+    function estaSeleccionado(tipo, id) {
+        if (tipoSel === tipo && idSel === id)
+            return true
+        const k = claveSel(tipo, id)
+        for (let i = 0; i < seleccionExtra.length; ++i)
+            if (claveSel(seleccionExtra[i].tipo, seleccionExtra[i].id) === k)
+                return true
+        return false
+    }
+
+    function alternarEnSeleccion(tipo, id) {
+        //  Sin nada elegido, Ctrl+clic elige a secas: no hay a qué sumar.
+        if (tipoSel.length === 0) {
+            seleccionar(tipo, id)
+            return
+        }
+        //  Quitar la principal de la selección la pasa a otra, si queda alguna:
+        //  dejar `idSel` apuntando a algo deseleccionado sería mentir a la ficha.
+        if (tipoSel === tipo && idSel === id) {
+            if (seleccionExtra.length === 0)
+                return
+            const s = seleccionExtra[0]
+            seleccionExtra = seleccionExtra.slice(1)
+            tipoSel = s.tipo
+            idSel = s.id
+            return
+        }
+        const k = claveSel(tipo, id)
+        const fuera = seleccionExtra.filter(function (s) {
+            return claveSel(s.tipo, s.id) !== k
+        })
+        seleccionExtra = fuera.length !== seleccionExtra.length
+            ? fuera : seleccionExtra.concat([{ tipo: tipo, id: id }])
+    }
+
+    //  Todo lo elegido, la principal primero.
+    readonly property var todoLoElegido: {
+        const r = []
+        if (tipoSel.length > 0)
+            r.push({ tipo: tipoSel, id: idSel })
+        for (let i = 0; i < seleccionExtra.length; ++i)
+            r.push(seleccionExtra[i])
+        return r
+    }
+
+    function datoDe(tipo, id) {
+        if (tipo === "clip") {
+            const i = indiceDeClip(id)
+            return i >= 0 ? clips[i] : null
+        }
+        if (tipo === "capa")
+            return capaPorId(id)
+        if (tipo === "momento") {
+            for (let i = 0; i < momentos.length; ++i)
+                if (momentos[i].id === id)
+                    return momentos[i]
+        }
+        if (tipo === "marcador") {
+            for (let i = 0; i < marcadores.length; ++i)
+                if (marcadores[i].id === id)
+                    return marcadores[i]
+        }
+        return null
+    }
+
+    function copiarSeleccion() {
+        const trozos = []
+        const todo = todoLoElegido
+        for (let i = 0; i < todo.length; ++i) {
+            const d = datoDe(todo[i].tipo, todo[i].id)
+            if (d)
+                trozos.push({ tipo: todo[i].tipo,
+                              dato: JSON.parse(JSON.stringify(d)) })
+        }
+        if (trozos.length === 0)
+            return false
+        portapapeles = trozos
+        return true
+    }
+
+    function quitarSeleccion() {
+        const todo = todoLoElegido
+        //  De atrás adelante y por id, no por índice: quitar el primero
+        //  renumeraría los demás y el segundo borrado se llevaría a otro.
+        for (let i = 0; i < todo.length; ++i) {
+            if (todo[i].tipo === "clip")
+                quitarClip(todo[i].id)
+            else if (todo[i].tipo === "capa")
+                quitarCapa(todo[i].id)
+            else if (todo[i].tipo === "momento")
+                quitarMomento(todo[i].id)
+            else if (todo[i].tipo === "marcador")
+                quitarMarcador(todo[i].id)
+        }
+        seleccionar("", 0)
+    }
+
+    //  Mover con lo elegido: el mismo desplazamiento a todo lo demás.
+    //
+    //  Arrastrar uno de tres rótulos elegidos mueve los tres, conservando la
+    //  distancia entre ellos. Solo se aplica a lo que tiene instante propio
+    //  —capas, zooms y marcadores—; un trozo vive en una secuencia y no se
+    //  desliza.
+    function arrastrarSeleccion(idArrastrado, delta) {
+        if (Math.abs(delta) < 0.0005)
+            return
+        const todo = todoLoElegido
+        for (let i = 0; i < todo.length; ++i) {
+            const s = todo[i]
+            if (s.tipo === "capa" && s.id !== idArrastrado) {
+                const c = capaPorId(s.id)
+                if (c)
+                    fijarCapa(s.id, { t0: Math.max(0, c.t0 + delta),
+                                      t1: Math.max(0.1, c.t1 + delta) })
+            } else if (s.tipo === "momento" && s.id !== idArrastrado) {
+                const m = datoDe("momento", s.id)
+                if (m)
+                    fijarMomento(s.id, { t0: Math.max(0, m.t0 + delta),
+                                         t1: Math.max(0.1, m.t1 + delta) })
+            } else if (s.tipo === "marcador" && s.id !== idArrastrado) {
+                const k = datoDe("marcador", s.id)
+                if (k)
+                    marcadores = marcadores.map(function (x) {
+                        return x.id === s.id
+                            ? Object.assign({}, x,
+                                { t: Math.max(0, x.t + delta) }) : x
+                    })
+            }
+        }
+    }
+
+    //  Pegar donde esté el cabezal, todo lo que se copió.
+    //
+    //  Con varias cosas se conserva la DISTANCIA entre ellas: el cabezal marca
+    //  dónde cae la primera y las demás guardan su hueco. Pegarlas todas
+    //  encima del cabezal las amontonaría y habría que volver a separarlas a
+    //  mano, que es justo el trabajo que copiar en grupo venía a ahorrar.
+    function pegar(t) {
+        if (!portapapeles || portapapeles.length === 0)
+            return false
+        const donde = Math.max(0, Math.min(duracionLinea, Number(t) || 0))
+
+        let base = Infinity
+        for (let i = 0; i < portapapeles.length; ++i) {
+            const x = portapapeles[i].dato
+            const cuando = x.t0 !== undefined ? x.t0 : x.t
+            if (cuando !== undefined)
+                base = Math.min(base, cuando)
+        }
+        if (!isFinite(base))
+            base = 0
+
+        let alguno = false
+        for (let i = 0; i < portapapeles.length; ++i)
+            if (pegarUno(portapapeles[i], donde, base))
+                alguno = true
+        return alguno
+    }
+
+    function pegarUno(trozo, cabezal, base) {
+        const d = trozo.dato
+        const propio = d.t0 !== undefined ? d.t0
+                     : (d.t !== undefined ? d.t : base)
+        const donde = Math.max(0, Math.min(duracionLinea,
+                                           cabezal + (propio - base)))
+        return pegarDato(trozo.tipo, d, donde)
+    }
+
+    function pegarDato(tipo, d, donde) {
+        const portapapelesTipo = tipo
+
+        if (portapapelesTipo === "marcador") {
+            crearMarcador(donde, d.nombre)
+            return true
+        }
+
+        if (portapapelesTipo === "momento") {
+            //  Un zoom no puede solaparse con otro, así que el hueco manda: se
+            //  respeta la duración original mientras quepa, y si no, se recorta
+            //  a lo que haya. Dentro de otro zoom no se pega nada.
+            const hueco = huecoDeZoom(donde)
+            if (!hueco)
+                return false
+            const dur = Math.min((d.t1 - d.t0) || 1, hueco[1] - hueco[0])
+            const id = crearMomento(hueco[0], hueco[0] + dur)
+            fijarMomento(id, { cx: d.cx, cy: d.cy, z: d.z,
+                               seguir: !!d.seguir })
+            seleccionar("momento", id)
+            return true
+        }
+
+        if (portapapelesTipo === "capa") {
+            //  Conserva lo que dura y todo lo demás —posición, efectos,
+            //  volumen—; lo único que cambia es CUÁNDO empieza, y la banda, que
+            //  se busca libre para no apilarla encima de otra en el mismo
+            //  instante.
+            const dur = Math.max(0.1, (d.t1 - d.t0) || 1)
+            const t0 = Math.min(donde, Math.max(0, duracionLinea - dur))
+            const nueva = Object.assign({}, d, {
+                id: nuevoIdCapa(),
+                t0: t0,
+                t1: t0 + dur,
+                banda: bandaLibre(t0, t0 + dur)
+            })
+            capas = capas.concat([nueva])
+            persistir()
+            seleccionar("capa", nueva.id)
+            return true
+        }
+
+        if (portapapelesTipo === "clip") {
+            //  Un trozo no se superpone: la línea es una secuencia, así que
+            //  pegar es INSERTAR. Se parte por el cabezal y la copia entra por
+            //  ese corte; pegar justo en un borde no necesita partir nada.
+            //
+            //  `cortar` ya se niega a partir a menos de una décima del borde,
+            //  que es exactamente cuando no hace falta.
+            const tr = tramoEn(donde)
+            if (!tr)
+                return false
+            cortar(donde)
+            //  Después de cortar, los índices son otros: se vuelve a preguntar
+            //  quién está bajo el cabezal en vez de fiarse del de antes.
+            const ahora = tramoEn(donde)
+            const puesto = ahora ? ahora.indice : clips.length
+            const copia = Object.assign({}, d, { id: nuevoIdClip() })
+            const nuevos = clips.slice()
+            nuevos.splice(puesto, 0, copia)
+            clips = nuevos
+            persistir()
+            seleccionar("clip", copia.id)
+            return true
+        }
+
+        return false
+    }
+
     function seleccionar(tipo, id) {
+        //  Un clic normal empieza de cero: lo que hubiera elegido además se
+        //  suelta. Ctrl+clic va por `alternarEnSeleccion`, que no pasa por aquí.
+        seleccionExtra = []
+        //  Y se desarma la herramienta: si has armado el zoom y luego pinchas
+        //  otra cosa, has cambiado de idea. Dejarla puesta sería que el
+        //  siguiente arrastre sobre el vídeo hiciera un zoom que no pediste.
+        herramienta = ""
         if (tipo === "capa") {
             for (let i = 0; i < capas.length; ++i)
                 if (capas[i].id === id) {
@@ -1703,6 +2237,19 @@ Singleton {
     //  para que se vea de un vistazo en la carpeta que eso es un montaje y no
     //  un fichero suelto de datos. Los proyectos guardados con el nombre viejo
     //  —`.k4.json`— se renombran solos al abrirlos, en python.
+    //  Si lo que te han dado es el proyecto y no el vídeo.
+    //
+    //  Desde que el selector lista `.k4v` se puede abrir un montaje guardado
+    //  directamente. Por el camino de siempre eso dejaba `rutaVideo` apuntando
+    //  al propio proyecto, y `rutaVideo` es de quien tiran la transcripción, la
+    //  medida de niveles y el nombre del fichero renderizado: los tres se
+    //  habrían puesto a trabajar sobre un JSON.
+    //
+    //  El vídeo de verdad no se adivina del nombre —el plan puede llamarse
+    //  igual que un `.mkv` o que un `.mp4`— así que se saca del propio plan
+    //  cuando llega, en `recibirPlan`.
+    readonly property bool abriendoProyecto: rutaVideo.endsWith(".k4v")
+
     function preparar(video) {
         rutaVideo = video
         rutaPlan = video.replace(/\.[^./]+$/, "") + ".k4v"
@@ -1725,6 +2272,21 @@ Singleton {
         anchoVideo = d.w || 1920
         altoVideo = d.h || 1080
         fuentes = d.fuentes || []
+        //  Dónde vive el plan de verdad, dicho por python.
+        //
+        //  Ya no se puede deducir del nombre del vídeo: un proyecto renombrado
+        //  se llama como quiso su dueño, y python lo encuentra leyendo los
+        //  `.k4v` de la carpeta. Sin quedarnos con lo que contesta, guardar
+        //  volvería a escribir en el nombre de fábrica y el montaje se
+        //  bifurcaría en dos ficheros sin avisar.
+        if (d.plan && String(d.plan).length > 0)
+            rutaPlan = d.plan
+        //  Y si veníamos de un `.k4v`, el vídeo es la primera fuente del plan.
+        //  Se hace aquí y no antes porque hasta que el plan no llega no hay de
+        //  dónde sacarlo. Si el plan viniera sin fuentes se queda como estaba:
+        //  peor es dejarlo vacío y que no se pueda ni renombrar el render.
+        if (abriendoProyecto && fuentes.length > 0 && fuentes[0].ruta)
+            rutaVideo = fuentes[0].ruta
         clips = d.clips || []
         capas = d.capas || []
         bandas = d.bandas || []
@@ -1771,6 +2333,27 @@ Singleton {
         rutaPlan: editor.rutaPlan
 
         onPlanRecibido: function (d) { editor.recibirPlan(d) }
+
+        //  El plan pasa a llamarse como te haya dado la gana, y la carpeta
+        //  adjunta con él. No hay que recargar nada: por dentro es el mismo
+        //  montaje, solo cambia dónde se guarda a partir de ahora.
+        onRenombrado: function (plan) {
+            editor.rutaPlan = plan
+            editor.planAlAbrir = editor.planSerializado()
+        }
+
+        onRenombrarFallo: function (motivo) { editor.fallo(motivo) }
+
+        //  Reasignando el objeto entero y no escribiendo dentro: QML solo emite
+        //  el cambio cuando la propiedad se asigna, así que tocar una clave del
+        //  mapa no repintaría ninguna onda.
+        onOndaLista: function (clave, picos) {
+            const m = {}
+            for (const k in editor.ondas)
+                m[k] = editor.ondas[k]
+            m[clave] = picos
+            editor.ondas = m
+        }
 
         onAbrirFallo: function (motivo) {
             editor.estado = ""
@@ -1882,6 +2465,77 @@ Singleton {
         })
         persistir()
         return nuevo.id
+    }
+
+    //  Un momento de zoom dibujado SOBRE EL VÍDEO.
+    //
+    //  Hasta ahora un zoom se creaba arrastrando en un hueco de la línea de
+    //  tiempo y solo después apuntabas en la previa. O sea que decidías el
+    //  CUÁNDO mirando la línea y el DÓNDE mirando el vídeo, en dos gestos y en
+    //  dos sitios, cuando lo que uno quiere decir es «enfoca ahí».
+    //
+    //  Aquí el rectángulo dice las dos cosas de golpe: dónde y cuánto —el nivel
+    //  sale de lo ancho que lo dibujes— y el cuándo empieza en el cabezal.
+    //
+    //  El nivel se acota igual que la rueda: por debajo de 1,1 no es un zoom y
+    //  por encima de 4 es un mosaico. Dibujar un rectángulo casi tan ancho como
+    //  el vídeo no crea un zoom de ×1,02 que no se ve; crea el mínimo.
+    // ── la herramienta armada ─────────────────────────────────────
+    //
+    //  Pulsar «Zoom» creaba el momento ahí mismo, dos segundos desde el cabezal
+    //  y encuadrado al centro; luego había que ir a la previa a apuntarlo y a la
+    //  línea a cuadrarlo. O sea que el botón adivinaba las tres cosas y acertaba
+    //  ninguna.
+    //
+    //  Ahora ARMA la herramienta: el botón dice qué vas a hacer y el gesto sobre
+    //  el vídeo dice dónde y cuánto, que es lo que ya se podía hacer arrastrando
+    //  y no se sabía. El botón deja de ser un atajo que estorba y pasa a ser la
+    //  puerta de entrada al gesto.
+    //
+    //  Se desarma sola al usarla, al cambiar de selección o con Escape: una
+    //  herramienta que se queda armada sin decirlo es un modo escondido, y un
+    //  modo escondido acaba en «¿por qué no puedo arrastrar el encuadre?».
+    property string herramienta: ""
+
+    function armar(cual) {
+        herramienta = herramienta === cual ? "" : cual
+    }
+
+    function desarmar() { herramienta = "" }
+
+    function crearZoomEn(t, cx, cy, z) {
+        const hueco = huecoDeZoom(t)
+        if (!hueco)
+            return 0
+        const id = crearMomento(hueco[0], hueco[1])
+        fijarMomento(id, {
+            cx: Math.round(Math.max(0, Math.min(anchoVideo, cx))),
+            cy: Math.round(Math.max(0, Math.min(altoVideo, cy))),
+            z: Math.max(1.1, Math.min(4, Math.round(z * 100) / 100)),
+            seguir: false
+        })
+        seleccionar("momento", id)
+        return id
+    }
+
+    //  Desde el cabezal hasta donde quepa, con un tope de tres segundos.
+    //
+    //  Los momentos no se solapan —dos encuadres a la vez no significan nada—
+    //  así que el hueco acaba donde empiece el siguiente. Si estás DENTRO de uno
+    //  no hay nada que crear: ahí lo que se hace es mover el que ya está.
+    //  Devuelve null cuando no cabe ni medio segundo, y entonces no se crea
+    //  nada en vez de dejar un momento de duración ridícula.
+    function huecoDeZoom(t) {
+        const desde = Math.max(0, Math.min(duracionLinea, t))
+        let hasta = Math.min(duracionLinea, desde + 3)
+        for (let i = 0; i < momentos.length; ++i) {
+            const m = momentos[i]
+            if (desde >= m.t0 && desde <= m.t1)
+                return null
+            if (m.t0 > desde)
+                hasta = Math.min(hasta, m.t0)
+        }
+        return hasta - desde >= 0.5 ? [desde, hasta] : null
     }
 
     // Mover el encuadre a mano deja de seguir al cursor, por lo mismo.

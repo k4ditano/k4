@@ -42,10 +42,24 @@ Rectangle {
     //  bloques que no los tienen —clips, momentos— y no pinta nada.
     property var claves: []
 
+    //  Cómo se pega el imán, si es que hay imán.
+    //
+    //  Una función `(t) -> t` que pone quien usa el bloque: `BloqueTiempo` no
+    //  conoce al Editor —importa QtQuick y poco más— y no tiene por qué saber a
+    //  qué se alinea nada. Sin ella el bloque se mueve libre, que es lo correcto
+    //  donde no hay a qué pegarse.
+    property var ajustar: null
+
+    //  Los picos de la pista, si el bloque suena. `null` mientras se calculan.
+    property var onda: null
+
     signal cambiado(real nuevoT0, real nuevoT1)
     signal cambiadoDeFila(int filas)
     signal soltado()
-    signal pulsado()
+    //  Con `conControl` para que quien escuche pueda distinguir un clic normal
+    //  —elige esto y suelta lo demás— de un Ctrl+clic, que suma a lo elegido.
+    //  El bloque no sabe qué es una selección; solo cuenta cómo lo pulsaron.
+    signal pulsado(bool conControl)
     signal claveMovida(int indice, real t)
     signal claveQuitada(int indice)
 
@@ -70,6 +84,97 @@ Rectangle {
     z: bloque.vY !== 0 ? 20 : 0
 
     Behavior on color { ColorAnimation { duration: 140 } }
+
+    //  La onda, dentro del bloque.
+    //
+    //  En un `Canvas` y no con doscientos rectángulos: un Repeater de barras por
+    //  cada bloque de audio son cientos de elementos vivos que se recrean con
+    //  cada cambio del modelo, y esto se pinta una vez y se olvida.
+    //
+    //  NORMALIZADA por su propio pico, con un suelo. Una grabación de pantalla
+    //  con el micro lejos anda por los −24 dB, o sea 0,06 de amplitud: dibujada
+    //  a escala real es una raya plana y no informa de nada, que es justo lo que
+    //  se venía a arreglar. El suelo evita que el silencio digital se convierta
+    //  en ruido gigante al dividir por casi cero.
+    //
+    //  Y en la mitad de abajo, espejada desde el centro, como cualquier editor.
+    Canvas {
+        id: lienzoOnda
+        anchors.fill: parent
+        anchors.margins: 2
+        visible: bloque.onda !== null && bloque.onda.length > 0
+        opacity: 0.55
+        antialiasing: false
+
+        readonly property color tono: Theme.ink
+
+        onPaint: {
+            const ctx = getContext("2d")
+            ctx.reset()
+            const picos = bloque.onda
+            if (!picos || picos.length === 0 || width <= 0)
+                return
+
+            let tope = 0
+            for (let i = 0; i < picos.length; ++i)
+                tope = Math.max(tope, picos[i])
+            //  Por debajo de esto es silencio de verdad y se deja plano.
+            if (tope < 0.002)
+                return
+            const escala = Math.max(tope, 0.02)
+
+            const medio = height / 2
+            ctx.fillStyle = tono
+            //  Una barra por píxel, no una por muestra: con el bloque estrecho
+            //  hay más picos que píxeles y dibujarlos todos es pintar el mismo
+            //  sitio cien veces.
+            const barras = Math.max(1, Math.floor(width))
+            for (let x = 0; x < barras; ++x) {
+                const desde = Math.floor(x * picos.length / barras)
+                const hasta = Math.max(desde + 1,
+                    Math.floor((x + 1) * picos.length / barras))
+                let p = 0
+                for (let k = desde; k < hasta && k < picos.length; ++k)
+                    p = Math.max(p, picos[k])
+                const h = Math.min(1, p / escala) * medio
+                ctx.fillRect(x, medio - h, 1, h * 2)
+            }
+        }
+
+        onWidthChanged: requestPaint()
+        onHeightChanged: requestPaint()
+        Connections {
+            target: bloque
+            function onOndaChanged() { lienzoOnda.requestPaint() }
+        }
+    }
+
+    //  Cómo se llama, escrito encima.
+    //
+    //  Separar el audio de un trozo deja DOS bloques amarillos idénticos, y
+    //  saber cuál era el micro obligaba a pinchar uno y mirar la ficha. Puestos
+    //  a poner un nombre, vale para cualquier bloque que traiga uno.
+    //
+    //  Se esconde si no cabe en vez de recortarse a tres letras: «Mic…» y
+    //  «Sis…» a 3 px de ancho no informan de nada y ensucian la fila. Y no
+    //  intercepta el ratón —el bloque entero se arrastra y se estira—, así que
+    //  `MouseArea` ninguno.
+    property string etiqueta: ""
+
+    Text {
+        anchors.left: parent.left
+        anchors.leftMargin: 6
+        anchors.right: parent.right
+        anchors.rightMargin: 6
+        anchors.verticalCenter: parent.verticalCenter
+        visible: bloque.etiqueta.length > 0 && bloque.width > implicitWidth + 12
+        text: bloque.etiqueta
+        color: bloque.elegido ? Theme.islandBg : Theme.ink
+        font.family: Theme.uiFont
+        font.pixelSize: 9
+        font.weight: Font.DemiBold
+        elide: Text.ElideRight
+    }
 
     function px2t(px) { return px / Math.max(1, parent.width) * total }
 
@@ -119,7 +224,7 @@ Rectangle {
         function fuera(ev) { return mapToItem(null, 0, ev.y).y }
 
         onPressed: function (ev) {
-            bloque.pulsado()
+            bloque.pulsado((ev.modifiers & Qt.ControlModifier) !== 0)
             anclaT = bloque.enPista(ev.x)
             t0Ini = bloque.t0
             duracion = bloque.t1 - bloque.t0
@@ -138,6 +243,26 @@ Rectangle {
             // El bloque se mueve entero: la duración no cambia al desplazarlo.
             let nuevo = t0Ini + (bloque.enPista(ev.x) - anclaT)
             nuevo = bloque.encaja(nuevo, 0, bloque.total - duracion)
+            //  El imán, MIENTRAS arrastras y no al soltar.
+            //
+            //  Aquí estaba el fallo que dejaba el imán a medias: se aplicaba
+            //  solo al escribir el modelo, o sea al final. Durante el gesto el
+            //  bloque iba libre y en el último instante pegaba un salto a su
+            //  sitio, así que no veías dónde ibas a caer ni por qué acabaste
+            //  ahí. Ahora se pega a la vista y la guía sale mientras te mueves,
+            //  que es de lo que va un imán.
+            //
+            //  Se prueban los DOS bordes y gana el que más cerca esté: encadenar
+            //  un bloque detrás de otro es alinear el final, no el principio, y
+            //  con solo el principio había que calcular la resta a ojo.
+            if (bloque.ajustar) {
+                const a = bloque.ajustar(nuevo)
+                const b = bloque.ajustar(nuevo + duracion) - duracion
+                const da = Math.abs(a - nuevo)
+                const db = Math.abs(b - nuevo)
+                nuevo = bloque.encaja(da <= db ? a : b, 0,
+                                      bloque.total - duracion)
+            }
             bloque.vT0 = nuevo
             bloque.vT1 = nuevo + duracion
             if (bloque.porFilas)
@@ -190,8 +315,8 @@ Rectangle {
             cursorShape: Qt.SizeHorCursor
             hoverEnabled: true
 
-            onPressed: {
-                bloque.pulsado()
+            onPressed: function (ev) {
+                bloque.pulsado((ev.modifiers & Qt.ControlModifier) !== 0)
                 bloque.vT0 = bloque.t0
                 bloque.vT1 = bloque.t1
                 bloque.editando = true

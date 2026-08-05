@@ -371,8 +371,8 @@ Item {
                     //  aquí sería esconder la mitad de lo que va a salir.
                     audioOutput: AudioOutput {
                         muted: !capa.modelData.sonido
-                        //  Qt no pasa de 1; el plan sí llega a 2 y eso solo lo
-                        //  puede dar el render.
+                        //  Qt no pasa de 1; el plan sí llega más arriba y ese
+                        //  trozo solo lo puede dar el render.
                         volume: Math.min(1, capa.modelData.volumen !== undefined
                                             ? capa.modelData.volumen : 1)
                     }

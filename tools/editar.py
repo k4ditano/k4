@@ -550,6 +550,143 @@ def migrar_nombre(ruta_plan):
         os.rename(viejo, ruta_plan)
 
 
+def orden_onda(args):
+    """Los picos de una pista de audio, para dibujarla en la línea de tiempo.
+
+    Un bloque de audio que es un rectángulo de color no dice nada: para saber
+    dónde empieza a hablar alguien hay que reproducir y esperar. Con la onda
+    dibujada se ve, que es la mitad de por qué un editor se edita mirando.
+
+    Se saca a 2 kHz y en mono a propósito. Una onda de una línea de tiempo son
+    unos cientos de barras; muestrear a 48 kHz para luego tirar el 99,9% sería
+    leer treinta veces más bytes para pintar exactamente lo mismo. Una hora de
+    vídeo son 14 MB en vez de 345.
+
+    Y el pico de cada tramo, no la media: la media aplana la voz hasta dejarla
+    igual que el silencio y la onda sale plana y mentirosa.
+    """
+    if not os.path.exists(args.fichero):
+        salir(ok=False, motivo="sin-fichero")
+
+    puntos = max(16, min(2000, int(args.puntos)))
+    orden = ["ffmpeg", "-v", "error", "-i", args.fichero,
+             "-map", "0:a:%d" % max(0, int(args.pista)),
+             "-ac", "1", "-ar", "2000", "-f", "s16le", "-"]
+    try:
+        p = subprocess.run(orden, stdout=subprocess.PIPE,
+                           stderr=subprocess.DEVNULL)
+    except OSError:
+        salir(ok=False, motivo="sin-ffmpeg")
+    if p.returncode != 0 or not p.stdout:
+        #  Una pista que no existe o un fichero sin audio no es un fallo del
+        #  que haya que quejarse: es un bloque que se dibuja liso, y ya.
+        salir(ok=True, picos=[])
+
+    import array
+    muestras = array.array("h")
+    #  `frombytes` exige múltiplo del tamaño del elemento, y un flujo cortado a
+    #  media muestra es perfectamente posible.
+    crudo = p.stdout
+    muestras.frombytes(crudo[:len(crudo) - (len(crudo) % 2)])
+    total = len(muestras)
+    if total == 0:
+        salir(ok=True, picos=[])
+
+    paso = max(1, total // puntos)
+    picos = []
+    for i in range(0, total, paso):
+        trozo = muestras[i:i + paso]
+        if not trozo:
+            continue
+        picos.append(round(max(max(trozo), -min(trozo)) / 32768.0, 4))
+    salir(ok=True, picos=picos[:puntos])
+
+
+def plan_de_video(video, propuesto):
+    """Dónde está el plan de un vídeo, ahora que un proyecto puede llamarse
+    como le dé la gana.
+
+    El nombre de fábrica es `<vídeo>.k4v` y con eso bastaba mientras nadie
+    pudiera renombrarlo. Desde que se puede, ese nombre solo es el PRIMER sitio
+    donde mirar: si no está, hay que buscar quién dice ser el plan de este
+    vídeo, y eso no se adivina del nombre —se lee.
+
+    Se mira solo en la carpeta del vídeo. Recorrer el disco entero para abrir un
+    fichero sería pagar un precio enorme por un caso raro, y mover el proyecto
+    lejos de su vídeo ya es pedir que no se encuentren.
+
+    Un `.k4v` ilegible o de otro vídeo no estorba: se salta y se sigue.
+    """
+    if propuesto and os.path.exists(propuesto):
+        return propuesto
+
+    quiero = os.path.abspath(video)
+    carpeta = os.path.dirname(quiero) or "."
+    try:
+        nombres = sorted(os.listdir(carpeta))
+    except OSError:
+        return propuesto
+
+    for n in nombres:
+        if not n.endswith(".k4v"):
+            continue
+        ruta = os.path.join(carpeta, n)
+        if ruta == propuesto:
+            continue
+        try:
+            with open(ruta) as f:
+                d = json.load(f)
+        except (OSError, ValueError):
+            continue
+        for fu in d.get("fuentes", []):
+            if os.path.abspath(fu.get("ruta", "")) == quiero:
+                return ruta
+    return propuesto
+
+
+def nombre_libre(carpeta, nombre):
+    """Que renombrar no pise nunca un proyecto que ya existe.
+
+    Devuelve `<nombre>.k4v`, o `<nombre> (2).k4v` y siguientes si hace falta.
+    Preguntar «¿lo sobrescribo?» desde aquí no se puede —esto no habla con
+    nadie— y perder el montaje de otro por reusar un nombre es de las cosas que
+    no se pueden deshacer.
+    """
+    limpio = re.sub(r"[/\\\x00]", "_", (nombre or "").strip()) or "proyecto"
+    destino = os.path.join(carpeta, limpio + ".k4v")
+    if not os.path.exists(destino):
+        return destino
+    n = 2
+    while os.path.exists(os.path.join(carpeta, "%s (%d).k4v" % (limpio, n))):
+        n += 1
+    return os.path.join(carpeta, "%s (%d).k4v" % (limpio, n))
+
+
+def orden_renombrar(args):
+    """Ponerle nombre a un proyecto: el fichero Y su carpeta adjunta.
+
+    Las dos cosas a la vez y no solo el `.k4v`: la carpeta se llama a partir del
+    plan —`<plan>.k4/`, ver `carpeta_de`— así que renombrar uno sin el otro deja
+    el SRT y el texto de los rótulos huérfanos, y el editor los buscaría donde
+    ya no están.
+    """
+    if not os.path.exists(args.plan):
+        salir(ok=False, motivo="sin-plan")
+
+    carpeta = os.path.dirname(os.path.abspath(args.plan))
+    destino = nombre_libre(carpeta, args.nombre)
+    if os.path.abspath(destino) == os.path.abspath(args.plan):
+        salir(ok=True, plan=args.plan)
+
+    adjunta_vieja = carpeta_de(args.plan)
+    os.rename(args.plan, destino)
+    #  La carpeta puede no existir —un montaje sin rótulos ni transcripción no
+    #  la necesita— y eso no es un fallo.
+    if os.path.isdir(adjunta_vieja):
+        os.rename(adjunta_vieja, carpeta_de(destino))
+    salir(ok=True, plan=destino)
+
+
 def abrir_entradas(plan, rutas):
     """Los argumentos de apertura de cada entrada, en orden.
 
@@ -2224,6 +2361,12 @@ def capas_que_suenan(plan):
     """
     salida = []
     for c in capas_de(plan, "audio"):
+        #  Callada por su interruptor: no entra. Es distinto de ponerle el
+        #  volumen a cero —que también callaría— porque así el volumen se
+        #  conserva y volver a encenderla lo devuelve donde estaba, que es lo
+        #  que hace falta para comparar el micro con el sistema a oído.
+        if c.get("mudo"):
+            continue
         if c.get("ruta") and os.path.exists(c["ruta"]):
             salida.append(c)
     for c in capas_de(plan, "video"):
@@ -2786,14 +2929,18 @@ def orden_abrir(args):
         salir(ok=False, motivo="sin-video")
     if args.guardar:
         migrar_nombre(args.guardar)
-    if args.guardar and os.path.exists(args.guardar):
-        plan = cargar(args.guardar)
-        salir(ok=True, **plan)
+    #  Dónde vive el plan de verdad, que desde que se pueden renombrar los
+    #  proyectos ya no se deduce del nombre del vídeo. Se devuelve SIEMPRE, para
+    #  que el editor guarde donde toca y no en el nombre de fábrica.
+    guardar_en = plan_de_video(args.video, args.guardar) if args.guardar else ""
+    if guardar_en and os.path.exists(guardar_en):
+        plan = cargar(guardar_en)
+        salir(ok=True, plan=guardar_en, **plan)
     plan = plan_nuevo(args.video, args.rastro, camara=args.camara,
                       desfase=args.desfase)
-    if args.guardar:
-        guardar(plan, args.guardar)
-    salir(ok=True, **plan)
+    if guardar_en:
+        guardar(plan, guardar_en)
+    salir(ok=True, plan=guardar_en, **plan)
 
 
 def orden_proponer(args):
@@ -3233,6 +3380,15 @@ def main():
     e.add_argument("--camara", default="")
     e.add_argument("--desfase", type=float, default=0.0)
 
+    o = sub.add_parser("onda")
+    o.add_argument("fichero")
+    o.add_argument("--pista", type=int, default=0)
+    o.add_argument("--puntos", type=int, default=400)
+
+    r = sub.add_parser("renombrar")
+    r.add_argument("plan")
+    r.add_argument("nombre")
+
     a = sub.add_parser("proponer")
     a.add_argument("rastro")
     a.add_argument("--video", required=True)
@@ -3287,7 +3443,8 @@ def main():
     nv.add_argument("video")
 
     args = ap.parse_args()
-    {"abrir": orden_abrir, "proponer": orden_proponer, "render": orden_render,
+    {"abrir": orden_abrir, "renombrar": orden_renombrar, "onda": orden_onda,
+     "proponer": orden_proponer, "render": orden_render,
      "previa": orden_previa, "camara": orden_camara,
      "silencios": orden_silencios, "congelar": orden_congelar,
      "medir": orden_medir, "miniatura": orden_miniatura,

@@ -22,7 +22,12 @@ FadeIn {
 
     // Lo que se puede editar. Sin esto la lista se llena de .qml y de .py con
     // la palabra «video» dentro.
-    readonly property string extensiones: "mp4,mkv,mov,webm,avi,m4v"
+    //
+    //  `k4v` va en la lista porque un proyecto guardado también se abre desde
+    //  aquí. Faltaba, y era raro de la peor manera: guardabas un montaje, ibas a
+    //  buscarlo por su nombre y no aparecía, así que parecía que no se había
+    //  guardado. Estaba, solo que este buscador no lo miraba.
+    readonly property string extensiones: "mp4,mkv,mov,webm,avi,m4v,k4v"
 
     property var lista: []
     property int index: 0
@@ -136,7 +141,7 @@ FadeIn {
                 IslandLabel {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: entrada.text.length === 0
-                    text: Idioma.t("Buscar un vídeo…")
+                    text: Idioma.t("Buscar un vídeo o un proyecto…")
                     color: Theme.dim
                     font.pixelSize: 15
                 }
@@ -299,7 +304,7 @@ FadeIn {
             text: view.buscando ? Idioma.t("Buscando…")
                 : (entrada.text.trim().length < 2
                    ? Idioma.t("Escribe parte del nombre, o pulsa «Examinar…»")
-                   : Idioma.t("Ningún vídeo con ese nombre"))
+                   : Idioma.t("Nada con ese nombre"))
             color: Theme.dim
             font.pixelSize: 12
         }

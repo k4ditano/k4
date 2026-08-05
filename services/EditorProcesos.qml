@@ -45,6 +45,85 @@ Scope {
         abridor.running = true
     }
 
+    // ── la onda de una pista ──────────────────────────────────────
+    //
+    //  En cola y de una en una: un montaje con seis capas de audio lanzaría seis
+    //  ffmpeg a la vez y se comería la máquina justo mientras editas, que es el
+    //  peor momento. Cada una tarda décimas, así que en fila no se nota.
+    signal ondaLista(string clave, var picos)
+
+    property var colaOndas: []
+
+    function pedirOnda(ruta, pista) {
+        colaOndas = colaOndas.concat([{ ruta: ruta, pista: pista }])
+        siguienteOnda()
+    }
+
+    function siguienteOnda() {
+        if (ondeador.running || colaOndas.length === 0)
+            return
+        const t = colaOndas[0]
+        ondeador.clave = t.ruta + "|" + t.pista
+        ondeador.command = [guion, "onda", t.ruta,
+                            "--pista", String(t.pista), "--puntos", "400"]
+        ondeador.running = true
+    }
+
+    Process {
+        id: ondeador
+        property string clave: ""
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let d = null
+                try { d = JSON.parse(this.text) } catch (e) { }
+                procesos.ondaLista(ondeador.clave,
+                                   d && d.picos ? d.picos : [])
+            }
+        }
+        //  La cola avanza al MORIR el proceso y no al leer su salida: si se
+        //  avanzara antes, `running` seguiría en true y la siguiente se quedaría
+        //  esperando para siempre.
+        onExited: {
+            procesos.colaOndas = procesos.colaOndas.slice(1)
+            procesos.siguienteOnda()
+        }
+    }
+
+    // ── ponerle nombre al proyecto ────────────────────────────────
+    //
+    //  Renombrar es cosa de python porque son dos ficheros —el `.k4v` y su
+    //  carpeta adjunta— y hay que esquivar los nombres ocupados sin pisar el
+    //  montaje de nadie. Aquí solo se pide y se cuenta lo que contesta.
+    signal renombrado(string plan)
+    signal renombrarFallo(string motivo)
+
+    function renombrar(nombre) {
+        if (rutaPlan.length === 0)
+            return
+        renombrador.command = [guion, "renombrar", rutaPlan, nombre]
+        renombrador.running = true
+    }
+
+    Process {
+        id: renombrador
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let d = null
+                try { d = JSON.parse(this.text) } catch (e) { }
+                if (d && d.ok && d.plan)
+                    procesos.renombrado(d.plan)
+                else
+                    procesos.renombrarFallo(d && d.motivo ? d.motivo : "fallo")
+            }
+        }
+        stderr: SplitParser {
+            onRead: function (l) {
+                if (String(l).trim().length > 0)
+                    console.warn("editor:", l)
+            }
+        }
+    }
+
     function proponer(rastro, video, nivel, extra) {
         proponedor.command = [guion, "proponer", rastro,
                               "--video", video,
