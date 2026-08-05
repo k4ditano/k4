@@ -29,7 +29,21 @@ K4Plugin {
 
     //  La cuenta atrás manda sobre todo lo demás mientras dura: si te tapa el
     //  reloj tres segundos no pasa nada, pero perderte el 3-2-1 sí importa.
-    priority: modo === "cuenta" ? 92 : 84
+    //
+    //  «hecha» es el caso contrario y por eso baja hasta el 58. Esa vista no la
+    //  ha pedido nadie: sale sola al hacer la foto, dice que salió y ofrece
+    //  anotarla o copiarla. Con 84 le ganaba al lanzador, así que pulsar su
+    //  atajo con la miniatura delante enseñaba la miniatura sus cinco segundos
+    //  enteros y el lanzador después. En 58 le gana al reloj y al reproductor
+    //  —o sea que pasar el ratón no se la lleva, que es lo suyo mientras
+    //  decides si anotarla— y pierde con todo lo que abres tú. Lo demás
+    //  —el menú, el vídeo, el editor— sí lo has pedido y se queda en 84.
+    priority: modo === "cuenta" ? 92 : (modo === "hecha" ? 58 : 84)
+
+    //  Y con la prioridad no basta: su reloj se rearma mientras el ratón esté
+    //  sobre la island, así que sin esto volvería a salir en cuanto cerraras lo
+    //  que abriste encima. Marcada transitoria, shell.qml la cierra del todo.
+    transitorio: modo === "hecha"
 
     property var panel: null
 

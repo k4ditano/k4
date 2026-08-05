@@ -37,11 +37,32 @@ QtObject {
 
     // Quién se queda la island cuando varios plugins la piden a la vez.
     // Referencia de los actuales: idle 0 · volume 40 · clock 50 · player 55 ·
-    // panel 60 · toast 70 · launcher 80 · ask 90.
+    // toast 59 · panel 60 · launcher 80 · ask 90.
     property int priority: 50
 
     // ¿Este plugin quiere ser la vista actual ahora mismo?
     property bool active: false
+
+    //  ── lo que se va solo ─────────────────────────────────────────
+    //
+    //  Márcalo si tu vista aparece sin que nadie la pida y se cierra sola a los
+    //  pocos segundos: un aviso, la confirmación de que la captura salió. No lo
+    //  marques si el usuario la abrió él.
+    //
+    //  Lo que cambia: en cuanto OTRO plugin se queda la island, este se cierra
+    //  en el acto en vez de esperar a que venza su reloj. Pulsar el atajo del
+    //  lanzador con la confirmación de una captura delante enseñaba la captura
+    //  cinco segundos más y el lanzador después, que no es lo que pide quien
+    //  pulsa un atajo. La regla se aplica en un sitio —shell.qml— y no plugin a
+    //  plugin, porque acordarse de llamar a `dismissToast()` en cada sitio que
+    //  abre algo es justo lo que se olvida.
+    //
+    //  Va con la prioridad, no en lugar de ella: quien se marque transitorio
+    //  tiene que quedar POR ENCIMA de las vistas de reposo —reloj, reproductor,
+    //  volumen, que están por debajo de 60— para que pasar el ratón no se lo
+    //  lleve por delante, y POR DEBAJO de todo lo que el usuario abre a
+    //  propósito. Entre 56 y 59 es el hueco.
+    property bool transitorio: false
 
     // Tamaño que necesita la island cuando está activo.
     property int islandWidth: 300

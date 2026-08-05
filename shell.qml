@@ -51,9 +51,42 @@ Scope {
         return best
     }
 
+    //  ── lo que se va solo se aparta ───────────────────────────────
+    //
+    //  Una vista transitoria —un aviso, la confirmación de una captura— aparece
+    //  sin que nadie la pida y se cierra sola a los pocos segundos. Si en esos
+    //  segundos el usuario abre algo, lo que quiere es lo que ha abierto: la
+    //  confirmación ya ha dicho lo suyo.
+    //
+    //  Antes se quedaba, y no por prioridad sino por su reloj: la captura tiene
+    //  cinco segundos y no cede hasta que vencen, así que pulsar el atajo del
+    //  lanzador enseñaba la miniatura de la captura hasta el final y el
+    //  lanzador después. Y cerrarla no basta con que otro le gane la prioridad:
+    //  su temporizador se rearma mientras el ratón esté sobre la island —que es
+    //  donde está, si acabas de abrir algo— así que volvería a salir al cerrar
+    //  lo de encima.
+    //
+    //  Aquí y no en cada plugin: `Notifs.dismissToast()` a mano en cada sitio
+    //  que abre algo era lo que había, y es exactamente lo que se olvida — solo
+    //  lo llamaban dos.
+    function apartarTransitorios() {
+        const gana = activePlugin
+        if (!gana || gana.transitorio)
+            return
+
+        const lista = PluginManager.instancias
+        for (let i = 0; i < lista.length; ++i) {
+            const p = lista[i]
+            if (p !== gana && p.transitorio && p.active
+                    && typeof p.close === "function")
+                p.close()
+        }
+    }
+
     //  Lo que decide el reparto, publicado para que lo lean los plugins por
     //  K4.Isla: quién la tiene y si está desplegada.
     onActivePluginChanged: {
+        apartarTransitorios()
         Island.ocupante = activePlugin ? activePlugin.name : ""
         //  «Abierta» es DESPLEGADA, no «hay alguien»: la píldora también
         //  ocupa la island y siempre está, así que con `activePlugin !== null`

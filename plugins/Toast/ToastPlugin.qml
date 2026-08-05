@@ -12,7 +12,23 @@ K4Plugin {
 
     name: "toast"
     title: Idioma.t("Notificación")
-    priority: 70
+
+    //  59 y no 70, que es lo que hace que la lista de abajo y la prioridad
+    //  digan lo MISMO. `enReposo` ya declaraba a quién puede relevar el toast
+    //  —píldora, reloj, reproductor, volumen— pero la prioridad decía otra
+    //  cosa: con 70 también le ganaba al centro de control, al sonido o a la
+    //  mazmorra si se abrían DESPUÉS, porque la banda solo se decide al abrirse
+    //  el aviso. En 59 queda justo por encima de las de reposo y por debajo de
+    //  todo lo que abres tú, que es lo que la lista ya decía.
+    priority: 59
+
+    //  Y si te abre algo la island mientras está puesto, se va. Un aviso ya ha
+    //  dicho lo suyo con salir; quedarse tapando lo que acabas de abrir es
+    //  cobrarte el aviso dos veces. La notificación NO se pierde: sigue en la
+    //  lista y en el centro de control, lo que se va es el emergente.
+    transitorio: true
+
+    function close() { Notifs.dismissToast() }
 
     //  ¿La island la tiene alguien DE VERDAD? Las vistas de reposo (píldora,
     //  reloj, reproductor) no cuentan: a esas el toast siempre las relevó y

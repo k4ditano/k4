@@ -30,6 +30,7 @@ equivalent exists.
 | `habilitado` | Persistent user permission |
 | `active` | Requests the island right now |
 | `priority` | Arbitration priority |
+| `transitorio` | View that appears unasked and expires on its own; it closes the moment another plugin takes the island |
 | `islandWidth`, `islandHeight` | Requested island size |
 | `view` | Component rendered by the host |
 | `viewLoaded` | Keep the size while the view closes |
