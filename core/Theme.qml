@@ -10,7 +10,11 @@ Singleton {
     id: tema
 
     readonly property string uiFont: "Adwaita Sans"
-    readonly property string iconFont: "MesloLGS Nerd Font"
+    //  La variante Mono, a propósito: en la Nerd Font 3.5 el build
+    //  proporcional trae varios iconos con la tinta más ancha que su caja
+    //  (el wifi se salía +2px por la derecha del círculo); en la Mono cada
+    //  glifo está clavado a su celda.
+    readonly property string iconFont: "MesloLGS Nerd Font Mono"
     readonly property var locale: Qt.locale("es_ES")
 
     //  El andamio neutro sale de estas bases y del tinte de más abajo. La
