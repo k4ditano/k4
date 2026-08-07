@@ -35,11 +35,24 @@ RowLayout {
                     color: modelData.color || Theme.muted
                     font.pixelSize: 11
                 }
+                //  Con tope y recortado por el final.
+                //
+                //  Sin tope, un indicador de nombre largo estiraba la island el
+                //  DOBLE de lo que mide: el reloj va centrado, así que se
+                //  reserva lo mismo a los dos lados y cada píxel de píldora
+                //  cuesta dos. Con dos o tres agentes trabajando, la island se
+                //  iba de ancho hasta dejar de parecerse a una island.
+                //
+                //  Ciento diez son unas quince letras a 11 px: suficiente para
+                //  distinguir de qué es el aviso, que es todo lo que una píldora
+                //  tiene que hacer. El nombre entero está en la notificación.
                 IslandLabel {
                     text: modelData.texto
                     color: Theme.muted
                     font.pixelSize: 11
                     font.weight: Font.Medium
+                    elide: Text.ElideRight
+                    Layout.maximumWidth: 110
                 }
             }
 

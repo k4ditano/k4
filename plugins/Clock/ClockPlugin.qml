@@ -51,7 +51,19 @@ K4Plugin {
         + Indicadores.anchoAproximado
 
     readonly property int ladoDer: Math.max(ladoEstimado, anchoDerechoMedido)
-    readonly property int ladoAncho: Math.max(96, ladoDer)
+
+    //  Y un techo, porque esto se multiplica por dos.
+    //
+    //  `islandWidth` reserva `ladoAncho` a CADA lado para que el reloj quede
+    //  centrado, así que lo que crezca aquí crece el doble abajo. Con varios
+    //  agentes trabajando —cada uno su píldora— la island se iba de ancho hasta
+    //  dejar de parecerse a una island.
+    //
+    //  El tope de verdad lo pone cada píldora recortando su texto; esto es el
+    //  cinturón: aunque un día alguien registre veinte indicadores, la island no
+    //  se come la pantalla. Al pasarse, las píldoras se salen por la derecha en
+    //  vez de estirarlo todo, que es lo menos malo de las dos cosas.
+    readonly property int ladoAncho: Math.max(96, Math.min(ladoDer, 380))
 
     islandWidth: 92 + 2 * ladoAncho + 44
         + (Game.cargado ? 52 : 0)

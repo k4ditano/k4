@@ -27,7 +27,11 @@ Singleton {
         for (let i = 0; i < lista.length; ++i) {
             if (lista[i].visible === false)
                 continue
-            ancho += String(lista[i].texto || "").length * 7 + 37
+            //  Con el mismo tope que pone la píldora al pintarla: si el suelo
+            //  siguiera creciendo con el nombre entero, reservaría sitio para
+            //  un texto que ya no se dibuja —y por partida doble, porque la
+            //  island reserva lo mismo a los dos lados del reloj—.
+            ancho += Math.min(110, String(lista[i].texto || "").length * 7) + 37
         }
         return ancho
     }
