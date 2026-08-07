@@ -111,6 +111,116 @@ Rectangle {
             border.width: elegido ? 0 : 1
             border.color: Qt.rgba(1, 1, 1, 0.08)
 
+            // ── los fundidos, uno por esquina ─────────────────────
+            //
+            //  El tirador vive ARRIBA y las asas de recorte a los lados y abajo,
+            //  que es como se reparten en cualquier editor: dos gestos distintos
+            //  en el mismo borde tienen que separarse por sitio o se pelean.
+            //
+            //  Se dibuja el triángulo que va a salir. Un fundido es una rampa, y
+            //  una rampa dibujada dice cuánto dura sin leer ningún número.
+            Repeater {
+                model: 2
+                delegate: Item {
+                    id: rampa
+                    required property int index
+                    readonly property bool entrando: index === 0
+                    readonly property real segundos:
+                        Editor.fundidoDe(trozo.modelData, entrando)
+                    //  En píxeles: el fundido va en tiempo de LÍNEA, igual que
+                    //  el ancho del bloque.
+                    readonly property real ancho:
+                        Math.min(trozo.width / 2, pista.t2px(segundos))
+
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    x: entrando ? 0 : trozo.width - ancho
+                    width: Math.max(0, ancho)
+                    visible: ancho > 1
+
+                    Canvas {
+                        anchors.fill: parent
+                        onPaint: {
+                            const c = getContext("2d")
+                            c.reset()
+                            if (width <= 0 || height <= 0)
+                                return
+                            c.fillStyle = Qt.rgba(0, 0, 0, 0.55)
+                            c.beginPath()
+                            //  El triángulo apunta a donde el vídeo está oscuro:
+                            //  entrando, la esquina de arriba a la izquierda.
+                            if (rampa.entrando) {
+                                c.moveTo(0, 0); c.lineTo(width, 0); c.lineTo(0, height)
+                            } else {
+                                c.moveTo(width, 0); c.lineTo(0, 0); c.lineTo(width, height)
+                            }
+                            c.closePath()
+                            c.fill()
+                        }
+                        onWidthChanged: requestPaint()
+                        onHeightChanged: requestPaint()
+                    }
+                }
+            }
+
+            //  Y el agarre, arriba en cada esquina. Siempre presente aunque el
+            //  fundido valga cero: si solo saliera cuando ya hay fundido, no
+            //  habría forma de crear el primero.
+            Repeater {
+                model: 2
+                delegate: MouseArea {
+                    id: asaFunde
+                    required property int index
+                    readonly property bool entrando: index === 0
+
+                    readonly property real actual:
+                        Editor.fundidoDe(trozo.modelData, entrando)
+
+                    width: 13
+                    height: 13
+                    y: 1
+                    x: entrando
+                       ? Math.min(trozo.width - 14, pista.t2px(actual) - 6)
+                       : Math.max(1, trozo.width - pista.t2px(actual) - 7)
+                    visible: trozo.width > 40 && !trozo.arrastrando
+                    preventStealing: true
+                    hoverEnabled: true
+                    cursorShape: Qt.SizeHorCursor
+
+                    property real xIni: 0
+                    property real vIni: 0
+
+                    onPressed: function (ev) {
+                        Editor.seleccionar("clip", trozo.modelData.id)
+                        xIni = mapToItem(pista, ev.x, 0).x
+                        vIni = actual
+                    }
+                    onPositionChanged: function (ev) {
+                        if (!pressed)
+                            return
+                        const d = pista.px2t(mapToItem(pista, ev.x, 0).x - xIni)
+                        Editor.fijarFundido(trozo.modelData.id, entrando,
+                                            vIni + (entrando ? d : -d))
+                    }
+                    //  Doble clic lo quita: llevarlo a cero arrastrando hasta el
+                    //  borde exacto es pedir puntería para decir «ninguno».
+                    onDoubleClicked: Editor.fijarFundido(
+                        trozo.modelData.id, entrando, 0)
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 9
+                        height: 9
+                        radius: 2
+                        rotation: 45
+                        color: parent.containsMouse || parent.pressed
+                            ? Theme.yellow : Qt.rgba(1, 1, 1, 0.55)
+                        border.width: 1
+                        border.color: Qt.rgba(0, 0, 0, 0.4)
+                    }
+                }
+            }
+
             // ── qué trozo es ──────────────────────────────────────
             Column {
                 anchors.left: parent.left

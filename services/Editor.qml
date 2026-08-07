@@ -248,6 +248,45 @@ Singleton {
         return mayor + 1
     }
 
+    //  Cambiar campos de un trozo. Lo que ya hacía `fijarCapa` para las capas.
+    function fijarClip(id, campos) {
+        clips = clips.map(function (c) {
+            return c.id === id ? Object.assign({}, c, campos) : c
+        })
+        persistir()
+    }
+
+    //  El fundido de un trozo por su lado, en segundos.
+    //
+    //  Los fundidos eran de la LÍNEA entera: desvanecías el montaje al principio
+    //  y al final y nada más. Desvanecer UN trozo —que es lo que se pide casi
+    //  siempre— no se podía ni decir. Ahora cada uno lleva el suyo y se arrastra
+    //  desde la esquina del bloque, como en cualquier editor.
+    //
+    //  Sin el campo manda el ajuste global, así que un montaje de antes funde
+    //  exactamente igual que fundía.
+    function fundidoDe(clip, entrando) {
+        if (!clip)
+            return 0
+        const v = entrando ? clip.fundeEntra : clip.fundeSale
+        return v !== undefined ? Math.max(0, v) : 0
+    }
+
+    function fijarFundido(id, entrando, segundos) {
+        const i = indiceDeClip(id)
+        if (i < 0)
+            return
+        const c = clips[i]
+        //  No más de la mitad del trozo por lado: dos fundidos que se cruzan
+        //  dejan el trozo entero en negro, y eso no es un fundido, es un
+        //  agujero. Es el mismo reparto que ya hace python al renderizar.
+        const dur = Math.max(0.05, (c.hasta - c.desde) / velocidadDe(c))
+        const v = Math.max(0, Math.min(dur / 2, Number(segundos) || 0))
+        const campos = {}
+        campos[entrando ? "fundeEntra" : "fundeSale"] = Math.round(v * 100) / 100
+        fijarClip(id, campos)
+    }
+
     //  Partir por el cabezal LO QUE TOQUE.
     //
     //  `S` cortaba siempre la pista de vídeo, eligieras lo que eligieras. Con
@@ -694,10 +733,21 @@ Singleton {
         return hoja.endsWith(".k4v") ? hoja.slice(0, -4) : hoja
     }
 
+    //  Uno cada vez.
+    //
+    //  Confirmar salía por dos puertas —perder el foco y pulsar el ✓— y con el
+    //  botón se disparan LAS DOS: al pulsarlo el campo pierde el foco primero.
+    //  La primera renombraba bien; la segunda llegaba con el nombre todavía sin
+    //  actualizar —python no había contestado— y pedía renombrar un fichero que
+    //  ya no existía. De ahí el «no se pudo editar» apareciendo después de que
+    //  el nombre SÍ hubiera cambiado.
+    property bool renombrando: false
+
     function renombrarProyecto(nombre) {
         const limpio = String(nombre || "").trim()
-        if (limpio.length === 0 || limpio === nombreProyecto)
+        if (renombrando || limpio.length === 0 || limpio === nombreProyecto)
             return
+        renombrando = true
         procesos.renombrar(limpio)
     }
 
@@ -2338,11 +2388,15 @@ Singleton {
         //  adjunta con él. No hay que recargar nada: por dentro es el mismo
         //  montaje, solo cambia dónde se guarda a partir de ahora.
         onRenombrado: function (plan) {
+            editor.renombrando = false
             editor.rutaPlan = plan
             editor.planAlAbrir = editor.planSerializado()
         }
 
-        onRenombrarFallo: function (motivo) { editor.fallo(motivo) }
+        onRenombrarFallo: function (motivo) {
+            editor.renombrando = false
+            editor.fallo(motivo)
+        }
 
         //  Reasignando el objeto entero y no escribiendo dentro: QML solo emite
         //  el cambio cuando la propiedad se asigna, así que tocar una clave del
@@ -2675,7 +2729,18 @@ Singleton {
     function renderizar() {
         if (rutaPlan.length === 0)
             return
-        rutaRenderizada = rutaVideo.replace(/\.[^./]+$/, "")
+        //  El fichero que sale se llama como el PROYECTO, no como el vídeo.
+        //
+        //  Salía con el nombre del vídeo, así que renombrar el montaje a «Tutorial
+        //  del island» y exportarlo daba `grabacion-20260805-165407-k4.mp4`. El
+        //  nombre se le pone al montaje precisamente para no tener que reconocer
+        //  cuál era por su marca de tiempo.
+        //
+        //  Del plan y no del nombre visible: el plan ya vive donde toca y con el
+        //  nombre bueno, así que el render cae al lado de su proyecto.
+        rutaRenderizada = (rutaPlan.length > 4
+                            ? rutaPlan.replace(/\.k4v$/, "")
+                            : rutaVideo.replace(/\.[^./]+$/, ""))
                           + (salidaVertical ? "-shorts." : "-k4.")
                           + formatoSalida
         progreso = 0

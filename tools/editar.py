@@ -1869,8 +1869,18 @@ def fundidos_de(plan):
     return leer("entrada"), leer("salida"), leer("entre")
 
 
-def filtros_fundido(i, total, dur, plan):
+def filtros_fundido(i, total, dur, plan, clip=None):
     """Los `fade` de vídeo y audio de un trozo, en tiempo LOCAL del trozo.
+
+    Si el TROZO trae los suyos —`fundeEntra` y `fundeSale`— mandan esos y el
+    ajuste global se ignora para él. Los fundidos eran de la línea entera: podías
+    desvanecer el montaje al principio y al final, y nada más. Desvanecer UN
+    trozo, que es lo que se pide el noventa por ciento de las veces, no se podía
+    decir. Ahora se dice arrastrando la esquina del bloque.
+
+    El ajuste global se queda para quien no toque nada: un montaje de antes sigue
+    fundiendo exactamente igual, porque sin esos campos manda la regla de
+    siempre.
 
     Local y no de línea: van dentro de la rama del clip, antes del `concat`, y
     ahí cada trozo empieza en cero. Y después del `setpts` de la velocidad, o
@@ -1888,6 +1898,14 @@ def filtros_fundido(i, total, dur, plan):
     #  entre medias, medio «entre» por cada lado del corte.
     ini = entrada if i == 0 else dentro
     fin = salida if i == total - 1 else dentro
+
+    #  Y lo que diga el trozo, si lo dice. Cero es una respuesta válida —«este
+    #  no funde»— así que se mira si el campo ESTÁ, no si vale algo.
+    if clip:
+        if clip.get("fundeEntra") is not None:
+            ini = max(0.0, float(clip["fundeEntra"]))
+        if clip.get("fundeSale") is not None:
+            fin = max(0.0, float(clip["fundeSale"]))
 
     #  Dos fundidos no pueden solaparse dentro de un trozo corto: si la suma se
     #  pasa de lo que dura, se reparte a partes iguales. Sin esto, un trozo de
@@ -2206,7 +2224,7 @@ def grafo(plan, sin_audio=False, carpeta=None, sonoridad=False,
         #  después del `setpts` de la velocidad, un trozo de 8 s a 2× ocupa 4 y
         #  el fundido tiene que caber en esos 4.
         color = filtro_color(clip)
-        fv, fa = filtros_fundido(i, len(tramos), b - a, plan_fundidos)
+        fv, fa = filtros_fundido(i, len(tramos), b - a, plan_fundidos, clip)
         cadena = ",".join(x for x in (pts, norma, relleno, color, fv) if x)
 
         lineas.append(

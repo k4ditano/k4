@@ -140,6 +140,28 @@ Item {
             Editor.quitarMomento(view.momento.id)
     }
 
+    property bool conAyuda: false
+
+    //  Lo que no se ve por ningún lado. Un renglón por gesto, sin adornos:
+    //  esto es una chuleta, no documentación.
+    readonly property var gestos: [
+        [Idioma.t("Doble clic en un rótulo"), Idioma.t("escribirlo sobre el vídeo")],
+        [Idioma.t("Arrastrar sobre el vídeo"), Idioma.t("dibujar un zoom")],
+        [Idioma.t("Rueda sobre el vídeo"), Idioma.t("nivel del zoom")],
+        [Idioma.t("Soltar un fichero en la línea"), Idioma.t("lo añade donde caiga")],
+        [Idioma.t("Ctrl + rueda en la línea"), Idioma.t("acercar hasta ×60")],
+        [Idioma.t("Ctrl + clic en un bloque"), Idioma.t("coger varios")],
+        [Idioma.t("Esquina de un trozo"), Idioma.t("fundido · doble clic lo quita")],
+        [Idioma.t("Clic derecho en un bloque"), Idioma.t("fotograma clave")],
+        ["S", Idioma.t("cortar lo elegido por el cabezal")],
+        ["M", Idioma.t("marcador")],
+        ["← →", Idioma.t("un fotograma · con Ctrl, un segundo")],
+        [Idioma.t("Espacio"), Idioma.t("reproducir")],
+        ["Ctrl + C / V / X", Idioma.t("copiar, pegar, cortar")],
+        ["Supr", Idioma.t("quitar lo elegido")],
+        ["Esc", Idioma.t("soltar la herramienta o la selección")]
+    ]
+
     //  Cuánto avanza una flecha.
     //
     //  UN FOTOGRAMA, que es como se afina en cualquier editor. Antes era un
@@ -390,6 +412,21 @@ Item {
                     glyphColor: Theme.green
                     onActivated: nombrePlan.confirmar()
                 }
+            }
+
+            //  Los gestos, en un sitio.
+            //
+            //  Los modos con botón —recorte, trazado— se ven en su ficha. Lo que
+            //  no se ve por ningún lado son los GESTOS: doble clic en un rótulo
+            //  para escribirlo encima del vídeo, Ctrl+rueda para acercar la
+            //  línea, Ctrl+clic para coger varios, soltar ficheros. Cada uno se
+            //  descubre por accidente o no se descubre, y una función que nadie
+            //  encuentra es una función que no existe.
+            MediaButton {
+                glyph: String.fromCodePoint(0xF0625)   // md-help_circle_outline
+                glyphSize: 13
+                glyphColor: view.conAyuda ? Theme.blue : Theme.dim
+                onActivated: view.conAyuda = !view.conAyuda
             }
 
             MediaButton {
@@ -1406,6 +1443,70 @@ Item {
                     icono: 0xF0156                      // md-close
                     onPulsado: view.plugin.preguntandoCierre = false
                 }
+            }
+        }
+    }
+
+    //  La chuleta, encima de todo.
+    //
+    //  Declarada la última para quedar por encima, y con su propio MouseArea que
+    //  se lo come todo: mientras está abierta no se edita por debajo sin querer.
+    //  Se cierra pulsando en cualquier sitio, que es lo que uno hace.
+    Rectangle {
+        anchors.fill: parent
+        visible: view.conAyuda
+        color: Qt.rgba(0, 0, 0, 0.82)
+        radius: 10
+        z: 100
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: view.conAyuda = false
+        }
+
+        ColumnLayout {
+            anchors.centerIn: parent
+            width: Math.min(parent.width - 60, 520)
+            spacing: 3
+
+            IslandLabel {
+                Layout.bottomMargin: 6
+                text: Idioma.t("Gestos y atajos")
+                color: Theme.ink
+                font.pixelSize: 15
+                font.weight: Font.DemiBold
+            }
+
+            Repeater {
+                model: view.gestos
+                delegate: RowLayout {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    spacing: 10
+
+                    IslandLabel {
+                        Layout.preferredWidth: 190
+                        text: modelData[0]
+                        color: Theme.yellow
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                        elide: Text.ElideRight
+                    }
+                    IslandLabel {
+                        Layout.fillWidth: true
+                        text: modelData[1]
+                        color: Theme.muted
+                        font.pixelSize: 11
+                        elide: Text.ElideRight
+                    }
+                }
+            }
+
+            IslandLabel {
+                Layout.topMargin: 8
+                text: Idioma.t("Pulsa en cualquier sitio para cerrar")
+                color: Theme.dim
+                font.pixelSize: 10
             }
         }
     }
