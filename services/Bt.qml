@@ -60,16 +60,63 @@ Singleton {
         return "Disponible"
     }
 
+    //  Emparejar NO es conectar, y sin confianza no dura.
+    //
+    //  Esto solo emparejaba, y con unos auriculares pasaba lo peor: bluez
+    //  los conecta un momento al terminar el emparejamiento —así que la fila
+    //  llegaba a decir «Conectado»—, pero sin `trusted` no autoriza los
+    //  perfiles de audio, el aparato se cae a los pocos segundos y, como no
+    //  está emparejado del todo ni hay descubrimiento al cerrar la pestaña,
+    //  bluez lo borra de su árbol: la fila DESAPARECÍA de la lista. Parecía
+    //  que la barra los perdía y en realidad nunca llegaban a asentarse.
+    //
+    //  La confianza va antes de conectar: es lo que hace que mañana, al
+    //  sacarlos del estuche, vuelvan solos sin abrir esto.
     function activate(device) {
         if (!device)
             return
 
-        if (device.connected)
+        if (device.connected) {
             device.disconnect()
-        else if (device.paired || device.bonded)
+            return
+        }
+
+        if (device.paired || device.bonded) {
+            if (!device.trusted)
+                device.trusted = true
             device.connect()
-        else
-            device.pair()
+            return
+        }
+
+        //  Uno nuevo: emparejar y, cuando bluez conteste, seguir solo. Un
+        //  segundo toque para conectar es una pregunta que nadie quiere
+        //  responder —quien pulsa unos auriculares quiere oírlos—.
+        _reciente = device
+        device.pair()
+    }
+
+    //  A quién seguimos: SOLO al que se acaba de tocar. Vigilar a todos los
+    //  emparejados conectaría solo el móvil o la tele en cuanto pasaran por
+    //  el radio, y eso no lo ha pedido nadie.
+    property var _reciente: null
+
+    property Connections _trasEmparejar: Connections {
+        target: bt._reciente
+
+        function _rematar() {
+            const d = bt._reciente
+            if (!d || d.pairing || !(d.paired || d.bonded))
+                return
+            if (!d.trusted)
+                d.trusted = true
+            if (!d.connected)
+                d.connect()
+            bt._reciente = null
+        }
+
+        function onPairedChanged() { _rematar() }
+        function onBondedChanged() { _rematar() }
+        function onPairingChanged() { _rematar() }
     }
 
     Binding {
