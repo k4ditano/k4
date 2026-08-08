@@ -267,7 +267,7 @@ ColumnLayout {
     BotonAccion {
         texto: Editor.capaSel && Editor.capaSel.espejo
             ? Idioma.t("Del revés") : Idioma.t("Voltear")
-        icono: 0xF0641                          // md-flip_horizontal
+        icono: 0xF10E7                          // md-flip_horizontal
         activo: Editor.capaSel && !!Editor.capaSel.espejo
         onPulsado: Editor.fijarCapa(Editor.idSel,
             { espejo: !Editor.capaSel.espejo })
