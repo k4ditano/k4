@@ -58,10 +58,15 @@ FadeIn {
                 spacing: 6
 
                 IslandLabel {
-                    text: view.notification ? view.notification.summary : Idioma.t("Notificación")
+                    //  Sin saltos: el título es UNA línea, y uno con `\n`
+                    //  dentro empujaba la banda entera hacia abajo.
+                    text: view.notification
+                        ? view.notification.summary.replace(/\s*\n\s*/g, " ")
+                        : Idioma.t("Notificación")
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight
+                    maximumLineCount: 1
                     Layout.fillWidth: true
                 }
 
@@ -76,7 +81,12 @@ FadeIn {
 
             IslandLabel {
                 Layout.fillWidth: true
-                text: view.notification ? view.notification.body : ""
+                //  Los saltos de línea del cuerpo, a espacios: aquí SÍ hay
+                //  tope de líneas, pero un cuerpo de tres renglones cortos
+                //  gastaba las dos en el salto y dejaba media banda vacía
+                //  con lo importante fuera. Corrido, el elide remata.
+                text: view.notification
+                    ? view.notification.body.replace(/\s*\n\s*/g, " ") : ""
                 color: Theme.muted
                 font.pixelSize: 11
                 maximumLineCount: view.actions.length > 0 ? 1 : 2

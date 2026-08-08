@@ -145,20 +145,36 @@ ColumnLayout {
                     Layout.alignment: Qt.AlignVCenter
                     spacing: 0
 
+                    //  Una línea cada uno, pase lo que pase.
+                    //
+                    //  `elide` recorta lo ANCHO, y de lo alto no dice nada: un
+                    //  cuerpo con saltos de línea —los cronjobs mandan varias,
+                    //  «respuesta \n (job_id: …) \n ---»— se pintaba entero
+                    //  hacia abajo y se salía del recuadro, que tiene la altura
+                    //  fija de `rowHeight`. El aviso pisaba lo que hubiera
+                    //  debajo y la tarjeta parecía rota.
+                    //
+                    //  Los saltos se sustituyen por espacios en vez de cortar
+                    //  por el primero: la primera línea de un cronjob suele ser
+                    //  el «Cronjob Response» genérico y lo que dice de verdad
+                    //  viene detrás. Así se lee corrido y elide remata.
                     IslandLabel {
-                        text: row.modelData.summary
+                        text: row.modelData.summary.replace(/\s*\n\s*/g, " ")
                         font.pixelSize: 11
                         font.weight: Font.DemiBold
                         elide: Text.ElideRight
+                        maximumLineCount: 1
                         Layout.fillWidth: true
                     }
 
                     IslandLabel {
-                        text: row.modelData.body.length > 0
-                            ? row.modelData.body : row.modelData.appName
+                        text: (row.modelData.body.length > 0
+                                ? row.modelData.body : row.modelData.appName)
+                              .replace(/\s*\n\s*/g, " ")
                         color: Theme.muted
                         font.pixelSize: 9
                         elide: Text.ElideRight
+                        maximumLineCount: 1
                         Layout.fillWidth: true
                     }
                 }
