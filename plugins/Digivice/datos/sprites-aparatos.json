@@ -1,0 +1,272 @@
+{
+ "vb": {
+  "color": 0.428,
+  "lado": 192,
+  "n": 641
+ },
+ "xloader": {
+  "color": 0.452,
+  "lado": 96,
+  "n": 296
+ },
+ "dpc": {
+  "color": 0.511,
+  "lado": 84,
+  "n": 242
+ },
+ "pen": {
+  "color": 0.0,
+  "lado": 36,
+  "n": 194
+ },
+ "spirit": {
+  "color": 0.0,
+  "lado": 52,
+  "n": 184
+ },
+ "cutin": {
+  "color": 0.0,
+  "lado": 64,
+  "n": 179
+ },
+ "dmc": {
+  "color": 0.465,
+  "lado": 48,
+  "n": 163
+ },
+ "dmx": {
+  "color": 0.0,
+  "lado": 36,
+  "n": 143
+ },
+ "dm": {
+  "color": 0.0,
+  "lado": 36,
+  "n": 141
+ },
+ "d3": {
+  "color": 0.0,
+  "lado": 68,
+  "n": 134
+ },
+ "dt": {
+  "color": 0.0,
+  "lado": 68,
+  "n": 119
+ },
+ "dw": {
+  "color": 0.015,
+  "lado": 52,
+  "n": 118
+ },
+ "dv": {
+  "color": 0.0,
+  "lado": 68,
+  "n": 108
+ },
+ "dscan": {
+  "color": 0.0,
+  "lado": 68,
+  "n": 95
+ },
+ "penz": {
+  "color": 0.0,
+  "lado": 36,
+  "n": 76
+ },
+ "dvic": {
+  "color": 0.0,
+  "lado": 52,
+  "n": 75
+ },
+ "accel": {
+  "color": 0.0,
+  "lado": 64,
+  "n": 74
+ },
+ "penx": {
+  "color": 0.0,
+  "lado": 68,
+  "n": 57
+ },
+ "dmc cutin": {
+  "color": 0.675,
+  "lado": 96,
+  "n": 54
+ },
+ "darc": {
+  "color": 0.0,
+  "lado": 68,
+  "n": 50
+ },
+ "dpc cutin": {
+  "color": 0.623,
+  "lado": 96,
+  "n": 37
+ },
+ "tector": {
+  "color": 0.0,
+  "lado": 52,
+  "n": 36
+ },
+ "dv color": {
+  "color": 0.543,
+  "lado": 192,
+  "n": 34
+ },
+ "dark color": {
+  "color": 0.596,
+  "lado": 192,
+  "n": 33
+ },
+ "mini": {
+  "color": 0.0,
+  "lado": 36,
+  "n": 27
+ },
+ "fusion loader": {
+  "color": 0.0,
+  "lado": 384,
+  "n": 21
+ },
+ "penp": {
+  "color": 0.0,
+  "lado": 68,
+  "n": 21
+ },
+ "ws": {
+  "color": 0.301,
+  "lado": 64,
+  "n": 20
+ },
+ "d3 color": {
+  "color": 0.497,
+  "lado": 192,
+  "n": 16
+ },
+ "digivice": {
+  "color": 0.0,
+  "lado": 68,
+  "n": 15
+ },
+ "cycle": {
+  "color": 0.0,
+  "lado": 36,
+  "n": 12
+ },
+ "dvp": {
+  "color": 0.0,
+  "lado": 68,
+  "n": 9
+ },
+ "twin": {
+  "color": 0.0,
+  "lado": 36,
+  "n": 9
+ },
+ "alysion": {
+  "color": 0.405,
+  "lado": 512,
+  "n": 7
+ },
+ "vbbe": {
+  "color": 0.707,
+  "lado": 186,
+  "n": 6
+ },
+ "clr": {
+  "color": 0.45,
+  "lado": 128,
+  "n": 5
+ },
+ "power euv1": {
+  "color": 0.0,
+  "lado": 36,
+  "n": 5
+ },
+ "dark": {
+  "color": 0.0,
+  "lado": 68,
+  "n": 4
+ },
+ "dm20": {
+  "color": 0.035,
+  "lado": 36,
+  "n": 4
+ },
+ "catch": {
+  "color": 0.0,
+  "lado": 32,
+  "n": 3
+ },
+ "dtwin": {
+  "color": 0.0,
+  "lado": 48,
+  "n": 3
+ },
+ "pen sur": {
+  "color": 0.0,
+  "lado": 32,
+  "n": 3
+ },
+ "pen rev": {
+  "color": 0.0,
+  "lado": 32,
+  "n": 3
+ },
+ "mini2": {
+  "color": 0.0,
+  "lado": 32,
+  "n": 3
+ },
+ "penzii": {
+  "color": 0.0,
+  "lado": 36,
+  "n": 2
+ },
+ "xloader2": {
+  "color": 0.692,
+  "lado": 120,
+  "n": 2
+ },
+ "gather": {
+  "color": 0.0,
+  "lado": 68,
+  "n": 2
+ },
+ "pen rev sur": {
+  "color": 0.0,
+  "lado": 32,
+  "n": 2
+ },
+ "re": {
+  "color": 0.0,
+  "lado": 36,
+  "n": 1
+ },
+ "dark 15th": {
+  "color": 0.0,
+  "lado": 68,
+  "n": 1
+ },
+ "penp sleep": {
+  "color": 0.0,
+  "lado": 150,
+  "n": 1
+ },
+ "dm us": {
+  "color": 0.0,
+  "lado": 36,
+  "n": 1
+ },
+ "mini3": {
+  "color": 0.0,
+  "lado": 32,
+  "n": 1
+ },
+ "viceus": {
+  "color": 0.0,
+  "lado": 52,
+  "n": 1
+ }
+}

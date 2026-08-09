@@ -32,3 +32,4 @@ EditorProcesos 1.0 EditorProcesos.qml
 singleton Paquetes 1.0 Paquetes.qml
 singleton Ambiente 1.0 Ambiente.qml
 singleton Consola 1.0 Consola.qml
+singleton Digivice 1.0 Digivice.qml

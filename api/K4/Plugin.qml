@@ -97,6 +97,36 @@ QtObject {
     // `grabKeyboard`, aunque parezca de más para un módulo que no se escribe.
     property bool tecladoOpcional: false
 
+    // Foco MIENTRAS EL PUNTERO ESTÉ ENCIMA. El punto medio que faltaba.
+    //
+    // Los dos de arriba no sirven para un juego: `grabKeyboard` te deja sin
+    // escribir en ninguna ventana mientras la partida esté abierta —y una
+    // partida se queda abierta—, y `tecladoOpcional` solo te da teclas si
+    // PINCHAS, así que las que se pulsan sin clicar no llegan nunca. Un
+    // Digivice se quedó sin ESC exactamente por eso.
+    //
+    // Con esto el teclado es tuyo mientras juegas —el puntero está sobre la
+    // island, que es donde se juega— y vuelve al escritorio en cuanto lo
+    // apartas, con el mismo margen de salida que el resto del hover para que
+    // no parpadee al pasar por un borde.
+    //
+    // Wayland no tiene un modo «al pasar»: solo None, OnDemand y Exclusive.
+    // Esto es Exclusive conmutado por `Island.hovered`, o sea que mientras
+    // tengas el ratón encima te llevas TODAS las teclas. Es aceptable porque
+    // lo pides tú y porque se deshace solo al mover el ratón; no lo uses
+    // para un módulo que solo se mira.
+    //
+    // OJO, LA SEGUNDA MITAD: que la capa tenga el teclado no significa que tu
+    // vista reciba una tecla. La raíz de la island también pide foco —ahí vive
+    // el ESC— y se lo queda. Hay que reclamarlo con `K4.FocoInicial`, y NO
+    // solo al abrir: con esto el teclado llega al pasar el ratón, y para
+    // entonces FocoInicial ya se rindió (insiste seis veces en menos de un
+    // segundo). Recláma­lo también al entrar el puntero:
+    //
+    //     property var foco: K4.FocoInicial { objetivo: raiz }
+    //     HoverHandler { onHoveredChanged: if (hovered) raiz.foco.reclamar() }
+    property bool tecladoAlPasar: false
+
     // Clic en el fondo de la island. Si el plugin no lo marca, el host aplica
     // lo de siempre: abrir el centro de control.
     //  Abrirte desde fuera: el centro de aplicaciones y los accesos directos

@@ -208,6 +208,15 @@
       "enabledByDefault": true,
       "icono": "0xF06A9",
       "aplicacion": true
+    },
+    {
+      "id": "digivice",
+      "entry": "Digivice/DigivicePlugin.qml",
+      "version": "1.0.0",
+      "title": "Digivice",
+      "enabledByDefault": false,
+      "icono": "0xF06D3",
+      "aplicacion": true
     }
   ],
   "version": "1.1.0"

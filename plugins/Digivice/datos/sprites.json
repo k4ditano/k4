@@ -1,0 +1,4459 @@
+{
+ "_fuente": "https://wikimon.net - sprites de los aparatos de Digimon",
+ "_nota": "Solo rutas de fichero. Las imagenes se piden en tiempo de ejecucion y viven en la cache del usuario; no se empaqueta ninguna.",
+ "_base": "https://wikimon.net/images/",
+ "sprites": {
+  "1300": {
+   "r": "2/29/Abbadomon_vpet_dv.gif",
+   "c": 0
+  },
+  "1358": {
+   "r": "a/a0/Achillesmon_vpet_vb.png",
+   "c": 1
+  },
+  "1158": {
+   "r": "5/55/Aegiochusmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "1161": {
+   "r": "6/67/Aegiomon_vpet_dpc.gif",
+   "c": 1
+  },
+  "917": {
+   "r": "c/c0/Aegisdramon_vpet_vb.png",
+   "c": 1
+  },
+  "129": {
+   "r": "1/10/Aerovdramon_vpet_vb.png",
+   "c": 1
+  },
+  "493": {
+   "r": "3/34/Agnimon_vpet_vb.png",
+   "c": 1
+  },
+  "1": {
+   "r": "b/b9/Agumon_vpet_vb.png",
+   "c": 1
+  },
+  "799": {
+   "r": "6/68/Agumon2006_vpet_vb.png",
+   "c": 1
+  },
+  "263": {
+   "r": "3/3c/Agumon_black_vpet_vb.png",
+   "c": 1
+  },
+  "1252": {
+   "r": "3/33/Agumonblackx_vpet_dmx.gif",
+   "c": 0
+  },
+  "634": {
+   "r": "c/c5/Agumonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1302": {
+   "r": "e/e7/Agumon_kizuna_vpet_penz.gif",
+   "c": 0
+  },
+  "801": {
+   "r": "f/fb/Agumon_Hakase_vpet_pen.gif",
+   "c": 0
+  },
+  "2": {
+   "r": "5/5d/Airdramon_vpet_vb.png",
+   "c": 1
+  },
+  "1359": {
+   "r": "7/7d/Ajatarmon_vpet_vb.png",
+   "c": 1
+  },
+  "130": {
+   "r": "6/6b/Akatrimon_vpet_dt.gif",
+   "c": 0
+  },
+  "494": {
+   "r": "7/7f/Aldamon_vpet_vb.png",
+   "c": 1
+  },
+  "1306": {
+   "r": "7/7e/Algomon_adult_vpet_vb.png",
+   "c": 1
+  },
+  "1303": {
+   "r": "b/b5/Algomon_babyi_vpet_pen.gif",
+   "c": 0
+  },
+  "1304": {
+   "r": "b/b4/Algomon_babyii_vpet_pen.gif",
+   "c": 0
+  },
+  "1305": {
+   "r": "c/c8/Algomon_child_vpet_penz.gif",
+   "c": 0
+  },
+  "802": {
+   "r": "9/9c/Algomon_perfect_vpet_penz.gif",
+   "c": 0
+  },
+  "803": {
+   "r": "6/6f/Algomon_ultimate_vpet_penz.gif",
+   "c": 0
+  },
+  "264": {
+   "r": "3/3c/Allomon_vpet_dark_color.png",
+   "c": 1
+  },
+  "635": {
+   "r": "c/c6/Allomonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "636": {
+   "r": "c/c8/Alphamon_vpet_vb.png",
+   "c": 1
+  },
+  "131": {
+   "r": "0/0b/Alraumon_vpet_dt.gif",
+   "c": 0
+  },
+  "1401": {
+   "r": "0/0b/Amphimon_vpet_vb.png",
+   "c": 1
+  },
+  "495": {
+   "r": "d/d6/Ancientbeatmon_vpet_vb.png",
+   "c": 1
+  },
+  "496": {
+   "r": "e/e2/Ancientgarurumon_vpet_vb.png",
+   "c": 1
+  },
+  "497": {
+   "r": "3/3d/Ancientgreymon_vpet_vb.png",
+   "c": 1
+  },
+  "498": {
+   "r": "4/4e/Ancientirismon_vpet_vb.png",
+   "c": 1
+  },
+  "499": {
+   "r": "3/39/Ancientmegatheriumon_vpet_vb.png",
+   "c": 1
+  },
+  "500": {
+   "r": "2/2f/Ancientmermaimon_vpet_vb.png",
+   "c": 1
+  },
+  "501": {
+   "r": "5/5d/Ancientsphinxmon_vpet_vb.png",
+   "c": 1
+  },
+  "502": {
+   "r": "d/d3/Ancienttroiamon_vpet_vb.png",
+   "c": 1
+  },
+  "503": {
+   "r": "1/19/Ancientvolcamon_vpet_vb.png",
+   "c": 1
+  },
+  "504": {
+   "r": "a/ad/Ancientwisemon_vpet_vb.png",
+   "c": 1
+  },
+  "265": {
+   "r": "4/42/Andiramon_vpet_vb.png",
+   "c": 1
+  },
+  "414": {
+   "r": "7/7e/Andiramon_deva_vpet_vb.png",
+   "c": 1
+  },
+  "37": {
+   "r": "a/a5/Andromon_vpet_vb.png",
+   "c": 1
+  },
+  "3": {
+   "r": "7/7f/Angemon_vpet_vb.png",
+   "c": 1
+  },
+  "38": {
+   "r": "3/3a/Angewomon_raid_vpet_vb.png",
+   "c": 1
+  },
+  "1253": {
+   "r": "c/c0/Angewomonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1360": {
+   "r": "2/2b/Angoramon_vpet_vb.png",
+   "c": 1
+  },
+  "266": {
+   "r": "f/f2/Ankylomon_vpet_vb.png",
+   "c": 1
+  },
+  "39": {
+   "r": "2/27/Anomalocarimon_vpet_vb.png",
+   "c": 1
+  },
+  "638": {
+   "r": "c/c8/Anomalocarimonx_vpet_vb.png",
+   "c": 1
+  },
+  "415": {
+   "r": "a/a0/Anubimon_vpet_vb.png",
+   "c": 1
+  },
+  "132": {
+   "r": "8/87/Apocalymon_raid_vpet_vb.png",
+   "c": 1
+  },
+  "869": {
+   "r": "e/ee/Apollomon_vpet_vb.png",
+   "c": 1
+  },
+  "267": {
+   "r": "4/4b/Aquilamon_vpet_vb.png",
+   "c": 1
+  },
+  "505": {
+   "r": "2/26/Arbormon_vpet_vb.png",
+   "c": 1
+  },
+  "268": {
+   "r": "e/ea/Archelomon_vpet_dark_color.png",
+   "c": 1
+  },
+  "269": {
+   "r": "d/d6/Archnemon_vpet_vb.png",
+   "c": 1
+  },
+  "1402": {
+   "r": "4/43/Arcturusmon_vpet_vb.png",
+   "c": 1
+  },
+  "417": {
+   "r": "8/8e/Arkadimon_adult_vpet_dscan.gif",
+   "c": 0
+  },
+  "416": {
+   "r": "7/7d/Arkadimon_child_vpet_dscan.gif",
+   "c": 0
+  },
+  "418": {
+   "r": "0/03/Arkadimon_perfect_vpet_dscan.gif",
+   "c": 0
+  },
+  "419": {
+   "r": "7/74/Arkadimon_Ultimate_vpet_xloader.png",
+   "c": 1
+  },
+  "1430": {
+   "r": "5/56/Arkhaiangemon_vpet_vb.png",
+   "c": 1
+  },
+  "271": {
+   "r": "0/0f/Armadimon_vpet_vb.png",
+   "c": 1
+  },
+  "420": {
+   "r": "6/66/Armagemon_vpet_vb.png",
+   "c": 1
+  },
+  "1019": {
+   "r": "a/a1/Armamon_vpet_dmc.gif",
+   "c": 1
+  },
+  "1020": {
+   "r": "d/d0/Arresterdramon_vpet_vb.png",
+   "c": 1
+  },
+  "506": {
+   "r": "b/b8/Assaultmon_vpet_spirit.gif",
+   "c": 0
+  },
+  "738": {
+   "r": "1/12/Astamon_vpet_vb.png",
+   "c": 1
+  },
+  "133": {
+   "r": "d/d1/Asuramon_vpet_vb.png",
+   "c": 1
+  },
+  "804": {
+   "r": "7/71/Atamadekachimon_vpet_dw.gif",
+   "c": 0
+  },
+  "1021": {
+   "r": "2/22/Atlurballistamon_vpet_vb.png",
+   "c": 1
+  },
+  "40": {
+   "r": "3/32/Atlurkabuterimon_vpet_dpc.gif",
+   "c": 1
+  },
+  "134": {
+   "r": "f/fc/Atlurkabuterimon_red_vpet_vb.png",
+   "c": 1
+  },
+  "509": {
+   "r": "4/48/Bemmon_vpet_vb.png",
+   "c": 1
+  },
+  "918": {
+   "r": "d/d1/Baalmon_vpet_vb.png",
+   "c": 1
+  },
+  "135": {
+   "r": "0/0b/Babamon_vpet_dark_color.png",
+   "c": 1
+  },
+  "1307": {
+   "r": "6/60/Baboongamon_vpet_cutin.gif",
+   "c": 0
+  },
+  "870": {
+   "r": "7/7c/Babydmon_vpet_vb.png",
+   "c": 1
+  },
+  "1163": {
+   "r": "8/86/Bacchusmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "919": {
+   "r": "7/75/Bagramon_vpet_xloader.png",
+   "c": 1
+  },
+  "272": {
+   "r": "b/bf/Baihumon_vpet_xloader.png",
+   "c": 1
+  },
+  "41": {
+   "r": "8/84/Bakemon_vpet_vb.png",
+   "c": 1
+  },
+  "136": {
+   "r": "8/8f/Bakumon_vpet_dpc.gif",
+   "c": 1
+  },
+  "1023": {
+   "r": "c/c3/BalliBastemoon_vpet_fusion_loader.png",
+   "c": 0
+  },
+  "920": {
+   "r": "4/43/Ballistamon_vpet_vb.png",
+   "c": 1
+  },
+  "1308": {
+   "r": "6/6f/Baluchimon_vpet_cutin.gif",
+   "c": 0
+  },
+  "752": {
+   "r": "0/0d/Bantyoliomon_vpet_xloader.png",
+   "c": 1
+  },
+  "1180": {
+   "r": "9/96/Bancholilimon_vpet_vb.png",
+   "c": 1
+  },
+  "1181": {
+   "r": "3/37/Banchomamemon_vpet_dmc.gif",
+   "c": 1
+  },
+  "1182": {
+   "r": "b/b9/Banchostingmon_vpet_vb.png",
+   "c": 1
+  },
+  "640": {
+   "r": "6/68/Barbamon_vpet_xloader.png",
+   "c": 1
+  },
+  "273": {
+   "r": "f/f1/Baromon_vpet_dark_color.png",
+   "c": 1
+  },
+  "507": {
+   "r": "a/a5/Bastemon_vpet_vb.png",
+   "c": 1
+  },
+  "508": {
+   "r": "9/93/Bearmon_vpet_vb.png",
+   "c": 1
+  },
+  "1164": {
+   "r": "d/d5/Beelstarmon_vpet_pen.gif",
+   "c": 0
+  },
+  "1223": {
+   "r": "3/39/Beelstarmonx_vpet_dm.gif",
+   "c": 0
+  },
+  "421": {
+   "r": "6/62/Beelzebumon_vpet_vb.png",
+   "c": 1
+  },
+  "924": {
+   "r": "4/49/Beelzebumon_2010_vpet_vb.png",
+   "c": 1
+  },
+  "753": {
+   "r": "d/d2/Beelzebumonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "274": {
+   "r": "0/05/Belialvamdemon_vpet_vb.png",
+   "c": 1
+  },
+  "510": {
+   "r": "0/07/Beowolfmon_vpet_vb.png",
+   "c": 1
+  },
+  "4": {
+   "r": "9/92/Betamon_vpet_dmc.gif",
+   "c": 1
+  },
+  "1361": {
+   "r": "c/c9/Betelgammamon_vpet_vb.png",
+   "c": 1
+  },
+  "511": {
+   "r": "8/87/Betsumon_vpet_dscan.gif",
+   "c": 0
+  },
+  "1309": {
+   "r": "4/4a/Bibimon_vpet_vb.png",
+   "c": 1
+  },
+  "137": {
+   "r": "f/fc/Bigmamemon_vpet_vb.png",
+   "c": 1
+  },
+  "1431": {
+   "r": "7/75/Bigukkomon_forthbattle_vpet_vb.png",
+   "c": 1
+  },
+  "5": {
+   "r": "5/50/Birdramon_vpet_vb.png",
+   "c": 1
+  },
+  "812": {
+   "r": "0/03/Pishopchessmon_vpet_dw.gif",
+   "c": 0
+  },
+  "275": {
+   "r": "3/39/Bitmon_vpet_d3.gif",
+   "c": 0
+  },
+  "423": {
+   "r": "1/16/Blackgalgomon_vpet_spirit.gif",
+   "c": 0
+  },
+  "424": {
+   "r": "d/db/Blackgrowmon_vpet_darc.gif",
+   "c": 0
+  },
+  "512": {
+   "r": "4/4c/Blackkingnumemon_vpet_vb.png",
+   "c": 1
+  },
+  "425": {
+   "r": "4/40/Blackmegalogrowmon_vpet_darc.gif",
+   "c": 0
+  },
+  "426": {
+   "r": "5/59/Blackrapidmon_vpet_spirit.gif",
+   "c": 0
+  },
+  "427": {
+   "r": "5/56/BlackSaintGalgomon_vpet_xloader.png",
+   "c": 1
+  },
+  "513": {
+   "r": "1/1d/Blackseraphimon_vpet_spirit.gif",
+   "c": 0
+  },
+  "276": {
+   "r": "d/de/Blacktailmon_vpet_spirit.gif",
+   "c": 0
+  },
+  "1362": {
+   "r": "6/6c/Blacktailmon_uver_vpet_vb.png",
+   "c": 1
+  },
+  "277": {
+   "r": "c/c4/Blackwargreymon_raid_vpet_vb.png",
+   "c": 1
+  },
+  "754": {
+   "r": "3/37/Blackwargreymonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "755": {
+   "r": "2/21/Bladekuwagamon_vpet_vb.png",
+   "c": 1
+  },
+  "926": {
+   "r": "0/01/Blastmon_vpet_vb.png",
+   "c": 1
+  },
+  "138": {
+   "r": "a/aa/Blikmon_vpet_spirit.gif",
+   "c": 0
+  },
+  "515": {
+   "r": "7/72/Blimpmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "1201": {
+   "r": "d/da/Blitzgreymon_vpet_vb.png",
+   "c": 1
+  },
+  "516": {
+   "r": "7/78/Blitzmon_vpet_vb.png",
+   "c": 1
+  },
+  "517": {
+   "r": "c/cd/Blizzarmon_vpet_vb.png",
+   "c": 1
+  },
+  "1363": {
+   "r": "9/94/Bloomlordmon_vpet_vb.png",
+   "c": 1
+  },
+  "139": {
+   "r": "d/da/Blossomon_vpet_vb.png",
+   "c": 1
+  },
+  "1224": {
+   "r": "d/dd/Blucomon_vpet_vb.png",
+   "c": 1
+  },
+  "140": {
+   "r": "4/4a/Bluemeramon_vpet_xloader.png",
+   "c": 1
+  },
+  "278": {
+   "r": "a/a0/Boarmon_vpet_d3.gif",
+   "c": 0
+  },
+  "518": {
+   "r": "9/93/Bokomon_vpet_vb.png",
+   "c": 1
+  },
+  "519": {
+   "r": "a/a0/Bolgmon_vpet_vb.png",
+   "c": 1
+  },
+  "141": {
+   "r": "c/c1/Boltmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "279": {
+   "r": "2/2d/Bombernanimon_vpet_spirit.gif",
+   "c": 0
+  },
+  "1404": {
+   "r": "5/5a/Bombermon_vpet_vb.png",
+   "c": 1
+  },
+  "927": {
+   "r": "d/d5/Bombmon_vpet_xloader.png",
+   "c": 1
+  },
+  "756": {
+   "r": "8/89/Bommon_vpet_vb.png",
+   "c": 1
+  },
+  "520": {
+   "r": "a/ab/Boogeymon_vpet_dw.gif",
+   "c": 0
+  },
+  "1364": {
+   "r": "1/15/Bosamon_vpet_vb.png",
+   "c": 1
+  },
+  "6": {
+   "r": "f/f2/Botamon_vpet_vb.png",
+   "c": 1
+  },
+  "1310": {
+   "r": "f/f4/Boutmon_vpet_vb.png",
+   "c": 1
+  },
+  "1432": {
+   "r": "d/dc/Bowmon_vpet_vb.png",
+   "c": 1
+  },
+  "142": {
+   "r": "e/e6/Brachimon_vpet_vb.png",
+   "c": 1
+  },
+  "872": {
+   "r": "e/e7/Breakdramon_vpet_vb.png",
+   "c": 1
+  },
+  "1433": {
+   "r": "5/51/Brigadramon_vpet_vb.png",
+   "c": 1
+  },
+  "1225": {
+   "r": "9/93/Bryweludramon_vpet_vb.png",
+   "c": 1
+  },
+  "42": {
+   "r": "1/1a/Bubbmon_vpet_vb.png",
+   "c": 1
+  },
+  "814": {
+   "r": "8/89/Budmon_vpet_pen.gif",
+   "c": 0
+  },
+  "1311": {
+   "r": "5/5d/Bulkmon_vpet_vb.png",
+   "c": 1
+  },
+  "280": {
+   "r": "0/02/Bullmon_vpet_d3.gif",
+   "c": 0
+  },
+  "521": {
+   "r": "8/8d/Burgermon_vpet_spirit.gif",
+   "c": 0
+  },
+  "873": {
+   "r": "9/91/Burpmon_vpet_dtwin.gif",
+   "c": 0
+  },
+  "815": {
+   "r": "9/92/Bushiagumon_vpet_pen.gif",
+   "c": 0
+  },
+  "281": {
+   "r": "3/37/Butterflymon_vpet_d3.gif",
+   "c": 0
+  },
+  "524": {
+   "r": "6/6c/Calamaramon_vpet_vb.png",
+   "c": 1
+  },
+  "525": {
+   "r": "c/c0/Callismon_vpet_dpc.gif",
+   "c": 1
+  },
+  "143": {
+   "r": "1/11/Candmon_vpet_xloader.png",
+   "c": 1
+  },
+  "642": {
+   "r": "7/7d/Cannonbeemon_vpet_vb.png",
+   "c": 1
+  },
+  "526": {
+   "r": "0/08/Cannondramon_vpet_vb.png",
+   "c": 1
+  },
+  "1365": {
+   "r": "a/a3/Canoweissmon_vpet_vb.png",
+   "c": 1
+  },
+  "144": {
+   "r": "8/84/Caprimon_vpet_vb.png",
+   "c": 1
+  },
+  "1434": {
+   "r": "c/c1/Cargodramon_vpet_vb.png",
+   "c": 1
+  },
+  "428": {
+   "r": "2/21/Caturamon_vpet_vb.png",
+   "c": 1
+  },
+  "43": {
+   "r": "0/0c/Centalmon_vpet_dmc.gif",
+   "c": 1
+  },
+  "429": {
+   "r": "f/fa/Cerberumon_vpet_vb.png",
+   "c": 1
+  },
+  "643": {
+   "r": "8/8c/Cerberumonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1166": {
+   "r": "d/dd/Ceresmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "1473": {
+   "r": "0/07/Cernumon_vpet_dpc.gif",
+   "c": 1
+  },
+  "535": {
+   "r": "2/25/Chackmon_vpet_vb.png",
+   "c": 1
+  },
+  "1405": {
+   "r": "c/c8/Chamblemon_vpet_vb.png",
+   "c": 1
+  },
+  "282": {
+   "r": "3/3a/Chamelemon_vpet_d3.gif",
+   "c": 0
+  },
+  "430": {
+   "r": "9/91/Chaosdukemon_vpet_vb.png",
+   "c": 1
+  },
+  "536": {
+   "r": "3/3c/Chaosdramon_vpet_vb.png",
+   "c": 1
+  },
+  "742": {
+   "r": "9/9f/Chaosdramonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "757": {
+   "r": "2/23/Chaosmon_vpet_xloader.png",
+   "c": 1
+  },
+  "816": {
+   "r": "4/45/Chapmon_vpet_dvic.gif",
+   "c": 0
+  },
+  "287": {
+   "r": "f/f3/Cherubimon_vice_raid_vpet_vb.png",
+   "c": 1
+  },
+  "1256": {
+   "r": "7/7d/Cherubimonvix_vpet_dmx.gif",
+   "c": 0
+  },
+  "288": {
+   "r": "8/82/Cherubimon_raid_vpet_vb.png",
+   "c": 1
+  },
+  "1257": {
+   "r": "5/58/Cherubimonvirtuex_vpet_dmx.gif",
+   "c": 0
+  },
+  "932": {
+   "r": "c/c6/Chibickmon_vpet_xloader.png",
+   "c": 1
+  },
+  "289": {
+   "r": "2/2e/Chibimon_vpet_vb.png",
+   "c": 1
+  },
+  "290": {
+   "r": "6/63/Chicomon_vpet_vb.png",
+   "c": 1
+  },
+  "933": {
+   "r": "e/ed/Chikurimon_vpet_xloader.png",
+   "c": 1
+  },
+  "146": {
+   "r": "4/4e/Chimairamon_vpet_vb.png",
+   "c": 1
+  },
+  "291": {
+   "r": "9/9a/Chocomon_vpet_d3_color.png",
+   "c": 1
+  },
+  "147": {
+   "r": "c/c1/Choromon_vpet_vb.png",
+   "c": 1
+  },
+  "1029": {
+   "r": "4/4b/Chohakkaimon_vpet_dpc.gif",
+   "c": 1
+  },
+  "292": {
+   "r": "2/2b/Chrysalimon_vpet_xloader.png",
+   "c": 1
+  },
+  "148": {
+   "r": "b/b6/Clearagumon_vpet_dt.gif",
+   "c": 0
+  },
+  "1366": {
+   "r": "e/e7/Climbmon_vpet_vb.png",
+   "c": 1
+  },
+  "149": {
+   "r": "c/ce/Clockmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "293": {
+   "r": "0/08/Coatlmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "44": {
+   "r": "6/61/Cockatrimon_vpet_vb.png",
+   "c": 1
+  },
+  "294": {
+   "r": "c/c9/Cocomon_vpet_pen.gif",
+   "c": 0
+  },
+  "45": {
+   "r": "d/d9/Coelamon_vpet_vb.png",
+   "c": 1
+  },
+  "759": {
+   "r": "d/da/Commandramon_vpet_vb.png",
+   "c": 1
+  },
+  "1226": {
+   "r": "2/2a/Copymon_vpet_pen.png",
+   "c": 0
+  },
+  "880": {
+   "r": "a/a7/Coredramon_blue_vpet_vb.png",
+   "c": 1
+  },
+  "881": {
+   "r": "e/ee/Coredramon_green_vpet_vb.png",
+   "c": 1
+  },
+  "882": {
+   "r": "a/ae/Coronamon_vpet_vb.png",
+   "c": 1
+  },
+  "1227": {
+   "r": "7/76/Cotsucomon_vpet_vb.png",
+   "c": 1
+  },
+  "760": {
+   "r": "a/a8/Craniummon_vpet_dm.gif",
+   "c": 0
+  },
+  "1228": {
+   "r": "c/c1/Craniummonx_vpet_dm.gif",
+   "c": 0
+  },
+  "1202": {
+   "r": "6/6d/Cresgarurumon_vpet_vb.png",
+   "c": 1
+  },
+  "883": {
+   "r": "9/9b/Crescemon_vpet_vb.png",
+   "c": 1
+  },
+  "295": {
+   "r": "e/ed/Crossmon_vpet_ws.gif",
+   "c": 1
+  },
+  "1229": {
+   "r": "f/f3/Cryspaledramon_vpet_vb.png",
+   "c": 1
+  },
+  "1435": {
+   "r": "a/a9/Cthyllamon_vpet_vb.png",
+   "c": 1
+  },
+  "431": {
+   "r": "6/6a/Culumon_vpet_dark_color.png",
+   "c": 1
+  },
+  "537": {
+   "r": "9/90/Cupimon_vpet_xloader.png",
+   "c": 1
+  },
+  "1367": {
+   "r": "1/18/Curimon_vpet_vb.png",
+   "c": 1
+  },
+  "934": {
+   "r": "3/33/Cutemon_vpet_xloader.png",
+   "c": 1
+  },
+  "150": {
+   "r": "3/38/Cyberdramon_vpet_vb.png",
+   "c": 1
+  },
+  "935": {
+   "r": "6/68/Cyberdramon_2010_vpet_vb.png",
+   "c": 1
+  },
+  "1258": {
+   "r": "8/81/Cyberdramonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "46": {
+   "r": "b/b5/Cyclomon_vpet_dmc.gif",
+   "c": 1
+  },
+  "654": {
+   "r": "b/b5/Dorugamon_vpet_vb.png",
+   "c": 1
+  },
+  "655": {
+   "r": "b/ba/Dorugoramon_vpet_vb.png",
+   "c": 1
+  },
+  "656": {
+   "r": "d/d5/Doruguremon_vpet_vb.png",
+   "c": 1
+  },
+  "657": {
+   "r": "8/86/Dorumon_vpet_vb.png",
+   "c": 1
+  },
+  "47": {
+   "r": "9/95/Dagomon_vpet_vb.png",
+   "c": 1
+  },
+  "538": {
+   "r": "e/ee/Daipenmon_vpet_vb.png",
+   "c": 1
+  },
+  "936": {
+   "r": "5/51/Damemon_vpet_vb.png",
+   "c": 1
+  },
+  "539": {
+   "r": "0/0c/Darcmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "937": {
+   "r": "2/2a/DarkKnightmon_vpet_xloader.png",
+   "c": 1
+  },
+  "1259": {
+   "r": "8/8c/Darkknightmonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "151": {
+   "r": "1/1c/Darklizamon_vpet_dark_color.png",
+   "c": 1
+  },
+  "1312": {
+   "r": "5/55/Darkmaildramon_vpet_dv.gif",
+   "c": 0
+  },
+  "884": {
+   "r": "b/be/Darksuperstarmon_vpet_vb.png",
+   "c": 1
+  },
+  "48": {
+   "r": "f/f1/Darktyranomon_vpet_vb.png",
+   "c": 1
+  },
+  "1260": {
+   "r": "5/5a/Darktyranomonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "761": {
+   "r": "c/ce/Darkdramon_vpet_vb.png",
+   "c": 1
+  },
+  "1036": {
+   "r": "3/34/DarknessBagramon_vpet_xloader.png",
+   "c": 1
+  },
+  "938": {
+   "r": "9/91/DeadlyAxemon_vpet_xloader.png",
+   "c": 1
+  },
+  "644": {
+   "r": "3/36/Deathxdorugamon_vpet_vb.png",
+   "c": 1
+  },
+  "645": {
+   "r": "a/ab/Deathxdorugoramon_vpet_vb.png",
+   "c": 1
+  },
+  "646": {
+   "r": "0/04/Deathxdoruguremon_vpet_vb.png",
+   "c": 1
+  },
+  "647": {
+   "r": "9/93/Death-x-mon_vpet_penx.gif",
+   "c": 0
+  },
+  "152": {
+   "r": "f/f7/Deathmeramon_vpet_vb.png",
+   "c": 1
+  },
+  "296": {
+   "r": "3/3a/Deathmon_vpet_vb.png",
+   "c": 1
+  },
+  "297": {
+   "r": "a/a7/Deathmon_black_vpet_vb.png",
+   "c": 1
+  },
+  "939": {
+   "r": "2/2b/DeckerGreymon_vpet_xloader.png",
+   "c": 1
+  },
+  "940": {
+   "r": "1/15/Deckerdramon_vpet_xloader.png",
+   "c": 1
+  },
+  "49": {
+   "r": "6/6f/Deltamon_vpet_vb.png",
+   "c": 1
+  },
+  "153": {
+   "r": "0/0c/Delumon_vpet_xloader.png",
+   "c": 1
+  },
+  "154": {
+   "r": "5/5e/Demon_vpet_xloader.png",
+   "c": 1
+  },
+  "298": {
+   "r": "2/2a/Depthmon_vpet_dark_color.png",
+   "c": 1
+  },
+  "540": {
+   "r": "8/8c/Destromon_vpet_vb.png",
+   "c": 1
+  },
+  "50": {
+   "r": "a/ab/Devidramon_vpet_vb.png",
+   "c": 1
+  },
+  "14": {
+   "r": "7/73/Devimon_vpet_vb.png",
+   "c": 1
+  },
+  "155": {
+   "r": "6/61/Devitamamon_vpet_vb.png",
+   "c": 1
+  },
+  "156": {
+   "r": "d/d5/Diablomon_raid_vpet_vb.png",
+   "c": 1
+  },
+  "1230": {
+   "r": "e/ec/Diablomonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "885": {
+   "r": "c/c7/Dianamon_vpet_vb.png",
+   "c": 1
+  },
+  "1406": {
+   "r": "3/3a/Diarbbitmon_vpet_vb.png",
+   "c": 1
+  },
+  "762": {
+   "r": "4/4f/Diatrymon_vpet_penz.gif",
+   "c": 0
+  },
+  "51": {
+   "r": "7/7b/Digitamamon_vpet_vb.png",
+   "c": 1
+  },
+  "299": {
+   "r": "a/ae/Digmon_vpet_vb.png",
+   "c": 1
+  },
+  "1436": {
+   "r": "8/8a/Dijiangmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "300": {
+   "r": "3/3f/Dinobeemon_vpet_vb.png",
+   "c": 1
+  },
+  "541": {
+   "r": "3/39/Dinohumon_vpet_spirit.gif",
+   "c": 0
+  },
+  "1475": {
+   "r": "3/3a/Dinomon_vpet_dpc.gif",
+   "c": 1
+  },
+  "649": {
+   "r": "f/f5/Dinorexmon_vpet_vb.png",
+   "c": 1
+  },
+  "650": {
+   "r": "5/50/Dinotigermon_vpet_vb.png",
+   "c": 1
+  },
+  "1368": {
+   "r": "0/07/Divemon_vpet_vb.png",
+   "c": 1
+  },
+  "432": {
+   "r": "9/91/Dobermon_vpet_vb.png",
+   "c": 1
+  },
+  "652": {
+   "r": "b/bf/Dodomon_vpet_vb.png",
+   "c": 1
+  },
+  "301": {
+   "r": "8/88/Dogmon_vpet_vb.png",
+   "c": 1
+  },
+  "1313": {
+   "r": "2/2b/Dokimon_vpet_vb.png",
+   "c": 1
+  },
+  "157": {
+   "r": "f/f6/Dokugumon_vpet_vb.png",
+   "c": 1
+  },
+  "158": {
+   "r": "5/5a/Dokunemon_vpet_dt.gif",
+   "c": 0
+  },
+  "542": {
+   "r": "9/94/Dominimon_vpet_vb.png",
+   "c": 1
+  },
+  "942": {
+   "r": "8/82/DonShoutmon_vpet_xloader.png",
+   "c": 1
+  },
+  "941": {
+   "r": "4/48/Dondokomon_vpet_xloader.png",
+   "c": 1
+  },
+  "1314": {
+   "r": "5/51/Donedevimon_vpet_vb.png",
+   "c": 1
+  },
+  "1040": {
+   "r": "8/83/Dorubicmon_vpet_xloader.png",
+   "c": 1
+  },
+  "653": {
+   "r": "a/a9/Dorimon_vpet_vb.png",
+   "c": 1
+  },
+  "943": {
+   "r": "b/ba/Dorulumon_vpet_vb.png",
+   "c": 1
+  },
+  "433": {
+   "r": "3/3a/Doumon_vpet_vb.png",
+   "c": 1
+  },
+  "891": {
+   "r": "3/34/Dracomon_vpet_vb.png",
+   "c": 1
+  },
+  "1231": {
+   "r": "a/a2/Dracomonx_vpet_dm.gif",
+   "c": 0
+  },
+  "763": {
+   "r": "f/f8/Dracumon_vpet_vb.png",
+   "c": 1
+  },
+  "52": {
+   "r": "5/5a/Drimogemon_vpet_vb.png",
+   "c": 1
+  },
+  "892": {
+   "r": "d/da/Duftmon_vpet_dm.gif",
+   "c": 0
+  },
+  "893": {
+   "r": "1/11/Duftmonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "434": {
+   "r": "1/18/Dukemon_forthbattle_vpet_vb.png",
+   "c": 1
+  },
+  "658": {
+   "r": "7/74/Dukemonx_vpet_vb.png",
+   "c": 1
+  },
+  "1203": {
+   "r": "6/6e/Duramon_vpet_vb.png",
+   "c": 1
+  },
+  "1204": {
+   "r": "8/8b/Durandamon_vpet_vb.png",
+   "c": 1
+  },
+  "544": {
+   "r": "6/6e/Duskmon_vpet_vb.png",
+   "c": 1
+  },
+  "545": {
+   "r": "3/31/Dynasmon_vpet_vb.png",
+   "c": 1
+  },
+  "659": {
+   "r": "b/bf/Dynasmonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "302": {
+   "r": "7/7e/Ebemon_vpet_xloader.png",
+   "c": 1
+  },
+  "660": {
+   "r": "e/e5/Ebemonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "546": {
+   "r": "f/fc/Ebiburgamon_vpet_dscan.gif",
+   "c": 0
+  },
+  "53": {
+   "r": "f/fd/Ebidramon_vpet_vb.png",
+   "c": 1
+  },
+  "823": {
+   "r": "e/e1/Eldoradimon_vpet_dpc.gif",
+   "c": 1
+  },
+  "15": {
+   "r": "e/e3/Elecmon_vpet_dmc.gif",
+   "c": 1
+  },
+  "304": {
+   "r": "7/79/Elephamon_vpet_d3.gif",
+   "c": 0
+  },
+  "1315": {
+   "r": "b/b5/Entmon_vpet_cutin.gif",
+   "c": 0
+  },
+  "1316": {
+   "r": "2/20/Eosmon_adult_vpet_dv.gif",
+   "c": 0
+  },
+  "1317": {
+   "r": "c/c7/Eosmon_perfect_vpet_vb.png",
+   "c": 1
+  },
+  "1318": {
+   "r": "c/c5/Eosmon_ultimate_vpet_penz.gif",
+   "c": 0
+  },
+  "1453": {
+   "r": "c/c8/Erlangmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "1407": {
+   "r": "d/dd/Espimon_vpet_vb.png",
+   "c": 1
+  },
+  "54": {
+   "r": "a/aa/Etemon_vpet_vb.png",
+   "c": 1
+  },
+  "55": {
+   "r": "c/ca/Evilmon_vpet_xloader.png",
+   "c": 1
+  },
+  "56": {
+   "r": "5/5f/Extyranomon_vpet_vb.png",
+   "c": 1
+  },
+  "895": {
+   "r": "0/04/Examon_vpet_vb.png",
+   "c": 1
+  },
+  "1262": {
+   "r": "7/7a/Examonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1319": {
+   "r": "d/d5/Exermon_vpet_vb.png",
+   "c": 1
+  },
+  "1320": {
+   "r": "4/4f/Eyesmon_vpet_dv.gif",
+   "c": 0
+  },
+  "547": {
+   "r": "5/56/Fairimon_vpet_vb.png",
+   "c": 1
+  },
+  "764": {
+   "r": "5/54/Falcomon_vpet_accel.gif",
+   "c": 0
+  },
+  "824": {
+   "r": "f/f0/Falcomon2006_vpet_vb.png",
+   "c": 1
+  },
+  "548": {
+   "r": "b/b1/Fangmon_vpet_dscan.gif",
+   "c": 0
+  },
+  "160": {
+   "r": "a/aa/Fantomon_vpet_vb.png",
+   "c": 1
+  },
+  "1437": {
+   "r": "7/7d/Fenriloogamon_vpet_vb.png",
+   "c": 1
+  },
+  "1232": {
+   "r": "7/7b/Filmon_vpet_vb.png",
+   "c": 1
+  },
+  "897": {
+   "r": "8/88/Firamon_vpet_vb.png",
+   "c": 1
+  },
+  "549": {
+   "r": "e/ee/Flawizarmon_vpet_dscan.gif",
+   "c": 0
+  },
+  "305": {
+   "r": "3/3c/Fladramon_vpet_vb.png",
+   "c": 1
+  },
+  "550": {
+   "r": "b/b7/Flamon_vpet_vb.png",
+   "c": 1
+  },
+  "161": {
+   "r": "4/48/FlareLizamon_vpet_xloader.png",
+   "c": 1
+  },
+  "898": {
+   "r": "1/19/Flaremon_vpet_vb.png",
+   "c": 1
+  },
+  "162": {
+   "r": "a/a9/Floramon_vpet_dpc.gif",
+   "c": 1
+  },
+  "163": {
+   "r": "c/cf/Flybeemon_vpet_dark_color.png",
+   "c": 1
+  },
+  "57": {
+   "r": "1/19/Flymon_vpet_dmc.gif",
+   "c": 1
+  },
+  "765": {
+   "r": "b/bd/Frimon_vpet_vb.png",
+   "c": 1
+  },
+  "306": {
+   "r": "5/56/Frogmon_vpet_d3.gif",
+   "c": 0
+  },
+  "1369": {
+   "r": "6/64/Frosvelgrmon_vpet_vb.png",
+   "c": 1
+  },
+  "1370": {
+   "r": "3/34/Frozomon_vpet_vb.png",
+   "c": 1
+  },
+  "661": {
+   "r": "9/97/Fufumon_vpet_vb.png",
+   "c": 1
+  },
+  "164": {
+   "r": "3/3f/Fugamon_vpet_dpc.gif",
+   "c": 1
+  },
+  "551": {
+   "r": "e/ea/Fujinmon_vpet_spirit.gif",
+   "c": 0
+  },
+  "1408": {
+   "r": "0/08/Fumamon_vpet_vb.png",
+   "c": 1
+  },
+  "662": {
+   "r": "f/fe/Funbeemon_vpet_vb.png",
+   "c": 1
+  },
+  "1439": {
+   "r": "a/a7/Fusamon_vpet_vb.png",
+   "c": 1
+  },
+  "16": {
+   "r": "4/4d/Gabumon_vpet_vb.png",
+   "c": 1
+  },
+  "307": {
+   "r": "f/f0/Gabumon_black_vpet_vb.png",
+   "c": 1
+  },
+  "663": {
+   "r": "c/ce/Gabumonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1322": {
+   "r": "6/65/Gabumon_kizuna_vpet_penz.gif",
+   "c": 0
+  },
+  "664": {
+   "r": "0/05/Gaioumon_vpet_vb.png",
+   "c": 1
+  },
+  "1455": {
+   "r": "0/0e/Galemon_vpet_dpc.gif",
+   "c": 1
+  },
+  "308": {
+   "r": "d/d1/Galgomon_vpet_vb.png",
+   "c": 1
+  },
+  "1372": {
+   "r": "2/22/Gammamon_vpet_vb.png",
+   "c": 1
+  },
+  "59": {
+   "r": "9/97/Ganimon_vpet_xloader.png",
+   "c": 1
+  },
+  "1135": {
+   "r": "f/fa/Gankoomon_vpet_dmc.gif",
+   "c": 1
+  },
+  "1263": {
+   "r": "2/22/Gankoomonx_vpet_dm.gif",
+   "c": 0
+  },
+  "825": {
+   "r": "6/6a/Gaogamon_vpet_vb.png",
+   "c": 1
+  },
+  "826": {
+   "r": "1/17/Gaomon_vpet_vb.png",
+   "c": 1
+  },
+  "945": {
+   "r": "1/12/Gaosmon_vpet_xloader.png",
+   "c": 1
+  },
+  "309": {
+   "r": "0/0b/Gargomon_vpet_xloader.png",
+   "c": 1
+  },
+  "165": {
+   "r": "3/3c/Garudamon_vpet_vb.png",
+   "c": 1
+  },
+  "719": {
+   "r": "2/2e/Garudamonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "611": {
+   "r": "c/c7/Garummon_vpet_vb.png",
+   "c": 1
+  },
+  "33": {
+   "r": "2/2b/Garurumon_vpet_vb.png",
+   "c": 1
+  },
+  "391": {
+   "r": "b/b4/Garurumon_black_vpet_vb.png",
+   "c": 1
+  },
+  "856": {
+   "r": "a/aa/Gawappamon_vpet_xloader.png",
+   "c": 1
+  },
+  "111": {
+   "r": "5/52/Gazimon_vpet_vb.png",
+   "c": 1
+  },
+  "112": {
+   "r": "d/d1/Gekomon_vpet_dpc.gif",
+   "c": 1
+  },
+  "857": {
+   "r": "b/bc/Geogreymon_vpet_vb.png",
+   "c": 1
+  },
+  "233": {
+   "r": "f/fa/Gerbemon_vpet_xloader.png",
+   "c": 1
+  },
+  "234": {
+   "r": "c/c9/Geremon_vpet_dt.gif",
+   "c": 0
+  },
+  "113": {
+   "r": "e/ef/Gesomon_vpet_vb.png",
+   "c": 1
+  },
+  "1424": {
+   "r": "e/e9/Ghilliedumon_vpet_vb.png",
+   "c": 1
+  },
+  "1351": {
+   "r": "c/c9/Ghostmon_vpet_vb.png",
+   "c": 1
+  },
+  "723": {
+   "r": "3/3b/Gigaseadramon_vpet_vb.png",
+   "c": 1
+  },
+  "235": {
+   "r": "2/29/Gigadramon_vpet_vb.png",
+   "c": 1
+  },
+  "612": {
+   "r": "a/a6/Gigasmon_vpet_vb.png",
+   "c": 1
+  },
+  "472": {
+   "r": "5/59/Gigimon_vpet_vb.png",
+   "c": 1
+  },
+  "1113": {
+   "r": "c/c0/Ginkakumon_vpet_dpc.gif",
+   "c": 1
+  },
+  "724": {
+   "r": "d/dc/Ginryumon_vpet_vb.png",
+   "c": 1
+  },
+  "114": {
+   "r": "7/78/Giromon_vpet_vb.png",
+   "c": 1
+  },
+  "115": {
+   "r": "3/3d/Gizamon_vpet_vb.png",
+   "c": 1
+  },
+  "613": {
+   "r": "5/5c/Gladimon_vpet_spirit.gif",
+   "c": 0
+  },
+  "393": {
+   "r": "9/9a/Goatmon_vpet_xloader.png",
+   "c": 1
+  },
+  "236": {
+   "r": "0/0e/Goburimon_vpet_xloader.png",
+   "c": 1
+  },
+  "237": {
+   "r": "1/1f/Goddramon_vpet_xloader.png",
+   "c": 1
+  },
+  "725": {
+   "r": "1/1a/Goddramonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1352": {
+   "r": "8/83/Gogmamon_vpet_vb.png",
+   "c": 1
+  },
+  "116": {
+   "r": "a/ab/Gokimon_vpet_vb.png",
+   "c": 1
+  },
+  "473": {
+   "r": "9/95/Gokumon_vpet_dmc.gif",
+   "c": 1
+  },
+  "1115": {
+   "r": "a/ad/Gokuwmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "394": {
+   "r": "3/3c/Goldvdramon_vpet_vb.png",
+   "c": 1
+  },
+  "238": {
+   "r": "5/52/Golemon_vpet_vb.png",
+   "c": 1
+  },
+  "117": {
+   "r": "6/6c/Gomamon_vpet_xloader.png",
+   "c": 1
+  },
+  "726": {
+   "r": "b/be/Gomamonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "118": {
+   "r": "7/77/Gorimon_vpet_vb.png",
+   "c": 1
+  },
+  "1392": {
+   "r": "2/21/Goromon_vpet_vb.png",
+   "c": 1
+  },
+  "119": {
+   "r": "9/9b/Gottsumon_vpet_vb.png",
+   "c": 1
+  },
+  "1221": {
+   "r": "d/db/Gracenovamon_vpet_vb.png",
+   "c": 1
+  },
+  "728": {
+   "r": "3/39/Grademon_vpet_vb.png",
+   "c": 1
+  },
+  "395": {
+   "r": "4/4e/Grankuwagamon_vpet_vb.png",
+   "c": 1
+  },
+  "793": {
+   "r": "3/34/Granddracumon_vpet_vb.png",
+   "c": 1
+  },
+  "1460": {
+   "r": "4/4f/Grandgalemon_vpet_dpc.gif",
+   "c": 1
+  },
+  "614": {
+   "r": "b/bf/Grandlocomon_vpet_vb.png",
+   "c": 1
+  },
+  "729": {
+   "r": "a/a5/Grandiskuwagamon_vpet_vb.png",
+   "c": 1
+  },
+  "474": {
+   "r": "6/67/Grappuleomon_vpet_vb.png",
+   "c": 1
+  },
+  "1120": {
+   "r": "9/9a/Gravimon_vpet_dmc.gif",
+   "c": 1
+  },
+  "1122": {
+   "r": "3/31/Greyknightsmon_vpet_xloader.png",
+   "c": 1
+  },
+  "34": {
+   "r": "c/c6/Greymon_vpet_vb.png",
+   "c": 1
+  },
+  "1006": {
+   "r": "4/48/Greymon_2010_vpet_xloader.png",
+   "c": 1
+  },
+  "1007": {
+   "r": "b/b5/Greymon_Ash_vpet_xloader.png",
+   "c": 1
+  },
+  "396": {
+   "r": "8/82/Greymon_blue_vpet_vb.png",
+   "c": 1
+  },
+  "730": {
+   "r": "6/66/Greymonx_vpet_penx.gif",
+   "c": 0
+  },
+  "241": {
+   "r": "c/c9/Griffomon_vpet_vb.png",
+   "c": 1
+  },
+  "615": {
+   "r": "b/b5/Grottemon_vpet_vb.png",
+   "c": 1
+  },
+  "915": {
+   "r": "d/dc/Groundramon_vpet_vb.png",
+   "c": 1
+  },
+  "475": {
+   "r": "0/07/Growmon_vpet_vb.png",
+   "c": 1
+  },
+  "476": {
+   "r": "3/32/Growmon_orange_vpet_vb.png",
+   "c": 1
+  },
+  "731": {
+   "r": "6/6f/Growmonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "616": {
+   "r": "2/27/Gryzmon_vpet_vb.png",
+   "c": 1
+  },
+  "242": {
+   "r": "7/7c/Guardromon_vpet_xloader.png",
+   "c": 1
+  },
+  "477": {
+   "r": "7/77/Guilmon_vpet_vb.png",
+   "c": 1
+  },
+  "732": {
+   "r": "2/2a/Guilmonx_vpet_penx.gif",
+   "c": 0
+  },
+  "478": {
+   "r": "c/c2/Gulfmon_raid_vpet_vb.png",
+   "c": 1
+  },
+  "1393": {
+   "r": "5/53/Gulusgammamon_vpet_vb.png",
+   "c": 1
+  },
+  "1123": {
+   "r": "5/54/Gumdramon_vpet_vb.png",
+   "c": 1
+  },
+  "397": {
+   "r": "4/4b/Gummymon_vpet_vb.png",
+   "c": 1
+  },
+  "1186": {
+   "r": "4/42/Gundramon_vpet_vb.png",
+   "c": 1
+  },
+  "1394": {
+   "r": "f/fb/Gurimon_vpet_vb.png",
+   "c": 1
+  },
+  "243": {
+   "r": "e/e7/Gururumon_vpet_dt.gif",
+   "c": 0
+  },
+  "1353": {
+   "r": "6/6d/Gusokumon_vpet_vb.png",
+   "c": 1
+  },
+  "1426": {
+   "r": "b/b7/Gyukimon_vpet_vb.png",
+   "c": 1
+  },
+  "244": {
+   "r": "9/97/Hagurumon_vpet_vb.png",
+   "c": 1
+  },
+  "245": {
+   "r": "3/34/Hangyomon_vpet_vb.png",
+   "c": 1
+  },
+  "246": {
+   "r": "8/8c/Hanumon_vpet_dpc.gif",
+   "c": 1
+  },
+  "398": {
+   "r": "8/8e/Harpymon_vpet_vb.png",
+   "c": 1
+  },
+  "399": {
+   "r": "b/b7/Hawkmon_vpet_vb.png",
+   "c": 1
+  },
+  "1354": {
+   "r": "2/20/Heavyleomon_vpet_vb.png",
+   "c": 1
+  },
+  "1449": {
+   "r": "2/2a/Helloogarmon_vpet_vb.png",
+   "c": 1
+  },
+  "120": {
+   "r": "0/06/Heraklekabuterimon_vpet_vb.png",
+   "c": 1
+  },
+  "1249": {
+   "r": "1/17/Herissmon_vpet_vb.png",
+   "c": 1
+  },
+  "1289": {
+   "r": "d/d8/Hexeblaumon_vpet_vb.png",
+   "c": 1
+  },
+  "1450": {
+   "r": "f/f9/Hicommandramon_vpet_vb.png",
+   "c": 1
+  },
+  "1124": {
+   "r": "e/ef/Hi-VisionMonitamon_vpet_xloader.png",
+   "c": 1
+  },
+  "400": {
+   "r": "c/c0/Hiandromon_vpet_vb.png",
+   "c": 1
+  },
+  "618": {
+   "r": "a/ad/Hippogriffomon_vpet_vb.png",
+   "c": 1
+  },
+  "733": {
+   "r": "f/f0/Hisyaryumon_vpet_vb.png",
+   "c": 1
+  },
+  "1395": {
+   "r": "3/35/Hiyarimon_vpet_vb.png",
+   "c": 1
+  },
+  "401": {
+   "r": "1/19/Holsmon_vpet_vb.png",
+   "c": 1
+  },
+  "121": {
+   "r": "7/73/Holyangemon_vpet_vb.png",
+   "c": 1
+  },
+  "123": {
+   "r": "e/ef/Holydramon_vpet_vb.png",
+   "c": 1
+  },
+  "734": {
+   "r": "d/d6/Holydramonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "247": {
+   "r": "d/d9/Honeybeemon_vpet_d3.gif",
+   "c": 0
+  },
+  "619": {
+   "r": "c/c6/Hookmon_vpet_spirit.gif",
+   "c": 0
+  },
+  "479": {
+   "r": "6/6d/Hopmon_vpet_vb.png",
+   "c": 1
+  },
+  "248": {
+   "r": "e/e1/Hououmon_vpet_vb.png",
+   "c": 1
+  },
+  "1290": {
+   "r": "c/c7/Hououmonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1427": {
+   "r": "d/d6/Hoverespimon_vpet_vb.png",
+   "c": 1
+  },
+  "620": {
+   "r": "b/bc/Huanglongmon_vpet_xloader.png",
+   "c": 1
+  },
+  "1429": {
+   "r": "3/38/Huankunmon_vpet_vb.png",
+   "c": 1
+  },
+  "1222": {
+   "r": "e/e5/Hudiemon_vpet_vb.png",
+   "c": 1
+  },
+  "1396": {
+   "r": "0/08/Hydramon_vpet_vb.png",
+   "c": 1
+  },
+  "249": {
+   "r": "5/5d/Hyougamon_vpet_vb.png",
+   "c": 1
+  },
+  "250": {
+   "r": "a/a9/Icedevimon_vpet_vb.png",
+   "c": 1
+  },
+  "251": {
+   "r": "c/c2/Icemon_vpet_vb.png",
+   "c": 1
+  },
+  "252": {
+   "r": "b/bd/Igamon_vpet_xloader.png",
+   "c": 1
+  },
+  "124": {
+   "r": "3/39/Ikkakumon_vpet_vb.png",
+   "c": 1
+  },
+  "482": {
+   "r": "6/68/Impmon_vpet_vb.png",
+   "c": 1
+  },
+  "1291": {
+   "r": "e/e3/Impmonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "483": {
+   "r": "0/05/Indaramon_vpet_vb.png",
+   "c": 1
+  },
+  "406": {
+   "r": "4/4d/Infermon_vpet_dv_color.png",
+   "c": 1
+  },
+  "253": {
+   "r": "a/ab/Insekimon_vpet_dt.gif",
+   "c": 0
+  },
+  "1187": {
+   "r": "a/a4/Jesmon_vpet_vb.png",
+   "c": 1
+  },
+  "1250": {
+   "r": "6/63/Jesmon_X_vpet_pen.gif",
+   "c": 0
+  },
+  "1295": {
+   "r": "e/e0/Jesmongx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1292": {
+   "r": "0/08/Jazamon_vpet_vb.png",
+   "c": 1
+  },
+  "1293": {
+   "r": "f/f7/Jazardmon_vpet_dmx.gif",
+   "c": 0
+  },
+  "1294": {
+   "r": "2/2d/Jazarichmon_vpet_vb.png",
+   "c": 1
+  },
+  "1397": {
+   "r": "4/44/Jellymon_battle_vpet_vb.png",
+   "c": 1
+  },
+  "621": {
+   "r": "f/fd/Jetsilphymon_vpet_vb.png",
+   "c": 1
+  },
+  "622": {
+   "r": "0/07/Jewelbeemon_vpet_vb.png",
+   "c": 1
+  },
+  "254": {
+   "r": "d/d2/Jijimon_vpet_dark_color.png",
+   "c": 1
+  },
+  "1157": {
+   "r": "4/48/Jokermon_vpet_vb.png",
+   "c": 1
+  },
+  "1468": {
+   "r": "e/e8/Jougamon_vpet_dpc.gif",
+   "c": 1
+  },
+  "862": {
+   "r": "d/dd/JumboGamemon_vpet_xloader.png",
+   "c": 1
+  },
+  "255": {
+   "r": "8/86/Jmojyamon_vpet_dt.gif",
+   "c": 0
+  },
+  "1355": {
+   "r": "5/56/Junkmon_vpet_cutin.gif",
+   "c": 0
+  },
+  "1188": {
+   "r": "5/59/Junomon_vpet_dpc.gif",
+   "c": 1
+  },
+  "1175": {
+   "r": "b/b6/Jupitermon_vpet_dpc.gif",
+   "c": 1
+  },
+  "1296": {
+   "r": "d/d8/Justimonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "125": {
+   "r": "a/a9/Jyagamon_vpet_vb.png",
+   "c": 1
+  },
+  "486": {
+   "r": "2/21/Jyarimon_vpet_vb.png",
+   "c": 1
+  },
+  "256": {
+   "r": "0/01/Jyureimon_vpet_xloader.png",
+   "c": 1
+  },
+  "1297": {
+   "r": "9/90/Jyureimon_raid_boss_vpet_vb.png",
+   "c": 1
+  },
+  "407": {
+   "r": "7/7a/Kabukimon_vpet_d3.gif",
+   "c": 0
+  },
+  "35": {
+   "r": "2/2e/Kabuterimon_vpet_vb.png",
+   "c": 1
+  },
+  "625": {
+   "r": "9/9b/Kaisergreymon_vpet_vb.png",
+   "c": 1
+  },
+  "626": {
+   "r": "9/9f/Kaiserleomon_vpet_vb.png",
+   "c": 1
+  },
+  "1251": {
+   "r": "7/73/Kakkinmon_vpet_vb.png",
+   "c": 1
+  },
+  "817": {
+   "r": "1/17/Kamemon_vpet_xloader.png",
+   "c": 1
+  },
+  "408": {
+   "r": "7/75/Kangalmon_vpet_d3.gif",
+   "c": 0
+  },
+  "409": {
+   "r": "d/d9/Karatenmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "257": {
+   "r": "b/bf/Karatukinumemon_vpet_vb.png",
+   "c": 1
+  },
+  "1398": {
+   "r": "8/84/Kausgammamon_vpet_vb.png",
+   "c": 1
+  },
+  "1356": {
+   "r": "e/ed/Kazuchimon_vpet_vb.png",
+   "c": 1
+  },
+  "627": {
+   "r": "a/a8/Keemon_vpet_vb.png",
+   "c": 1
+  },
+  "628": {
+   "r": "8/8d/Kenkimon_vpet_spirit.gif",
+   "c": 0
+  },
+  "410": {
+   "r": "d/dd/Keramon_vpet_dv_color.png",
+   "c": 1
+  },
+  "1298": {
+   "r": "2/24/Keramonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "487": {
+   "r": "d/de/Ketomon_vpet_vb.png",
+   "c": 1
+  },
+  "863": {
+   "r": "2/2c/Kingchessmon_vpet_dvic.gif",
+   "c": 0
+  },
+  "258": {
+   "r": "8/89/Kingetemon_vpet_vb.png",
+   "c": 1
+  },
+  "1015": {
+   "r": "3/36/Kingwhamon_vpet_dpc.gif",
+   "c": 1
+  },
+  "1129": {
+   "r": "d/de/Kinkakumon_vpet_vb.png",
+   "c": 1
+  },
+  "259": {
+   "r": "d/d0/Kiwimon_vpet_dpc.gif",
+   "c": 1
+  },
+  "864": {
+   "r": "4/4f/Knightchessmon_black_vpet_dvic.gif",
+   "c": 0
+  },
+  "865": {
+   "r": "f/f2/Knightchessmon_white_vpet_dvic.gif",
+   "c": 0
+  },
+  "260": {
+   "r": "3/32/Knightmon_vpet_xloader.png",
+   "c": 1
+  },
+  "1130": {
+   "r": "9/9e/Knightmon_ws_mode_vpet_fusion_loader.png",
+   "c": 0
+  },
+  "1399": {
+   "r": "e/e4/Kodokugumon_vpet_vb.png",
+   "c": 1
+  },
+  "630": {
+   "r": "2/25/Koemon_vpet_vb.png",
+   "c": 1
+  },
+  "796": {
+   "r": "8/8b/Kokabuterimon_vpet_vb.png",
+   "c": 1
+  },
+  "262": {
+   "r": "5/58/Kokuwamon_vpet_vb.png",
+   "c": 1
+  },
+  "735": {
+   "r": "c/c3/Kokuwamonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1400": {
+   "r": "e/ef/Komondomon_vpet_vb.png",
+   "c": 1
+  },
+  "411": {
+   "r": "1/18/Kongoumon_vpet_vb.png",
+   "c": 1
+  },
+  "36": {
+   "r": "9/9b/Koromon_vpet_vb.png",
+   "c": 1
+  },
+  "631": {
+   "r": "c/c2/Kotemon_vpet_dscan.gif",
+   "c": 0
+  },
+  "632": {
+   "r": "3/3f/Kougamon_vpet_spirit.gif",
+   "c": 0
+  },
+  "797": {
+   "r": "b/ba/Kudamon_vpet_vb.png",
+   "c": 1
+  },
+  "866": {
+   "r": "d/d0/Kudamon_vpet_xloader.png",
+   "c": 1
+  },
+  "488": {
+   "r": "9/99/Kumbhiramon_vpet_vb.png",
+   "c": 1
+  },
+  "126": {
+   "r": "7/7f/Kunemon_vpet_dmc.gif",
+   "c": 1
+  },
+  "412": {
+   "r": "1/1d/Kuramon_vpet_d3_color.png",
+   "c": 1
+  },
+  "127": {
+   "r": "3/3c/Kuwagamon_vpet_vb.png",
+   "c": 1
+  },
+  "736": {
+   "r": "c/c4/Kuwagamonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "489": {
+   "r": "5/52/Kuzuhamon_vpet_vb.png",
+   "c": 1
+  },
+  "798": {
+   "r": "8/8d/Kyaromon_vpet_dvic.gif",
+   "c": 0
+  },
+  "737": {
+   "r": "d/d3/Kyokyomon_vpet_vb.png",
+   "c": 1
+  },
+  "490": {
+   "r": "2/2a/Kyubimon_vpet_vb.png",
+   "c": 1
+  },
+  "633": {
+   "r": "1/1d/Kyukimon_vpet_vb.png",
+   "c": 1
+  },
+  "492": {
+   "r": "3/33/Labramon_vpet_dark_color.png",
+   "c": 1
+  },
+  "128": {
+   "r": "5/53/Ladydevimon_vpet_xloader.png",
+   "c": 1
+  },
+  "1299": {
+   "r": "d/d2/Ladydevimonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "867": {
+   "r": "a/a3/Lalamon_vpet_vb.png",
+   "c": 1
+  },
+  "1469": {
+   "r": "1/10/Lamiamon_vpet_dpc.gif",
+   "c": 1
+  },
+  "1373": {
+   "r": "a/a7/Lamortmon_vpet_vb.png",
+   "c": 1
+  },
+  "310": {
+   "r": "d/d6/Lampmon_vpet_ws.gif",
+   "c": 1
+  },
+  "1205": {
+   "r": "5/53/Lavogaritamon_vpet_vb.png",
+   "c": 1
+  },
+  "1206": {
+   "r": "4/46/Lavorvomon_vpet_vb.png",
+   "c": 1
+  },
+  "311": {
+   "r": "7/77/Leafmon_vpet_vb.png",
+   "c": 1
+  },
+  "899": {
+   "r": "c/c6/Lekismon_vpet_vb.png",
+   "c": 1
+  },
+  "60": {
+   "r": "2/21/Leomon_vpet_vb.png",
+   "c": 1
+  },
+  "666": {
+   "r": "7/7e/Leomonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "667": {
+   "r": "a/a9/Leviamon_vpet_xloader.png",
+   "c": 1
+  },
+  "1264": {
+   "r": "b/bb/Leviamonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "766": {
+   "r": "4/49/Liamon_vpet_vb.png",
+   "c": 1
+  },
+  "1409": {
+   "r": "e/e0/Lianpumon_vpet_dpc.gif",
+   "c": 1
+  },
+  "312": {
+   "r": "2/2a/Lighdramon_vpet_vb.png",
+   "c": 1
+  },
+  "827": {
+   "r": "1/14/Lilamon_vpet_vb.png",
+   "c": 1
+  },
+  "166": {
+   "r": "2/2a/Lilimon_vpet_vb.png",
+   "c": 1
+  },
+  "668": {
+   "r": "0/0f/Lilimonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "552": {
+   "r": "d/df/Lilithmon_vpet_xloader.png",
+   "c": 1
+  },
+  "767": {
+   "r": "f/fe/Liollmon_vpet_vb.png",
+   "c": 1
+  },
+  "768": {
+   "r": "0/02/Loaderleomon_vpet_vb.png",
+   "c": 1
+  },
+  "553": {
+   "r": "0/09/Locomon_vpet_vb.png",
+   "c": 1
+  },
+  "1440": {
+   "r": "5/53/Loogamon_vpet_vb.png",
+   "c": 1
+  },
+  "1441": {
+   "r": "3/38/Loogarmon_vpet_vb.png",
+   "c": 1
+  },
+  "313": {
+   "r": "3/30/Lopmon_vpet_xloader.png",
+   "c": 1
+  },
+  "1266": {
+   "r": "e/eb/Lopmonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "554": {
+   "r": "d/df/Lordknightmon_vpet_vb.png",
+   "c": 1
+  },
+  "1233": {
+   "r": "e/e3/Lordknightmonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "900": {
+   "r": "2/2e/Lotusmon_vpet_vb.png",
+   "c": 1
+  },
+  "436": {
+   "r": "2/2f/Lucemon_vpet_xloader.png",
+   "c": 1
+  },
+  "1207": {
+   "r": "a/ae/Ludomon_vpet_vb.png",
+   "c": 1
+  },
+  "1136": {
+   "r": "0/0e/Luminamon_vpet_dpc.gif",
+   "c": 1
+  },
+  "901": {
+   "r": "3/3b/Lunamon_vpet_vb.png",
+   "c": 1
+  },
+  "1442": {
+   "r": "5/55/Luxmon_vpet_vb.png",
+   "c": 1
+  },
+  "314": {
+   "r": "1/11/Lynxmon_vpet_vb.png",
+   "c": 1
+  },
+  "555": {
+   "r": "e/e4/Lowemon_vpet_vb.png",
+   "c": 1
+  },
+  "828": {
+   "r": "e/ee/Machgaogamon_vpet_vb.png",
+   "c": 1
+  },
+  "1324": {
+   "r": "3/3c/Machmon_vpet_vb.png",
+   "c": 1
+  },
+  "947": {
+   "r": "6/69/Madleomon_vpet_vb.png",
+   "c": 1
+  },
+  "559": {
+   "r": "3/32/Magnagarurumon_vpet_vb.png",
+   "c": 1
+  },
+  "1168": {
+   "r": "4/47/Magnakidmon_vpet_vb.png",
+   "c": 1
+  },
+  "315": {
+   "r": "f/fd/Magnamon_vpet_vb.png",
+   "c": 1
+  },
+  "670": {
+   "r": "a/a9/Magnamonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "951": {
+   "r": "9/98/Mailbirdramon_vpet_vb.png",
+   "c": 1
+  },
+  "316": {
+   "r": "b/b2/Maildramon_vpet_d3.gif",
+   "c": 0
+  },
+  "437": {
+   "r": "6/6d/Majiramon_vpet_vb.png",
+   "c": 1
+  },
+  "438": {
+   "r": "9/93/Makuramon_vpet_vb.png",
+   "c": 1
+  },
+  "17": {
+   "r": "7/7a/Mamemon_vpet_vb.png",
+   "c": 1
+  },
+  "744": {
+   "r": "5/59/Mamemonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "671": {
+   "r": "d/d4/Mametyramon_vpet_vb.png",
+   "c": 1
+  },
+  "61": {
+   "r": "3/30/Mammon_vpet_vb.png",
+   "c": 1
+  },
+  "672": {
+   "r": "4/41/Mammonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "317": {
+   "r": "c/c3/Manbomon_vpet_vb.png",
+   "c": 1
+  },
+  "318": {
+   "r": "7/7e/Mantaraymon_vpet_dark_color.png",
+   "c": 1
+  },
+  "673": {
+   "r": "2/29/Mantaraymonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1326": {
+   "r": "7/7e/Manticoremon_vpet_vb.png",
+   "c": 1
+  },
+  "62": {
+   "r": "8/8a/Marinangemon_vpet_vb.png",
+   "c": 1
+  },
+  "1481": {
+   "r": "d/d6/Marinbullmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "1327": {
+   "r": "0/0f/Marinchimairamon_vpet_vb.png",
+   "c": 1
+  },
+  "63": {
+   "r": "d/de/Marindevimon_vpet_vb.png",
+   "c": 1
+  },
+  "560": {
+   "r": "2/2c/Marsmon_vpet_vb.png",
+   "c": 1
+  },
+  "1191": {
+   "r": "1/19/Mastemon_vpet_dpc.gif",
+   "c": 1
+  },
+  "167": {
+   "r": "c/c4/Mastertyranomon_vpet_vb.png",
+   "c": 1
+  },
+  "319": {
+   "r": "2/24/Mastervdramon_vpet_spirit.gif",
+   "c": 0
+  },
+  "769": {
+   "r": "c/c1/Matadrmon_vpet_vb.png",
+   "c": 1
+  },
+  "64": {
+   "r": "4/49/Mechanorimon_vpet_dpc.gif",
+   "c": 1
+  },
+  "674": {
+   "r": "8/8e/Medievaldukemon_vpet_vb.png",
+   "c": 1
+  },
+  "65": {
+   "r": "b/b0/Megaseadramon_vpet_vb.png",
+   "c": 1
+  },
+  "675": {
+   "r": "f/fb/Megaseadramonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "66": {
+   "r": "f/fb/Megadramon_vpet_vb.png",
+   "c": 1
+  },
+  "439": {
+   "r": "3/3c/Megalogrowmon_vpet_vb.png",
+   "c": 1
+  },
+  "440": {
+   "r": "2/2f/Megalogrowmon_orange_vpet_vb.png",
+   "c": 1
+  },
+  "676": {
+   "r": "1/11/Megalogrowmonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "441": {
+   "r": "c/c8/Megidramon_vpet_vb.png",
+   "c": 1
+  },
+  "677": {
+   "r": "a/a5/Megidramonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1192": {
+   "r": "8/83/Meicoomon_vpet_dm.gif",
+   "c": 0
+  },
+  "1208": {
+   "r": "3/31/Meicrackmon_vpet_dm.gif",
+   "c": 0
+  },
+  "442": {
+   "r": "c/c0/Mephismon_vpet_vb.png",
+   "c": 1
+  },
+  "1268": {
+   "r": "e/e0/Mephismonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "18": {
+   "r": "5/5f/Meramon_vpet_vb.png",
+   "c": 1
+  },
+  "1269": {
+   "r": "5/51/Meramonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "561": {
+   "r": "7/7a/Mercuremon_vpet_vb.png",
+   "c": 1
+  },
+  "770": {
+   "r": "b/ba/Mercurymon_vpet_vb.png",
+   "c": 1
+  },
+  "320": {
+   "r": "5/54/Mermaimon_vpet_vb.png",
+   "c": 1
+  },
+  "1054": {
+   "r": "a/a7/Mervamon_vpet_xloader.png",
+   "c": 1
+  },
+  "67": {
+   "r": "e/e8/Metaletemon_vpet_vb.png",
+   "c": 1
+  },
+  "678": {
+   "r": "b/bb/Metalfantomon_vpet_dmx.gif",
+   "c": 0
+  },
+  "168": {
+   "r": "6/6a/Metalgarurumon_vpet_vb.png",
+   "c": 1
+  },
+  "321": {
+   "r": "9/9c/Metalgarurumon_black_vpet_vb.png",
+   "c": 1
+  },
+  "679": {
+   "r": "f/fa/Metalgarurumonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "169": {
+   "r": "5/54/Metalgreymon_vpet_vb.png",
+   "c": 1
+  },
+  "955": {
+   "r": "3/38/Metalgreymon_2010_vpet_vb.png",
+   "c": 1
+  },
+  "19": {
+   "r": "a/ae/Metalgreymon_virus_vpet_vb.png",
+   "c": 1
+  },
+  "1270": {
+   "r": "9/98/Metalgreymonvirusx_vpet_dmx.gif",
+   "c": 0
+  },
+  "680": {
+   "r": "7/7b/Metalgreymonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "20": {
+   "r": "a/aa/Metalmamemon_vpet_vb.png",
+   "c": 1
+  },
+  "681": {
+   "r": "4/40/Metalpiranimon_vpet_dmx.gif",
+   "c": 0
+  },
+  "68": {
+   "r": "a/ad/Metalseadramon_vpet_vb.png",
+   "c": 1
+  },
+  "69": {
+   "r": "9/90/Metaltyranomon_vpet_vb.png",
+   "c": 1
+  },
+  "682": {
+   "r": "6/6c/Metaltyranomonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1271": {
+   "r": "1/1c/Metallicdramon_vpet_vb.png",
+   "c": 1
+  },
+  "771": {
+   "r": "1/1d/Metallifekuwagamon_vpet_vb.png",
+   "c": 1
+  },
+  "443": {
+   "r": "b/bc/Mihiramon_vpet_vb.png",
+   "c": 1
+  },
+  "563": {
+   "r": "a/a8/Mikemon_vpet_dscan.gif",
+   "c": 0
+  },
+  "170": {
+   "r": "4/4e/Millenniumon_raid_vpet_vb.png",
+   "c": 1
+  },
+  "1329": {
+   "r": "c/cd/Mimicmon_vpet_cutin.gif",
+   "c": 0
+  },
+  "772": {
+   "r": "a/a5/Minervamon_vpet_xloader.png",
+   "c": 1
+  },
+  "1234": {
+   "r": "6/65/Minervamonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "829": {
+   "r": "7/71/Atamadekachimon_vpet_dw.gif",
+   "c": 0
+  },
+  "322": {
+   "r": "d/dd/Minomon_vpet_vb.png",
+   "c": 1
+  },
+  "70": {
+   "r": "4/4d/Minotaurmon_vpet_xloader.png",
+   "c": 1
+  },
+  "830": {
+   "r": "e/ea/Miragegaogamon_vpet_vb.png",
+   "c": 1
+  },
+  "773": {
+   "r": "7/73/Missimon_vpet_vb.png",
+   "c": 1
+  },
+  "564": {
+   "r": "6/68/Mistymon_vpet_spirit.gif",
+   "c": 0
+  },
+  "1330": {
+   "r": "4/4e/Mitamamon_vpet_vb.png",
+   "c": 1
+  },
+  "71": {
+   "r": "d/d9/Mochimon_vpet_vb.png",
+   "c": 1
+  },
+  "172": {
+   "r": "4/46/Modokibetamon_vpet_dt.gif",
+   "c": 0
+  },
+  "72": {
+   "r": "9/9f/Mojyamon_vpet_vb.png",
+   "c": 1
+  },
+  "173": {
+   "r": "c/c2/Mokumon_vpet_vb.png",
+   "c": 1
+  },
+  "957": {
+   "r": "e/e4/Monimon_vpet_xloader.png",
+   "c": 1
+  },
+  "958": {
+   "r": "3/33/Monitamon_vpet_xloader.png",
+   "c": 1
+  },
+  "73": {
+   "r": "b/b4/Monochromon_vpet_vb.png",
+   "c": 1
+  },
+  "683": {
+   "r": "5/51/Monochromonx_vpet_penx.gif",
+   "c": 0
+  },
+  "444": {
+   "r": "e/e1/Monodramon_vpet_vb.png",
+   "c": 1
+  },
+  "21": {
+   "r": "f/ff/Monzaemon_vpet_vb.png",
+   "c": 1
+  },
+  "1272": {
+   "r": "7/75/Monzaemonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "323": {
+   "r": "2/2e/Moon=millenniumon_vpet_dw.gif",
+   "c": 0
+  },
+  "902": {
+   "r": "e/ee/Moonmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "324": {
+   "r": "6/65/Moosemon_vpet_vb.png",
+   "c": 1
+  },
+  "174": {
+   "r": "1/1f/Morishellmon_vpet_dt.gif",
+   "c": 0
+  },
+  "1331": {
+   "r": "7/70/Morphomon_vpet_vb.png",
+   "c": 1
+  },
+  "325": {
+   "r": "d/db/Mothmon_vpet_d3.gif",
+   "c": 0
+  },
+  "175": {
+   "r": "b/b6/Muchomon_vpet_dt.gif",
+   "c": 0
+  },
+  "176": {
+   "r": "c/c3/Mugendramon_vpet_vb.png",
+   "c": 1
+  },
+  "177": {
+   "r": "f/f3/Mummymon_vpet_vb.png",
+   "c": 1
+  },
+  "565": {
+   "r": "a/a2/Murmukusmon_vpet_vb.png",
+   "c": 1
+  },
+  "178": {
+   "r": "e/e3/Mushmon_vpet_xloader.png",
+   "c": 1
+  },
+  "1056": {
+   "r": "b/bc/Musouknightmon_vpet_xloader.png",
+   "c": 1
+  },
+  "179": {
+   "r": "d/d4/Musyamon_vpet_vb.png",
+   "c": 1
+  },
+  "1332": {
+   "r": "d/d0/Namakemon_vpet_vb.png",
+   "c": 1
+  },
+  "74": {
+   "r": "4/43/Nanimon_vpet_dmc.gif",
+   "c": 1
+  },
+  "75": {
+   "r": "a/a5/Nanomon_vpet_vb.png",
+   "c": 1
+  },
+  "567": {
+   "r": "0/07/Neemon_vpet_dscan.gif",
+   "c": 0
+  },
+  "326": {
+   "r": "a/a8/Nefertimon_vpet_vb.png",
+   "c": 1
+  },
+  "684": {
+   "r": "d/d6/Nefertimonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1334": {
+   "r": "8/88/Negamon_vpet_dv.gif",
+   "c": 0
+  },
+  "568": {
+   "r": "7/7b/Neodevimon_vpet_vb.png",
+   "c": 1
+  },
+  "1057": {
+   "r": "4/40/Neovamdemon_vpet_vb.png",
+   "c": 1
+  },
+  "774": {
+   "r": "e/e2/Neptunemon_vpet_vb.png",
+   "c": 1
+  },
+  "1470": {
+   "r": "3/3d/Nezhamon_vpet_dpc.gif",
+   "c": 1
+  },
+  "1335": {
+   "r": "1/16/Nidhoggmon_vpet_vb.png",
+   "c": 1
+  },
+  "180": {
+   "r": "3/3b/Nisedrimogemon_vpet_dt.gif",
+   "c": 0
+  },
+  "1273": {
+   "r": "d/d1/Noblepumpmon_vpet_vb.png",
+   "c": 1
+  },
+  "327": {
+   "r": "a/ab/Nohemon_vpet_d3.gif",
+   "c": 0
+  },
+  "22": {
+   "r": "1/1c/Numemon_vpet_vb.png",
+   "c": 1
+  },
+  "1274": {
+   "r": "2/2c/Numemonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "181": {
+   "r": "2/2e/Nyaromon_vpet_dpc.gif",
+   "c": 1
+  },
+  "182": {
+   "r": "5/58/Nyokimon_vpet_vb.png",
+   "c": 1
+  },
+  "1411": {
+   "r": "e/e7/Oboromon_vpet_vb.png",
+   "c": 1
+  },
+  "76": {
+   "r": "6/62/Octmon_vpet_vb.png",
+   "c": 1
+  },
+  "445": {
+   "r": "f/f6/Ofanimon_vpet_xloader.png",
+   "c": 1
+  },
+  "1275": {
+   "r": "e/e9/Ofanimonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "904": {
+   "r": "b/b7/Ogudomon_vpet_xloader.png",
+   "c": 1
+  },
+  "1277": {
+   "r": "8/81/Ogudomonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "23": {
+   "r": "1/10/Ohakadamon_a_vpet_dm.png",
+   "c": 0
+  },
+  "77": {
+   "r": "e/e1/Okuwamon_vpet_vb.png",
+   "c": 1
+  },
+  "685": {
+   "r": "4/41/Okuwamonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1412": {
+   "r": "9/90/Oleamon_vpet_vb.png",
+   "c": 1
+  },
+  "1062": {
+   "r": "2/2d/Olegmon_vpet_vb.png",
+   "c": 1
+  },
+  "1336": {
+   "r": "e/e8/Omedamon_vpet_vb.png",
+   "c": 1
+  },
+  "1064": {
+   "r": "9/92/Omegashoutmon_vpet_vb.png",
+   "c": 1
+  },
+  "1278": {
+   "r": "1/1f/Omegashoutmonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "183": {
+   "r": "6/6c/Omegamon_forthbattle_vpet_vb.png",
+   "c": 1
+  },
+  "686": {
+   "r": "a/a9/Omegamon_X_vpet_xloader.png",
+   "c": 1
+  },
+  "1209": {
+   "r": "d/dd/Omegamon_alters_vpet_dmc.gif",
+   "c": 1
+  },
+  "961": {
+   "r": "d/de/Omegamon_zwart_vpet_vb.png",
+   "c": 1
+  },
+  "1197": {
+   "r": "d/d8/Omegamon_zwart_defeat_forthbattle_vpet_vb.png",
+   "c": 1
+  },
+  "687": {
+   "r": "f/f0/Omekamon_vpet_xloader.png",
+   "c": 1
+  },
+  "328": {
+   "r": "d/d1/Opossummon_vpet_d3.gif",
+   "c": 0
+  },
+  "184": {
+   "r": "7/7c/Orcamon_vpet_d3.gif",
+   "c": 0
+  },
+  "1210": {
+   "r": "0/07/Ordinemon_vpet_pen.gif",
+   "c": 0
+  },
+  "78": {
+   "r": "c/c8/Orgemon_vpet_vb.png",
+   "c": 1
+  },
+  "1279": {
+   "r": "8/83/Orgemonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "569": {
+   "r": "e/e6/Ornismon_vpet_penz.gif",
+   "c": 0
+  },
+  "185": {
+   "r": "c/c3/Orochimon_vpet_vb.png",
+   "c": 1
+  },
+  "79": {
+   "r": "e/e9/Otamamon_vpet_dpc.gif",
+   "c": 1
+  },
+  "688": {
+   "r": "a/ae/Otamamonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "689": {
+   "r": "e/ec/Ouryumon_vpet_vb.png",
+   "c": 1
+  },
+  "330": {
+   "r": "e/ef/Owlmon_vpet_d3.gif",
+   "c": 0
+  },
+  "775": {
+   "r": "4/45/Pafumon_vpet_accel.gif",
+   "c": 0
+  },
+  "80": {
+   "r": "c/c2/Pagumon_vpet_vb.png",
+   "c": 1
+  },
+  "331": {
+   "r": "e/eb/Paildramon_vpet_vb.png",
+   "c": 1
+  },
+  "446": {
+   "r": "1/14/Pajiramon_vpet_vb.png",
+   "c": 1
+  },
+  "1236": {
+   "r": "e/e4/Paledramon_vpet_vb.png",
+   "c": 1
+  },
+  "81": {
+   "r": "2/2a/Palmon_vpet_vb.png",
+   "c": 1
+  },
+  "690": {
+   "r": "4/4f/Palmonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "332": {
+   "r": "e/e1/Pandamon_vpet_vb.png",
+   "c": 1
+  },
+  "186": {
+   "r": "2/26/Panjyamon_vpet_vb.png",
+   "c": 1
+  },
+  "706": {
+   "r": "f/f0/Panjyamonx_vpet_vb.png",
+   "c": 1
+  },
+  "458": {
+   "r": "8/84/Paomon_vpet_darc.gif",
+   "c": 0
+  },
+  "1341": {
+   "r": "4/4d/Parasaurmon_vpet_vb.png",
+   "c": 1
+  },
+  "596": {
+   "r": "6/68/Parasimon_vpet_vb.png",
+   "c": 1
+  },
+  "213": {
+   "r": "8/87/Parrotmon_vpet_vb.png",
+   "c": 1
+  },
+  "98": {
+   "r": "2/26/Patamon_vpet_vb.png",
+   "c": 1
+  },
+  "841": {
+   "r": "b/b0/Paunchessmon_black_vpet_dvic.gif",
+   "c": 0
+  },
+  "842": {
+   "r": "9/96/Pawnchessmon_white_vpet_dmc.gif",
+   "c": 1
+  },
+  "1088": {
+   "r": "b/ba/PawnGaossmon_vpet_fusion_loader.png",
+   "c": 0
+  },
+  "362": {
+   "r": "5/56/Peacockmon_vpet_vb.png",
+   "c": 1
+  },
+  "843": {
+   "r": "3/3b/Peckmon_vpet_vb.png",
+   "c": 1
+  },
+  "363": {
+   "r": "9/9c/Pegasmon_vpet_vb.png",
+   "c": 1
+  },
+  "1283": {
+   "r": "e/eb/Pegasmonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "214": {
+   "r": "5/5f/Penmon_vpet_xloader.png",
+   "c": 1
+  },
+  "597": {
+   "r": "b/b2/Petaldramon_vpet_vb.png",
+   "c": 1
+  },
+  "1090": {
+   "r": "1/1d/Petermon_vpet_cutin.gif",
+   "c": 0
+  },
+  "215": {
+   "r": "e/e6/Petimeramon_vpet_vb.png",
+   "c": 1
+  },
+  "911": {
+   "r": "5/5b/Petitmon_vpet_vb.png",
+   "c": 1
+  },
+  "364": {
+   "r": "8/83/Pharaohmon_vpet_vb.png",
+   "c": 1
+  },
+  "747": {
+   "r": "e/e0/Phascomon_vpet_vb.png",
+   "c": 1
+  },
+  "598": {
+   "r": "3/30/Phelesmon_vpet_vb.png",
+   "c": 1
+  },
+  "99": {
+   "r": "4/4a/Piccolomon_vpet_vb.png",
+   "c": 1
+  },
+  "975": {
+   "r": "1/17/Pickmon_vpet_xloader.png",
+   "c": 1
+  },
+  "216": {
+   "r": "1/1d/Picodevimon_vpet_xloader.png",
+   "c": 1
+  },
+  "217": {
+   "r": "4/44/Pidmon_vpet_vb.png",
+   "c": 1
+  },
+  "218": {
+   "r": "a/af/Piemon_vpet_vb.png",
+   "c": 1
+  },
+  "599": {
+   "r": "f/fc/Pilevolcamon_vpet_spirit.gif",
+   "c": 0
+  },
+  "787": {
+   "r": "6/69/Pinamon_vpet_dvic.gif",
+   "c": 0
+  },
+  "219": {
+   "r": "e/ea/Pinochimon_vpet_xloader.png",
+   "c": 1
+  },
+  "461": {
+   "r": "b/bb/Pipimon_vpet_dt.gif",
+   "c": 0
+  },
+  "365": {
+   "r": "b/bb/Pipismon_vpet_dark_color.png",
+   "c": 1
+  },
+  "1342": {
+   "r": "b/bb/Piranimon_vpet_vb.png",
+   "c": 1
+  },
+  "1383": {
+   "r": "7/76/Pistmon_vpet_vb.png",
+   "c": 1
+  },
+  "100": {
+   "r": "6/63/Pitchmon_vpet_vb.png",
+   "c": 1
+  },
+  "101": {
+   "r": "4/49/Piyomon_vpet_vb.png",
+   "c": 1
+  },
+  "844": {
+   "r": "8/81/Platinumnumemon_vpet_vb.png",
+   "c": 1
+  },
+  "221": {
+   "r": "5/5e/Plesiomon_vpet_vb.png",
+   "c": 1
+  },
+  "707": {
+   "r": "6/6d/Plesiomonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "222": {
+   "r": "b/b3/Plotmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "708": {
+   "r": "4/4f/Plotmonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1170": {
+   "r": "a/a7/Plutomon_vpet_vb.png",
+   "c": 1
+  },
+  "462": {
+   "r": "a/af/Pokomon_vpet_vb.png",
+   "c": 1
+  },
+  "1343": {
+   "r": "6/69/Pomumon_vpet_vb.png",
+   "c": 1
+  },
+  "366": {
+   "r": "9/9b/Ponchomon_vpet_dark_color.png",
+   "c": 1
+  },
+  "788": {
+   "r": "5/5b/Popomon_vpet_vb.png",
+   "c": 1
+  },
+  "748": {
+   "r": "8/85/Porcupamon_vpet_vb.png",
+   "c": 1
+  },
+  "367": {
+   "r": "7/78/Poromon_vpet_vb.png",
+   "c": 1
+  },
+  "102": {
+   "r": "d/d0/Poyomon_vpet_dmc.gif",
+   "c": 1
+  },
+  "368": {
+   "r": "4/4f/Prairiemon_vpet_d3.gif",
+   "c": 0
+  },
+  "369": {
+   "r": "1/18/Princemamemon_vpet_dscan.gif",
+   "c": 0
+  },
+  "749": {
+   "r": "e/e4/Princemamemonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1419": {
+   "r": "c/c3/Proximamon_vpet_vb.png",
+   "c": 1
+  },
+  "223": {
+   "r": "f/f7/Psychemon_vpet_spirit.gif",
+   "c": 0
+  },
+  "370": {
+   "r": "4/4e/Pteranomon_vpet_xloader.png",
+   "c": 1
+  },
+  "709": {
+   "r": "8/81/Pteranomonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1446": {
+   "r": "d/d1/Pteromon_vpet_dpc.gif",
+   "c": 1
+  },
+  "1420": {
+   "r": "1/11/Publimon_vpet_vb.png",
+   "c": 1
+  },
+  "371": {
+   "r": "0/05/Pucchiemon_vpet_vb.png",
+   "c": 1
+  },
+  "372": {
+   "r": "4/42/Pucchiemon_green_vpet_vb.png",
+   "c": 1
+  },
+  "103": {
+   "r": "f/f2/Pukamon_vpet_vb.png",
+   "c": 1
+  },
+  "104": {
+   "r": "7/73/Pukumon_vpet_vb.png",
+   "c": 1
+  },
+  "1344": {
+   "r": "7/7a/Pulsemon_vpet_vb.png",
+   "c": 1
+  },
+  "224": {
+   "r": "1/1f/Pumpmon_vpet_vb.png",
+   "c": 1
+  },
+  "30": {
+   "r": "9/9d/Punimon_vpet_vb.png",
+   "c": 1
+  },
+  "710": {
+   "r": "b/b2/Pupumon_vpet_penx.gif",
+   "c": 0
+  },
+  "711": {
+   "r": "6/6d/Puroromon_vpet_penx.gif",
+   "c": 0
+  },
+  "373": {
+   "r": "e/eb/Pururumon_vpet_vb.png",
+   "c": 1
+  },
+  "600": {
+   "r": "8/83/Puttimon_vpet_dmx.gif",
+   "c": 0
+  },
+  "789": {
+   "r": "d/dd/Puwamon_vpet_dvic.gif",
+   "c": 0
+  },
+  "1385": {
+   "r": "6/63/Puyomon_vpet_vb.png",
+   "c": 1
+  },
+  "1386": {
+   "r": "4/44/Puyoyomon_vpet_vb.png",
+   "c": 1
+  },
+  "225": {
+   "r": "f/f3/Pyocomon_vpet_vb.png",
+   "c": 1
+  },
+  "1387": {
+   "r": "0/0f/Pyonmon_vpet_vb.png",
+   "c": 1
+  },
+  "374": {
+   "r": "6/6a/Qinglongmon_vpet_xloader.png",
+   "c": 1
+  },
+  "1447": {
+   "r": "c/c8/Quantumon_vpet_dpc.gif",
+   "c": 1
+  },
+  "1153": {
+   "r": "f/f5/Quartzmon_vpet_dmc.gif",
+   "c": 1
+  },
+  "846": {
+   "r": "8/8b/Queenchessmon_vpet_dvic.gif",
+   "c": 0
+  },
+  "1244": {
+   "r": "3/37/Rafflesimon_vpet_vb.png",
+   "c": 1
+  },
+  "1245": {
+   "r": "e/e2/Ragnalordmon_vpet_vb.png",
+   "c": 1
+  },
+  "601": {
+   "r": "3/36/Ragnamon_vpet_vb.png",
+   "c": 1
+  },
+  "1215": {
+   "r": "6/68/Raguelmon_vpet_pen.gif",
+   "c": 0
+  },
+  "602": {
+   "r": "0/06/Raidenmon_vpet_vb.png",
+   "c": 1
+  },
+  "603": {
+   "r": "6/6c/Raihimon_vpet_vb.png",
+   "c": 1
+  },
+  "1246": {
+   "r": "d/df/Raijiludomon_vpet_vb.png",
+   "c": 1
+  },
+  "604": {
+   "r": "b/b7/Raijinmon_vpet_vb.png",
+   "c": 1
+  },
+  "605": {
+   "r": "0/03/Ranamon_vpet_vb.png",
+   "c": 1
+  },
+  "1284": {
+   "r": "a/a9/Rapidmonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "375": {
+   "r": "1/1f/Rapidmon_armor_vpet_vb.png",
+   "c": 1
+  },
+  "463": {
+   "r": "7/79/Rapidmon_vpet_vb.png",
+   "c": 1
+  },
+  "1092": {
+   "r": "5/59/Raptorsparrowmon_vpet_dmc.gif",
+   "c": 1
+  },
+  "712": {
+   "r": "e/ee/Raptordramon_vpet_vb.png",
+   "c": 1
+  },
+  "1388": {
+   "r": "a/a7/Rareraremon_vpet_vb.png",
+   "c": 1
+  },
+  "105": {
+   "r": "d/d0/Raremon_vpet_vb.png",
+   "c": 1
+  },
+  "1285": {
+   "r": "7/77/Rasenmon_vpet_vb.png",
+   "c": 1
+  },
+  "1216": {
+   "r": "9/9c/Rasielmon_vpet_dm.gif",
+   "c": 0
+  },
+  "847": {
+   "r": "4/4d/Ravmon_vpet_vb.png",
+   "c": 1
+  },
+  "1346": {
+   "r": "e/ef/Rebellimon_vpet_vb.png",
+   "c": 1
+  },
+  "376": {
+   "r": "8/80/Redvdramon_vpet_spirit.gif",
+   "c": 0
+  },
+  "226": {
+   "r": "0/04/RedVegimon_vpet_xloader.png",
+   "c": 1
+  },
+  "1347": {
+   "r": "4/4b/Regalecusmon_vpet_vb.png",
+   "c": 1
+  },
+  "1421": {
+   "r": "8/8c/Regulusmon_vpet_vb.png",
+   "c": 1
+  },
+  "464": {
+   "r": "8/81/Relemon_vpet_vb.png",
+   "c": 1
+  },
+  "465": {
+   "r": "5/58/Renamon_vpet_vb.png",
+   "c": 1
+  },
+  "1247": {
+   "r": "2/20/Renamonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "790": {
+   "r": "3/33/Reppamon_vpet_vb.png",
+   "c": 1
+  },
+  "227": {
+   "r": "e/e9/Revolmon_vpet_xloader.png",
+   "c": 1
+  },
+  "607": {
+   "r": "a/a8/Rhinokabuterimon_vpet_vb.png",
+   "c": 1
+  },
+  "377": {
+   "r": "e/ef/Rhinomon_vpet_vb.png",
+   "c": 1
+  },
+  "713": {
+   "r": "3/3f/Rhinomonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "378": {
+   "r": "0/0a/Rinkmon_vpet_d3.gif",
+   "c": 0
+  },
+  "849": {
+   "r": "7/7d/Rizegreymon_vpet_vb.png",
+   "c": 1
+  },
+  "1287": {
+   "r": "3/32/Rizegreymonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "850": {
+   "r": "e/ea/Rookchessmon_vpet_dw.gif",
+   "c": 0
+  },
+  "228": {
+   "r": "8/82/Rosemon_vpet_vb.png",
+   "c": 1
+  },
+  "714": {
+   "r": "9/9b/Rosemonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "106": {
+   "r": "7/78/Rukamon_vpet_vb.png",
+   "c": 1
+  },
+  "1348": {
+   "r": "2/25/Runnermon_vpet_vb.png",
+   "c": 1
+  },
+  "1171": {
+   "r": "2/25/Rusttyranomon_vpet_vb.png",
+   "c": 1
+  },
+  "715": {
+   "r": "0/01/Ryudamon_vpet_vb.png",
+   "c": 1
+  },
+  "1461": {
+   "r": "8/8b/Ryugumon_vpet_dpc.gif",
+   "c": 1
+  },
+  "107": {
+   "r": "c/cd/Saberleomon_vpet_vb.png",
+   "c": 1
+  },
+  "229": {
+   "r": "a/a1/Saberdramon_vpet_vb.png",
+   "c": 1
+  },
+  "379": {
+   "r": "9/9b/Sagittarimon_vpet_vb.png",
+   "c": 1
+  },
+  "1093": {
+   "r": "a/a6/Sagomon_vpet_dpc.gif",
+   "c": 1
+  },
+  "466": {
+   "r": "7/74/Saintgalgomon_vpet_vb.png",
+   "c": 1
+  },
+  "1217": {
+   "r": "2/24/Sakumon_vpet_vb.png",
+   "c": 1
+  },
+  "1218": {
+   "r": "7/7f/Sakuttomon_vpet_vb.png",
+   "c": 1
+  },
+  "467": {
+   "r": "c/c4/Sakuyamon_vpet_vb.png",
+   "c": 1
+  },
+  "1248": {
+   "r": "2/24/Sakuyamonx_vpet_vb.png",
+   "c": 1
+  },
+  "608": {
+   "r": "1/1d/Salamandamon_vpet_xloader.png",
+   "c": 1
+  },
+  "230": {
+   "r": "5/5e/Sandyanmamon_vpet_dt.gif",
+   "c": 0
+  },
+  "469": {
+   "r": "7/7c/Sandiramon_vpet_vb.png",
+   "c": 1
+  },
+  "791": {
+   "r": "4/42/Sangloupmon_vpet_vb.png",
+   "c": 1
+  },
+  "1350": {
+   "r": "4/46/Sangomon_vpet_vb.png",
+   "c": 1
+  },
+  "851": {
+   "r": "c/c3/Santaagumon_vpet_dw.gif",
+   "c": 0
+  },
+  "1094": {
+   "r": "e/e6/Sanzomon_vpet_dpc.gif",
+   "c": 1
+  },
+  "380": {
+   "r": "9/98/Scorpiomon_vpet_vb.png",
+   "c": 1
+  },
+  "31": {
+   "r": "4/48/Seadramon_vpet_vb.png",
+   "c": 1
+  },
+  "716": {
+   "r": "3/3b/Seadramonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "381": {
+   "r": "4/44/Seahomon_vpet_d3.gif",
+   "c": 0
+  },
+  "792": {
+   "r": "a/a5/Sealsdramon_vpet_vb.png",
+   "c": 1
+  },
+  "382": {
+   "r": "d/d0/Searchmon_vpet_d3.gif",
+   "c": 0
+  },
+  "609": {
+   "r": "9/9a/Sephirothmon_vpet_vb.png",
+   "c": 1
+  },
+  "383": {
+   "r": "9/97/Sepikmon_vpet_dark_color.png",
+   "c": 1
+  },
+  "384": {
+   "r": "4/4a/Seraphimon_vpet_vb.png",
+   "c": 1
+  },
+  "385": {
+   "r": "2/2e/Setmon_vpet_d3.gif",
+   "c": 0
+  },
+  "386": {
+   "r": "e/ec/Shadramon_vpet_vb.png",
+   "c": 1
+  },
+  "1462": {
+   "r": "0/03/Shagaramon_vpet_dpc.gif",
+   "c": 1
+  },
+  "1098": {
+   "r": "e/ef/Shakamon_vpet_vb.png",
+   "c": 1
+  },
+  "387": {
+   "r": "b/b3/Shakkoumon_vpet_vb.png",
+   "c": 1
+  },
+  "109": {
+   "r": "0/0a/Shakomon_vpet_xloader.png",
+   "c": 1
+  },
+  "717": {
+   "r": "3/36/Shakomonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "231": {
+   "r": "d/d2/Shamamon_vpet_dt.gif",
+   "c": 0
+  },
+  "852": {
+   "r": "0/0f/Shawujinmon_vpet_xloader.png",
+   "c": 1
+  },
+  "388": {
+   "r": "6/6e/Sheepmon_vpet_xloader.png",
+   "c": 1
+  },
+  "110": {
+   "r": "6/67/Shellmon_vpet_vb.png",
+   "c": 1
+  },
+  "232": {
+   "r": "4/47/Shimaunimon_vpet_dt.gif",
+   "c": 0
+  },
+  "1422": {
+   "r": "2/26/Shinmonzaemon_vpet_vb.png",
+   "c": 1
+  },
+  "853": {
+   "r": "7/76/Shinegreymon_vpet_vb.png",
+   "c": 1
+  },
+  "1389": {
+   "r": "6/69/Shivamon_vpet_vb.png",
+   "c": 1
+  },
+  "981": {
+   "r": "4/49/Shonitamon_vpet_xloader.png",
+   "c": 1
+  },
+  "1099": {
+   "r": "3/34/Shootingstarmon_vpet_dmc.gif",
+   "c": 1
+  },
+  "1390": {
+   "r": "c/c2/Shootmon_vpet_vb.png",
+   "c": 1
+  },
+  "983": {
+   "r": "9/91/Shoutmon_vpet_vb.png",
+   "c": 1
+  },
+  "985": {
+   "r": "3/38/Shoutmon_Blue_vpet_xloader.png",
+   "c": 1
+  },
+  "1101": {
+   "r": "7/70/Shoutmon_king_vpet_dmc.gif",
+   "c": 1
+  },
+  "1102": {
+   "r": "2/22/Shoutmondx_vpet_vb.png",
+   "c": 1
+  },
+  "1103": {
+   "r": "9/99/Shoutmonex6_vpet_dmc.gif",
+   "c": 1
+  },
+  "987": {
+   "r": "1/12/Shoutmon_X2_vpet_xloader.png",
+   "c": 1
+  },
+  "990": {
+   "r": "5/55/Shoutmon_X3_vpet_xloader.png",
+   "c": 1
+  },
+  "1104": {
+   "r": "3/30/Shoutmonx3gm_vpet_xloader.png",
+   "c": 1
+  },
+  "1105": {
+   "r": "e/e0/Shoutmonx3sd_vpet_xloader.png",
+   "c": 1
+  },
+  "991": {
+   "r": "b/be/Shoutmonx4_vpet_vb.png",
+   "c": 1
+  },
+  "992": {
+   "r": "a/aa/Shoutmon_X4B_vpet_xloader.png",
+   "c": 1
+  },
+  "993": {
+   "r": "c/cf/Shoutmonx4k_vpet_xloader.png",
+   "c": 1
+  },
+  "994": {
+   "r": "7/7e/Shoutmon_X4S_vpet_xloader.png",
+   "c": 1
+  },
+  "995": {
+   "r": "4/47/Shoutmon_X5_vpet_xloader.png",
+   "c": 1
+  },
+  "997": {
+   "r": "4/4b/Shoutmonx5b_vpet_dmc.gif",
+   "c": 1
+  },
+  "1106": {
+   "r": "6/67/Shoutmonx5s_vpet_dmc.gif",
+   "c": 1
+  },
+  "1108": {
+   "r": "5/54/Shoutmonx7_vpet_vb.png",
+   "c": 1
+  },
+  "1391": {
+   "r": "8/81/Shroudmon_vpet_vb.png",
+   "c": 1
+  },
+  "389": {
+   "r": "1/15/Shurimon_vpet_vb.png",
+   "c": 1
+  },
+  "610": {
+   "r": "2/26/Shutumon_vpet_vb.png",
+   "c": 1
+  },
+  "470": {
+   "r": "6/68/Siesamon_vpet_vb.png",
+   "c": 1
+  },
+  "1288": {
+   "r": "0/08/Siesamonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "390": {
+   "r": "2/26/Silphymon_vpet_vb.png",
+   "c": 1
+  },
+  "471": {
+   "r": "2/2d/Sinduramon_vpet_vb.png",
+   "c": 1
+  },
+  "1172": {
+   "r": "c/c7/Sirenmon_vpet_vb.png",
+   "c": 1
+  },
+  "1423": {
+   "r": "6/6f/Siriusmon_vpet_vb.png",
+   "c": 1
+  },
+  "1154": {
+   "r": "9/9d/Sistermon_blanc_vpet_pen.gif",
+   "c": 0
+  },
+  "1219": {
+   "r": "1/18/Sistermonc_vpet_dmx.gif",
+   "c": 0
+  },
+  "1155": {
+   "r": "9/9b/Sistermon_noir_vpet_pen.gif",
+   "c": 0
+  },
+  "718": {
+   "r": "9/97/Skullbaluchimon_vpet_vb.png",
+   "c": 1
+  },
+  "32": {
+   "r": "5/5a/Skullgreymon_vpet_vb.png",
+   "c": 1
+  },
+  "1001": {
+   "r": "e/ef/SkullKnightmon_vpet_xloader.png",
+   "c": 1
+  },
+  "187": {
+   "r": "4/42/Skullmammon_vpet_vb.png",
+   "c": 1
+  },
+  "691": {
+   "r": "5/5a/Skullmammonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "188": {
+   "r": "d/d6/Skullsatamon_vpet_vb.png",
+   "c": 1
+  },
+  "571": {
+   "r": "2/22/SlashAngemon_vpet_xloader.png",
+   "c": 1
+  },
+  "905": {
+   "r": "5/5f/Slayerdramon_vpet_vb.png",
+   "c": 1
+  },
+  "776": {
+   "r": "1/1e/Sleipmon_vpet_xloader.png",
+   "c": 1
+  },
+  "1237": {
+   "r": "3/39/Sleipmonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "572": {
+   "r": "b/b6/Snatchmon_vpet_vb.png",
+   "c": 1
+  },
+  "189": {
+   "r": "f/f4/Snimon_vpet_vb.png",
+   "c": 1
+  },
+  "190": {
+   "r": "9/98/Snowgoburimon_vpet_vb.png",
+   "c": 1
+  },
+  "333": {
+   "r": "8/86/Solarmon_vpet_dv.gif",
+   "c": 0
+  },
+  "1443": {
+   "r": "1/11/Soloogarmon_vpet_vb.png",
+   "c": 1
+  },
+  "191": {
+   "r": "c/c4/Soulmon_vpet_dt.gif",
+   "c": 0
+  },
+  "1065": {
+   "r": "8/89/Soundbirdmon_vpet_dv.gif",
+   "c": 0
+  },
+  "966": {
+   "r": "8/87/Spadamon_vpet_xloader.png",
+   "c": 1
+  },
+  "967": {
+   "r": "c/cf/Sparrowmon_vpet_xloader.png",
+   "c": 1
+  },
+  "777": {
+   "r": "1/10/Spinomon_vpet_vb.png",
+   "c": 1
+  },
+  "1067": {
+   "r": "a/af/Splashmon_vpet_vb.png",
+   "c": 1
+  },
+  "1069": {
+   "r": "4/4b/Splashmon_darkness_vpet_dmc.gif",
+   "c": 1
+  },
+  "82": {
+   "r": "b/b4/Starmon_vpet_vb.png",
+   "c": 1
+  },
+  "968": {
+   "r": "f/f5/Starmon_vpet_xloader.png",
+   "c": 1
+  },
+  "335": {
+   "r": "b/bf/Stegomon_vpet_d3.gif",
+   "c": 0
+  },
+  "1238": {
+   "r": "2/2b/Stiffilmon_vpet_vb.png",
+   "c": 1
+  },
+  "336": {
+   "r": "5/51/Stingmon_vpet_vb.png",
+   "c": 1
+  },
+  "574": {
+   "r": "c/c9/Strabimon_vpet_vb.png",
+   "c": 1
+  },
+  "447": {
+   "r": "4/48/Strikedramon_vpet_vb.png",
+   "c": 1
+  },
+  "337": {
+   "r": "7/7a/Submarimon_vpet_vb.png",
+   "c": 1
+  },
+  "575": {
+   "r": "0/05/Suijinmon_vpet_spirit.gif",
+   "c": 0
+  },
+  "1375": {
+   "r": "d/de/Sunamon_vpet_vb.png",
+   "c": 1
+  },
+  "1337": {
+   "r": "3/36/Sunarizamon_vpet_vb.png",
+   "c": 1
+  },
+  "833": {
+   "r": "b/b0/Sunflowmon_vpet_vb.png",
+   "c": 1
+  },
+  "906": {
+   "r": "5/5e/Sunmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "338": {
+   "r": "0/0f/Superstarmon_vpet_vb.png",
+   "c": 1
+  },
+  "576": {
+   "r": "d/db/Susanoomon_vpet_vb.png",
+   "c": 1
+  },
+  "339": {
+   "r": "6/67/Swanmon_vpet_xloader.png",
+   "c": 1
+  },
+  "778": {
+   "r": "3/33/Swimmon_vpet_dw.gif",
+   "c": 0
+  },
+  "1376": {
+   "r": "8/8d/Symbareangoramon_vpet_vb.png",
+   "c": 1
+  },
+  "971": {
+   "r": "7/79/Tactimon_vpet_xloader.png",
+   "c": 1
+  },
+  "83": {
+   "r": "2/25/Tailmon_child_vpet_vb.png",
+   "c": 1
+  },
+  "693": {
+   "r": "c/c9/Tailmonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1444": {
+   "r": "7/70/Takutoumon_vpet_dpc.gif",
+   "c": 1
+  },
+  "84": {
+   "r": "2/29/Tanemon_vpet_vb.png",
+   "c": 1
+  },
+  "779": {
+   "r": "0/0c/Tankdramon_vpet_vb.png",
+   "c": 1
+  },
+  "192": {
+   "r": "c/c3/Tankmon_vpet_xloader.png",
+   "c": 1
+  },
+  "448": {
+   "r": "1/1c/Taomon_vpet_vb.png",
+   "c": 1
+  },
+  "1070": {
+   "r": "c/cd/Targetmon_vpet_pen.gif",
+   "c": 0
+  },
+  "193": {
+   "r": "d/dd/Tekkamon_vpet_dt.gif",
+   "c": 0
+  },
+  "1377": {
+   "r": "5/5e/Tempomon_vpet_vb.png",
+   "c": 1
+  },
+  "85": {
+   "r": "e/ef/Tentomon_vpet_vb.png",
+   "c": 1
+  },
+  "341": {
+   "r": "a/a8/Terriermon_vpet_vb.png",
+   "c": 1
+  },
+  "1280": {
+   "r": "9/98/Terriermonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1378": {
+   "r": "8/81/Teslajellymon_vpet_vb.png",
+   "c": 1
+  },
+  "1379": {
+   "r": "9/9c/Thetismon_vpet_vb.png",
+   "c": 1
+  },
+  "194": {
+   "r": "b/bf/Thunderballmon_vpet_vb.png",
+   "c": 1
+  },
+  "577": {
+   "r": "0/0a/Thunderbirmon_vpet_vb.png",
+   "c": 1
+  },
+  "1240": {
+   "r": "0/0f/Tialudomon_vpet_vb.png",
+   "c": 1
+  },
+  "694": {
+   "r": "1/1b/Tigervespamon_vpet_vb.png",
+   "c": 1
+  },
+  "1071": {
+   "r": "f/fb/Tinkermon_vpet_vb.png",
+   "c": 1
+  },
+  "1169": {
+   "r": "a/a5/Titamon_vpet_dpc.gif",
+   "c": 1
+  },
+  "1445": {
+   "r": "0/0f/Tlalocmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "1338": {
+   "r": "3/39/Tobiumon_vpet_vb.png",
+   "c": 1
+  },
+  "695": {
+   "r": "1/16/Tobucatmon_vpet_dmx.gif",
+   "c": 0
+  },
+  "342": {
+   "r": "f/f5/Toucanmon_vpet_d3.gif",
+   "c": 0
+  },
+  "343": {
+   "r": "8/8d/Togemogumon_vpet_d3.gif",
+   "c": 0
+  },
+  "195": {
+   "r": "2/24/Togemon_vpet_vb.png",
+   "c": 1
+  },
+  "696": {
+   "r": "7/7e/Togemonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "86": {
+   "r": "0/0c/Tokomon_vpet_xloader.png",
+   "c": 1
+  },
+  "780": {
+   "r": "8/80/Tokomonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "87": {
+   "r": "f/f4/Tonosamagekomon_vpet_dpc.gif",
+   "c": 1
+  },
+  "834": {
+   "r": "5/56/Tonosamamamemon_raid_vpet_vb.png",
+   "c": 1
+  },
+  "578": {
+   "r": "8/8a/Torikaraballmon_vpet_spirit.gif",
+   "c": 0
+  },
+  "1339": {
+   "r": "7/76/Toropiamon_vpet_vb.png",
+   "c": 1
+  },
+  "88": {
+   "r": "2/2d/Tortamon_vpet_vb.png",
+   "c": 1
+  },
+  "196": {
+   "r": "9/9f/ToyAgumon_vpet_xloader.png",
+   "c": 1
+  },
+  "586": {
+   "r": "6/63/Trailmon_vpet_spirit.gif",
+   "c": 0
+  },
+  "89": {
+   "r": "1/19/Triceramon_vpet_vb.png",
+   "c": 1
+  },
+  "697": {
+   "r": "5/58/Triceramonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "972": {
+   "r": "0/02/Troopmon_vpet_xloader.png",
+   "c": 1
+  },
+  "345": {
+   "r": "9/9e/Tsubumon_vpet_vb.png",
+   "c": 1
+  },
+  "346": {
+   "r": "3/3b/Tsumemon_vpet_dmx.gif",
+   "c": 0
+  },
+  "197": {
+   "r": "b/bb/Tuchidarumon_vpet_dark_color.png",
+   "c": 1
+  },
+  "198": {
+   "r": "b/bd/Tsukaimon_vpet_dt.gif",
+   "c": 0
+  },
+  "24": {
+   "r": "4/47/Tunomon_vpet_vb.png",
+   "c": 1
+  },
+  "450": {
+   "r": "7/74/Turuiemon_vpet_vb.png",
+   "c": 1
+  },
+  "90": {
+   "r": "0/00/Tuskmon_vpet_xloader.png",
+   "c": 1
+  },
+  "1072": {
+   "r": "5/5c/Tuwarmon_vpet_xloader.png",
+   "c": 1
+  },
+  "781": {
+   "r": "d/df/Tyilinmon_vpet_vb.png",
+   "c": 1
+  },
+  "347": {
+   "r": "6/63/Tylomon_vpet_xloader.png",
+   "c": 1
+  },
+  "698": {
+   "r": "e/eb/Tylomonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "25": {
+   "r": "2/26/Tyranomon_vpet_vb.png",
+   "c": 1
+  },
+  "1241": {
+   "r": "1/1a/Tyranomonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "782": {
+   "r": "5/51/Tyrantkabuterimon_vpet_vb.png",
+   "c": 1
+  },
+  "91": {
+   "r": "0/03/Tyumon_vpet_xloader.png",
+   "c": 1
+  },
+  "973": {
+   "r": "f/f3/Tyutyumon_vpet_xloader.png",
+   "c": 1
+  },
+  "1380": {
+   "r": "a/af/Ukkomon_vpet_vb.png",
+   "c": 1
+  },
+  "588": {
+   "r": "0/0f/Ulforcevdramon_vpet_vb.png",
+   "c": 1
+  },
+  "700": {
+   "r": "8/88/Ulforcevdramonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "701": {
+   "r": "b/be/Ultimatebrachimon_vpet_vb.png",
+   "c": 1
+  },
+  "783": {
+   "r": "b/ba/Ultimatechaosmon_blast_vpet_accel.gif",
+   "c": 0
+  },
+  "92": {
+   "r": "1/11/Unimon_vpet_xloader.png",
+   "c": 1
+  },
+  "348": {
+   "r": "a/a5/Upamon_vpet_vb.png",
+   "c": 1
+  },
+  "93": {
+   "r": "1/1c/Vdramon_vpet_vb.png",
+   "c": 1
+  },
+  "349": {
+   "r": "4/4e/Vmon_vpet_vb.png",
+   "c": 1
+  },
+  "26": {
+   "r": "9/9b/Vademon_vpet_dmc.gif",
+   "c": 1
+  },
+  "453": {
+   "r": "3/36/Vajramon_vpet_vb.png",
+   "c": 1
+  },
+  "784": {
+   "r": "3/39/Valdurmon_vpet_dmx.gif",
+   "c": 0
+  },
+  "350": {
+   "r": "1/11/Valkyrimon_vpet_vb.png",
+   "c": 1
+  },
+  "589": {
+   "r": "b/b1/Valvemon_vpet_vb.png",
+   "c": 1
+  },
+  "199": {
+   "r": "0/03/Vamdemon_vpet_vb.png",
+   "c": 1
+  },
+  "1281": {
+   "r": "3/3e/Vamdemonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "27": {
+   "r": "0/07/Vegimon_vpet_vb.png",
+   "c": 1
+  },
+  "590": {
+   "r": "5/5f/Velgrmon_vpet_vb.png",
+   "c": 1
+  },
+  "200": {
+   "r": "a/aa/Venomvamdemon_raid_vpet_vb.png",
+   "c": 1
+  },
+  "1073": {
+   "r": "6/6d/Venusmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "201": {
+   "r": "4/47/Vermillimon_vpet_vb.png",
+   "c": 1
+  },
+  "908": {
+   "r": "b/b7/Victorygreymon_vpet_vb.png",
+   "c": 1
+  },
+  "454": {
+   "r": "c/c8/Vikaralamon_vpet_vb.png",
+   "c": 1
+  },
+  "351": {
+   "r": "1/11/Vikemon_vpet_vb.png",
+   "c": 1
+  },
+  "352": {
+   "r": "f/f9/Volcamon_vpet_vb.png",
+   "c": 1
+  },
+  "1198": {
+   "r": "4/49/Volcanicdramon_vpet_vb.png",
+   "c": 1
+  },
+  "785": {
+   "r": "9/92/Volcdramon_vpet_dw.gif",
+   "c": 0
+  },
+  "1212": {
+   "r": "7/72/Voltobautamon_vpet_dpc.gif",
+   "c": 1
+  },
+  "1199": {
+   "r": "6/6f/Vorvomon_vpet_vb.png",
+   "c": 1
+  },
+  "591": {
+   "r": "a/ad/Vritramon_vpet_vb.png",
+   "c": 1
+  },
+  "1074": {
+   "r": "f/f2/Vulcanusmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "1381": {
+   "r": "d/da/Vulturemon_vpet_vb.png",
+   "c": 1
+  },
+  "837": {
+   "r": "2/2c/Wanyamon_vpet_vb.png",
+   "c": 1
+  },
+  "202": {
+   "r": "1/17/Wargreymon_vpet_vb.png",
+   "c": 1
+  },
+  "703": {
+   "r": "a/ad/Wargreymonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "203": {
+   "r": "d/d5/Warumonzaemon_vpet_vb.png",
+   "c": 1
+  },
+  "204": {
+   "r": "9/99/Waruseadramon_vpet_vb.png",
+   "c": 1
+  },
+  "704": {
+   "r": "c/c6/Waspmon_vpet_vb.png",
+   "c": 1
+  },
+  "353": {
+   "r": "0/05/Wendimon_vpet_vb.png",
+   "c": 1
+  },
+  "205": {
+   "r": "2/22/Weregarurumon_vpet_vb.png",
+   "c": 1
+  },
+  "354": {
+   "r": "4/45/Weregarurumon_black_vpet_vb.png",
+   "c": 1
+  },
+  "705": {
+   "r": "8/86/Weregarurumonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "1382": {
+   "r": "f/fd/Wezengammamon_vpet_vb.png",
+   "c": 1
+  },
+  "28": {
+   "r": "1/1c/Whamon_vpet_dmc.gif",
+   "c": 1
+  },
+  "94": {
+   "r": "d/dd/Whamon_perfect_vpet_vb.png",
+   "c": 1
+  },
+  "909": {
+   "r": "c/cf/Wingdramon_vpet_vb.png",
+   "c": 1
+  },
+  "592": {
+   "r": "1/11/Wisemon_vpet_vb.png",
+   "c": 1
+  },
+  "355": {
+   "r": "1/14/Witchmon_vpet_spirit.gif",
+   "c": 0
+  },
+  "206": {
+   "r": "2/25/Wizarmon_vpet_vb.png",
+   "c": 1
+  },
+  "1282": {
+   "r": "3/3d/Wizarmonx_vpet_dmx.gif",
+   "c": 0
+  },
+  "593": {
+   "r": "5/57/Wolfmon_vpet_vb.png",
+   "c": 1
+  },
+  "207": {
+   "r": "c/cc/Woodmon_vpet_xloader.png",
+   "c": 1
+  },
+  "356": {
+   "r": "6/67/Wormmon_vpet_vb.png",
+   "c": 1
+  },
+  "358": {
+   "r": "7/7d/Xvmon_vpet_vb.png",
+   "c": 1
+  },
+  "1414": {
+   "r": "c/c5/Xiangpengmon_vpet_vb.png",
+   "c": 1
+  },
+  "455": {
+   "r": "6/6e/Xiaomon_vpet_darc.gif",
+   "c": 0
+  },
+  "1415": {
+   "r": "1/16/Xingtianmon_vpet_dpc.gif",
+   "c": 1
+  },
+  "1416": {
+   "r": "5/55/Xiquemon_vpet_vb.png",
+   "c": 1
+  },
+  "357": {
+   "r": "3/3b/Xuanwumon_vpet_xloader.png",
+   "c": 1
+  },
+  "1084": {
+   "r": "9/97/Yaegerdorulumon_vpet_vb.png",
+   "c": 1
+  },
+  "359": {
+   "r": "8/88/Yaksamon_vpet_d3.gif",
+   "c": 0
+  },
+  "208": {
+   "r": "2/29/Yanmamon_vpet_dt.gif",
+   "c": 0
+  },
+  "595": {
+   "r": "e/ed/Yarmon_vpet_vb.png",
+   "c": 1
+  },
+  "786": {
+   "r": "f/f8/Yatagaramon_blast_vpet_accel.gif",
+   "c": 0
+  },
+  "838": {
+   "r": "d/da/Yatagaramon2006_vpet_vb.png",
+   "c": 1
+  },
+  "839": {
+   "r": "7/77/Yoyomon_vpet_dw.gif",
+   "c": 0
+  },
+  "456": {
+   "r": "5/54/Youkomon_vpet_vb.png",
+   "c": 1
+  },
+  "209": {
+   "r": "c/cf/Yukiagumon_vpet_dt.gif",
+   "c": 0
+  },
+  "29": {
+   "r": "9/91/Yukidarumon_vpet_vb.png",
+   "c": 1
+  },
+  "210": {
+   "r": "e/e0/Yukimibotamon_vpet_vb.png",
+   "c": 1
+  },
+  "95": {
+   "r": "3/34/Yuramon_vpet_vb.png",
+   "c": 1
+  },
+  "910": {
+   "r": "2/29/Zdgarurumon_vpet_vb.png",
+   "c": 1
+  },
+  "1085": {
+   "r": "8/8b/Zamielmon_vpet_vb.png",
+   "c": 1
+  },
+  "211": {
+   "r": "e/e2/Zanbamon_vpet_vb.png",
+   "c": 1
+  },
+  "1417": {
+   "r": "7/72/Zanmetsumon_vpet_vb.png",
+   "c": 1
+  },
+  "212": {
+   "r": "8/8d/Zassoumon_vpet_vb.png",
+   "c": 1
+  },
+  "457": {
+   "r": "9/98/ZeedMillenniumon_vpet_xloader.png",
+   "c": 1
+  },
+  "1086": {
+   "r": "7/74/Zekegreymon_vpet_vb.png",
+   "c": 1
+  },
+  "1458": {
+   "r": "9/99/Zephagamon_vpet_dpc.gif",
+   "c": 1
+  },
+  "360": {
+   "r": "d/d6/Zerimon_vpet_vb.png",
+   "c": 1
+  },
+  "361": {
+   "r": "f/f8/Zhuqiaomon_vpet_xloader.png",
+   "c": 1
+  },
+  "1213": {
+   "r": "6/67/Zubaeagermon_vpet_vb.png",
+   "c": 1
+  },
+  "1214": {
+   "r": "9/9e/Zubamon_vpet_vb.png",
+   "c": 1
+  },
+  "96": {
+   "r": "e/e9/Zudomon_vpet_vb.png",
+   "c": 1
+  },
+  "97": {
+   "r": "f/f4/Zurumon_vpet_vb.png",
+   "c": 1
+  }
+ }
+}

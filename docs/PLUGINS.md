@@ -267,9 +267,44 @@ a MouseArea accepts the wheel whether it handles it or not — and no error
 will be raised. That is why `K4.Rodillo` exists.
 
 For a game: `K4.Guardado` is the save and the high score,
-`grabKeyboard: true` while playing gives you the whole keyboard, and a
-`Timer` is the tick. The repo's dungeon (`plugins/Game/`) is the proof it
-can go far.
+`tecladoAlPasar: true` gives you the keys while the pointer is over the
+island and hands them back when it leaves, and a `Timer` is the tick. Use
+`grabKeyboard` only for something you open, look at and close: a game stays
+open, and exclusive focus would leave the whole desktop unable to type. Do
+NOT use `tecladoOpcional` for keys you expect to just work — on-demand means
+the compositor only grants them if you CLICK the surface, so a game opened
+by shortcut never sees a keystroke.
+
+And the second half of the keyboard, which is a separate problem: the layer
+having the keys does not mean your view receives one. The island's root also
+claims focus — that is where ESC lives — so claim it back with
+`K4.FocoInicial`, and not only on open: with `tecladoAlPasar` the keys arrive
+when the pointer enters, and by then `FocoInicial` has already given up.
+
+```qml
+property var foco: K4.FocoInicial { objetivo: raiz }
+Component.onCompleted: foco.reclamar()
+HoverHandler { onHoveredChanged: if (hovered) raiz.foco.reclamar() }
+```
+
+Four more things every game needs, and none of them raises an error when
+missing:
+
+- `function close()` — the host closes the active module on ESC by calling
+  it. Without it the key does nothing and your view becomes a trap.
+- `handlesBackgroundTap: true` with an empty `onBackgroundTapped` — or a
+  click on any gap in your view opens the control center.
+- `closeOnHoverExit: false` — a game must not vanish when the pointer
+  leaves mid-fight.
+- Anything you put in `services/` is NOT hot-reloaded: `pluginReload`
+  reloads your plugin directory only, so rule changes need the bar
+  restarted.
+
+The repo's dungeon (`plugins/Game/`) and the Digivice
+(`plugins/Digivice/`, see `docs/DIGIVICE.md`) are the proof it can go far.
+And what a game draws with is plain Qt: `AnimatedSprite`, `SpriteSequence`,
+`ParticleSystem`, `Shape`, `ShaderEffect` and `Canvas` are all importable —
+the rule is only that Quickshell stays hidden, not Qt.
 
 ## 3b · Showing up in places that are not yours
 

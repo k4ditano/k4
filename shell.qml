@@ -274,6 +274,13 @@ Scope {
                     return WlrKeyboardFocus.None
                 if (p.grabKeyboard)
                     return WlrKeyboardFocus.Exclusive
+                //  El punto medio para los juegos: exclusivo mientras el ratón
+                //  esté encima —que es donde se juega— y devuelto al salir.
+                //  Wayland no tiene un modo «al pasar», así que se conmuta con
+                //  `Island.hovered`, que ya trae su margen de 240 ms y por eso
+                //  no parpadea al rozar un borde.
+                if (p.tecladoAlPasar && Island.hovered)
+                    return WlrKeyboardFocus.Exclusive
                 if (p.tecladoOpcional)
                     return WlrKeyboardFocus.OnDemand
                 return WlrKeyboardFocus.None

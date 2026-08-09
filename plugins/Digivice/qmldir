@@ -1,0 +1,32 @@
+#  Los tipos de esta carpeta, para que se resuelvan también
+#  cargando el plugin por URL (esquema qs:).
+
+DigivicePlugin 1.0 DigivicePlugin.qml
+DigiviceView 1.0 DigiviceView.qml
+Retrato 1.0 Retrato.qml
+Combate 1.0 Combate.qml
+Entrenamiento 1.0 Entrenamiento.qml
+Pantalla 1.0 Pantalla.qml
+Criatura 1.0 Criatura.qml
+Golpe 1.0 Golpe.qml
+Aparato 1.0 Aparato.qml
+PantallaBicho 1.0 PantallaBicho.qml
+PantallaEstado 1.0 PantallaEstado.qml
+PantallaMapa 1.0 PantallaMapa.qml
+PantallaLista 1.0 PantallaLista.qml
+Sonidos 1.0 Sonidos.qml
+Paisaje 1.0 Paisaje.qml
+PantallaBanco 1.0 PantallaBanco.qml
+PantallaHuevos 1.0 PantallaHuevos.qml
+Pelota 1.0 Pelota.qml
+PantallaEntreno 1.0 PantallaEntreno.qml
+Aguante 1.0 Aguante.qml
+Bloqueo 1.0 Bloqueo.qml
+PantallaEvolucion 1.0 PantallaEvolucion.qml
+PantallaBolsa 1.0 PantallaBolsa.qml
+Caza 1.0 Caza.qml
+PantallaObjetivos 1.0 PantallaObjetivos.qml
+PantallaMercado 1.0 PantallaMercado.qml
+Bits 1.0 Bits.qml
+PantallaPvp 1.0 PantallaPvp.qml
+Huevo 1.0 Huevo.qml
