@@ -5,6 +5,20 @@ built with [Quickshell](https://quickshell.org/). k4 stays compact at the
 edge of the screen — top or bottom, wherever you put it — and expands only
 when it has something to show.
 
+<img src="screenshots/bar.png" width="100%" alt="The k4 bar at rest, collapsed at the top edge of the screen">
+
+| | |
+|:--:|:--:|
+| <img src="screenshots/launcher.png" alt="Application launcher"> | <img src="screenshots/control-center.png" alt="Control center with Wi-Fi, Bluetooth, sound and media"> |
+| **The launcher** — applications, package search and installation. | **The control center** — Wi-Fi, Bluetooth, per-device sound and the player. |
+| <img src="screenshots/theme.png" alt="Hyprland theme panel"> | <img src="screenshots/shortcuts.png" alt="Searchable shortcut viewer"> |
+| **Hyprland's theme**, edited live: colors, gaps, borders, blur, animations. | **Every shortcut**, searchable — yours and the ones k4 installs. |
+
+<p align="center">
+  <img src="screenshots/settings.png" width="62%" alt="k4 settings, with per-plugin rows">
+</p>
+<p align="center"><em>Settings, where every plugin contributes its own rows.</em></p>
+
 ## Features
 
 - A media player with artwork, transport controls, seeking and a visualizer.
@@ -21,7 +35,10 @@ when it has something to show.
   configurable shortcuts.
 - A screen capture and recording workflow with region/window selection, video
   preview, folder/editor actions and a full non-linear editor.
-- An idle roguelite game implemented as a regular k4 plugin.
+- Games as ordinary plugins, not special cases: an idle roguelite, and
+  [Digivice](https://github.com/k4ditano/digivice) — a virtual pet whose road
+  advances on how you actually use the computer, reading nothing but *that* a
+  window changed.
 - Plugin enable/disable state, plugin indicators and a documented public API:
   plugins contribute their own Settings rows (switches, choices, free-text
   fields with secret masking for API keys), launcher results and pill
