@@ -55,6 +55,12 @@ The editor supports layered video and image timelines, cuts, empty layers,
 cropping, resizing, audio tracks, subtitles, camera overlays and rendering to
 MP4, WebM or GIF.
 
+<img src="screenshots/editor.png" width="100%" alt="The video editor: preview, tool panel and a two-layer timeline">
+
+*The editor is not a separate application — it is the capture plugin's other
+half. Zoom, text, censoring, markers, silence detection and transcription down
+the side; the timeline below; MP4, WebM, GIF or 9:16 on the way out.*
+
 ## Plugins
 
 Everything the bar does is a plugin — including the things that look built in.
