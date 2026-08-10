@@ -55,6 +55,69 @@ The editor supports layered video and image timelines, cuts, empty layers,
 cropping, resizing, audio tracks, subtitles, camera overlays and rendering to
 MP4, WebM or GIF.
 
+## Plugins
+
+Everything the bar does is a plugin — including the things that look built in.
+They load dynamically and in isolation: a broken one is recorded with its error
+and the bar starts without it.
+
+**Shipped with the bar** (26, all enabled by default except the Digivice):
+
+| The island itself | |
+|---|---|
+| `idle` | The folded pill: artwork, workspaces, clock, visualizer |
+| `player` | Player with artwork, scrubbing and transport |
+| `clock` | Date and time on hover, when there is no music |
+| `volume` | Volume HUD, only when it changes from outside |
+| `sonido` | Output, input and per-device levels |
+| `toast` | Notification pop-up that waits while your pointer is on it |
+| `tray` | System tray |
+| `weather` | Weather |
+
+| Control and system | |
+|---|---|
+| `panel` | Control center: Wi-Fi, Bluetooth, sound, media, shortcuts |
+| `settings` | The bar's settings, inside the island |
+| `system` | System monitor |
+| `session` | Power menu and lock screen |
+| `windows` | Window switcher |
+| `apps` | Everything the bar knows how to open, in one grid |
+| `keys` | Shortcut cheat sheet, without opening the config file |
+
+| Tools | |
+|---|---|
+| `launcher` | Spotlight-style launcher, with a package-install mode |
+| `clipboard` | Clipboard history, searchable |
+| `files` | File finder |
+| `captura` | Screen capture and recording, with the video editor |
+| `terminal` | The house terminal, seen from the bar |
+| `ssh` | Your servers, two clicks away |
+| `agentes` | How your agent CLIs are doing against their limits |
+| `ask` | Quick question to Codex CLI |
+| `hyprtheme` | Theme Hyprland from the island: colors, windows, effects, wallpaper |
+
+| Games | |
+|---|---|
+| `game` | **Mazmorra** — an idle dungeon roguelite |
+| `digivice` | **[Digivice](https://github.com/k4ditano/digivice)** — a virtual pet that walks on how you use the computer. Ships disabled; published separately |
+
+**Installable from a repository.** Browse them with `python3 tools/plugins.py
+--buscar` and install with `--instalar <url>`; they arrive disabled and declare
+the permissions they use.
+
+| Plugin | What it is | Where |
+|---|---|---|
+| **Senda** | Creature roguelike autobattler: branching map, three regions, the real type chart | [k4ditano/senda](https://github.com/k4ditano/senda) |
+| **La Grieta** | Typing roguelike: the island *is* the crack, and you seal what crawls out | [k4ditano/grieta](https://github.com/k4ditano/grieta) |
+| `hola` | The minimal plugin from the guide: one view, one counter, its settings | [`ejemplos/hola`](ejemplos/hola) |
+| `snake` | The usual snake, playable in the island | [`ejemplos/snake`](ejemplos/snake) |
+| `piezas` | Sampler of the API's visual components | [`ejemplos/piezas`](ejemplos/piezas) |
+| `efectos` | Showcase of tinting, gestures and drawing outside the island | [`ejemplos/efectos`](ejemplos/efectos) |
+
+Yours live in `~/.config/k4/plugins/<id>/` with a `plugin.json` manifest. To
+list yours in the registry, open a PR adding your entry to
+[`plugins/registro.json`](plugins/registro.json).
+
 ## Installation
 
 The installer targets Arch Linux and reads the single dependency list in
@@ -249,12 +312,11 @@ not import each other; references are injected by `shell.qml`.
 - [API quick reference](api/LEEME.md): the exported `K4` types and implementation
   notes.
 
-Plugins are loaded dynamically and in isolation: a broken one is recorded with
-its error and the bar starts without it. Your own plugins live in
-`~/.config/k4/plugins/<id>/` with a `plugin.json` manifest, arrive disabled,
-and declare the permissions they use — informed consent plus static analysis,
-not a sandbox. Browse the public registry with `python3 tools/plugins.py
---buscar`, or install straight from a repository with `--instalar <url>`.
+On the security model, since [Plugins](#plugins) covers the rest: a plugin
+arrives disabled and declares the permissions it uses, which the installer
+shows you and `tools/api.py` checks statically. That is **informed consent plus
+static analysis, not a sandbox** — a plugin can run local processes, so only
+install code you have read or trust.
 
 Before opening a pull request, run:
 

@@ -42,6 +42,13 @@
    "description": "Roguelike de tecleo: sella con el teclado lo que sale por la grieta de la barra",
    "autor": "k4",
    "repo": "https://github.com/k4ditano/grieta"
+  },
+  {
+   "id": "senda",
+   "title": "Senda",
+   "description": "Roguelike autobattler de criaturas: mapa ramificado, tres regiones y combate por tipos",
+   "autor": "k4",
+   "repo": "https://github.com/k4ditano/senda"
   }
  ]
 }
