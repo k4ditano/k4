@@ -77,6 +77,17 @@
       "aplicacion": true
     },
     {
+      "id": "pantallas",
+      "entry": "Pantallas/PantallasPlugin.qml",
+      "version": "1.0.0",
+      "title": "Pantallas",
+      "description": "Configura monitores y reparte escritorios de Hyprland",
+      "enabledByDefault": true,
+      "icono": "0xF037A",
+      "aplicacion": true,
+      "permisos": ["procesos"]
+    },
+    {
       "id": "weather",
       "entry": "Weather/WeatherPlugin.qml",
       "version": "1.0.0",
