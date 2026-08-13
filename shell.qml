@@ -87,6 +87,17 @@ Scope {
     //  K4.Isla: quién la tiene y si está desplegada.
     onActivePluginChanged: {
         apartarTransitorios()
+        const anterior = Island.ocupante
+        if (activePlugin && activePlugin.name !== "idle") {
+            // Desde reposo, el origen explícito del clic; sin él, el monitor
+            // con foco. Entre dos vistas abiertas se conserva la pantalla para
+            // que navegar por el panel no haga saltar la island.
+            if (Island.pantallaPedida.length > 0
+                    || anterior.length === 0 || anterior === "idle")
+                Island.pantallaActiva = Island.tomarPantallaPedida()
+        } else {
+            Island.pantallaPedida = ""
+        }
         Island.ocupante = activePlugin ? activePlugin.name : ""
         //  «Abierta» es DESPLEGADA, no «hay alguien»: la píldora también
         //  ocupa la island y siempre está, así que con `activePlugin !== null`
@@ -96,17 +107,21 @@ Scope {
             && activePlugin.islandHeight > Theme.baseHeight
     }
 
-    readonly property int islandWidth: activePlugin ? activePlugin.islandWidth : 176
-    readonly property int islandHeight: activePlugin ? activePlugin.islandHeight : Theme.baseHeight
-
     // Clic en el fondo: lo atiende el plugin activo si lo pide; si no, abre el
     // centro de control.
-    function backgroundTap() {
-        const p = activePlugin
-        if (p && p.handlesBackgroundTap)
-            p.backgroundTapped()
+    function abrirPanelEn(pantalla) {
+        Island.pedirPantalla(pantalla)
+        Island.pantallaActiva = pantalla
+        const panel = PluginManager.instancia("panel")
+        if (panel)
+            panel.openTab("controls")
+    }
+
+    function backgroundTap(pantalla, mostrado) {
+        if (mostrado && mostrado.name !== "idle" && mostrado.handlesBackgroundTap)
+            mostrado.backgroundTapped()
         else
-            PluginManager.abrirPanel()
+            abrirPanelEn(pantalla)
     }
 
     // Los singletons de QML son perezosos: sin tocarlos no arrancan sus
@@ -249,6 +264,20 @@ Scope {
             //  fichero pregunta `abajo` en vez de repetir la comparación.
             readonly property bool abajo: Settings.posicionBarra === "abajo"
 
+            // Solo la pantalla propietaria enseña la acción global. Las demás
+            // siguen con su píldora, que sí pertenece a todos los monitores.
+            readonly property var idlePlugin: PluginManager.instancia("idle")
+            readonly property bool esPantallaActiva: root.activePlugin
+                && root.activePlugin.name !== "idle"
+                && panelWindow.screen.name === Island.pantallaActiva
+            readonly property var pluginVisible: root.activePlugin
+                && (root.activePlugin.name === "idle" || esPantallaActiva)
+                ? root.activePlugin : idlePlugin
+            readonly property int anchoIsla: pluginVisible
+                ? pluginVisible.islandWidth : 176
+            readonly property int altoIsla: pluginVisible
+                ? pluginVisible.islandHeight : Theme.baseHeight
+
             anchors.top: !abajo
             anchors.bottom: abajo
             anchors.left: true
@@ -269,8 +298,8 @@ Scope {
                 //  pero no se podía ni escribir en él ni cerrarlo con Escape.
                 if (Island.apartada)
                     return WlrKeyboardFocus.None
-                const p = root.activePlugin
-                if (!p)
+                const p = panelWindow.pluginVisible
+                if (!p || p !== root.activePlugin || p.name === "idle")
                     return WlrKeyboardFocus.None
                 if (p.grabKeyboard)
                     return WlrKeyboardFocus.Exclusive
@@ -299,7 +328,7 @@ Scope {
             //  de la superficie. Crece al empezar el gesto y el encogido lo
             //  recoge el mismo temporizador de siempre.
             readonly property int targetHeight: Math.min(Theme.maxIslandHeight,
-                root.islandHeight + 2 + (island.gestoEnCurso ? 44 : 0))
+                panelWindow.altoIsla + 2 + (island.gestoEnCurso ? 44 : 0))
             property int surfaceHeight: targetHeight
 
             onTargetHeightChanged: {
@@ -344,8 +373,8 @@ Scope {
                 //  abrir y cerrar módulos.
                 property real fraccionSuave: Island.colocacion
                 x: (parent.width - width) * fraccionSuave
-                width: Math.min(parent.width, root.islandWidth + Theme.wing * 2)
-                height: root.islandHeight
+                width: Math.min(parent.width, panelWindow.anchoIsla + Theme.wing * 2)
+                height: panelWindow.altoIsla
 
                 Behavior on fraccionSuave {
                     NumberAnimation {
@@ -400,7 +429,7 @@ Scope {
                 Keys.onPressed: function (ev) {
                     if (ev.key !== Qt.Key_Escape)
                         return
-                    const p = root.activePlugin
+                    const p = panelWindow.pluginVisible
                     if (p && typeof p.close === "function") {
                         p.close()
                         ev.accepted = true
@@ -506,6 +535,11 @@ Scope {
                         if (hovered) {
                             hoverExitTimer.stop()
                             root.holdHoverExit()
+                            if (!root.activePlugin || root.activePlugin.name === "idle")
+                                Island.pedirPantalla(panelWindow.screen.name)
+                            else if (root.activePlugin.name === "clock"
+                                     || root.activePlugin.name === "player")
+                                Island.usarPantalla(panelWindow.screen.name)
                             Island.hovered = true
                             Notifs.holdToast()
                         } else {
@@ -520,7 +554,7 @@ Scope {
                 TapHandler {
                     acceptedButtons: Qt.RightButton
                     gesturePolicy: TapHandler.ReleaseWithinBounds
-                    onTapped: panelPlugin.toggle()
+                    onTapped: root.abrirPanelEn(panelWindow.screen.name)
                 }
 
                 // ── la silueta: cuerpo + esquinas invertidas que funden con el borde
@@ -615,7 +649,8 @@ Scope {
                         anchors.fill: parent
                         acceptedButtons: Qt.LeftButton
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: root.backgroundTap()
+                        onClicked: root.backgroundTap(panelWindow.screen.name,
+                                                      panelWindow.pluginVisible)
                     }
 
                     // Se dispone al tamaño final y se destapa con el clip, así
@@ -623,8 +658,8 @@ Scope {
                     Item {
                         anchors.top: parent.top
                         anchors.horizontalCenter: parent.horizontalCenter
-                        width: root.islandWidth
-                        height: root.islandHeight
+                        width: panelWindow.anchoIsla
+                        height: panelWindow.altoIsla
 
                         Repeater {
                             //  Las instancias vivas del gestor. Cuando esto
@@ -636,7 +671,8 @@ Scope {
                             delegate: Loader {
                                 required property var modelData
                                 anchors.fill: parent
-                                active: modelData === root.activePlugin && modelData.viewLoaded
+                                active: modelData === panelWindow.pluginVisible
+                                    && modelData.viewLoaded
                                 sourceComponent: modelData.view
                                 onStatusChanged: {
                                     if (status === Loader.Error)

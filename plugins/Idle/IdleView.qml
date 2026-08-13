@@ -25,13 +25,43 @@ FadeIn {
 
     // ── los escritorios asoman al cambiar ─────────────────────────
     property bool mostrandoEscritorios: false
+    property int inicioEscritorios: 0
+    readonly property var escritoriosVisibles:
+        Workspaces.list.slice(inicioEscritorios, inicioEscritorios + 3)
+
+    // Una mirilla de tres: 1·2·3, después 2·3·4, después 3·4·5… El activo
+    // recorre la mirilla y esta solo avanza cuando llega a un borde.
+    function ajustarVentanaEscritorios() {
+        const lista = Workspaces.list
+        if (lista.length <= 3) {
+            inicioEscritorios = 0
+            return
+        }
+        let indice = -1
+        for (let i = 0; i < lista.length; ++i)
+            if (lista[i].focused) {
+                indice = i
+                break
+            }
+        if (indice < 0)
+            return
+        let inicio = Math.max(0, Math.min(inicioEscritorios, lista.length - 3))
+        if (indice < inicio)
+            inicio = indice
+        else if (indice > inicio + 2)
+            inicio = indice - 2
+        inicioEscritorios = Math.max(0, Math.min(inicio, lista.length - 3))
+    }
 
     //  El primer cambio de `activo` es el de arrancar —pasa de -1 al que
     //  toque—, y no es un cambio de escritorio: sin esta guarda la píldora
     //  enseñaría los puntos cada vez que se recarga la barra.
     property bool arrancado: false
 
-    Component.onCompleted: arranque.start()
+    Component.onCompleted: {
+        ajustarVentanaEscritorios()
+        arranque.start()
+    }
 
     Timer {
         id: arranque
@@ -42,11 +72,13 @@ FadeIn {
     Connections {
         target: Workspaces
         function onActivoChanged() {
+            view.ajustarVentanaEscritorios()
             if (!view.arrancado)
                 return
             view.mostrandoEscritorios = true
             volver.restart()
         }
+        function onListChanged() { view.ajustarVentanaEscritorios() }
     }
 
     Timer {
@@ -95,7 +127,7 @@ FadeIn {
             id: centro
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.max(46, Workspaces.dotsWidth - 8)
+            width: 46
             height: parent.height
 
             IslandLabel {
@@ -117,7 +149,7 @@ FadeIn {
                 Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
                 Repeater {
-                    model: Workspaces.list
+                    model: view.escritoriosVisibles
 
                     delegate: Rectangle {
                         required property var modelData

@@ -61,7 +61,10 @@ K4Plugin {
     // El centro ya no es solo la hora: al cambiar de escritorio enseña los
     // puntos en su lugar, y hay que reservar lo que ocupe el más ancho de los
     // dos o la píldora daría un salto cada vez.
-    readonly property int centroAncho: Math.max(46, Workspaces.dotsWidth - 8)
+    // El indicador es una ventana móvil de tres escritorios. Antes se medía
+    // con la lista completa y al hacer persistentes diez el centro se comía
+    // media barra, aunque solo hagan falta el actual y sus vecinos.
+    readonly property int centroAncho: 46
 
     islandWidth: centroAncho + 2 * ladoAncho + 44
     islandHeight: Theme.baseHeight

@@ -7,6 +7,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 
 Singleton {
@@ -21,6 +22,38 @@ Singleton {
     //  sondeos que nadie va a ver.
     property string ocupante: ""
     property bool abierta: false
+
+    // La píldora existe en todas las pantallas; una vista desplegada, en una.
+    // `pantallaPedida` conserva el origen de la acción hasta que el host sabe
+    // qué plugin ganó. Un clic la rellena con su pantalla; un atajo cae en el
+    // monitor enfocado de Hyprland.
+    property string pantallaActiva: ""
+    property string pantallaPedida: ""
+
+    function pedirPantalla(nombre) {
+        if (nombre)
+            pantallaPedida = String(nombre)
+    }
+
+    function pantallaConFoco() {
+        const monitor = Hyprland.focusedMonitor
+        if (monitor && monitor.name)
+            return monitor.name
+        return Quickshell.screens.length > 0 ? Quickshell.screens[0].name : ""
+    }
+
+    function pedirPantallaConFoco() { pedirPantalla(pantallaConFoco()) }
+
+    function tomarPantallaPedida() {
+        const elegida = pantallaPedida || pantallaConFoco()
+        pantallaPedida = ""
+        return elegida
+    }
+
+    function usarPantalla(nombre) {
+        pantallaActiva = nombre || pantallaConFoco()
+        pantallaPedida = ""
+    }
 
     // fuerza un modo concreto; se usa desde IPC para depurar
     property string debugMode: ""

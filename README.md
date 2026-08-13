@@ -67,7 +67,7 @@ Everything the bar does is a plugin — including the things that look built in.
 They load dynamically and in isolation: a broken one is recorded with its error
 and the bar starts without it.
 
-**Shipped with the bar** (26, all enabled by default except the Digivice):
+**Shipped with the bar** (27, all enabled by default except the Digivice):
 
 | The island itself | |
 |---|---|
@@ -101,6 +101,7 @@ and the bar starts without it.
 | `agentes` | How your agent CLIs are doing against their limits |
 | `ask` | Quick question to Codex CLI |
 | `hyprtheme` | Theme Hyprland from the island: colors, windows, effects, wallpaper |
+| `pantallas` | Arrange monitors visually and assign workspaces to each screen |
 
 | Games | |
 |---|---|
