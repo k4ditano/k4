@@ -203,6 +203,13 @@ K4Plugin {
         rebuild()
     }
 
+    // Un nombre llega de pacman o yay, pero sigue siendo dato: se cita antes
+    // de meterlo en el guion que recibe la terminal. Así ni una comilla ni un
+    // carácter de shell pueden convertir un paquete en una orden distinta.
+    function shellArgument(value) {
+        return "'" + String(value || "").replace(/'/g, "'\"'\"'") + "'"
+    }
+
     function installPackage(pkg) {
         if (!pkg)
             return
@@ -212,13 +219,37 @@ K4Plugin {
         // y no en un proceso mudo. La island lo es, así que vale igual — y si
         // se queda corta para leer un PKGBUILD, SUPER+ALT+T la saca a ventana
         // con la instalación dentro, sin cortarla.
-        const script = "yay -S --needed " + pkg.name
-            + " && notify-send -a 'Instalar' '" + pkg.name + "' 'Instalado correctamente'"
-            + " || { notify-send -a 'Instalar' -u critical '" + pkg.name + "' 'La instalación falló';"
+        const name = shellArgument(pkg.name)
+        const script = "yay -S --needed -- " + name
+            + " && notify-send -a 'Instalar' " + name + " 'Instalado correctamente'"
+            + " || { notify-send -a 'Instalar' -u critical " + name + " 'La instalación falló';"
             + Consola.cierre + " }"
 
         Consola.ejecutar(script)
         close()
+    }
+
+    function uninstallPackage(pkg) {
+        if (!pkg || pkg.installed !== true)
+            return
+
+        // pacman enseña qué se va a retirar y pide confirmación antes de tocar
+        // nada. Sirve también para paquetes de AUR: una vez instalados, todos
+        // viven en la misma base local de pacman.
+        const name = shellArgument(pkg.name)
+        const script = "sudo pacman -Rns --confirm -- " + name
+            + " && notify-send -a 'Desinstalar' " + name + " 'Desinstalado correctamente'"
+            + " || { notify-send -a 'Desinstalar' -u critical " + name + " 'La desinstalación falló';"
+            + Consola.cierre + " }"
+
+        Consola.ejecutar(script)
+        close()
+    }
+
+    function uninstallSelected() {
+        if (mode !== "packages" || index < 0 || index >= packageMatches.length)
+            return
+        uninstallPackage(packageMatches[index])
     }
 
     // `conservarSeleccion` lo usa el refresco periódico: sin él, cada segundo

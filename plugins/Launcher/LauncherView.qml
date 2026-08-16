@@ -106,6 +106,11 @@ FadeIn {
                         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                             view.plugin.launchSelected()
                             event.accepted = true
+                        } else if (event.key === Qt.Key_Delete
+                                   && (event.modifiers & Qt.ControlModifier)
+                                   && view.plugin.mode === "packages") {
+                            view.plugin.uninstallSelected()
+                            event.accepted = true
                         } else if (event.key === Qt.Key_Down) {
                             view.plugin.moveSelection(1)
                             event.accepted = true
@@ -359,15 +364,59 @@ FadeIn {
 
                     IslandLabel {
                         visible: packageRow.index === view.plugin.index
-                        text: packageRow.modelData.installed ? Idioma.t("reinstalar ↵") : Idioma.t("instalar ↵")
+                        text: packageRow.modelData.installed
+                            ? Idioma.t("actualizar ↵") : Idioma.t("instalar ↵")
                         color: Theme.muted
                         font.pixelSize: 10
                         Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    Rectangle {
+                        id: uninstallAction
+                        visible: packageRow.modelData.installed
+                            && packageRow.index === view.plugin.index
+                        Layout.preferredWidth: uninstallContent.implicitWidth + 18
+                        Layout.preferredHeight: 26
+                        Layout.alignment: Qt.AlignVCenter
+                        radius: 13
+                        color: uninstallMouse.containsMouse ? "#3a1518" : "#2a0f12"
+                        border.width: 1
+                        border.color: Theme.red
+
+                        RowLayout {
+                            id: uninstallContent
+                            anchors.centerIn: parent
+                            spacing: 5
+
+                            IconGlyph {
+                                text: Theme.ico.uninstall
+                                color: Theme.red
+                                font.pixelSize: 11
+                            }
+
+                            IslandLabel {
+                                text: Idioma.t("desinstalar")
+                                color: Theme.red
+                                font.pixelSize: 10
+                            }
+                        }
+
+                        MouseArea {
+                            id: uninstallMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: view.plugin.uninstallPackage(packageRow.modelData)
+                        }
                     }
                 }
 
                 MouseArea {
                     anchors.fill: parent
+                    // Dejar el botón rojo fuera del clic general: el resto de
+                    // la fila actualiza/instala; este extremo desinstala.
+                    anchors.rightMargin: uninstallAction.visible
+                        ? uninstallAction.width + 12 : 0
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onEntered: view.plugin.index = packageRow.index

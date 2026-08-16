@@ -142,6 +142,7 @@ Singleton {
         forward: String.fromCodePoint(0xF0142),
         loading: String.fromCodePoint(0xF0772),
         install: String.fromCodePoint(0xF03D4),
+        uninstall: String.fromCodePoint(0xF09E7),
         package: String.fromCodePoint(0xF03D7),
         installed: String.fromCodePoint(0xF05E0),
         lock: String.fromCodePoint(0xF033E),

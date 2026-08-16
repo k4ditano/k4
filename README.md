@@ -28,7 +28,7 @@ when it has something to show.
   you can see when you are amplifying instead of turning up.
 - A native notification server with actions, application focusing and recent
   notification history.
-- An application launcher with package search and installation support on Arch.
+- An application launcher with package search, updates and uninstallation support on Arch.
 - Hyprland theme controls: colors, gaps, borders, blur, shadows, animations and
   wallpaper.
 - System tray support, clipboard history, window switching, session controls and
