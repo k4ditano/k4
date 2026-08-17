@@ -29,7 +29,8 @@ Singleton {
 
     readonly property var disponibles: [
         { codigo: "es", nombre: "Español" },
-        { codigo: "en", nombre: "English" }
+        { codigo: "en", nombre: "English" },
+        { codigo: "ru", nombre: "Русский" }
     ]
 
     // "auto" sigue al sistema; cualquier otro valor manda sobre él.
