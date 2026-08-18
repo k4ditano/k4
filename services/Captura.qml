@@ -366,7 +366,15 @@ Singleton {
                     return
                 }
                 captura.rutaVideo = ruta
-                grabador.command = captura.ordenGrabar(ruta)
+                const orden = captura.ordenGrabar(ruta)
+                // No arranques un grabador sin salida: wf-recorder/gsr crean
+                // un MP4 vacío y el fallo acaba pareciendo una grabación negra.
+                if (orden.length === 0) {
+                    captura.rutaVideo = ""
+                    captura.videoFallido("sin-monitor")
+                    return
+                }
+                grabador.command = orden
                 grabador.running = true
             }
         }
@@ -425,7 +433,10 @@ Singleton {
                        "-region", (partes[1] || "0x0")
                                   + "+" + (xy[0] || "0") + "+" + (xy[1] || "0"))
         } else {
-            orden.push("-w", monitorActual())
+            const pantalla = monitorActual()
+            if (pantalla.length === 0)
+                return []
+            orden.push("-w", pantalla)
         }
 
         //  `-fm cfr` por el mismo motivo que el `-D` de wf-recorder: a ritmo
@@ -477,8 +488,12 @@ Singleton {
 
         if (regionActual.length > 0)
             orden.push("-g", regionActual)
-        else
-            orden.push("-o", monitorActual())
+        else {
+            const pantalla = monitorActual()
+            if (pantalla.length === 0)
+                return []
+            orden.push("-o", pantalla)
+        }
 
         //  `--audio=<dispositivo>` y no `-a <dispositivo>`.
         //
@@ -1052,7 +1067,26 @@ Singleton {
     // pegadas, que no es lo que nadie espera.
     function monitorActual() {
         const m = Hyprland.focusedMonitor
-        return m && m.name ? m.name : ""
+        if (m && m.name)
+            return m.name
+
+        // En algunas versiones de Quickshell `focusedMonitor` puede quedarse
+        // nulo al cambiar de configuración de pantallas. El modelo de
+        // monitores sí conserva el monitor enfocado; úsalo antes de caer a la
+        // primera pantalla como último recurso.
+        const monitores = Hyprland.monitors && Hyprland.monitors.values
+            ? Hyprland.monitors.values : []
+        for (let i = 0; i < monitores.length; ++i) {
+            const monitor = monitores[i]
+            const datos = monitor && monitor.lastIpcObject
+            if (monitor && monitor.name
+                    && (monitor.focused || (datos && datos.focused)))
+                return monitor.name
+        }
+
+        const pantallas = Quickshell.screens
+        return pantallas && pantallas.length > 0 && pantallas[0].name
+            ? pantallas[0].name : ""
     }
 
     function copiar(ruta) {
