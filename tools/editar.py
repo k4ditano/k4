@@ -580,7 +580,7 @@ def orden_onda(args):
     if p.returncode != 0 or not p.stdout:
         #  Una pista que no existe o un fichero sin audio no es un fallo del
         #  que haya que quejarse: es un bloque que se dibuja liso, y ya.
-        salir(ok=True, picos=[])
+        salir(ok=True, picos=[], dur=0.0)
 
     import array
     muestras = array.array("h")
@@ -590,7 +590,7 @@ def orden_onda(args):
     muestras.frombytes(crudo[:len(crudo) - (len(crudo) % 2)])
     total = len(muestras)
     if total == 0:
-        salir(ok=True, picos=[])
+        salir(ok=True, picos=[], dur=0.0)
 
     paso = max(1, total // puntos)
     picos = []
@@ -599,7 +599,15 @@ def orden_onda(args):
         if not trozo:
             continue
         picos.append(round(max(max(trozo), -min(trozo)) / 32768.0, 4))
-    salir(ok=True, picos=picos[:puntos])
+
+    #  Y CUÁNTO dura lo que se ha medido, que sale gratis: se ha leído el flujo
+    #  entero a 2 kHz, así que el número de muestras ES la duración.
+    #
+    #  Hace falta para saber a qué pico corresponde un instante. Sin esto había
+    #  que deducirlo del `dur` de la capa, y ese no es la duración del FICHERO
+    #  sino la del trozo que se oye: una capa recortada —o una pista separada de
+    #  un clip— apuntaba a un pico que no era el suyo.
+    salir(ok=True, picos=picos[:puntos], dur=round(total / 2000.0, 4))
 
 
 def plan_de_video(video, propuesto):

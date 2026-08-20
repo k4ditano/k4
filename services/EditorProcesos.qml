@@ -50,7 +50,9 @@ Scope {
     //  En cola y de una en una: un montaje con seis capas de audio lanzaría seis
     //  ffmpeg a la vez y se comería la máquina justo mientras editas, que es el
     //  peor momento. Cada una tarda décimas, así que en fila no se nota.
-    signal ondaLista(string clave, var picos)
+    //  Con la duración de lo medido: sin ella no se sabe a qué pico
+    //  corresponde un instante. Ver `orden_onda` en editar.py.
+    signal ondaLista(string clave, var picos, real dur)
 
     property var colaOndas: []
 
@@ -77,7 +79,8 @@ Scope {
                 let d = null
                 try { d = JSON.parse(this.text) } catch (e) { }
                 procesos.ondaLista(ondeador.clave,
-                                   d && d.picos ? d.picos : [])
+                                   d && d.picos ? d.picos : [],
+                                   d && d.dur ? d.dur : 0)
             }
         }
         //  La cola avanza al MORIR el proceso y no al leer su salida: si se

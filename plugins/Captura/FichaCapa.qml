@@ -1024,12 +1024,16 @@ ColumnLayout {
         }
 
         //  La música que se agacha: cuando suena quien manda, esta capa baja
-        //  sola y vuelve con calma. Solo para capas de audio, y solo se oye al
-        //  renderizar: el reproductor de la previa no comprime.
+        //  sola y vuelve con calma. Solo para capas de audio.
+        //
+        //  Antes esto ponía «(al renderizar)» porque la previa no comprimía y
+        //  había que renderizar para enterarte de si el equilibrio valía. Ahora
+        //  se oye mientras editas —imitado a partir de la onda, ver AudioExtra—
+        //  así que el aviso sobraba.
         BotonAccion {
             visible: Editor.capaSel && Editor.capaSel.tipo === "audio"
             texto: Editor.capaSel && Editor.capaSel.agachar
-                ? Idioma.t("Se agacha (al renderizar)")
+                ? Idioma.t("Se agacha")
                 : Idioma.t("Agacharse con otra pista")
             icono: 0xF0792                        // md-arrow_collapse_down
             activo: Editor.capaSel && !!Editor.capaSel.agachar

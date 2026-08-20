@@ -2017,6 +2017,9 @@ Singleton {
     //  muchas veces por segundo mientras arrastras. Aquí se pide una vez por
     //  fichero y pista, y el resultado se queda.
     property var ondas: ({})
+    //  Cuánto dura el fichero de cada onda. No es lo mismo que el `dur` de la
+    //  capa: ese es lo que se OYE, y una capa recortada oye un trozo.
+    property var ondasDur: ({})
     property var ondasPedidas: ({})
 
     function claveOnda(capa) {
@@ -2042,9 +2045,138 @@ Singleton {
             procesos.pedirOnda(capas[i].ruta,
                                capas[i].pista !== undefined ? capas[i].pista : 0)
         }
+        //  Y la del propio vídeo, que no se dibuja en ningún bloque pero es la
+        //  llave por defecto del agachado: sin ella, una música puesta a
+        //  agacharse «con el vídeo» no se agacharía en la previa.
+        //
+        //  La pista 0, que es la Mezcla: es la que suena al reproducir.
+        for (let j = 0; j < tramos.length; ++j) {
+            const tr = tramos[j]
+            if (!tr.ruta || tr.imagen)
+                continue
+            const k = tr.ruta + "|0"
+            if (ondasPedidas[k])
+                continue
+            ondasPedidas[k] = true
+            procesos.pedirOnda(tr.ruta, 0)
+        }
     }
 
     onCapasChanged: asegurarOndas()
+    onClipsChanged: asegurarOndas()
+
+    // ── el agachado, en la previa ─────────────────────────────────
+    //
+    //  El compresor del render no existe aquí: la previa son reproductores
+    //  sueltos siguiendo el mismo reloj, y no hay forma de que uno OIGA a otro
+    //  para agacharse. Pero sí hay las ondas —los picos que ya se calculan para
+    //  dibujar los bloques—, así que el nivel de quien manda se LEE en vez de
+    //  escucharse, y con él se le baja el volumen a quien obedece.
+    //
+    //  No es el compresor: es su curva, medida. Y medida **a través del render
+    //  de verdad**, no en un banco aparte, que es la diferencia entre parecerse
+    //  y mentir: un banco con `sidechaincompress` suelto daba −11,7 dB donde el
+    //  render hace −25, porque por el camino el audio pasa por la mezcla, por
+    //  las normas de formato y por un detector que mira energía y no picos.
+    //  Calibrar contra el resultado final absorbe todo eso de una vez.
+    //
+    //  La tabla es «pico que se lee en la onda» → «dB que baja el render»:
+    //
+    //      0,012 →  0 dB     0,025 → −0,3     0,036 →  −1,7
+    //      0,061 → −5,1      0,122 → −10,4    0,245 → −15,6
+    //      0,426 → −19,9     0,610 → −22,6    0,850 → −25,1
+    //
+    //  Cada vez que la llave dobla, baja unos 4,5 dB más, que es lo que le toca
+    //  a un `ratio=8`. Y por debajo de 0,012 no pasa nada: ahí está el umbral.
+    //
+    //  La medida lleva CONTROL: el mismo montaje renderizado con el agachado
+    //  apagado tiene que dar la misma cifra en las dos ventanas. Sin ese
+    //  control, la primera tanda salió no-monótona —la llave se colaba por el
+    //  filtro con el que intentaba aislar la música— y me la habría creído.
+    //
+    //  La misma curva vale con la llave siendo el vídeo o siendo otra capa:
+    //  comprobado, las dos dan −25,1 dB con la llave a 0,85.
+    //
+    //  La previa nunca fue la verdad —lo dice la cabecera de AudioExtra— pero
+    //  ahora se le parece, que es de lo que se trata: poder decidir el volumen
+    //  de la música oyéndola agacharse en vez de renderizando para enterarte.
+    //
+    //  **Dónde se queda corta, dicho a las claras.** La onda se saca a 2 kHz
+    //  (ver `orden_onda`), así que lo que viva por encima del kilohercio largo
+    //  no cuenta: una llave sibilante o muy brillante manda aquí menos de lo
+    //  que mandará en el render. Se descubrió midiendo, no pensando —un tono de
+    //  prueba a 900 Hz llegaba a la onda como 0,11 en vez de 1—. Para voz
+    //  hablada, que es de lo que va esto, la energía está muy por debajo de ese
+    //  techo y la imitación cuadra.
+    readonly property var curvaAgachado: [
+        [0.012,   0.0], [0.025,  -0.3], [0.036,  -1.7],
+        [0.061,  -5.1], [0.122, -10.4], [0.245, -15.6],
+        [0.426, -19.9], [0.610, -22.6], [0.850, -25.1]
+    ]
+
+    function reduccionDb(nivel) {
+        const c = curvaAgachado
+        if (nivel <= c[0][0])
+            return 0
+        for (let i = 1; i < c.length; ++i)
+            if (nivel <= c[i][0]) {
+                const f = (nivel - c[i - 1][0]) / (c[i][0] - c[i - 1][0])
+                return c[i - 1][1] + f * (c[i][1] - c[i - 1][1])
+            }
+        return c[c.length - 1][1]
+    }
+
+    //  El pico de una onda en un instante DEL FICHERO. -1 es «todavía no se
+    //  sabe»: la onda se calcula en segundo plano y hasta que llega es mejor no
+    //  agachar nada que agachar a ciegas.
+    function picoDe(clave, enFichero) {
+        const picos = ondas[clave]
+        const dur = ondasDur[clave] || 0
+        if (!picos || picos.length === 0 || dur <= 0)
+            return -1
+        const i = Math.floor(enFichero / dur * picos.length)
+        return i >= 0 && i < picos.length ? picos[i] : 0
+    }
+
+    //  Lo que suena del VÍDEO en un instante de la línea. Hay que pasar por el
+    //  mapa de tramos: la línea está cortada, reordenada y a veces acelerada,
+    //  así que el segundo 8 de lo que ves no es el segundo 8 de ningún fichero.
+    function nivelDelVideoEn(t) {
+        const tr = tramoEn(t)
+        if (!tr || tr.imagen || tr.mudo)
+            return 0
+        return picoDe(tr.ruta + "|0",
+                      tr.desde + (t - tr.inicio) * tr.velocidad)
+    }
+
+    //  El nivel de quien manda sobre esta capa, en un instante de la línea.
+    function nivelLlaveEn(capa, t) {
+        if (!capa || !capa.agachar)
+            return -1
+        const otra = capa.llave > 0 ? capaPorId(capa.llave) : null
+        if (!otra || otra.id === capa.id)
+            return nivelDelVideoEn(t)
+        //  Fuera de su bloque no manda: una locución que ya acabó no puede
+        //  seguir agachando la música.
+        if (t < otra.t0 || t >= otra.t1 || otra.mudo)
+            return 0
+        const c = claveOnda(otra)
+        if (c.length === 0)
+            return -1
+        const desde = otra.recorte && otra.recorte.length === 2
+            ? otra.recorte[0] : 0
+        const p = picoDe(c, desde + (t - otra.t0))
+        //  Con su volumen puesto: si bajas la locución, manda menos. Es lo que
+        //  hace el render, donde el `volume` va antes del compresor.
+        return p < 0 ? -1
+            : p * (otra.volumen !== undefined ? otra.volumen : 1)
+    }
+
+    //  Por cuánto hay que multiplicar el volumen de una capa que se agacha.
+    function gananciaAgachado(capa, t) {
+        const n = nivelLlaveEn(capa, t)
+        return n < 0 ? 1 : Math.pow(10, reduccionDb(n) / 20)
+    }
 
     // ── copiar y pegar ────────────────────────────────────────────
     //
@@ -2626,12 +2758,19 @@ Singleton {
         //  Reasignando el objeto entero y no escribiendo dentro: QML solo emite
         //  el cambio cuando la propiedad se asigna, así que tocar una clave del
         //  mapa no repintaría ninguna onda.
-        onOndaLista: function (clave, picos) {
+        onOndaLista: function (clave, picos, dur) {
             const m = {}
             for (const k in editor.ondas)
                 m[k] = editor.ondas[k]
             m[clave] = picos
             editor.ondas = m
+            //  En un mapa aparte para no cambiarle la forma a `ondas`, que es
+            //  lo que dibujan los bloques y espera un array a secas.
+            const n = {}
+            for (const k in editor.ondasDur)
+                n[k] = editor.ondasDur[k]
+            n[clave] = dur
+            editor.ondasDur = n
         }
 
         onAbrirFallo: function (motivo) {

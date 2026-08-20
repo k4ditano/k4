@@ -9,6 +9,12 @@
 //  de desfase. El fichero que sale del render sí está mezclado por ffmpeg con
 //  precisión de muestra —medido: la música entra 19 dB justo en su segundo—, y
 //  esto es solo para poder decidir el volumen y el punto de entrada oyéndolos.
+//
+//  El agachado también suena aquí, y también es una imitación. Un reproductor
+//  no puede OÍR a otro, así que el nivel de quien manda se lee de su onda y la
+//  curva del compresor está medida punto a punto (ver `gananciaAgachado` en
+//  Editor). Sirve para ajustar a oído; el que manda de verdad sigue siendo el
+//  render.
 
 import QtQuick
 import QtMultimedia
@@ -70,6 +76,36 @@ Item {
                 && extra.segundos >= capa.t0 && extra.segundos <= capa.t1
             readonly property bool debeSonar: dentro && extra.sonando
                 && !extra.silenciado && !capa.mudo
+
+            //  ── el agachado ───────────────────────────────────────
+            //
+            //  Cuánto debería estar bajada esta capa AHORA, leyendo la onda de
+            //  quien manda (ver `gananciaAgachado` en Editor). Fuera de su
+            //  bloque o con el agachado apagado, uno: no se toca nada.
+            readonly property real objetivoAgachado:
+                capa && capa.agachar && dentro
+                    ? Editor.gananciaAgachado(capa, extra.segundos) : 1
+
+            //  Y cuánto lo está de verdad, que no salta: persigue al objetivo.
+            property real agachado: 1
+
+            //  Se persigue con un `Behavior` y no con un enlace directo porque
+            //  un enlace daría escalones —el objetivo se recalcula a cada tic
+            //  del reproductor, y la onda tiene un pico cada pocos milisegundos—
+            //  y eso no suena a compresor, suena a interruptor.
+            //
+            //  Deprisa al bajar y despacio al subir, como el del render (attack
+            //  80 ms, release 600 ms): una música que vuelve de golpe en cuanto
+            //  callas suena a puerta y no a técnico. Es la misma asimetría que
+            //  ya está documentada en `ramas_audio_extra`.
+            onObjetivoAgachadoChanged: agachado = objetivoAgachado
+
+            Behavior on agachado {
+                NumberAnimation {
+                    duration: voz.objetivoAgachado < voz.agachado ? 80 : 600
+                    easing.type: Easing.OutQuad
+                }
+            }
 
             //  Colocarse solo al empezar a sonar, no en cada fotograma.
             //
@@ -186,9 +222,13 @@ Item {
                     //  así que dejar los nodos de k4 a 3× los deja a 3× también
                     //  en el próximo arranque. Matar la barra con la ganancia
                     //  puesta —que aquí se hace a diario— la grababa para siempre.
+                    //  Y por último el agachado, que multiplica: primero
+                    //  cuánto quieres que suene, y luego cuánto la deja sonar
+                    //  quien manda. En ese orden y no al revés, que es como lo
+                    //  hace el render —el `volume` va ANTES del compresor—.
                     volume: !voz.capa ? 0
                         : Math.min(1, voz.capa.volumen !== undefined
-                            ? voz.capa.volumen : 0.8)
+                            ? voz.capa.volumen : 0.8) * voz.agachado
                 }
             }
         }
