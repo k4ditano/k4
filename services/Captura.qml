@@ -327,7 +327,13 @@ Singleton {
         //  Por si has enchufado una webcam desde que arrancó la barra, que es
         //  lo normal: se mira ahora y no solo al principio.
         buscarCamaras()
-        pedirNombreVideo.running = true
+        //  Y el sonido, por lo mismo y con más motivo: no se arranca el
+        //  grabador hasta tener la lista de dispositivos de este momento. Un
+        //  nombre de hace horas no da una grabación muda —eso sería lo de
+        //  menos—, da una grabación que no existe: gpu-screen-recorder se
+        //  niega a arrancar si el dispositivo que le nombras no está, y sale
+        //  en cincuenta milisegundos sin escribir un solo fotograma.
+        refrescarAudios(function () { pedirNombreVideo.running = true })
     }
 
     Timer {
@@ -455,10 +461,24 @@ Singleton {
 
         //  Una pista por cada `-a`, y en este orden: sistema primero y micro
         //  después, que es como las espera el juntado.
-        orden.push("-a", "device:" + monitorElegido,
-                   "-a", "device:" + microElegido,
+        orden.push("-a", audioParaGsr(monitorElegido, false),
+                   "-a", audioParaGsr(microElegido, true),
                    "-o", ruta)
         return orden
+    }
+
+    //  El nombre de un dispositivo tal y como lo entiende gsr.
+    //
+    //  `@DEFAULT_MONITOR@` y `@DEFAULT_SOURCE@` son comodines de PulseAudio, y
+    //  ffmpeg los resuelve; gsr no. Para él son un nombre cualquiera, no lo
+    //  encuentra, y se muere en el sitio en vez de coger el de por defecto.
+    //  Los suyos se llaman de otra forma, y son los que hay que darle mientras
+    //  no sepamos el nombre de verdad.
+    function audioParaGsr(nombre, esMicro) {
+        const n = String(nombre)
+        if (n.length === 0 || n.indexOf("@") === 0)
+            return esMicro ? "default_input" : "default_output"
+        return "device:" + n
     }
 
     function ordenGrabar(ruta) {
@@ -516,12 +536,17 @@ Singleton {
     }
 
     // El monitor del sink por defecto, que es por donde sale el sonido del
-    // sistema. Se pregunta cada vez que empieza una grabación porque cambia al
-    // enchufar unos auriculares.
+    // sistema. Se pregunta antes de cada grabación —lo hace `refrescarAudios`,
+    // desde `arrancarGrabador`— y no solo al arrancar la barra: cambia al
+    // enchufar unos auriculares, y también al despertar un monitor por HDMI,
+    // que trae su propia salida de sonido y se la lleva al irse.
+    //
+    // El comentario de antes ya decía «se pregunta cada vez que empieza una
+    // grabación». No era verdad: se preguntaba una vez, al arrancar, en un
+    // Process suelto sin nombre que nadie podía volver a lanzar.
     property string sinkMonitor: "@DEFAULT_MONITOR@"
 
-    // El micrófono por defecto, por el mismo motivo: cambia al enchufar unos
-    // auriculares y hay que preguntarlo, no darlo por sabido.
+    // El micrófono por defecto, por el mismo motivo y por el mismo camino.
     property string fuenteMicro: "@DEFAULT_SOURCE@"
 
     // ── qué dispositivos hay, y cuál se usa ───────────────────────
@@ -552,7 +577,39 @@ Singleton {
     readonly property string etiquetaMicroDefecto: etiquetaDe(microDefecto, microfonos)
     readonly property string etiquetaSalidaDefecto: etiquetaDe(salidaDefecto, salidasAudio)
 
-    function buscarAudios() { buscadorAudios.running = true }
+    function buscarAudios() { refrescarAudios(null) }
+
+    //  Preguntar qué hay enchufado, y avisar cuando se sepa.
+    //
+    //  Lo segundo es la mitad importante: quien va a grabar necesita ESPERAR a
+    //  la respuesta, no lanzarla y seguir con los nombres de antes. `despues`
+    //  se llama una sola vez, venga la lista o no venga.
+    property var trasAudios: null
+
+    function refrescarAudios(despues) {
+        trasAudios = despues || null
+        if (trasAudios)
+            esperaAudios.restart()
+        if (!buscadorAudios.running)
+            buscadorAudios.running = true
+    }
+
+    function seguirTrasAudios() {
+        const seguir = trasAudios
+        if (!seguir)
+            return
+        trasAudios = null
+        esperaAudios.stop()
+        seguir()
+    }
+
+    //  Y si pactl se atasca, la cuenta atrás no puede acabar en nada: se sigue
+    //  con lo último que se sepa, que es lo que se hacía siempre.
+    Timer {
+        id: esperaAudios
+        interval: 1500
+        onTriggered: captura.seguirTrasAudios()
+    }
 
     Process {
         id: buscadorAudios
@@ -561,15 +618,28 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 let d = null
-                try { d = JSON.parse(this.text) } catch (e) { return }
-                if (!d || !d.ok)
-                    return
-                captura.microfonos = d.microfonos || []
-                captura.salidasAudio = d.salidas || []
-                captura.microDefecto = d.micro_defecto || ""
-                captura.salidaDefecto = d.salida_defecto || ""
+                try { d = JSON.parse(this.text) } catch (e) { }
+                if (d && d.ok) {
+                    captura.microfonos = d.microfonos || []
+                    captura.salidasAudio = d.salidas || []
+                    captura.microDefecto = d.micro_defecto || ""
+                    captura.salidaDefecto = d.salida_defecto || ""
+
+                    //  El dispositivo por defecto sale de la MISMA consulta que
+                    //  la lista, y no de dos `pactl` sueltos como antes: eran
+                    //  dos fotos del sonido en dos instantes distintos que
+                    //  luego se comparaban entre sí como si fueran la misma.
+                    if (captura.salidaDefecto.length > 0)
+                        captura.sinkMonitor = captura.salidaDefecto + ".monitor"
+                    if (captura.microDefecto.length > 0)
+                        captura.fuenteMicro = captura.microDefecto
+                }
+                captura.seguirTrasAudios()
             }
         }
+        //  Por si el guion se cae antes de escribir nada: el que espera tiene
+        //  que enterarse igual.
+        onExited: captura.seguirTrasAudios()
     }
 
     //  El dispositivo que se usa de verdad: el fijado en Ajustes, si sigue
@@ -586,9 +656,27 @@ Singleton {
         Settings.grabarMicro !== "auto" && entreLos(Settings.grabarMicro, microfonos)
             ? Settings.grabarMicro : fuenteMicro
 
-    readonly property string monitorElegido:
+    readonly property string monitorElegido: salidaViva(
         Settings.grabarSalida !== "auto" && entreLos(Settings.grabarSalida, salidasAudio)
-            ? Settings.grabarSalida + ".monitor" : sinkMonitor
+            ? Settings.grabarSalida + ".monitor" : sinkMonitor)
+
+    //  Y la última red: que el nombre que se va a usar esté en la lista de
+    //  ahora mismo.
+    //
+    //  El micro fijado ya se comprobaba; la salida no se comprobaba nunca,
+    //  porque venía del sistema y se daba por buena. Pero la salida del sistema
+    //  también se puede ir: la del monitor por HDMI desaparece con el monitor,
+    //  y si era la de por defecto el nombre guardado apunta a un hueco. Si el
+    //  que toca no está, se coge el primero que sí, que es lo que hace el resto
+    //  de la casa cuando se desenchufa algo.
+    function salidaViva(nombre) {
+        if (salidasAudio.length === 0)
+            return nombre
+        const base = String(nombre).replace(/\.monitor$/, "")
+        if (entreLos(base, salidasAudio))
+            return nombre
+        return salidasAudio[0].nombre + ".monitor"
+    }
 
     Process {
         //  La voz de error, que antes se tiraba: si esto
@@ -609,37 +697,11 @@ Singleton {
         }
     }
 
-    Process {
-        command: ["sh", "-c", "echo \"$(pactl get-default-sink).monitor\""]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const n = String(this.text).trim()
-                if (n.length > 8)
-                    captura.sinkMonitor = n
-            }
-        }
-    }
-
-    Process {
-        //  La voz de error, que antes se tiraba: si esto
-        //  falla, el motivo queda en el log de la barra.
-        stderr: SplitParser {
-            onRead: function (l) {
-                if (String(l).trim().length > 0)
-                    console.warn("captura:", l)
-            }
-        }
-        command: ["sh", "-c", "pactl get-default-source"]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const n = String(this.text).trim()
-                if (n.length > 3)
-                    captura.fuenteMicro = n
-            }
-        }
-    }
+    //  Aquí vivían dos `Process` sueltos que preguntaban por el sink y por la
+    //  fuente por defecto. Corrían una vez, al arrancar la barra, y no tenían
+    //  ni nombre: no había forma de volver a lanzarlos. Ahora los dos nombres
+    //  salen de `buscadorAudios`, que ya preguntaba las dos listas en la misma
+    //  llamada y sí se puede repetir.
 
     //  El rastro del cursor, que es la materia prima del zoom automático.
     //
@@ -836,13 +898,25 @@ Singleton {
         rutaCamara = ""
     }
 
+    //  La PRIMERA queja del grabador, que es la que dice qué ha pasado: gsr
+    //  escupe el error y detrás la lista entera de dispositivos válidos, así
+    //  que quedarse con la última línea sería quedarse con un nombre suelto.
+    //
+    //  Hasta ahora esto solo iba al log, y el log de la barra se va a /dev/null
+    //  en cuanto se arranca con `setsid`. Un grabador que se moría al nacer no
+    //  dejaba rastro en ninguna parte: la grabación «se paraba sola».
+    property string quejaGrabador: ""
+
     Process {
         //  La voz de error, que antes se tiraba: si esto
-        //  falla, el motivo queda en el log de la barra.
+        //  falla, el motivo queda en el log de la barra y en `quejaGrabador`.
         stderr: SplitParser {
             onRead: function (l) {
-                if (!captura.ruidoDeGrabador(l))
-                    console.warn("captura:", l)
+                if (captura.ruidoDeGrabador(l))
+                    return
+                console.warn("captura:", l)
+                if (captura.quejaGrabador.length === 0)
+                    captura.quejaGrabador = String(l).trim()
             }
         }
         id: grabador
@@ -852,6 +926,7 @@ Singleton {
             captura.estado = "grabando"
             captura.inicio = Date.now()
             captura.duracion = 0
+            captura.quejaGrabador = ""
             crono.start()
 
             // El rastro se llama como el vídeo: así siguen emparejados aunque
@@ -897,6 +972,22 @@ Singleton {
             // recibir el SIGINT, y matarlo dejaría la última línea a medias.
             if (rastreador.running)
                 rastreador.signal(2)
+
+            //  Un grabador que se va con código de error no ha dejado vídeo.
+            //
+            //  Antes daba igual cómo hubiera salido: se seguía adelante, se
+            //  intentaba juntar un fichero que no existía y se acababa
+            //  emitiendo `videoListo` con la ruta de un vídeo que nunca se
+            //  escribió. Por fuera eso es exactamente «empieza y se para»:
+            //  ni vídeo, ni aviso, ni nada que mirar.
+            if (codigo !== 0) {
+                if (grabadorCamara.running)
+                    grabadorCamara.signal(2)
+                if (grabadorMicro.running)
+                    grabadorMicro.signal(2)
+                captura.fracasarGrabacion(codigo)
+                return
+            }
             //  Y a la cámara: un mp4 sin cerrar no lo abre nadie. No se espera
             //  a que muera —el juntado no la necesita— pero sí se le pide por
             //  las buenas, que es lo que cierra el contenedor.
@@ -1030,6 +1121,29 @@ Singleton {
     Process {
         id: limpiador
         onExited: captura.rematarGrabacion()
+    }
+
+    //  El final de una grabación que no ha llegado a serlo.
+    //
+    //  Se deshace lo poco que se había hecho —el rastro del cursor se queda
+    //  huérfano si no, y en la carpeta se acumulan `.rastro.jsonl` sueltos sin
+    //  su vídeo al lado— y se dice qué ha pasado, con las palabras del propio
+    //  grabador. El aviso lo enseña el plugin, que ya escuchaba `videoFallido`
+    //  para las fotos.
+    function fracasarGrabacion(codigo) {
+        grabando = false
+        estado = ""
+        if (rutaRastro.length > 0) {
+            Quickshell.execDetached(["rm", "-f", rutaRastro])
+            rutaRastro = ""
+        }
+        rutaVideo = ""
+        rutaMicro = ""
+        const motivo = quejaGrabador.length > 0
+                ? quejaGrabador
+                : "el grabador se cerró con el código " + codigo
+        quejaGrabador = ""
+        videoFallido(motivo)
     }
 
     //  El final de una grabación, una vez el fichero ya está como debe.
