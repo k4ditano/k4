@@ -3034,14 +3034,45 @@ def orden_camara(args):
                  for t, x, y in clics_de(plan)])
 
 
+_OPCION_GRAFO = []
+
+
+def opcion_grafo():
+    """Cómo se le dice a ffmpeg que el grafo está en un fichero.
+
+    Era `-filter_complex_script`, y **en ffmpeg 9 esa opción ya no existe**:
+    n9.0.1 contesta «Unrecognized option 'filter_complex_script'» y detrás un
+    «Error splitting the argument list», que no se parece en nada a lo que pasa.
+    Su relevo es el prefijo `-/opt` —«el valor de esta opción está en ese
+    fichero»—, que existe desde la 7.0. Pasó aquí el 20 ago 2026, al actualizar
+    el sistema: el editor dejó de renderizar de un día para otro sin que nadie
+    tocara el editor.
+
+    Se le PREGUNTA a ffmpeg en vez de mirar el número de versión: lo que hay que
+    saber es si entiende la opción, no qué número se ha puesto. Y se pregunta
+    una sola vez —cuesta unos 50 ms— porque un render la usa varias veces.
+    """
+    if not _OPCION_GRAFO:
+        try:
+            p = subprocess.run(["ffmpeg", "-hide_banner", "-h", "full"],
+                               capture_output=True, text=True)
+            viejo = "filter_complex_script" in p.stdout
+        except OSError:
+            viejo = False
+        _OPCION_GRAFO.append("-filter_complex_script" if viejo
+                             else "-/filter_complex")
+    return _OPCION_GRAFO[0]
+
+
 def escribir_grafo(plan, ruta_plan, sin_audio=False, nombre="grafo.txt",
                    sonoridad=False, vertical=False):
     """El grafo a un fichero, y la ruta del fichero.
 
-    `-filter_complex_script` y no `-filter_complex` a secas: el límite no es
-    `ARG_MAX` sino `MAX_ARG_STRLEN`, **128 KB por argumento suelto**, y con unos
-    cientos de tramos en la expresión de la cámara eso se alcanza. Falla con un
-    «Argument list too long» que no dice nada de lo que pasa de verdad.
+    En un fichero y no en la línea de órdenes: el límite no es `ARG_MAX` sino
+    `MAX_ARG_STRLEN`, **128 KB por argumento suelto**, y con unos cientos de
+    tramos en la expresión de la cámara eso se alcanza. Falla con un «Argument
+    list too long» que no dice nada de lo que pasa de verdad. Cómo se le nombra
+    el fichero a ffmpeg lo decide `opcion_grafo()`, que cambió en ffmpeg 9.
 
     De regalo, el grafo se queda en disco: cuando un render falle, ahí está lo
     que se le pidió a ffmpeg, tal cual.
@@ -3134,12 +3165,12 @@ def orden_render(args):
         with open(ruta_grafo, "w") as f:
             f.write(texto)
         orden = (["ffmpeg", "-v", "error", "-y"] + abrir_entradas(plan, rutas)
-                 + ["-filter_complex_script", ruta_grafo, "-map", "[gif]",
+                 + [opcion_grafo(), ruta_grafo, "-map", "[gif]",
                     "-loop", "0",
                     "-progress", "pipe:1", "-nostats", args.salida])
     elif formato == "webm":
         orden = (["ffmpeg", "-v", "error", "-y"] + abrir_entradas(plan, rutas)
-                 + ["-filter_complex_script", ruta_grafo,
+                 + [opcion_grafo(), ruta_grafo,
                     "-map", "[v]", "-map", "[a]",
                     #  `row-mt` y `-cpu-used 4`: vp9 sin eso tarda tanto que
                     #  nadie espera a que acabe. La calidad se nota poco.
@@ -3149,7 +3180,7 @@ def orden_render(args):
                     "-progress", "pipe:1", "-nostats", args.salida])
     else:
         orden = ["ffmpeg", "-v", "error", "-y"] + abrir_entradas(plan, rutas)
-        orden += ["-filter_complex_script", ruta_grafo,
+        orden += [opcion_grafo(), ruta_grafo,
                   "-map", "[v]", "-map", "[a]",
                   "-c:v", "hevc_nvenc" if args.codec == "hevc" else "h264_nvenc",
                   "-preset", "p5", "-rc", "vbr", "-cq", "21", "-b:v", "0",
@@ -3191,7 +3222,7 @@ def sacar_fotograma(plan, ruta_plan, t, destino):
     ruta_grafo, _ = escribir_grafo(plan, ruta_plan, sin_audio=True,
                                    nombre="grafo-congelar.txt")
     orden = (["ffmpeg", "-v", "error", "-y"] + abrir_entradas(plan, rutas)
-             + ["-filter_complex_script", ruta_grafo, "-map", "[v]",
+             + [opcion_grafo(), ruta_grafo, "-map", "[v]",
                 "-ss", "%.4f" % t, "-frames:v", "1", destino])
     p = subprocess.run(orden, capture_output=True, text=True)
     return p.returncode == 0 and os.path.exists(destino)
@@ -3340,7 +3371,7 @@ def orden_silencios(args):
     orden = ["ffmpeg", "-hide_banner", "-y"] + abrir_entradas(plan, rutas)
     #  Solo el audio: descodificar el vídeo para tirarlo es tiempo regalado, y
     #  aquí se está esperando a que conteste para poder cortar.
-    orden += ["-filter_complex_script", ruta_grafo, "-map", "[adet]",
+    orden += [opcion_grafo(), ruta_grafo, "-map", "[adet]",
               "-vn", "-f", "null", "-"]
 
     p = subprocess.run(orden, capture_output=True, text=True)
@@ -3378,7 +3409,7 @@ def orden_previa(args):
     # `-ss` como opción de SALIDA, después del grafo. Delante del `-i` ffmpeg
     # pone los tiempos a cero y todas las expresiones, que van en tiempo de
     # línea, apuntarían al sitio equivocado.
-    orden += ["-filter_complex_script", ruta_grafo, "-map", "[v]",
+    orden += [opcion_grafo(), ruta_grafo, "-map", "[v]",
               "-ss", str(args.t), "-frames:v", "1", args.salida]
 
     p = subprocess.run(orden, capture_output=True, text=True)
