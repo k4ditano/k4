@@ -2457,19 +2457,51 @@ def ramas_audio_extra(plan, idx_capa, sin_audio):
     if not extras:
         return ["[mez]anull[amez]"]
 
-    #  El agachado: la música que baja sola cuando hay voz.
+    #  El agachado: una capa que baja sola cuando suena otra.
     #
-    #  La llave es la MEZCLA del vídeo —ahí va la voz— y cada capa que lo pida
-    #  pasa por `sidechaincompress` con esa llave antes de mezclarse. Hace
-    #  falta repartir [mez] en copias: una para la mezcla y una por cada
-    #  capa que agacha, porque en un grafo cada etiqueta se consume una vez.
-    agachan = [k for k, c in enumerate(extras) if c.get("agachar")]
+    #  La llave era SIEMPRE la mezcla del vídeo —ahí va la voz de quien grabó—
+    #  y no se podía elegir otra cosa. Con una locución puesta DESPUÉS, en su
+    #  propia capa, la música no la oía y no se agachaba jamás: el agachado
+    #  servía para lo que se grabó y no para lo que se montó. Ahora cada capa
+    #  dice con qué se agacha en `llave`: vacío es el vídeo, como siempre, y si
+    #  no, el id de otra capa que suene.
+    #
+    #  La llave es SIEMPRE la señal CRUDA de quien manda —antes de su propio
+    #  agachado—, y eso es lo que hace imposible un bucle: A puede agacharse
+    #  con B y B con A a la vez, porque ninguna de las dos llaves depende del
+    #  agachado de nadie. Importa porque un grafo con un bucle no da un error
+    #  claro: ffmpeg se queda colgado sin decir nada.
+    por_id = {}
+    for k, c in enumerate(extras):
+        por_id[c["id"]] = k
+
+    #  Con qué se agacha cada una: "video", o el índice de otra capa. Una capa
+    #  que se nombra a sí misma, o que nombra a una que no está sonando —muda,
+    #  su pista silenciada, borrada—, cae al vídeo: es lo que hacía antes y no
+    #  deja a nadie sin agachado por un id viejo.
+    llaves = {}
+    for k, c in enumerate(extras):
+        if not c.get("agachar"):
+            continue
+        j = por_id.get(c.get("llave"))
+        llaves[k] = j if j is not None and j != k else "video"
+
     lineas, etiquetas = [], ["[mez]"]
-    if agachan:
+
+    #  Repartir [mez] en copias: una para la mezcla y una por cada capa que se
+    #  agacha CON EL VÍDEO, porque en un grafo cada etiqueta se consume una vez.
+    con_video = sorted(k for k, v in llaves.items() if v == "video")
+    if con_video:
         lineas.append("[mez]asplit=%d[mezv]%s"
-                      % (1 + len(agachan),
-                         "".join("[llave%d]" % k for k in agachan)))
+                      % (1 + len(con_video),
+                         "".join("[llave%d]" % k for k in con_video)))
         etiquetas = ["[mezv]"]
+
+    #  Y quién le sirve de llave a quién, para repartir también su señal.
+    clientes = {}
+    for k, v in llaves.items():
+        if v != "video":
+            clientes.setdefault(v, []).append(k)
 
     for k, capa in enumerate(extras):
         et = "ax%d" % k
@@ -2526,7 +2558,17 @@ def ramas_audio_extra(plan, idx_capa, sin_audio):
         partes.append(NORMA_AUDIO)
         lineas.append(",".join(partes) + "[%s]" % et)
 
-        if k in agachan:
+        #  Si esta capa le sirve de llave a alguien, su señal se reparte igual
+        #  que la del vídeo: una copia para oírse y una por cada capa que se
+        #  agacha con ella. Se reparte la CRUDA, antes de su propio agachado.
+        mios = sorted(clientes.get(k, []))
+        if mios:
+            lineas.append("[%s]asplit=%d[axs%d]%s"
+                          % (et, 1 + len(mios), k,
+                             "".join("[llave%d]" % j for j in mios)))
+            et = "axs%d" % k
+
+        if k in llaves:
             #  Umbral bajo y soltura lenta: baja en cuanto alguien habla y
             #  vuelve con calma, que es como lo hace un técnico y no una
             #  puerta. La llave no suena: solo manda.

@@ -60,6 +60,46 @@ Item {
 
     Component.onCompleted: forceActiveFocus()
 
+    // ── la locución ───────────────────────────────────────────────
+    //
+    //  El Editor tiene el micro; el reproductor está aquí. Así que allí se
+    //  decide y aquí se obedece: cuando el micro ya está abierto —y no antes—
+    //  se busca el punto y se da al play.
+    Connections {
+        target: Editor
+
+        function onVozPreparada() {
+            reproductor.irA(Editor.vozDesde)
+            reproductor.reproducir()
+        }
+
+        function onVozParada() {
+            reproductor.pausar()
+        }
+    }
+
+    //  Y cuando el vídeo se mueve DE VERDAD, se avisa.
+    //
+    //  Pedirle que se reproduzca y que se reproduzca son dos instantes
+    //  distintos: entre medias hay un medio que se coloca. Lo que vale como
+    //  «ya está andando» es que el cabezal AVANCE, que es lo único observable
+    //  desde fuera; el Editor solo se queda con la primera vez.
+    Connections {
+        target: reproductor
+        enabled: Editor.grabandoVoz
+        function onCabezalChanged() {
+            Editor.vozEmpezoASonar(reproductor.cabezal)
+        }
+
+        //  Y si el vídeo se para —se acabó, o le has dado a pausa— la toma se
+        //  acaba con él. Seguir con el micro abierto solo grabaría silencio, y
+        //  encima con el editor delante sin decir que sigue escuchando.
+        function onReproduciendoChanged() {
+            if (!reproductor.reproduciendo)
+                Editor.pararVoz()
+        }
+    }
+
     // ── dónde está la cámara ahora ────────────────────────────────
     //
     //  Búsqueda binaria sobre los puntos y recta entre los dos vecinos. Con

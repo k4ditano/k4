@@ -1023,18 +1023,99 @@ ColumnLayout {
             }
         }
 
-        //  La música que se agacha: cuando hay voz en el vídeo, esta capa baja
+        //  La música que se agacha: cuando suena quien manda, esta capa baja
         //  sola y vuelve con calma. Solo para capas de audio, y solo se oye al
         //  renderizar: el reproductor de la previa no comprime.
         BotonAccion {
             visible: Editor.capaSel && Editor.capaSel.tipo === "audio"
             texto: Editor.capaSel && Editor.capaSel.agachar
-                ? Idioma.t("Se agacha con la voz (al renderizar)")
-                : Idioma.t("Agacharse con la voz")
+                ? Idioma.t("Se agacha (al renderizar)")
+                : Idioma.t("Agacharse con otra pista")
             icono: 0xF0792                        // md-arrow_collapse_down
             activo: Editor.capaSel && !!Editor.capaSel.agachar
             onPulsado: Editor.fijarCapa(Editor.idSel,
                 { agachar: !Editor.capaSel.agachar })
+        }
+
+        //  Y CON QUÉ se agacha.
+        //
+        //  Antes no había pregunta: mandaba siempre la mezcla del vídeo. Eso
+        //  vale cuando la voz se grabó con la pantalla, y no vale para nada
+        //  cuando la voz se puso después en su propia capa —una locución—:
+        //  la música no la oía y no se agachaba jamás. Aquí se elige quién
+        //  manda, y el vídeo sigue siendo lo primero de la lista porque es lo
+        //  que hacía antes y lo que sigue queriendo casi todo el mundo.
+        IslandLabel {
+            visible: llaveFila.visible
+            text: Idioma.t("Se agacha con")
+            color: Theme.dim
+            font.pixelSize: 9
+            font.capitalization: Font.AllUppercase
+            font.weight: Font.DemiBold
+        }
+
+        Flow {
+            id: llaveFila
+            visible: Editor.capaSel && Editor.capaSel.tipo === "audio"
+                     && !!Editor.capaSel.agachar
+            Layout.fillWidth: true
+            spacing: 3
+
+            Repeater {
+                //  El vídeo y las demás pistas que suenan. La propia capa no
+                //  está: agacharse consigo misma no significa nada y el render
+                //  lo descarta igual, así que ofrecerlo sería mentir.
+                model: {
+                    const r = [{ id: 0, nombre: Idioma.t("El vídeo") }]
+                    const cs = Editor.capas
+                    for (let i = 0; i < cs.length; ++i) {
+                        const c = cs[i]
+                        if (c.id === Editor.idSel)
+                            continue
+                        if (c.tipo === "audio"
+                                || (c.tipo === "video" && c.sonido))
+                            r.push({ id: c.id, nombre: Editor.nombreCapa(c) })
+                    }
+                    return r
+                }
+
+                delegate: Rectangle {
+                    id: chipLlave
+                    required property var modelData
+
+                    readonly property bool puesto: Editor.capaSel
+                        && (Editor.capaSel.llave || 0) === chipLlave.modelData.id
+
+                    height: 22
+                    //  Acotado: el nombre de una capa de audio es el nombre de
+                    //  su fichero, y ahí cabe cualquier cosa. Sin tope, un chip
+                    //  se comía la ficha entera.
+                    width: Math.min(150, rotuloLlave.implicitWidth + 16)
+                    radius: 11
+                    color: chipLlave.puesto ? Theme.blue
+                         : llaveRaton.containsMouse ? Theme.surfaceHi
+                                                    : Theme.surface
+
+                    IslandLabel {
+                        id: rotuloLlave
+                        anchors.centerIn: parent
+                        width: Math.min(implicitWidth, chipLlave.width - 12)
+                        text: chipLlave.modelData.nombre
+                        color: chipLlave.puesto ? "#ffffff" : Theme.muted
+                        font.pixelSize: 10
+                        elide: Text.ElideMiddle
+                    }
+
+                    MouseArea {
+                        id: llaveRaton
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Editor.fijarCapa(Editor.idSel,
+                            { llave: chipLlave.modelData.id })
+                    }
+                }
+            }
         }
 
     }

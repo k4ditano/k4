@@ -1146,7 +1146,7 @@ Singleton {
     // "audio" o "video": las dos cosas hay que medirlas antes de crearlas.
     property string tipoPendiente: "audio"
 
-    function crearAudio(ruta, t0) { medirYCrear(ruta, t0, "audio") }
+    function crearAudio(ruta, t0, extra) { medirYCrear(ruta, t0, "audio", extra) }
 
     //  Un vídeo dentro del vídeo.
     //
@@ -1155,12 +1155,20 @@ Singleton {
     //  renderizar.
     function crearPip(ruta, t0) { medirYCrear(ruta, t0, "video") }
 
-    function medirYCrear(ruta, t0, tipo) {
+    //  `extra` son campos que la capa nueva lleva ya puestos, y que se ponen
+    //  DESPUÉS de los de serie para que puedan corregirlos. Lo pide la
+    //  locución: nace con un recorte de cabeza —lo que tardó el vídeo en
+    //  arrancar tras abrirse el micro— y eso cambia también su duración y su
+    //  final, que no se pueden calcular aquí porque dependen de la toma.
+    property var extraPendiente: null
+
+    function medirYCrear(ruta, t0, tipo, extra) {
         if (!ruta || ruta.length === 0)
             return
         audioPendiente = ruta
         audioPendienteEn = Math.max(0, Math.min(t0, duracionLinea))
         tipoPendiente = tipo
+        extraPendiente = extra || null
         procesos.medir(ruta)
     }
 
@@ -1170,19 +1178,23 @@ Singleton {
         if (!d || !d.ok || audioPendiente.length === 0) {
             fallo(d && d.motivo ? d.motivo : "no-se-puede-medir")
             audioPendiente = ""
+            extraPendiente = null
             return
         }
         if (tipoPendiente === "video" && !d.w) {
             // Sin flujo de vídeo no es un vídeo, diga lo que diga el nombre.
             fallo("sin-video")
             audioPendiente = ""
+            extraPendiente = null
             return
         }
-        anadirMedio(audioPendiente, audioPendienteEn, d, tipoPendiente)
+        anadirMedio(audioPendiente, audioPendienteEn, d, tipoPendiente,
+                    extraPendiente)
         audioPendiente = ""
+        extraPendiente = null
     }
 
-    function anadirMedio(ruta, t0, medida, tipo) {
+    function anadirMedio(ruta, t0, medida, tipo, extra) {
         const a = Math.max(0, Math.min(t0, Math.max(0, duracionLinea - 0.5)))
         //  El bloque acaba donde acabe el fichero o donde acabe el vídeo, lo que
         //  llegue antes: la parte que se sale no se va a ver ni oír, así que
@@ -1221,9 +1233,219 @@ Singleton {
             nueva.sonido = !!medida.audio
             nueva.volumen = 1.0
         }
+        //  `recorteDesde`: cuánto se le quita al PRINCIPIO del fichero. No es
+        //  un campo de la capa —no se copia— sino una petición, porque para
+        //  resolverla hace falta la duración, y la duración solo se sabe aquí.
+        //  Recortar la cabeza cambia además lo que dura y dónde acaba, y las
+        //  tres cosas tienen que salir de la misma cuenta o el bloque de la
+        //  línea de tiempo dejaría de medir lo que se oye.
+        if (extra && extra.recorteDesde > 0 && tipo === "audio") {
+            const quita = Math.min(extra.recorteDesde,
+                                   Math.max(0, medida.dur - 0.1))
+            nueva.recorte = [quita, medida.dur]
+            nueva.dur = medida.dur - quita
+            nueva.t1 = Math.min(duracionLinea, a + nueva.dur)
+        }
+        //  Y al final los de quien la pidió, que mandan sobre los de serie.
+        if (extra)
+            for (const k in extra)
+                if (k !== "recorteDesde")
+                    nueva[k] = extra[k]
         capas = capas.concat([nueva])
         persistir()
         seleccionar("capa", nueva.id)
+    }
+
+    // ── la locución ───────────────────────────────────────────────
+    //
+    //  Ver el vídeo y hablarle encima. Al parar, lo dicho entra como una capa
+    //  de audio más —se coloca, se recorta, se le baja el volumen— porque una
+    //  voz pegada al vídeo sería irreversible, que es lo mismo que ya se evitó
+    //  al grabar el micro aparte del sistema.
+    //
+    //  **El orden es al revés de lo que parece, y la razón está medida.**
+    //  Primero se abre el micro y solo después se manda reproducir. Al revés,
+    //  el vídeo llevaría un rato andando antes de que nadie escuchara, y ese
+    //  rato no se recupera luego.
+    //
+    //  Pero «el proceso ha arrancado» no es «el micro está capturando»: entre
+    //  las dos cosas ffmpeg abre PulseAudio, y eso son un puñado largo de
+    //  milisegundos (medido aquí: 160–250 ms de arranque más cierre). Fiándose
+    //  del arranque del proceso, la voz caía como un décimo de segundo
+    //  ADELANTADA sobre lo que estabas mirando.
+    //
+    //  La incógnita se quita preguntándosela a quien la sabe: ffmpeg informa
+    //  por `-progress` de cuánto audio lleva metido, y es SU primer parte el
+    //  que dispara la reproducción. Así el trozo de fichero que es «de antes de
+    //  que el vídeo se moviera» no se estima, viene dicho, y es lo que se le
+    //  recorta a la cabeza de la toma. Ver `grabarVoz` en EditorProcesos.
+    //
+    //  Encima de eso se mide lo poco que aún tarde el vídeo en echar a andar
+    //  (medido: 13 ms, y hacia el otro lado, así que en la práctica cero). No
+    //  sobra: con un fichero que tarde en cargar deja de ser cero, y entonces
+    //  es lo único que salva la sincronía. Es la misma honradez que
+    //  `desfaseCamara` en Captura, pero aquí sí se pudo cerrar del todo.
+    property string estadoVoz: ""            // "" | "abriendo" | "grabando" | "cerrando"
+    readonly property bool grabandoVoz: estadoVoz === "grabando"
+    property real vozDesde: 0                // el segundo de la LÍNEA donde entra
+    property string rutaVoz: ""
+    property real vozMicroEn: 0              // cuándo avisó el micro
+    property real vozVideoEn: 0              // cuándo echó a andar el vídeo
+    property real vozCapturado: 0            // lo que ya llevaba grabado al avisar
+
+    //  La vista es quien tiene el reproductor: aquí se pide y allí se obedece.
+    signal vozPreparada()
+    signal vozParada()
+
+    function grabarVozAlternar(t) {
+        if (estadoVoz === "") grabarVoz(t)
+        else pararVoz()
+    }
+
+    function grabarVoz(t) {
+        if (estadoVoz !== "")
+            return
+        if (rutaPlan.length === 0) {
+            fallo("sin-proyecto")
+            return
+        }
+        estadoVoz = "abriendo"
+        vozDesde = Math.max(0, Math.min(Number(t) || 0, duracionLinea))
+        vozMicroEn = 0
+        vozVideoEn = 0
+        vozCapturado = 0
+        esperaMicro.restart()
+        rutaVoz = carpetaAdjunta + "/" + nombreLibreDeVoz()
+        //  Qué micro hay se pregunta AHORA y no se da por sabido: es el mismo
+        //  motivo por el que la grabación de pantalla lo pregunta antes de cada
+        //  toma. Un nombre de dispositivo viejo no da una locución muda, da una
+        //  locución que no existe.
+        Captura.refrescarAudios(function () {
+            if (editor.estadoVoz !== "abriendo")
+                return
+            procesos.grabarVoz(editor.rutaVoz, Captura.microElegido,
+                               editor.carpetaAdjunta)
+        })
+    }
+
+    function pararVoz() {
+        if (estadoVoz === "" || estadoVoz === "cerrando")
+            return
+        //  Si aún no había abierto el micro no hay nada que cerrar: cancelar es
+        //  simplemente no empezar.
+        if (estadoVoz === "abriendo") {
+            estadoVoz = ""
+            rutaVoz = ""
+            return
+        }
+        estadoVoz = "cerrando"
+        vozParada()
+        procesos.pararVoz()
+    }
+
+    //  Tirar la toma en vez de recogerla.
+    //
+    //  Se usa al abrir otro vídeo: el fichero de la voz vive en la carpeta del
+    //  proyecto que se está dejando, y recogerla ahora la pegaría al montaje
+    //  equivocado. Se limpia el estado ANTES de pedir el cierre para que
+    //  `recibirVozCerrada` la encuentre ya sin dueño y no cree nada.
+    function cancelarVoz() {
+        if (estadoVoz === "")
+            return
+        estadoVoz = ""
+        rutaVoz = ""
+        vozParada()
+        procesos.pararVoz()
+    }
+
+    //  Lo llama la vista cuando el vídeo se mueve DE VERDAD, no cuando se le
+    //  pide que se mueva: son cosas distintas y la diferencia es justo lo que
+    //  hay que descontar.
+    //
+    //  Dos trampas, las dos medidas mirando el rastro y no supuestas:
+    //
+    //  - **El salto al punto de partida TAMBIÉN mueve el cabezal.** `irA(2)` lo
+    //    pone en 2 y avisa, y eso no es «ya está andando»: es haber llegado a la
+    //    casilla de salida. Contándolo, el hueco medido salía siempre cero y la
+    //    corrección no corregía nada. Lo que vale es el primer avance que lo
+    //    PASA.
+    //  - **El reproductor avisa a saltos**, no en el instante: cuando nos
+    //    enteramos, el vídeo ya lleva un pedazo andando. Ese pedazo se resta,
+    //    que para eso se sabe cuánto es.
+    function vozEmpezoASonar(donde) {
+        if (estadoVoz !== "grabando" || vozVideoEn > 0)
+            return
+        const avance = Number(donde) - vozDesde
+        if (!(avance > 0))
+            return
+        vozVideoEn = Date.now() - avance * 1000
+    }
+
+    //  Un nombre que no pise otro. Se miran las capas que ya hay y no el disco:
+    //  una toma tirada deja su fichero, y reusar su nombre sería borrar algo
+    //  que a lo mejor se quería recuperar.
+    function nombreLibreDeVoz() {
+        let n = 0
+        for (let i = 0; i < capas.length; ++i) {
+            const m = String(capas[i].ruta || "").match(/locucion-(\d+)\.m4a$/)
+            if (m)
+                n = Math.max(n, parseInt(m[1], 10))
+        }
+        return "locucion-" + (n + 1) + ".m4a"
+    }
+
+    function recibirVozAbierta(capturado) {
+        if (estadoVoz !== "abriendo")
+            return
+        esperaMicro.stop()
+        vozCapturado = Math.max(0, Number(capturado) || 0)
+        vozMicroEn = Date.now()
+        estadoVoz = "grabando"
+        vozPreparada()
+    }
+
+    //  Si el micro no da señales de vida, no se puede dejar al usuario delante
+    //  de un vídeo parado esperando a nada. Cinco segundos es de sobra: el
+    //  primer parte de ffmpeg llega en menos de medio.
+    Timer {
+        id: esperaMicro
+        interval: 5000
+        onTriggered: {
+            if (editor.estadoVoz !== "abriendo")
+                return
+            editor.cancelarVoz()
+            editor.fallo("el micrófono no llegó a arrancar")
+        }
+    }
+
+    function recibirVozCerrada(codigo, queja) {
+        const ruta = rutaVoz
+        const t0 = vozDesde
+        //  Qué parte de la cabeza del fichero es de ANTES de que el vídeo se
+        //  moviera, y por tanto sobra. Son dos sumandos y los dos están medidos:
+        //
+        //  - lo que ffmpeg ya llevaba capturado cuando avisó (lo dice él), y
+        //  - lo que aún tardó el vídeo en arrancar después de eso.
+        //
+        //  Lo segundo sale casi siempre cero —el play se manda en el mismo
+        //  latido en que llega el aviso; medido: 13 ms, y hacia el otro lado—,
+        //  pero no se da por hecho: con un fichero que tarde en cargar deja de
+        //  serlo, y entonces es lo único que salva la sincronía.
+        const hueco = (vozMicroEn > 0 ? vozCapturado : 0)
+            + (vozVideoEn > 0 && vozMicroEn > 0
+                ? Math.max(0, (vozVideoEn - vozMicroEn) / 1000) : 0)
+        const estabaGrabando = estadoVoz !== ""
+        estadoVoz = ""
+        rutaVoz = ""
+        if (!estabaGrabando || ruta.length === 0)
+            return
+        //  ffmpeg sale con 255 cuando lo paras con SIGINT, y eso aquí es el
+        //  final normal de una toma, no un fallo.
+        if (codigo !== 0 && codigo !== 255) {
+            fallo(queja && queja.length > 0 ? queja : "no-se-pudo-grabar-la-voz")
+            return
+        }
+        crearAudio(ruta, t0, { recorteDesde: hueco })
     }
 
     //  Un rótulo.
@@ -2301,6 +2523,9 @@ Singleton {
     readonly property bool abriendoProyecto: rutaVideo.endsWith(".k4v")
 
     function preparar(video) {
+        //  Si había una toma de voz en marcha, se tira: pertenece al proyecto
+        //  que se está cerrando.
+        cancelarVoz()
         rutaVideo = video
         rutaPlan = video.replace(/\.[^./]+$/, "") + ".k4v"
         //  Nada de arrastrar el estado del vídeo anterior: los momentos de otra
@@ -2427,6 +2652,13 @@ Singleton {
         onSilenciosFallo: editor.estadoSilencios = "fallo"
 
         onMedido: function (d) { editor.recibirMedida(d) }
+
+        onVozAbierta: function (capturado) {
+            editor.recibirVozAbierta(capturado)
+        }
+        onVozCerrada: function (codigo, queja) {
+            editor.recibirVozCerrada(codigo, queja)
+        }
 
         onNivelesListos: function (d) {
             const n = {}

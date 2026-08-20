@@ -121,6 +121,22 @@ ColumnLayout {
             onPulsado: view.plugin.pedirAudio(view.segundos)
         }
 
+        //  Ponerle voz al montaje mirándolo: se abre el micro, la previa echa a
+        //  andar desde donde esté el cabezal y lo que digas entra como una capa
+        //  de audio más. El botón es el mismo para empezar y para parar, como
+        //  el de grabar la pantalla: mientras hablas no hay otra cosa que
+        //  quieras pulsar ahí.
+        BotonAccion {
+            texto: Editor.estadoVoz === "grabando"
+                    ? Idioma.t("Parar la voz")
+                 : Editor.estadoVoz !== ""
+                    ? Idioma.t("Un momento…")
+                    : Idioma.t("Grabar voz")
+            icono: 0xF036C                   // md-microphone
+            activo: Editor.estadoVoz !== ""
+            onPulsado: Editor.grabarVozAlternar(view.segundos)
+        }
+
         BotonAccion {
             texto: Idioma.t("Vídeo")
             icono: 0xF0E57   // md-picture_in_picture_bottom_right

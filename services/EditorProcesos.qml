@@ -470,4 +470,113 @@ Scope {
                 : "el renderizador terminó sin avisar (código " + code + ")")
         }
     }
+
+    // ── la locución ───────────────────────────────────────────────
+    //
+    //  Ponerle voz a un vídeo que ya está montado: se mira la previa y se
+    //  habla encima. Es lo único del editor que GRABA en vez de editar, y por
+    //  eso lo hace ffmpeg directamente y no `editar.py` —no hay plan que tocar
+    //  hasta que la voz existe—.
+    //
+    //  El orden importa y no es el obvio. Primero se abre el micro, y solo
+    //  cuando ffmpeg dice que ya está corriendo se manda reproducir: al revés,
+    //  el vídeo llevaría medio segundo andando antes de que nadie escuchara, y
+    //  ese medio segundo no hay forma de recuperarlo después. Por eso hay una
+    //  señal para «micro abierto» y no se arranca la previa hasta oírla.
+    //  Lleva CUÁNTO había capturado ya el micro en ese instante. Ver abajo.
+    signal vozAbierta(real capturado)
+    signal vozCerrada(int codigo, string queja)
+
+    readonly property bool grabandoVoz: grabadorVoz.running
+
+    //  La carpeta adjunta puede no existir todavía —se crea cuando hace falta
+    //  escribir algo en ella, y una locución puede ser lo primero—, así que se
+    //  asegura antes. Con un `mkdir` propio y no con `sh -c 'mkdir … && ffmpeg'`:
+    //  por ahí entrarían las comillas, y las rutas de esta casa llevan espacios
+    //  y tildes («Pa twitter.k4»). Encadenar dos procesos no tiene ese problema.
+    function grabarVoz(ruta, dispositivo, carpeta) {
+        grabadorVoz.queja = ""
+        //  `-y` porque el nombre lo elige el Editor y ya se ha asegurado de
+        //  que no pisa nada; sin él, ffmpeg se queda esperando una respuesta
+        //  que nadie va a escribir y la grabación no arranca nunca.
+        grabadorVoz.primerAviso = true
+        //  `-progress` no es un adorno de depuración: es lo que quita la
+        //  incógnita.
+        //
+        //  «El proceso ha arrancado» y «el micro está capturando» no son lo
+        //  mismo: entre una cosa y otra ffmpeg abre PulseAudio y eso tarda
+        //  —medido en este equipo: entre 160 y 250 ms de arranque más cierre—.
+        //  Arrancando el vídeo al nacer el proceso, la voz caía como un décimo
+        //  de segundo ADELANTADA sobre lo que estabas mirando, y ese número no
+        //  se puede observar desde fuera ni vale restar uno medido un martes.
+        //
+        //  Con `-progress`, ffmpeg dice él mismo cuánto audio lleva metido. Se
+        //  espera al primer parte, se avisa con ESE número, y ahí se sabe
+        //  exactamente qué trozo del fichero es «antes de que el vídeo se
+        //  moviera». `-stats_period` lo baja de medio segundo a cincuenta
+        //  milisegundos: es lo que se tarda en empezar a ver el vídeo.
+        grabadorVoz.command = ["ffmpeg", "-v", "error", "-y",
+                               "-f", "pulse", "-i", dispositivo,
+                               "-c:a", "aac", "-b:a", "160k",
+                               "-progress", "pipe:1", "-nostats",
+                               "-stats_period", "0.05", ruta]
+        if (!carpeta || carpeta.length === 0) {
+            grabadorVoz.running = true
+            return
+        }
+        abrecarpeta.command = ["mkdir", "-p", carpeta]
+        abrecarpeta.running = true
+    }
+
+    Process {
+        id: abrecarpeta
+        //  Salga bien o mal se sigue: si la carpeta no se pudo crear, quien lo
+        //  dirá con detalle es ffmpeg al no poder escribir, y ese motivo es
+        //  mejor que uno inventado aquí.
+        onExited: grabadorVoz.running = true
+    }
+
+    //  Por las buenas, con SIGINT: un m4a al que no se le escribe el índice
+    //  del final no lo abre nadie, y ahí se habría ido la toma entera.
+    function pararVoz() {
+        if (grabadorVoz.running)
+            grabadorVoz.signal(2)
+    }
+
+    Process {
+        id: grabadorVoz
+        property string queja: ""
+        property bool primerAviso: true
+
+        //  Y NO en `onStarted`: eso es el proceso naciendo, que es justo lo que
+        //  no sirve. Ver el comentario de `grabarVoz`.
+        stdout: SplitParser {
+            onRead: function (linea) {
+                if (!grabadorVoz.primerAviso)
+                    return
+                const m = String(linea).match(/^out_time_us=(-?\d+)/)
+                if (!m)
+                    return
+                grabadorVoz.primerAviso = false
+                //  Al principio ffmpeg puede dar un tiempo negativo; eso es
+                //  «todavía nada», no un número que restar.
+                procesos.vozAbierta(Math.max(0, parseInt(m[1], 10) / 1000000))
+            }
+        }
+
+        stderr: SplitParser {
+            onRead: function (linea) {
+                const l = String(linea).trim()
+                if (l.length > 0 && grabadorVoz.queja.length === 0)
+                    grabadorVoz.queja = l.substring(0, 200)
+            }
+        }
+
+        //  ffmpeg sale con 255 cuando lo paras con SIGINT, y eso aquí es el
+        //  final normal de una toma: quien decide si hay voz o no es el
+        //  Editor, mirando si el fichero mide algo.
+        onExited: function (codigo) {
+            procesos.vozCerrada(codigo, grabadorVoz.queja)
+        }
+    }
 }

@@ -593,6 +593,14 @@ K4Plugin {
             Editor.crearImagen(ruta, t >= 0 ? t : Editor.posicionEditor)
         }
 
+        //  Ponerle voz al montaje: abre el micro, arranca la previa y lo que
+        //  digas entra como una capa de audio. El mismo botón para empezar y
+        //  para parar. `t` en segundos de la línea; con -1, por donde vaya la
+        //  reproducción.
+        function voz(t: real): void {
+            Editor.grabarVozAlternar(t >= 0 ? t : Editor.posicionEditor)
+        }
+
         //  Toda la transcripción como subtítulos, de golpe.
         function subtitular(): void { Editor.quemarTranscripcion() }
 

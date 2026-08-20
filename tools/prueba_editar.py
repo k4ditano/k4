@@ -1613,6 +1613,63 @@ def prueba_capa_de_audio_que_se_agacha():
     igual("sin agachar no hay compresor", "sidechaincompress" in texto, False)
 
 
+def prueba_agacharse_con_otra_capa():
+    """Con `llave` apuntando a otra capa, la que manda es ESA y no el vídeo:
+    su señal se reparte con un asplit y la mezcla del vídeo no se toca."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8}])
+    #  La 1 es la música que se agacha; la 2, la locución que la manda.
+    p["capas"] = [{"id": 1, "tipo": "audio", "ruta": fichero("musica.mp3"),
+                   "t0": 0.0, "t1": 8.0, "volumen": 0.8, "banda": 2,
+                   "agachar": True, "llave": 2},
+                  {"id": 2, "tipo": "audio", "ruta": fichero("locucion.m4a"),
+                   "t0": 0.0, "t1": 8.0, "volumen": 1.0, "banda": 3}]
+    texto, _ = editar.grafo(p)
+    igual("la locución se reparte para servir de llave",
+          "[ax1]asplit=2[axs1][llave0]" in texto, True)
+    igual("y la música se agacha con ella",
+          "[ax0][llave0]sidechaincompress=" in texto, True)
+    igual("la mezcla del vídeo no se reparte: no manda nadie desde ahí",
+          "[mez]asplit" in texto, False)
+    igual("y la locución entra en la mezcla por su copia, no por la cruda",
+          "[axs1]" in texto, True)
+
+
+def prueba_llave_que_no_existe_cae_al_video():
+    """Un id de llave que ya no está —capa borrada, pista silenciada— no deja
+    a la capa sin agachado: vuelve a la mezcla del vídeo, que es lo de antes."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8}])
+    p["capas"] = [{"id": 1, "tipo": "audio", "ruta": fichero("musica.mp3"),
+                   "t0": 0.0, "t1": 8.0, "volumen": 0.8, "banda": 2,
+                   "agachar": True, "llave": 99}]
+    texto, _ = editar.grafo(p)
+    igual("cae al vídeo", "[mez]asplit=2[mezv][llave0]" in texto, True)
+    #  Y consigo misma tampoco: una capa no puede mandarse a sí misma.
+    p["capas"][0]["llave"] = 1
+    texto, _ = editar.grafo(p)
+    igual("con su propio id, también al vídeo",
+          "[mez]asplit=2[mezv][llave0]" in texto, True)
+
+
+def prueba_agachado_cruzado_no_hace_bucle():
+    """A se agacha con B y B con A a la vez. La llave es la señal CRUDA de cada
+    una, así que ninguna depende del agachado de la otra: hay dos compresores
+    y ningún bucle —que en un grafo de ffmpeg no es un error, es un cuelgue—."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8}])
+    p["capas"] = [{"id": 1, "tipo": "audio", "ruta": fichero("a.mp3"),
+                   "t0": 0.0, "t1": 8.0, "volumen": 1.0, "banda": 2,
+                   "agachar": True, "llave": 2},
+                  {"id": 2, "tipo": "audio", "ruta": fichero("b.mp3"),
+                   "t0": 0.0, "t1": 8.0, "volumen": 1.0, "banda": 3,
+                   "agachar": True, "llave": 1}]
+    texto, _ = editar.grafo(p)
+    igual("las dos se reparten", "[ax0]asplit=2[axs0][llave1]" in texto, True)
+    igual("las dos, de verdad", "[ax1]asplit=2[axs1][llave0]" in texto, True)
+    igual("y las dos se agachan",
+          texto.count("sidechaincompress="), 2)
+    igual("cada una se agacha sobre su copia, no sobre la cruda",
+          "[axs0][llave0]sidechaincompress=" in texto, True)
+
+
 def prueba_sonoridad_pone_loudnorm_al_final():
     """El −14 LUFS de YouTube es lo último de todo, y devuelve la frecuencia
     a la norma: loudnorm sale a 192 kHz por dentro."""
