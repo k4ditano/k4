@@ -2121,10 +2121,34 @@ Singleton {
     property var limpias: ({})
     property var limpiasPedidas: ({})
 
+    //  La ganancia que hay que meter EN EL FICHERO, o 1 si no hace falta.
+    //
+    //  Qt recorta `AudioOutput.volume` en 1 y por encima no sube nada —medido:
+    //  pedirle 3,0 deja la propiedad en 1 y el sonido igual—, así que de 0 a
+    //  100 % lo hace Qt en el momento y de ahí para arriba va en la copia. Se
+    //  redondea al mismo paso que el deslizador (0,05) para no rehacer el
+    //  fichero por diferencias que no existen.
+    function gananciaDe(capa) {
+        if (!capa || capa.tipo !== "audio")
+            return 1
+        const v = capa.volumen !== undefined ? capa.volumen : 1
+        return v > 1 ? Math.round(v * 20) / 20 : 1
+    }
+
+    function necesitaCopia(capa) {
+        return !!capa && capa.tipo === "audio"
+            && (!!capa.limpia || gananciaDe(capa) > 1)
+    }
+
+    //  La clave lleva TODO lo que cambia el fichero: quién es, qué pista, si
+    //  lleva escoba y con cuánta ganancia. Si cambia cualquiera de las cuatro,
+    //  la copia de antes ya no sirve y se hace otra.
     function claveLimpia(capa) {
         if (!capa || !capa.ruta || capa.tipo !== "audio")
             return ""
         return capa.ruta + "|" + (capa.pista !== undefined ? capa.pista : 0)
+             + "|" + (capa.limpia ? "1" : "0")
+             + "|" + gananciaDe(capa).toFixed(2)
     }
 
     function asegurarLimpias() {
@@ -2132,15 +2156,21 @@ Singleton {
             return
         for (let i = 0; i < capas.length; ++i) {
             const c = capas[i]
-            if (!c.limpia)
+            if (!necesitaCopia(c))
                 continue
             const k = claveLimpia(c)
             if (k.length === 0 || limpiasPedidas[k])
                 continue
             limpiasPedidas[k] = true
+            //  El nombre lleva la ganancia porque el fichero es distinto, y el
+            //  guion borra las demás de esta capa al acabar: mover el
+            //  deslizador haría una copia por valor y llenaría la carpeta.
+            const g = Math.round(gananciaDe(c) * 100)
+            const pref = "previa-" + c.id + "-"
             procesos.pedirLimpia(k, c.ruta,
                                  c.pista !== undefined ? c.pista : 0,
-                                 carpetaAdjunta + "/limpia-" + c.id + ".flac")
+                                 carpetaAdjunta + "/" + pref + "g" + g + ".flac",
+                                 !!c.limpia, gananciaDe(c), pref)
         }
     }
 
@@ -2150,10 +2180,26 @@ Singleton {
     function rutaSonando(capa) {
         if (!capa)
             return ""
-        if (!capa.limpia)
+        if (!necesitaCopia(capa))
             return capa.ruta
         const k = claveLimpia(capa)
         return limpias[k] ? limpias[k] : capa.ruta
+    }
+
+    //  A qué volumen tiene que sonar el reproductor de esta capa.
+    //
+    //  Si la copia que suena ya lleva la ganancia dentro, aquí va 1: subirlo
+    //  otra vez sería aplicarla dos veces. Y mientras la copia se hace todavía
+    //  no la lleva, así que se pide lo que Qt sepa dar —hasta 100 %— y al
+    //  llegar el fichero el salto lo completa él.
+    function volumenSonando(capa) {
+        if (!capa)
+            return 0
+        const v = capa.volumen !== undefined ? capa.volumen : 1
+        if (necesitaCopia(capa) && limpias[claveLimpia(capa)]
+                && gananciaDe(capa) > 1)
+            return 1
+        return Math.max(0, Math.min(1, v))
     }
 
     //  Y por qué pista. La copia limpia lleva UNA sola —la que se pidió— así
@@ -2161,14 +2207,14 @@ Singleton {
     function pistaSonando(capa) {
         if (!capa)
             return 0
-        if (capa.limpia && limpias[claveLimpia(capa)])
+        if (necesitaCopia(capa) && limpias[claveLimpia(capa)])
             return 0
         return capa.pista !== undefined ? capa.pista : 0
     }
 
     //  Para que el botón pueda decir «un momento» en vez de mentir.
     function limpiandoCapa(capa) {
-        return !!capa && !!capa.limpia && !limpias[claveLimpia(capa)]
+        return necesitaCopia(capa) && !limpias[claveLimpia(capa)]
     }
 
     // ── el agachado, en la previa ─────────────────────────────────

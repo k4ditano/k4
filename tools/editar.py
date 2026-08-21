@@ -3364,13 +3364,20 @@ def orden_congelar(args):
 
 
 def orden_limpiar(args):
-    """Una copia del audio de una pista, ya sin ruido de fondo.
+    """La copia del audio que oye la previa: sin ruido y/o amplificada.
 
-    Existe para que la escoba se pueda OÍR mientras editas. Qt no sabe aplicar
-    un filtro de ffmpeg al vuelo, así que a la previa se le da el fichero ya
-    limpio y reproduce ese; el render sigue aplicando `FILTRO_ESCOBA` él mismo
-    sobre el original. Es el mismo filtro por la misma constante, así que lo
-    que oyes es lo que va a salir.
+    Existe porque hay dos cosas que Qt no sabe hacer mientras reproduce, y las
+    dos hacen falta para poder DECIDIR oyendo:
+
+    - filtrar (la escoba), y
+    - **subir de 100 %**: `AudioOutput.volume` se recorta en 1 y por encima no
+      sube ni un decibelio. Medido: pedirle 3,0 deja la propiedad en 1 y el
+      sonido exactamente igual. Así que la ganancia que pasa del 100 % se mete
+      aquí, en el fichero, y Qt reproduce esa copia a volumen 1.
+
+    El render no usa esta copia: aplica `FILTRO_ESCOBA` y su `volume=` sobre el
+    original. Los dos salen de la misma constante y de la misma cuenta, así que
+    lo que oyes es lo que va a salir.
 
     Sale una pista sola —la que se pide— y por eso el fichero limpio se
     reproduce siempre por su pista 0: al reencodearlo, la numeración de dentro
@@ -3390,16 +3397,42 @@ def orden_limpiar(args):
     #  de lo que oirías serían sus artefactos y no los del filtro — estarías
     #  decidiendo sobre otra cosa. Sale unas tres veces más grande y se tarda
     #  la mitad en hacerlo, así que tampoco cuesta nada.
+    #  El filtro: la escoba si se pide, y la ganancia si pasa de 1. Si no
+    #  pasa, NO se mete: de 0 a 100 % lo hace Qt en el momento, que es
+    #  instantáneo, y hacer una copia por cada tirón del deslizador sería
+    #  cambiar algo que ya va bien por algo que tarda.
+    cadena = []
+    if args.escoba:
+        cadena.append(FILTRO_ESCOBA)
+    if float(args.ganancia) > 1.0:
+        cadena.append("volume=%.3f" % float(args.ganancia))
+    if not cadena:
+        salir(ok=False, motivo="nada-que-hacer")
+
     orden = ["ffmpeg", "-v", "error", "-y", "-i", args.fichero,
              "-map", "0:a:%d" % max(0, int(args.pista)),
-             "-af", FILTRO_ESCOBA, "-c:a", "flac", "-compression_level", "5",
-             "-vn", args.salida]
+             "-af", ",".join(cadena), "-c:a", "flac",
+             "-compression_level", "5", "-vn", args.salida]
     try:
         p = subprocess.run(orden, capture_output=True, text=True)
     except OSError:
         salir(ok=False, motivo="sin-ffmpeg")
     if p.returncode != 0 or not os.path.exists(args.salida):
         salir(ok=False, motivo=(p.stderr or "").strip()[:200] or "limpiar")
+
+    #  Fuera las copias viejas de esta misma capa. Mover el deslizador del
+    #  volumen hace una copia por cada valor que se suelte, y sin esto la
+    #  carpeta del proyecto se llenaba de versiones que ya no oye nadie.
+    #  Se borra DESPUÉS de que la nueva exista, no antes: si el ffmpeg falla,
+    #  la de antes sigue ahí y se sigue oyendo algo.
+    if args.prefijo:
+        quedarse = os.path.basename(args.salida)
+        for f in os.listdir(carpeta or "."):
+            if f.startswith(args.prefijo) and f != quedarse:
+                try:
+                    os.remove(os.path.join(carpeta or ".", f))
+                except OSError:
+                    pass
     salir(ok=True, ruta=args.salida)
 
 
@@ -3613,6 +3646,9 @@ def main():
     lp.add_argument("fichero")
     lp.add_argument("salida")
     lp.add_argument("--pista", type=int, default=0)
+    lp.add_argument("--escoba", action="store_true")
+    lp.add_argument("--ganancia", type=float, default=1.0)
+    lp.add_argument("--prefijo", default="")
 
     args = ap.parse_args()
     {"abrir": orden_abrir, "renombrar": orden_renombrar, "onda": orden_onda,

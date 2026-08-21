@@ -108,9 +108,12 @@ Scope {
 
     property var colaLimpias: []
 
-    function pedirLimpia(clave, fichero, pista, salida) {
+    function pedirLimpia(clave, fichero, pista, salida, escoba, ganancia, prefijo) {
         colaLimpias = colaLimpias.concat([{ clave: clave, fichero: fichero,
-                                            pista: pista, salida: salida }])
+                                            pista: pista, salida: salida,
+                                            escoba: !!escoba,
+                                            ganancia: ganancia || 1,
+                                            prefijo: prefijo || "" }])
         siguienteLimpia()
     }
 
@@ -120,7 +123,10 @@ Scope {
         const t = colaLimpias[0]
         limpiador.clave = t.clave
         limpiador.command = ["python3", guion, "limpiar", t.fichero, t.salida,
-                             "--pista", String(t.pista)]
+                             "--pista", String(t.pista),
+                             "--ganancia", String(t.ganancia),
+                             "--prefijo", t.prefijo]
+                             .concat(t.escoba ? ["--escoba"] : [])
         limpiador.running = true
     }
 

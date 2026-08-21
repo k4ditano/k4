@@ -249,9 +249,12 @@ Item {
                     //  cuánto quieres que suene, y luego cuánto la deja sonar
                     //  quien manda. En ese orden y no al revés, que es como lo
                     //  hace el render —el `volume` va ANTES del compresor—.
-                    volume: !voz.capa ? 0
-                        : Math.min(1, voz.capa.volumen !== undefined
-                            ? voz.capa.volumen : 0.8) * voz.agachado
+                    //  El volumen lo decide el Editor: por encima del 100 % la
+                    //  ganancia va DENTRO de la copia —Qt se recorta en 1— y
+                    //  entonces aquí toca 1, que multiplicarla otra vez sería
+                    //  aplicarla dos veces. Y luego el agachado, que sí es de
+                    //  aquí y cambia a cada instante.
+                    volume: Editor.volumenSonando(voz.capa) * voz.agachado
                 }
             }
         }

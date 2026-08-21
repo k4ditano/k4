@@ -162,14 +162,20 @@ ColumnLayout {
             }
         }
 
-        //  Ámbar por encima del 100 %: ahí la previa ya no puede subir más —Qt
-        //  recorta su volumen en 1— y el render sí. Sin el aviso, poner 250 % y
-        //  no oír diferencia parece la barra rota.
+        //  Ámbar por encima del 100 %: ahí se AMPLIFICA, que no es lo mismo
+        //  que subir el volumen y conviene que se vea.
         //
-        //  Se probó a sacarlo por el volumen del nodo de Pipewire, que sí pasa de
-        //  1, y se descartó: WirePlumber lo PERSISTE por aplicación —en escala
-        //  cúbica, un 3× se guarda como 27— y se lo aplica a todos los flujos
-        //  futuros. Dejar la barra a 3× y matarla graba el 3× para siempre.
+        //  Y ahora también se oye. Qt recorta su volumen en 1 —medido: pedirle
+        //  3,0 deja la propiedad en 1 y el sonido exactamente igual—, así que
+        //  la ganancia que pasa del 100 % se mete EN EL FICHERO: se prepara una
+        //  copia amplificada y la previa reproduce esa a volumen 1. Tarda unas
+        //  décimas y mientras tanto se oye al 100 %.
+        //
+        //  Se probó antes a sacarlo por el volumen del nodo de Pipewire, que sí
+        //  pasa de 1, y se descartó: WirePlumber lo PERSISTE por aplicación —en
+        //  escala cúbica, un 3× se guarda como 27— y se lo aplica a todos los
+        //  flujos futuros. Dejar la barra a 3× y matarla graba el 3× para
+        //  siempre. La copia no tiene ese problema: se queda en su fichero.
         IslandLabel {
             Layout.preferredWidth: 34
             horizontalAlignment: Text.AlignRight
@@ -184,7 +190,9 @@ ColumnLayout {
         Layout.fillWidth: true
         visible: Editor.capaSel && Editor.capaSel.tipo === "audio"
                  && fichaCapa.valorBarra > 1
-        text: Idioma.t("Por encima del 100 % solo se amplifica al renderizar")
+        text: Editor.limpiandoCapa(Editor.capaSel)
+            ? Idioma.t("Amplificando… se oirá en un momento")
+            : Idioma.t("Amplificado: por encima del 100 % puede saturar")
         color: Theme.yellow
         font.pixelSize: 9
         wrapMode: Text.WordWrap
