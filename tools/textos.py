@@ -29,7 +29,14 @@ TRADUCCIONES = os.path.join(RAIZ, "traducciones")
 CARPETAS = ["widgets", "services", "plugins"]
 
 # Propiedades cuyo valor ve el usuario.
-PROPIEDADES = ("text", "nombre", "desc", "papel", "titulo", "grupo", "title")
+#
+#  `texto` estaba faltando, y es la de `BotonAccion`: o sea, TODOS los botones
+#  del editor y de media barra. Setenta y dos cadenas que se ven en pantalla
+#  —«Cortar aquí», «Separar el audio», «Apagar»— no llegaban nunca a la
+#  plantilla, así que no había forma de traducirlas ni de echarlas de menos: no
+#  salían como pendientes, salían como si no existieran.
+PROPIEDADES = ("text", "texto", "nombre", "desc", "papel", "titulo", "grupo",
+               "title")
 
 # Propiedades que llevan identificadores y no se traducen nunca, aunque caigan
 # dentro del bloque de un texto. Traducir un `id` rompe el programa en cuanto
@@ -56,6 +63,11 @@ def traducible(s):
         return False
     # formatos de fecha tipo "d MMMM" o "HH:mm"
     if re.match(r'^[dMyHhms:\s]+$', s):
+        return False
+    #  Escapes sueltos: `"\r"` no es texto, es una tecla. Sale de que `texto:`
+    #  además de la etiqueta de un botón es el nombre de un campo en los
+    #  mensajes que se manda la terminal consigo misma.
+    if re.match(r'^(\\[nrt])+$', s):
         return False
     return True
 
