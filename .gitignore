@@ -11,3 +11,7 @@
 tools/__pycache__/
 externos
 recargas
+
+#  El banco de pruebas de un plugin: lo genera y lo borra
+#  tools/plugins.py --probar, pero si algo peta puede quedarse.
+.banco.qml

@@ -21,4 +21,26 @@ raiz=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 QML_IMPORT_PATH="$raiz/api${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}"
 export QML_IMPORT_PATH
 
+#  El log, que si no se va a la nada.
+#
+#  Arrancando con `setsid -f ./arrancar` —que es como arranca de verdad— la
+#  salida no tiene terminal donde ir: `readlink /proc/<pid>/fd/1` da /dev/null.
+#  Y ahí se van los `console.log`, los errores de QML y lo que escupe
+#  `k4 pluginStatus`, que es EXACTAMENTE lo que hace falta para escribir un
+#  plugin. Se han perdido diagnósticos por esto más de una vez.
+#
+#  Se guarda el anterior antes de empezar: un fallo que te obliga a reiniciar se
+#  lleva por delante el log que lo explicaba, y eso es justo cuando lo quieres.
+#
+#  Con K4_LOG=0 se apaga, por si alguien prefiere lo de antes.
+if [ "${K4_LOG:-1}" != "0" ]; then
+    estado="${XDG_STATE_HOME:-$HOME/.local/state}/k4"
+    mkdir -p "$estado" 2>/dev/null
+    log="$estado/k4.log"
+    [ -f "$log" ] && mv -f "$log" "$log.1"
+    #  `tee` y no una redirección a secas: arrancado a mano desde una terminal,
+    #  la salida se sigue viendo ahí, que es como se depura.
+    exec quickshell -p "$raiz/shell.qml" "$@" 2>&1 | tee "$log"
+fi
+
 exec quickshell -p "$raiz/shell.qml" "$@"

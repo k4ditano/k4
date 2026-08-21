@@ -54,6 +54,17 @@ restarting anything. And after updating an enabled one, `k4 pluginReload
 <id>` swaps the running code — the old one stays alive in the bar until you
 say so.
 
+## 0b · Starting one
+
+Do not start from an empty directory:
+
+```sh
+tools/plugins.py --nuevo mi-plugin
+```
+
+That writes a manifest and a plugin that already opens, and tells you the three
+commands that come next. The rest of this page explains what it wrote.
+
 ## 1 · The directory and the manifest
 
 ```text
@@ -73,10 +84,17 @@ say so.
   "title": "Hola",
   "description": "Qué hace, en una frase — sale en Ajustes",
   "host": ">=1.1.0",
-  "permisos": []
+  "permisos": [],
+  "superficies": ["island"]
 }
 ```
 
+- `superficies`: what your plugin **occupies**, as opposed to what it touches.
+  `island` (it has a `view`), `pildora`, `ventana`, `ipc`, `atajo`. It is
+  optional — a manifest without it still validates — but if you declare it,
+  the validator checks it against what your QML actually does, the same way it
+  already does with `permisos`. Declaring lets Settings describe your plugin
+  without loading it.
 - `id`: lowercase, no spaces, and it **must match the directory name**. If
   it collides with one of the bar's plugins, yours loses.
 - `entry`: the file that inherits from `K4.Plugin`, inside the directory
@@ -180,6 +198,22 @@ always opening instead of toggling.
 
 - Processes, timers and IPC go as children of the `K4.Plugin`, not of the
   view: the view is destroyed every time you lose the island.
+
+### Your own files
+
+Your plugin knows where it lives. `carpeta` is its directory on disk, filled in
+by the host when it creates you, and `fichero(...)` builds a path inside it:
+
+```qml
+K4.Process {
+    command: ["python3", fichero("tools/mine.py")]
+}
+```
+
+That is what lets you **ship your own things** — a script, a binary, a model, a
+data file. `Qt.resolvedUrl("assets/x.png")` was already enough to *paint* an
+image, but a `Process` wants a path, not a URL, and `K4.Paths.raiz` is the
+bar's directory, not yours.
 
 ## 3 · What the API gives you
 
@@ -479,6 +513,20 @@ author.
    without starting anything.
 
 ### While you write it
+
+The fastest loop does not involve your bar at all:
+
+```sh
+tools/plugins.py --probar hola
+```
+
+That opens **only your plugin**, in a separate Quickshell instance: no bar, no
+services, no notifications, none of your session. If it hangs, it hangs there.
+Click outside to leave. It works for plugins written against the K4 API — which
+is every plugin from outside — because the API falls back to sane defaults when
+there is no bar behind it.
+
+When you do want it in the real bar:
 
 ```sh
 quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4 pluginReload hola

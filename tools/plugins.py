@@ -15,6 +15,7 @@ No ejecuta QML: comprueba lo que se puede saber antes de arrancar Quickshell.
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import re
 import shutil
@@ -55,6 +56,28 @@ PERMISOS = {
     #  La huella entera con solo nombrarla: en datos personales no hay
     #  lectura inocente.
     "datos-personales": re.compile(r"\bK4\.Huella\b"),
+}
+
+#  Y QUÉ ES cada plugin: dónde se dibuja y por dónde se le llama.
+#
+#  Los permisos dicen qué puede TOCAR; esto dice qué OCUPA. Hasta ahora el host
+#  lo descubría por efectos secundarios —¿pone `view`? ¿crea una `K4.Ventana`?—
+#  y eso tiene dos costes: Ajustes no puede contarte qué es un plugin sin
+#  cargarlo, y nadie puede negarle una superficie que no pidió.
+#
+#  Declararlo es opcional: un manifiesto sin `superficies` sigue valiendo y esto
+#  no dice nada. Quien lo declare, se compromete.
+SUPERFICIES = {
+    #  Se dibuja en la island: tiene vista.
+    "island": re.compile(r"^\s*view\s*:", re.MULTILINE),
+    #  Habla en la píldora aunque esté cerrado.
+    "pildora": re.compile(r"\bK4\.Pildora\b"),
+    #  Pinta FUERA de la island, en su propia superficie.
+    "ventana": re.compile(r"\bK4\.Ventana\b"),
+    #  Se le puede llamar desde fuera.
+    "ipc": re.compile(r"\bK4\.Ipc\b"),
+    #  Se queda un atajo global del escritorio.
+    "atajo": re.compile(r"\bK4\.Atajo\b"),
 }
 
 
@@ -266,6 +289,30 @@ def validar_carpeta(d, ids_repo, version_host):
     sin_declarar = usados - declarados
     if sin_declarar:
         return mal("usa sin declarar: " + ", ".join(sorted(sin_declarar)))
+
+    #  Las superficies: qué OCUPA, frente a qué TOCA.
+    #
+    #  Opcional a propósito. Un manifiesto sin `superficies` sigue siendo
+    #  válido y esto no dice nada: no se rompe a nadie por una comodidad que
+    #  no existía ayer. Pero quien la declare se compromete, y entonces sí se
+    #  comprueba contra lo que el QML hace de verdad — que es lo que la
+    #  vuelve útil y no un adorno del manifiesto.
+    sup_declaradas = m.get("superficies")
+    if sup_declaradas is not None:
+        sup_declaradas = set(sup_declaradas or [])
+        raras = sup_declaradas - set(SUPERFICIES)
+        if raras:
+            return mal("superficies desconocidas: " + ", ".join(sorted(raras)))
+        sup_usadas = set()
+        for qml in d.glob("**/*.qml"):
+            texto = "\n".join(re.sub(r"//.*$", "", l)
+                               for l in qml.read_text().split("\n"))
+            for sup, patron in SUPERFICIES.items():
+                if patron.search(texto):
+                    sup_usadas.add(sup)
+        faltan = sup_usadas - sup_declaradas
+        if faltan:
+            return mal("ocupa sin declarar: " + ", ".join(sorted(faltan)))
 
     #  El qmldir, generado si falta o si envejeció: con el esquema de URLs de
     #  Quickshell los tipos hermanos no se resuelven solos, y pedirle a cada
@@ -641,6 +688,8 @@ def main():
 AYUDA = """El catálogo de plugins de k4.
 
     tools/plugins.py                      valida el repo y los instalados
+    tools/plugins.py --nuevo <id>         crea uno que ya arranca
+    tools/plugins.py --probar <id>        lo abre aparte, sin tocar tu barra
     tools/plugins.py --listar             emite el catálogo combinado (JSON)
     tools/plugins.py --instalados         qué hay instalado de fuera
     tools/plugins.py --instalar <url>     clona, valida, pregunta e instala
@@ -653,6 +702,213 @@ AYUDA = """El catálogo de plugins de k4.
     --carpeta <n> al instalar, cuál del repo si hay varias
     --registro <url>  otro registro que no sea el de la casa
 """
+
+
+#  ── empezar un plugin, y probarlo sin jugarte el escritorio ──────────
+#
+#  Las dos cosas que más se echan de menos al escribir el primero. La
+#  documentación son quinientas líneas buenas, pero la primera hora no quiere
+#  leer: quiere algo que arranque. Y probar cargando el plugin en TU barra —la
+#  que lleva tu portapapeles y tu sesión— significa que un bucle infinito te
+#  tira el escritorio.
+
+PLANTILLA_MANIFIESTO = """{
+  "id": "%(id)s",
+  "entry": "%(clase)sPlugin.qml",
+  "version": "0.1.0",
+  "title": "%(titulo)s",
+  "description": "Un plugin recién nacido",
+  "host": ">=1.1.0",
+  "permisos": [],
+  "superficies": ["island"]
+}
+"""
+
+PLANTILLA_QML = """//  %(titulo)s
+//
+//  Un plugin de k4 es un objeto con nombre y vista. El host lo crea UNA vez y
+//  lo deja vivo; lo que aparece y desaparece es la vista. Por eso el estado se
+//  guarda aquí y sobrevive a cerrarla.
+//
+//  Para probarlo sin tocar tu barra:
+//
+//      tools/plugins.py --probar %(id)s
+
+import QtQuick
+import K4 as K4
+
+K4.Plugin {
+    id: raiz
+
+    name: "%(id)s"
+    title: "%(titulo)s"
+
+    //  Cuánto sitio pide en la island.
+    islandWidth: 320
+    islandHeight: 120
+
+    //  El host abre y cierra por aquí.
+    property bool abierto: false
+    active: abierto
+    function toggle() { abierto = !abierto }
+    //  Sin `close()` el ESC no hace nada: el host cierra llamándola.
+    function close() { abierto = false }
+
+    view: Component {
+        Item {
+            K4.Etiqueta {
+                anchors.centerIn: parent
+                text: "Hola desde %(titulo)s"
+                font.pixelSize: 16
+            }
+        }
+    }
+}
+"""
+
+
+def nuevo(ident):
+    """Un plugin que ya arranca, para no empezar por una carpeta vacía."""
+    if not re.match(r"^[a-z][a-z0-9-]*$", ident or ""):
+        print("Un id son minúsculas, números y guiones: mi-plugin")
+        return 2
+    destino = DE_USUARIO / ident
+    if destino.exists():
+        print("Ya existe: %s" % destino)
+        return 1
+    clase = "".join(p.capitalize() for p in ident.split("-"))
+    datos = {"id": ident, "titulo": clase, "clase": clase}
+    destino.mkdir(parents=True)
+    (destino / "plugin.json").write_text(PLANTILLA_MANIFIESTO % datos)
+    (destino / (clase + "Plugin.qml")).write_text(PLANTILLA_QML % datos)
+    print("Hecho: %s" % destino)
+    print()
+    print("  tools/plugins.py --probar %s    lo abre sin tocar tu barra" % ident)
+    print("  tools/plugins.py                 lo valida")
+    print("  quickshell ipc -p shell.qml call k4 pluginEnable %s" % ident)
+    return 0
+
+
+BANCO = """//  Banco de pruebas de un plugin. Lo genera `tools/plugins.py --probar`.
+//
+//  Carga UN plugin y nada más: ni barra, ni servicios, ni tus notificaciones.
+//  Si el plugin se cuelga, se cuelga esto y no tu escritorio.
+//
+//  Vive en la raíz de k4 a propósito: Quickshell no carga ficheros de fuera de
+//  la carpeta de la configuración, así que un banco en /tmp no podría abrir el
+//  plugin.
+
+import QtQuick
+import Quickshell
+import Quickshell.Wayland
+import K4 as K4
+
+ShellRoot {
+    id: banco
+
+    property var plugin: null
+
+    Component.onCompleted: {
+        const c = Qt.createComponent("%(entry)s")
+        if (c.status === Component.Error) {
+            console.log("BANCO no carga:\\n" + c.errorString())
+            return
+        }
+        banco.plugin = c.createObject(null, {
+            habilitado: true,
+            carpeta: Quickshell.shellPath("%(carpeta)s")
+        })
+        if (banco.plugin && typeof banco.plugin.toggle === "function")
+            banco.plugin.toggle()
+        console.log("BANCO listo:", banco.plugin ? banco.plugin.name : "nada")
+    }
+
+    PanelWindow {
+        visible: banco.plugin !== null
+        anchors { top: true; bottom: true; left: true; right: true }
+        color: "transparent"
+        WlrLayershell.namespace: "k4-banco"
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+        exclusionMode: ExclusionMode.Ignore
+
+        Rectangle {
+            anchors.fill: parent
+            color: "#cc000000"
+            MouseArea { anchors.fill: parent; onClicked: Qt.quit() }
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: banco.plugin ? banco.plugin.islandWidth : 320
+            height: banco.plugin ? banco.plugin.islandHeight : 120
+            radius: 14
+            color: "#1c1c1e"
+            border.width: 1
+            border.color: "#3a3a3c"
+            clip: true
+
+            Loader {
+                anchors.fill: parent
+                sourceComponent: banco.plugin ? banco.plugin.view : null
+            }
+        }
+
+        //  Un recordatorio: es fácil olvidarse de que esto no es la barra.
+        Text {
+            textFormat: Text.PlainText
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 40
+            text: "banco de pruebas · clic fuera para salir"
+            color: "#8e8e93"
+            font.pixelSize: 12
+        }
+    }
+}
+"""
+
+
+def probar(ident):
+    """Abre UN plugin en una instancia aparte, sin tocar la barra de verdad."""
+    #  `leer_catalogo` devuelve (datos, lista): la lista es lo que importa.
+    catalogo = {m.get("id"): m for m in leer_catalogo()[1]}
+    if ident in catalogo:
+        entry = "plugins/" + catalogo[ident]["entry"]
+    else:
+        manif = DE_USUARIO / ident / "plugin.json"
+        if not manif.exists():
+            print("No encuentro el plugin «%s»." % ident)
+            return 1
+        try:
+            m = json.loads(manif.read_text(encoding="utf-8"))
+        except ValueError as e:
+            print("Su plugin.json no se lee: %s" % e)
+            return 1
+        entry = "externos/%s/%s" % (ident, m.get("entry", ""))
+
+    if not (RAIZ / entry).exists():
+        print("El entry no está donde dice el manifiesto: %s" % entry)
+        return 1
+
+    banco = RAIZ / ".banco.qml"
+    banco.write_text(BANCO % {"entry": entry,
+                              "carpeta": str(pathlib.PurePosixPath(entry).parent)})
+
+    entorno = dict(os.environ)
+    api = str(RAIZ / "api")
+    entorno["QML_IMPORT_PATH"] = (api + ":" + entorno["QML_IMPORT_PATH"]
+                                  if entorno.get("QML_IMPORT_PATH") else api)
+    print("Abriendo «%s» en un banco aparte. Clic fuera para salir." % ident)
+    try:
+        return subprocess.call(["quickshell", "-p", str(banco)], env=entorno)
+    except KeyboardInterrupt:
+        return 0
+    finally:
+        try:
+            banco.unlink()
+        except OSError:
+            pass
 
 
 def _valor(bandera):
@@ -681,6 +937,12 @@ if __name__ == "__main__":
         _t = _valor("--buscar")
         sys.exit(buscar(None if _t and _t.startswith("--") else _t,
                         _valor("--registro")))
+    if "--nuevo" in sys.argv:
+        _id = _valor("--nuevo")
+        sys.exit(nuevo(_id) if _id else 2)
+    if "--probar" in sys.argv:
+        _id = _valor("--probar")
+        sys.exit(probar(_id) if _id else 2)
     if "--instalados" in sys.argv:
         sys.exit(instalados())
     if "--recargar" in sys.argv:

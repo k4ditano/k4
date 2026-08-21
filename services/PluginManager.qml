@@ -175,6 +175,21 @@ Singleton {
         revisarRequisitos()
     }
 
+    //  La carpeta de un plugin, contada desde la raíz de k4. Son los mismos
+    //  tres casos que resuelve la `url` de `_crear`, dichos en ruta en vez de
+    //  en url — y por eso viven pegadas: si alguien toca una, toca la otra.
+    //
+    //  `externos/` es un enlace a ~/.config/k4/plugins que mantiene
+    //  tools/plugins.py; leer a través de él va bien y deja una sola forma de
+    //  nombrar las cosas.
+    function relDeCarpeta(m, ruta) {
+        if (m._recarga)
+            return String(ruta).replace(/\/[^/]*$/, "")
+        if (ruta.indexOf("/") === 0)
+            return "externos/" + m.id
+        return "plugins/" + String(ruta).replace(/\/[^/]*$/, "")
+    }
+
     function _crear(m) {
         const ruta = m.entry
         if (!ruta) {
@@ -213,7 +228,20 @@ Singleton {
             //  `habilitado: true` de fábrica: solo se crean los habilitados,
             //  así que la bandera vieja queda como constante y los bindings
             //  de los plugins (`running: habilitado && …`) siguen valiendo.
-            obj = comp.createObject(null, { habilitado: true })
+            //  Y su propia carpeta, que hasta ahora un plugin no tenía forma
+            //  de saber. `K4.Paths.raiz` es la de k4, no la suya, así que un
+            //  plugin de fuera no podía construir la ruta de un guion propio ni
+            //  de un asset para pasárselo a un proceso — comprobado: ninguno de
+            //  los externos ejecuta nada suyo, y sospecho que es por esto.
+            //  Se saca de `Quickshell.shellPath` y NO de la `url` de arriba:
+            //  lo que devuelve `Qt.resolvedUrl` aquí dentro es un `qs:@/qs/…`,
+            //  el esquema interno de Quickshell, y eso a un `Process` no le
+            //  sirve de nada. Se vio porque el guion del plugin no corría y el
+            //  plugin decía vivir en «qs:@/qs/externos/…».
+            obj = comp.createObject(null, {
+                habilitado: true,
+                carpeta: Quickshell.shellPath(relDeCarpeta(m, ruta))
+            })
         } catch (e) {
             registrarError(m.id, String(e))
             return null

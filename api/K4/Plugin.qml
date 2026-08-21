@@ -25,6 +25,21 @@ QtObject {
     default property list<QtObject> services
 
     // Identificador corto y único. Se usa en los logs y como target IPC sugerido.
+    //  Dónde vive este plugin, en el disco. La rellena el host al crearlo.
+    //
+    //  Es lo que hace falta para traerte cosas tuyas: un guion en Python, un
+    //  binario, un modelo, un asset que no vaya por `Qt.resolvedUrl`. Sin esto
+    //  solo se podían pintar imágenes —con una URL relativa— pero no ejecutar
+    //  nada propio, porque un `Process` quiere una ruta y no una URL.
+    property string carpeta: ""
+
+    //  Un fichero tuyo, con su ruta entera:
+    //
+    //      command: ["python3", fichero("tools/mio.py")]
+    function fichero(relativa) {
+        return carpeta.length > 0 ? carpeta + "/" + relativa : relativa
+    }
+
     required property string name
 
     // Nombre legible, por si algún día hay un menú de módulos.
