@@ -69,6 +69,13 @@ def traducible(s):
     #  mensajes que se manda la terminal consigo misma.
     if re.match(r'^(\\[nrt])+$', s):
         return False
+    #  Un glifo de la fuente escrito como escape —`\u{F0054}`— es un dibujo,
+    #  no una palabra: al traductor solo le puede pasar copiarlo o romperlo.
+    if re.match(r'^\\u\{[0-9A-Fa-f]+\}$', s):
+        return False
+    #  Y un color tampoco.
+    if re.match(r'^#[0-9A-Fa-f]{3,8}$', s):
+        return False
     return True
 
 
