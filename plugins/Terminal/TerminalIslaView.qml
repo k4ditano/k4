@@ -708,6 +708,15 @@ Item {
 
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
+                            //  **Lo más importante de todo el fichero.**
+                            //
+                            //  Esto es la salida de tus mandatos: bytes que
+                            //  vienen de donde vengan. Sin `PlainText`, un
+                            //  `cat` a un fichero con `<img src="http://…">`
+                            //  dentro haría que la barra saliera a pedir esa
+                            //  imagen. El VT ya trae su propia negrita por
+                            //  bits; el marcado no pinta nada aquí.
+                            textFormat: Text.PlainText
                             text: modelData.t
                             color: modelData.f
                             font.family: plugin.fuente

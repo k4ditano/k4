@@ -7,6 +7,9 @@
 import QtQuick
 
 Text {
+    //  Literal, y aquí con más motivo: esto es lo que usan los plugins de
+    //  fuera, que pintan lo que les llegue. Ver core/IslandLabel.
+    textFormat: Text.PlainText
     color: Tema.tinta
     font.family: Tema.fuente
     font.pixelSize: 12

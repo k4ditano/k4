@@ -6,6 +6,7 @@ import "../../core"
 
 Text {
     id: numero
+    textFormat: Text.PlainText
 
     property string texto: ""
     property bool critico: false

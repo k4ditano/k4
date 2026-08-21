@@ -24,6 +24,7 @@ Rectangle {
 
     Text {
         id: etiqueta
+        textFormat: Text.PlainText
         anchors.centerIn: parent
         text: (insignia.compacta ? insignia.grado.nombre.substring(0, 3) : insignia.grado.nombre)
             + (insignia.nivel > 0 ? " " + insignia.nivel : "")

@@ -718,6 +718,8 @@ Item {
             Text {
                 id: rotuloMedida
                 visible: false
+                //  Mide lo mismo que se pinta, así que el formato también.
+                textFormat: Text.PlainText
                 text: capa.modelData.texto || ""
                 font.family: fuenteRotulos.name
                 font.pixelSize: Math.max(6, capa.tamTexto)
@@ -741,6 +743,10 @@ Item {
             Text {
                 id: rotulo
                 visible: capa.esTexto && !capa.editandoTexto
+                //  El rótulo del usuario. El render lo quema con `drawtext`,
+                //  que es literal: interpretarlo aquí enseñaría una cosa y
+                //  produciría otra.
+                textFormat: Text.PlainText
                 x: capa.relleno
                 y: capa.relleno
                 text: (capa.modelData.texto || "")

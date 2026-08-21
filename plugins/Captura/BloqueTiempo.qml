@@ -168,6 +168,8 @@ Rectangle {
         anchors.rightMargin: 6
         anchors.verticalCenter: parent.verticalCenter
         visible: bloque.etiqueta.length > 0 && bloque.width > implicitWidth + 12
+        //  El nombre de la capa, y el de una capa de audio es el de su FICHERO.
+        textFormat: Text.PlainText
         text: bloque.etiqueta
         color: bloque.elegido ? Theme.islandBg : Theme.ink
         font.family: Theme.uiFont

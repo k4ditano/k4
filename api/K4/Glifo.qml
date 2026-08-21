@@ -7,6 +7,10 @@
 import QtQuick
 
 Text {
+    //  Un glifo es un punto de código, nunca marcado. Se dice igualmente: el
+    //  día que alguien pase por aquí un nombre en vez de un icono, no se
+    //  convierte en un agujero.
+    textFormat: Text.PlainText
     color: Tema.tinta
     font.family: Tema.fuenteIconos
     font.pixelSize: 16

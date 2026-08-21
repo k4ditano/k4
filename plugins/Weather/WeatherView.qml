@@ -12,6 +12,7 @@ FadeIn {
     // Los glifos del tiempo son de la familia weather-*, que en esta fuente
     // tiene el trazo más fino: piden un punto más de tamaño que el resto.
     component Glyph: Text {
+        textFormat: Text.PlainText
         color: Theme.ink
         font.family: Theme.iconFont
         horizontalAlignment: Text.AlignHCenter
