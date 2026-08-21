@@ -365,7 +365,39 @@ Item {
             mp.play()
     }
 
-    function fijarPistaAudio(i) { mp.activeAudioTrack = i }
+    //  El volumen de la pista que se monitoriza, acotado a 1.
+    //
+    //  Por encima del 100 % se AMPLIFICA, y eso Qt no lo hace: recorta. Así que
+    //  de ahí para arriba sigue siendo cosa del render, y la ficha lo dice en
+    //  ámbar. De 0 a 100 la previa ya se porta como el fichero que va a salir.
+    //
+    //  La MEZCLA no está en la lista y no tiene volumen propio —es la suma ya
+    //  hecha—, así que cuando es la que suena va entera.
+    //  Se recalcula a mano y NO es un enlace, aunque lo pida el cuerpo.
+    //
+    //  `mp.activeAudioTrack` no avisa de sus cambios de forma que QML pueda
+    //  seguirlos: un enlace que lo lea se evalúa una vez y se queda con lo que
+    //  hubiera entonces. Medido —la pista activa era la 2, el plan decía 0,25 y
+    //  el enlace seguía devolviendo 1— y perdido un rato creyendo que el fallo
+    //  estaba en el dato. Así que se recalcula en los dos momentos en que puede
+    //  cambiar: al cambiar de pista y al tocar los ajustes de las pistas, que
+    //  es justo lo que hace el deslizador del volumen.
+    property real volumenDeLaPista: 1
+
+    function recalcularVolumen() {
+        const pistas = Editor.pistasAudio
+        let v = 1
+        for (let i = 0; pistas && i < pistas.length; ++i)
+            if (pistas[i].i === mp.activeAudioTrack)
+                v = Math.max(0, Math.min(1,
+                    pistas[i].volumen !== undefined ? pistas[i].volumen : 1))
+        volumenDeLaPista = v
+    }
+
+    function fijarPistaAudio(i) {
+        mp.activeAudioTrack = i
+        recalcularVolumen()
+    }
 
     //  La mezcla no cuenta como pista que monitorizar: existe para el mundo de
     //  fuera. En cuanto se sabe cuál de las de verdad suena, se pasa a esa.
@@ -461,6 +493,10 @@ Item {
     property Connections pistasCambian: Connections {
         target: Editor
         function onPistasAudioChanged() {
+            //  Mover el deslizador de volumen reasigna la lista entera, así que
+            //  por aquí pasa cada tirón del ratón: es donde se oye subir y
+            //  bajar mientras lo mueves.
+            repro.recalcularVolumen()
             const pistas = Editor.pistasAudio
             if (!pistas || pistas.length === 0)
                 return
@@ -500,6 +536,12 @@ Item {
         //  de aquí, y esto no escuchaba a nadie.
         audioOutput: AudioOutput {
             muted: repro.silenciado || (repro.tramo ? !!repro.tramo.mudo : false)
+            //  Y con el volumen de la pista que se está oyendo, que hasta ahora
+            //  no se aplicaba: movías el deslizador de una pista y la previa
+            //  sonaba exactamente igual. El render sí lo respetaba, así que el
+            //  número decía una cosa y lo que oías otra —que es la peor forma
+            //  de ajustar un volumen: a ciegas y creyendo que no—.
+            volume: repro.volumenDeLaPista
         }
 
         //  La previa va a la velocidad del trozo que se esté viendo.
@@ -599,6 +641,15 @@ Item {
         }
 
         onMediaStatusChanged: {
+            //  Al cargar un medio, Qt vuelve a la primera pista: hay que
+            //  reponer la que se estaba oyendo y, con ella, su volumen. Pasa al
+            //  saltar a un trozo de OTRO fichero, que dentro de un montaje es
+            //  de lo más normal.
+            if (mediaStatus === MediaPlayer.LoadedMedia) {
+                repro.monitorizarUnaDeVerdad()
+                repro.recalcularVolumen()
+            }
+
             //  Que se acabe el FICHERO no es que se acabe la línea: puede
             //  quedar otro trozo, y puede estar en el mismo fichero más atrás.
             //

@@ -123,10 +123,10 @@ ColumnLayout {
                 }
             }
 
-            //  Ámbar por encima del 100 %: ahí se AMPLIFICA, y eso solo pasa en
-            //  el render. Aquí además la previa nunca lo enseñó —monitoriza una
-            //  pista y no le aplica su volumen—, así que este número se cumple
-            //  únicamente en el fichero que sale.
+            //  Ámbar por encima del 100 %: ahí se AMPLIFICA, y eso Qt no sabe
+            //  hacerlo —recorta—, así que de ahí para arriba el número solo se
+            //  cumple en el fichero que sale. De 0 a 100 la previa ya lo aplica
+            //  y se oye subir y bajar mientras lo mueves.
             IslandLabel {
                 Layout.preferredWidth: 34
                 horizontalAlignment: Text.AlignRight
