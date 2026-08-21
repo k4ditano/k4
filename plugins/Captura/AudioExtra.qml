@@ -125,8 +125,24 @@ Item {
             }
 
             //  Dónde debería ir el fichero para el instante de línea de ahora.
-            readonly property real donde: capa
-                ? Math.max(0, extra.segundos - capa.t0) : 0
+            //
+            //  **Con el recorte puesto, que es la mitad que faltaba.** Una capa
+            //  de audio no siempre empieza en el segundo 0 de su fichero:
+            //  «separar el audio» de un trozo que va del 12 al 18 hace una capa
+            //  con `recorte: [12, 18]`, y la locución nace con la cabeza
+            //  recortada. Sin sumarlo, la previa reproducía SIEMPRE desde el
+            //  principio del fichero: oías otra cosa que la que hay ahí, y si
+            //  el principio era silencio —una grabación tarda en arrancar a
+            //  hablar— no oías nada y parecía que el editor estaba mudo. El
+            //  render sí lo respetaba (`atrim` en `ramas_audio_extra`); el que
+            //  mentía era el reproductor.
+            readonly property real donde: {
+                if (!capa)
+                    return 0
+                const desde = capa.recorte && capa.recorte.length === 2
+                    ? capa.recorte[0] : 0
+                return Math.max(0, desde + extra.segundos - capa.t0)
+            }
 
             //  Con `stop()` por delante cuando el fichero se acabó.
             //
