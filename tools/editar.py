@@ -440,6 +440,87 @@ def expresion(puntos, indice):
 #  juntar una grabación de 1080p con un vídeo de 720p falla, y falla tarde.
 NORMA_AUDIO = "aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo"
 
+#  Ni ffmpeg ni ffprobe salen a la red. Nunca.
+#
+#  Un proyecto es un JSON con rutas dentro, y un `.k4v` puede llegarte de otra
+#  persona igual que llega un fichero cualquiera. Sin esto, una «ruta» que en
+#  realidad sea `http://…` hace que tu máquina se la pida: comprobado contra un
+#  servidor local, que registró el `GET` con el user-agent de libavformat.
+#
+#  Va aquí y no en un `if` porque un `if` se olvida en la llamada diecisiete.
+#  Esto lo corta ffmpeg mismo: «Protocol 'http' not on whitelist» y ni un
+#  paquete. `crypto` y `data` se quedan porque son locales y algún contenedor
+#  legítimo los usa.
+SIN_RED = ["-protocol_whitelist", "file,crypto,data"]
+
+
+#  ── de dónde puede salir un fichero, y dónde puede caer ──────────────
+#
+#  Un proyecto es un JSON con rutas dentro y puede venir de cualquiera. Lo que
+#  sigue son las dos preguntas que hay que hacerle a una ruta que no has escrito
+#  tú: ¿es un fichero de esta máquina?, ¿y va a caer donde debe?
+#
+#  `SIN_RED` ya impide que ffmpeg salga a la red, así que esto es la segunda
+#  capa. Existe igualmente por dos razones: dice POR QUÉ se para —«ok: true» con
+#  la lista vacía parece que el fichero no tenía audio, y eso engaña— y protege
+#  de protocolos que no van por la red pero tampoco son ficheros.
+
+def es_local(ruta):
+    """¿Es una ruta de fichero y no otra cosa disfrazada?"""
+    r = str(ruta or "")
+    if not r:
+        return False
+    #  `http://`, `data:`, `concat:`, `pipe:`, `subfile,…` … cualquier cosa con
+    #  esquema delante. Una ruta normal no lleva dos puntos antes de la primera
+    #  barra.
+    if re.match(r"^[A-Za-z][A-Za-z0-9+.\-]*://", r):
+        return False
+    cabeza = r.split("/")[0]
+    if ":" in cabeza:
+        return False
+    return True
+
+
+def exigir_local(ruta, que="fichero"):
+    """La ruta, o se sale diciendo qué pasa."""
+    if not es_local(ruta):
+        salir(ok=False, motivo="%s no es una ruta local: %s" % (que, ruta))
+    if not os.path.exists(ruta):
+        salir(ok=False, motivo="no existe el %s: %s" % (que, ruta))
+    return ruta
+
+
+def dentro_de(base, ruta):
+    """¿`ruta` cae dentro de `base`, resueltos los `..` y los enlaces?"""
+    b = os.path.realpath(base)
+    r = os.path.realpath(ruta)
+    return r == b or r.startswith(b + os.sep)
+
+
+def exigir_dentro(base, ruta, que="salida"):
+    if not dentro_de(base, ruta):
+        salir(ok=False, motivo="la %s se sale de su carpeta: %s" % (que, ruta))
+    return ruta
+
+
+#  Un sondeo que no vuelve deja al editor esperando para siempre. Veinte
+#  segundos es holgadísimo para leer una cabecera —lo normal son décimas— y
+#  corto para un cuelgue. Los RENDERS no llevan tiempo: pueden durar minutos y
+#  cortarlos sería romper trabajo bueno.
+ESPERA_SONDEO = 20
+
+
+def correr_sondeo(orden, **kw):
+    """`subprocess.run` con reloj, para lo que debe tardar poco."""
+    kw.setdefault("capture_output", True)
+    kw.setdefault("text", True)
+    try:
+        return subprocess.run(orden, timeout=ESPERA_SONDEO, **kw)
+    except subprocess.TimeoutExpired:
+        salir(ok=False, motivo="el fichero no responde: %s"
+                               % (orden[-1] if orden else "?"))
+
+
 #  La escoba: quitar el ruido de fondo, en UN solo sitio.
 #
 #  La usan tres caminos —las pistas del vídeo, las capas de audio, y la copia
@@ -580,7 +661,7 @@ def orden_onda(args):
         salir(ok=False, motivo="sin-fichero")
 
     puntos = max(16, min(2000, int(args.puntos)))
-    orden = ["ffmpeg", "-v", "error", "-i", args.fichero,
+    orden = ["ffmpeg"] + SIN_RED + ["-v", "error", "-i", args.fichero,
              "-map", "0:a:%d" % max(0, int(args.pista)),
              "-ac", "1", "-ar", "2000", "-f", "s16le", "-"]
     try:
@@ -1171,8 +1252,8 @@ def tamano_imagen(ruta):
                     f.seek(largo - 2, 1)
     except OSError:
         return None
-    p = subprocess.run(
-        ["ffprobe", "-v", "error", "-select_streams", "v:0",
+    p = correr_sondeo(
+        ["ffprobe"] + SIN_RED + ["-v", "error", "-select_streams", "v:0",
          "-show_entries", "stream=width,height", "-of", "csv=p=0", ruta],
         capture_output=True, text=True)
     partes = p.stdout.strip().split(",")
@@ -2373,8 +2454,8 @@ def suena(ruta):
     """
     if ruta in _CON_SONIDO:
         return _CON_SONIDO[ruta]
-    hay = subprocess.run(
-        ["ffprobe", "-v", "error", "-select_streams", "a:0",
+    hay = correr_sondeo(
+        ["ffprobe"] + SIN_RED + ["-v", "error", "-select_streams", "a:0",
          "-show_entries", "stream=codec_name", "-of", "csv=p=0", ruta],
         capture_output=True, text=True).stdout.strip() != ""
     _CON_SONIDO[ruta] = hay
@@ -2684,8 +2765,8 @@ def pistas_audio(video):
     #  `stream_tags` entero y no solo `title`: el muxor de MP4 guarda lo que
     #  se le pasa como `title` bajo la clave `name`, así que pidiendo solo
     #  `title` no vuelve nada y las pistas salían sin nombre.
-    p = subprocess.run(
-        ["ffprobe", "-v", "error", "-select_streams", "a",
+    p = correr_sondeo(
+        ["ffprobe"] + SIN_RED + ["-v", "error", "-select_streams", "a",
          "-show_entries", "stream=index:stream_tags",
          "-of", "json", video],
         capture_output=True, text=True)
@@ -2731,16 +2812,16 @@ def duracion_sonda(flujo, contenedor):
 
 
 def sondear(video):
-    p = subprocess.run(
-        ["ffprobe", "-v", "error", "-select_streams", "v:0",
+    p = correr_sondeo(
+        ["ffprobe"] + SIN_RED + ["-v", "error", "-select_streams", "v:0",
          "-show_entries", "stream=width,height,r_frame_rate,duration",
          "-show_entries", "format=duration", "-of", "json", video],
         capture_output=True, text=True)
     d = json.loads(p.stdout)
     s = d["streams"][0]
     num, den = s["r_frame_rate"].split("/")
-    hay_audio = subprocess.run(
-        ["ffprobe", "-v", "error", "-select_streams", "a:0",
+    hay_audio = correr_sondeo(
+        ["ffprobe"] + SIN_RED + ["-v", "error", "-select_streams", "a:0",
          "-show_entries", "stream=codec_name", "-of", "csv=p=0", video],
         capture_output=True, text=True).stdout.strip() != ""
     return (int(s["width"]), int(s["height"]),
@@ -2781,8 +2862,8 @@ def describir_imagen(ruta, ident=1, dur=3.0):
     que ya existe para los vídeos mudos se encarga.
     """
     ancho, alto = 1920, 1080
-    p = subprocess.run(
-        ["ffprobe", "-v", "error", "-select_streams", "v:0",
+    p = correr_sondeo(
+        ["ffprobe"] + SIN_RED + ["-v", "error", "-select_streams", "v:0",
          "-show_entries", "stream=width,height", "-of", "csv=p=0", ruta],
         capture_output=True, text=True)
     partes = p.stdout.strip().split(",")
@@ -2888,6 +2969,31 @@ def migrar(plan):
     return nuevo
 
 
+def revisar_rutas(plan, deDonde=""):
+    """Ninguna ruta de dentro del plan puede ser otra cosa que un fichero.
+
+    Un `.k4v` es JSON y viaja: te lo pasan por Telegram como te pasan un vídeo.
+    Si una de sus `ruta` fuese `http://…`, abrirlo haría que tu máquina pidiese
+    esa dirección —comprobado: un servidor local registró el GET— y eso convierte
+    «abrir un proyecto» en «visitar lo que diga quien lo escribió».
+
+    Aquí no se exige que el fichero EXISTA: un proyecto con un vídeo movido de
+    sitio se abre igual y ya avisa cada sitio a su manera. Lo que se exige es
+    que sea una ruta, no un protocolo.
+    """
+    malas = []
+    for f in plan.get("fuentes", []):
+        if f.get("ruta") and not es_local(f["ruta"]):
+            malas.append(f["ruta"])
+    for c in plan.get("capas", []):
+        if c.get("ruta") and not es_local(c["ruta"]):
+            malas.append(c["ruta"])
+    if malas:
+        salir(ok=False, motivo="el proyecto apunta fuera del disco: %s"
+                               % ", ".join(malas[:3]))
+    return plan
+
+
 def cargar(ruta):
     """El plan de un fichero, ya en el modelo de ahora.
 
@@ -2895,6 +3001,7 @@ def cargar(ruta):
     tiene ninguna gracia pagarlos en cada arrastre del ratón.
     """
     plan = json.load(open(ruta))
+    revisar_rutas(plan, ruta)
     if plan.get("version", 1) < VERSION:
         plan = migrar(plan)
         guardar(plan, ruta)
@@ -3060,8 +3167,8 @@ def orden_medir(args):
     """
     if not os.path.exists(args.fichero):
         salir(ok=False, motivo="no-existe")
-    p = subprocess.run(
-        ["ffprobe", "-v", "error", "-select_streams", "v:0",
+    p = correr_sondeo(
+        ["ffprobe"] + SIN_RED + ["-v", "error", "-select_streams", "v:0",
          "-show_entries", "stream=width,height,duration",
          "-show_entries", "format=duration", "-of", "json", args.fichero],
         capture_output=True, text=True)
@@ -3132,7 +3239,7 @@ def opcion_grafo():
     """
     if not _OPCION_GRAFO:
         try:
-            p = subprocess.run(["ffmpeg", "-hide_banner", "-h", "full"],
+            p = subprocess.run(["ffmpeg"] + SIN_RED + ["-hide_banner", "-h", "full"],
                                capture_output=True, text=True)
             viejo = "filter_complex_script" in p.stdout
         except OSError:
@@ -3242,12 +3349,12 @@ def orden_render(args):
                   ":diff_mode=rectangle[gif]")
         with open(ruta_grafo, "w") as f:
             f.write(texto)
-        orden = (["ffmpeg", "-v", "error", "-y"] + abrir_entradas(plan, rutas)
+        orden = (["ffmpeg"] + SIN_RED + ["-v", "error", "-y"] + abrir_entradas(plan, rutas)
                  + [opcion_grafo(), ruta_grafo, "-map", "[gif]",
                     "-loop", "0",
                     "-progress", "pipe:1", "-nostats", args.salida])
     elif formato == "webm":
-        orden = (["ffmpeg", "-v", "error", "-y"] + abrir_entradas(plan, rutas)
+        orden = (["ffmpeg"] + SIN_RED + ["-v", "error", "-y"] + abrir_entradas(plan, rutas)
                  + [opcion_grafo(), ruta_grafo,
                     "-map", "[v]", "-map", "[a]",
                     #  `row-mt` y `-cpu-used 4`: vp9 sin eso tarda tanto que
@@ -3257,7 +3364,7 @@ def orden_render(args):
                     "-c:a", "libopus", "-b:a", "128k",
                     "-progress", "pipe:1", "-nostats", args.salida])
     else:
-        orden = ["ffmpeg", "-v", "error", "-y"] + abrir_entradas(plan, rutas)
+        orden = ["ffmpeg"] + SIN_RED + ["-v", "error", "-y"] + abrir_entradas(plan, rutas)
         orden += [opcion_grafo(), ruta_grafo,
                   "-map", "[v]", "-map", "[a]",
                   "-c:v", "hevc_nvenc" if args.codec == "hevc" else "h264_nvenc",
@@ -3299,7 +3406,7 @@ def sacar_fotograma(plan, ruta_plan, t, destino):
     rutas, _, _, _ = entradas(plan, carpeta)
     ruta_grafo, _ = escribir_grafo(plan, ruta_plan, sin_audio=True,
                                    nombre="grafo-congelar.txt")
-    orden = (["ffmpeg", "-v", "error", "-y"] + abrir_entradas(plan, rutas)
+    orden = (["ffmpeg"] + SIN_RED + ["-v", "error", "-y"] + abrir_entradas(plan, rutas)
              + [opcion_grafo(), ruta_grafo, "-map", "[v]",
                 "-ss", "%.4f" % t, "-frames:v", "1", destino])
     p = subprocess.run(orden, capture_output=True, text=True)
@@ -3389,6 +3496,11 @@ def orden_limpiar(args):
     """
     if not os.path.exists(args.fichero):
         salir(ok=False, motivo="sin-fichero")
+    #  Antes de crear un solo directorio: el `makedirs` de abajo obedece a los
+    #  `..` que traiga el nombre, así que comprobar después sería comprobar
+    #  cuando ya has hecho carpetas donde no tocaba.
+    if args.dentro:
+        exigir_dentro(args.dentro, args.salida)
     carpeta = os.path.dirname(args.salida)
     if carpeta:
         os.makedirs(carpeta, exist_ok=True)
@@ -3409,7 +3521,7 @@ def orden_limpiar(args):
     if not cadena:
         salir(ok=False, motivo="nada-que-hacer")
 
-    orden = ["ffmpeg", "-v", "error", "-y", "-i", args.fichero,
+    orden = ["ffmpeg"] + SIN_RED + ["-v", "error", "-y", "-i", args.fichero,
              "-map", "0:a:%d" % max(0, int(args.pista)),
              "-af", ",".join(cadena), "-c:a", "flac",
              "-compression_level", "5", "-vn", args.salida]
@@ -3446,7 +3558,7 @@ def orden_niveles(args):
     salida = []
     for p in pistas_audio(args.video):
         pr = subprocess.run(
-            ["ffmpeg", "-v", "info", "-i", args.video,
+            ["ffmpeg"] + SIN_RED + ["-v", "info", "-i", args.video,
              "-map", "0:a:%d" % p["i"], "-af", "volumedetect",
              "-vn", "-f", "null", "-"],
             capture_output=True, text=True)
@@ -3519,7 +3631,7 @@ def orden_silencios(args):
     with open(ruta_grafo, "w") as f:
         f.write(texto)
 
-    orden = ["ffmpeg", "-hide_banner", "-y"] + abrir_entradas(plan, rutas)
+    orden = ["ffmpeg"] + SIN_RED + ["-hide_banner", "-y"] + abrir_entradas(plan, rutas)
     #  Solo el audio: descodificar el vídeo para tirarlo es tiempo regalado, y
     #  aquí se está esperando a que conteste para poder cortar.
     orden += [opcion_grafo(), ruta_grafo, "-map", "[adet]",
@@ -3556,7 +3668,7 @@ def orden_previa(args):
     ruta_grafo, _ = escribir_grafo(plan, args.plan, sin_audio=True,
                                    nombre="grafo-previa.txt")
 
-    orden = ["ffmpeg", "-v", "error", "-y"] + abrir_entradas(plan, rutas)
+    orden = ["ffmpeg"] + SIN_RED + ["-v", "error", "-y"] + abrir_entradas(plan, rutas)
     # `-ss` como opción de SALIDA, después del grafo. Delante del `-i` ffmpeg
     # pone los tiempos a cero y todas las expresiones, que van en tiempo de
     # línea, apuntarían al sitio equivocado.
@@ -3649,8 +3761,28 @@ def main():
     lp.add_argument("--escoba", action="store_true")
     lp.add_argument("--ganancia", type=float, default=1.0)
     lp.add_argument("--prefijo", default="")
+    #  La carpeta de la que la salida no puede salir. Esta orden es la única
+    #  cuyo destino NO elige una persona en un diálogo: lo compone el editor
+    #  con el id de la capa dentro. Un id con `../` dentro sacaba el fichero
+    #  de la carpeta del proyecto — comprobado. Quien llama dice aquí hasta
+    #  dónde llega, y si el nombre se escapa, no se escribe.
+    lp.add_argument("--dentro", default="")
 
     args = ap.parse_args()
+
+    #  Todo lo que llega por la línea de órdenes y suena a ruta, revisado en un
+    #  solo sitio. Repartir los `if` por las doce `orden_*` es como se olvida
+    #  uno: aquí basta con no quitar el nombre de la lista.
+    for cual in ("video", "fichero", "plan", "rastro", "camara"):
+        v = getattr(args, cual, "")
+        if v:
+            exigir_local(v, cual)
+    #  Las salidas todavía no existen, pero tampoco pueden ser un protocolo.
+    for cual in ("salida", "guardar"):
+        v = getattr(args, cual, "")
+        if v and not es_local(v):
+            salir(ok=False, motivo="%s no es una ruta local: %s" % (cual, v))
+
     {"abrir": orden_abrir, "renombrar": orden_renombrar, "onda": orden_onda,
      "proponer": orden_proponer, "render": orden_render,
      "previa": orden_previa, "camara": orden_camara,

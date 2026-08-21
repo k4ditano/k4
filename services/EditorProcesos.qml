@@ -108,12 +108,13 @@ Scope {
 
     property var colaLimpias: []
 
-    function pedirLimpia(clave, fichero, pista, salida, escoba, ganancia, prefijo) {
+    function pedirLimpia(clave, fichero, pista, salida, escoba, ganancia, prefijo, dentro) {
         colaLimpias = colaLimpias.concat([{ clave: clave, fichero: fichero,
                                             pista: pista, salida: salida,
                                             escoba: !!escoba,
                                             ganancia: ganancia || 1,
-                                            prefijo: prefijo || "" }])
+                                            prefijo: prefijo || "",
+                                            dentro: dentro || "" }])
         siguienteLimpia()
     }
 
@@ -126,6 +127,7 @@ Scope {
                              "--pista", String(t.pista),
                              "--ganancia", String(t.ganancia),
                              "--prefijo", t.prefijo]
+                             .concat(t.dentro ? ["--dentro", t.dentro] : [])
                              .concat(t.escoba ? ["--escoba"] : [])
         limpiador.running = true
     }

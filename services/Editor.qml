@@ -2151,6 +2151,49 @@ Singleton {
              + "|" + gananciaDe(capa).toFixed(2)
     }
 
+    //  ¿Es una ruta de fichero, o un protocolo disfrazado de ruta?
+    //
+    //  Lo que abre un proyecto es lo que diga su JSON, y un `.k4v` te lo pasan
+    //  como te pasan un vídeo. Con `http://…` aquí, abrirlo hacía que ffprobe
+    //  pidiera esa dirección: un servidor local registró el GET. Esta es la
+    //  segunda cerradura —el guion ya rechaza el plan entero al cargarlo, y
+    //  ffmpeg va con `-protocol_whitelist file,crypto,data`—, pero el sitio
+    //  donde una ruta ajena se convierte en LA ruta del vídeo merece la suya.
+    function esRutaLocal(r) {
+        const t = String(r || "")
+        if (t.length === 0 || /^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(t))
+            return false
+        return t.split("/")[0].indexOf(":") < 0
+    }
+
+    //  El id de una capa acaba dentro de un NOMBRE DE FICHERO, y esa es la
+    //  única razón de esta función. El id normal es `capa-3` y no da problemas;
+    //  el de un proyecto que te hayan pasado es lo que quiera quien lo escribió,
+    //  y con `../../` dentro la copia de la previa salía de la carpeta del
+    //  proyecto y caía donde dijera el id — comprobado, el fichero apareció en
+    //  /tmp. Aquí sólo pasan letras, cifras, guion y raya baja; lo demás se
+    //  vuelve raya. Si no queda nada, el número de la fila, que siempre sirve.
+    //
+    //  El guion además comprueba que la salida cae dentro de la carpeta
+    //  (`--dentro`). Son dos vueltas a la misma llave a propósito: esta compone
+    //  bien el nombre, aquélla se niega a escribir si aun así se escapase.
+    function nombreSeguro(t, respaldo) {
+        const crudo = String(t === undefined || t === null ? "" : t)
+        const s = crudo.replace(/[^A-Za-z0-9_-]/g, "-").substring(0, 48)
+                       .replace(/-+/g, "-").replace(/^-|-$/g, "")
+        if (s === crudo)
+            return s || ("c" + respaldo)
+        //  Al limpiarlo puede coincidir con otro: `a/b` y `a-b` daban el mismo
+        //  nombre, y dos capas distintas compartiendo copia significa oír la
+        //  de al lado. Si hubo que tocarlo, se le pega un resumen del id de
+        //  verdad, que vuelve a separarlos. Un id normal —`capa-3`— no pasa
+        //  por aquí y conserva su nombre de siempre.
+        let h = 5381
+        for (let i = 0; i < crudo.length; ++i)
+            h = ((h * 33) ^ crudo.charCodeAt(i)) >>> 0
+        return (s || "c" + respaldo) + "-" + h.toString(36)
+    }
+
     function asegurarLimpias() {
         if (carpetaAdjunta.length === 0)
             return
@@ -2166,11 +2209,12 @@ Singleton {
             //  guion borra las demás de esta capa al acabar: mover el
             //  deslizador haría una copia por valor y llenaría la carpeta.
             const g = Math.round(gananciaDe(c) * 100)
-            const pref = "previa-" + c.id + "-"
+            const pref = "previa-" + nombreSeguro(c.id, i) + "-"
             procesos.pedirLimpia(k, c.ruta,
                                  c.pista !== undefined ? c.pista : 0,
                                  carpetaAdjunta + "/" + pref + "g" + g + ".flac",
-                                 !!c.limpia, gananciaDe(c), pref)
+                                 !!c.limpia, gananciaDe(c), pref,
+                                 carpetaAdjunta)
         }
     }
 
@@ -2850,7 +2894,8 @@ Singleton {
         //  Se hace aquí y no antes porque hasta que el plan no llega no hay de
         //  dónde sacarlo. Si el plan viniera sin fuentes se queda como estaba:
         //  peor es dejarlo vacío y que no se pueda ni renombrar el render.
-        if (abriendoProyecto && fuentes.length > 0 && fuentes[0].ruta)
+        if (abriendoProyecto && fuentes.length > 0
+                && esRutaLocal(fuentes[0].ruta))
             rutaVideo = fuentes[0].ruta
         clips = d.clips || []
         capas = d.capas || []

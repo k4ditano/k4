@@ -142,6 +142,13 @@ def orden_hacer(args):
             salir(ok=False, motivo="sin-modelo", como=COMO)
         modelo = modelos[0]["ruta"]
 
+    #  Antes de tocar el disco: la carpeta de abajo sale del nombre del propio
+    #  vídeo, así que comprobarlo después sería comprobar cuando ya has creado
+    #  un directorio a cuenta de lo que dijera el fichero.
+    if re.match(r"^[A-Za-z][A-Za-z0-9+.-]*://", args.video or "") \
+            or not os.path.exists(args.video):
+        salir(ok=False, motivo="el vídeo no es un fichero local")
+
     carpeta = args.salida or os.path.dirname(os.path.abspath(args.video))
     os.makedirs(carpeta, exist_ok=True)
     base = os.path.join(carpeta, "transcripcion")
@@ -152,7 +159,11 @@ def orden_hacer(args):
     #  vídeo aquí no aporta nada y decodificarlo cuesta lo mismo que todo lo
     #  demás junto.
     p = subprocess.run(
-        ["ffmpeg", "-v", "error", "-y", "-i", args.video, "-vn",
+        #  Sin red: `args.video` sale del editor, pero el editor lo saca de un
+        #  proyecto, y un proyecto puede venir de cualquiera. Un `http://…` aquí
+        #  haría que transcribir se trajera lo que dijese el fichero.
+        ["ffmpeg", "-protocol_whitelist", "file,crypto,data",
+         "-v", "error", "-y", "-i", args.video, "-vn",
          "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", wav],
         capture_output=True, text=True)
     if p.returncode != 0 or not os.path.exists(wav):
