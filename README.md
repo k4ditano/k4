@@ -1,5 +1,7 @@
 # k4
 
+[![Follow @k4ditano on X](https://img.shields.io/badge/follow-%40k4ditano-000000?style=flat&logo=x&logoColor=white)](https://x.com/k4ditano)
+
 An extensible Dynamic Island-style bar for [Hyprland](https://hyprland.org/),
 built with [Quickshell](https://quickshell.org/). k4 stays compact at the
 edge of the screen — top or bottom, wherever you put it — and expands only
