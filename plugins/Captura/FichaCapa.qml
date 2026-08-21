@@ -1030,14 +1030,18 @@ ColumnLayout {
         //  lleva el aire de la habitación, y el audio separado de un trozo
         //  hereda el mismo soplido. Mismo filtro y mismos números que allí.
         //
-        //  Solo se oye al renderizar —el reproductor no filtra—, y por eso el
-        //  botón se queda encendido: para que se sepa que está puesto aunque la
-        //  previa suene igual.
+        //  Y se OYE: al encenderlo se prepara una copia limpia del audio y la
+        //  previa la reproduce. Tarda un segundo largo, y mientras tanto sigue
+        //  sonando el original —el botón lo dice— para no dejarte callado
+        //  esperando. Apagarlo vuelve al original en el momento, así que se
+        //  puede comparar a oído, que es de lo que se trata.
         BotonAccion {
             visible: Editor.capaSel && Editor.capaSel.tipo === "audio"
-            texto: Editor.capaSel && Editor.capaSel.limpia
-                ? Idioma.t("Sin ruido de fondo (al renderizar)")
-                : Idioma.t("Quitar ruido de fondo")
+            texto: !Editor.capaSel || !Editor.capaSel.limpia
+                ? Idioma.t("Quitar ruido de fondo")
+                : Editor.limpiandoCapa(Editor.capaSel)
+                    ? Idioma.t("Limpiando…")
+                    : Idioma.t("Sin ruido de fondo")
             icono: 0xF00E2                        // md-broom
             activo: Editor.capaSel && !!Editor.capaSel.limpia
             onPulsado: Editor.fijarCapa(Editor.idSel,

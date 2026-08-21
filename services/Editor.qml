@@ -2101,8 +2101,75 @@ Singleton {
         }
     }
 
-    onCapasChanged: asegurarOndas()
+    onCapasChanged: { asegurarOndas(); asegurarLimpias() }
     onClipsChanged: asegurarOndas()
+
+    // ── la escoba, oída y no prometida ────────────────────────────
+    //
+    //  «Quitar ruido de fondo» solo se notaba al renderizar, y un botón que no
+    //  se oye no sirve para decidir: lo que hace falta es escucharlo y ver si
+    //  te gusta cómo queda la voz. Qt no sabe filtrar mientras reproduce, así
+    //  que se prepara una COPIA ya limpia del audio y la previa reproduce esa.
+    //
+    //  El render no la usa: sigue aplicando el filtro él sobre el original. Los
+    //  dos salen de `FILTRO_ESCOBA`, la misma constante en editar.py, así que
+    //  no pueden separarse.
+    //
+    //  Se guarda por (fichero, pista) y no por capa: dos capas del mismo sitio
+    //  —el mismo micro separado en dos trozos— comparten la copia y el trabajo
+    //  se hace una vez.
+    property var limpias: ({})
+    property var limpiasPedidas: ({})
+
+    function claveLimpia(capa) {
+        if (!capa || !capa.ruta || capa.tipo !== "audio")
+            return ""
+        return capa.ruta + "|" + (capa.pista !== undefined ? capa.pista : 0)
+    }
+
+    function asegurarLimpias() {
+        if (carpetaAdjunta.length === 0)
+            return
+        for (let i = 0; i < capas.length; ++i) {
+            const c = capas[i]
+            if (!c.limpia)
+                continue
+            const k = claveLimpia(c)
+            if (k.length === 0 || limpiasPedidas[k])
+                continue
+            limpiasPedidas[k] = true
+            procesos.pedirLimpia(k, c.ruta,
+                                 c.pista !== undefined ? c.pista : 0,
+                                 carpetaAdjunta + "/limpia-" + c.id + ".flac")
+        }
+    }
+
+    //  Qué fichero tiene que sonar en la previa por esta capa: el limpio si ya
+    //  está hecho, y el de siempre mientras no lo esté. Nunca se queda callada
+    //  esperando: oyes el original y en un segundo se cambia solo.
+    function rutaSonando(capa) {
+        if (!capa)
+            return ""
+        if (!capa.limpia)
+            return capa.ruta
+        const k = claveLimpia(capa)
+        return limpias[k] ? limpias[k] : capa.ruta
+    }
+
+    //  Y por qué pista. La copia limpia lleva UNA sola —la que se pidió— así
+    //  que dentro de ella es la 0, no la que era en el original.
+    function pistaSonando(capa) {
+        if (!capa)
+            return 0
+        if (capa.limpia && limpias[claveLimpia(capa)])
+            return 0
+        return capa.pista !== undefined ? capa.pista : 0
+    }
+
+    //  Para que el botón pueda decir «un momento» en vez de mentir.
+    function limpiandoCapa(capa) {
+        return !!capa && !!capa.limpia && !limpias[claveLimpia(capa)]
+    }
 
     // ── el agachado, en la previa ─────────────────────────────────
     //
@@ -2697,6 +2764,12 @@ Singleton {
         //  Si había una toma de voz en marcha, se tira: pertenece al proyecto
         //  que se está cerrando.
         cancelarVoz()
+        //  Y las copias sin ruido, que viven en la carpeta ADJUNTA del proyecto
+        //  que se deja: sus rutas no valen aquí. Guardarlas apuntaría a
+        //  ficheros de otro montaje —o a ficheros que ya no están— y la capa se
+        //  quedaría muda sin decir por qué.
+        limpias = ({})
+        limpiasPedidas = ({})
         rutaVideo = video
         rutaPlan = video.replace(/\.[^./]+$/, "") + ".k4v"
         //  Nada de arrastrar el estado del vídeo anterior: los momentos de otra
@@ -2797,6 +2870,21 @@ Singleton {
         //  Reasignando el objeto entero y no escribiendo dentro: QML solo emite
         //  el cambio cuando la propiedad se asigna, así que tocar una clave del
         //  mapa no repintaría ninguna onda.
+        onLimpiaLista: function (clave, ruta) {
+            const m = {}
+            for (const k in editor.limpias)
+                m[k] = editor.limpias[k]
+            m[clave] = ruta
+            editor.limpias = m
+        }
+
+        //  Si no se pudo limpiar, se sigue oyendo el original y se dice. No se
+        //  desmarca el botón: al renderizar el filtro sí se va a aplicar, y
+        //  apagarlo por un fallo de la PREVIA sería cambiarle el montaje.
+        onLimpiaFallo: function (clave) {
+            editor.fallo("no-se-pudo-limpiar")
+        }
+
         onOndaLista: function (clave, picos, dur) {
             const m = {}
             for (const k in editor.ondas)

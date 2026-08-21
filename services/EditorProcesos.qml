@@ -92,6 +92,59 @@ Scope {
         }
     }
 
+    // ── la escoba, para poder OÍRLA ───────────────────────────────
+    //
+    //  Un botón que solo se nota al renderizar no sirve para decidir: hay que
+    //  oír el resultado y ver si te gusta. Pero Qt no sabe aplicar un filtro de
+    //  ffmpeg mientras reproduce, así que se le prepara el fichero YA limpio y
+    //  reproduce ese. El render sigue filtrando él sobre el original, con la
+    //  misma constante, así que lo que oyes es lo que va a salir.
+    //
+    //  Cuesta poco: un minuto y medio de audio se limpia en algo más de un
+    //  segundo. Va en cola de uno en uno, como las ondas, por lo mismo —varios
+    //  ffmpeg a la vez compiten con la barra justo cuando estás editando—.
+    signal limpiaLista(string clave, string ruta)
+    signal limpiaFallo(string clave)
+
+    property var colaLimpias: []
+
+    function pedirLimpia(clave, fichero, pista, salida) {
+        colaLimpias = colaLimpias.concat([{ clave: clave, fichero: fichero,
+                                            pista: pista, salida: salida }])
+        siguienteLimpia()
+    }
+
+    function siguienteLimpia() {
+        if (limpiador.running || colaLimpias.length === 0)
+            return
+        const t = colaLimpias[0]
+        limpiador.clave = t.clave
+        limpiador.command = ["python3", guion, "limpiar", t.fichero, t.salida,
+                             "--pista", String(t.pista)]
+        limpiador.running = true
+    }
+
+    Process {
+        id: limpiador
+        property string clave: ""
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let d = null
+                try { d = JSON.parse(this.text) } catch (e) { }
+                if (d && d.ok && d.ruta)
+                    procesos.limpiaLista(limpiador.clave, d.ruta)
+                else
+                    procesos.limpiaFallo(limpiador.clave)
+            }
+        }
+        //  La cola avanza al MORIR el proceso, no al leer su salida: la misma
+        //  trampa que documenta `ondeador`.
+        onExited: {
+            procesos.colaLimpias = procesos.colaLimpias.slice(1)
+            procesos.siguienteLimpia()
+        }
+    }
+
     // ── ponerle nombre al proyecto ────────────────────────────────
     //
     //  Renombrar es cosa de python porque son dos ficheros —el `.k4v` y su

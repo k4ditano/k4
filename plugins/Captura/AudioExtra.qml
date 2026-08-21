@@ -118,10 +118,13 @@ Item {
             //  así que el enlace se lo comía la carga. Por eso se dice en los
             //  dos momentos en que puede haberse perdido: al acabar de cargar y
             //  justo antes de sonar.
+            //  Y la pista se pregunta al Editor y no se lee de la capa: si lo
+            //  que suena es la copia sin ruido, esa lleva UNA pista y dentro de
+            //  ella es la 0, no la que era en el original.
             function fijarPista() {
-                if (capa && capa.pista !== undefined
-                        && mp.activeAudioTrack !== capa.pista)
-                    mp.activeAudioTrack = capa.pista
+                const p = Editor.pistaSonando(capa)
+                if (capa && mp.activeAudioTrack !== p)
+                    mp.activeAudioTrack = p
             }
 
             //  Dónde debería ir el fichero para el instante de línea de ahora.
@@ -211,8 +214,12 @@ Item {
 
             MediaPlayer {
                 id: mp
+                //  Y el fichero también: con la escoba puesta suena la copia
+                //  limpia en cuanto está hecha —un segundo—, y mientras tanto
+                //  el original, que es mejor que quedarse callado esperando.
+                //  Al cambiar la fuente Qt recarga y se recoloca solo.
                 source: voz.capa && voz.capa.ruta
-                    ? "file://" + voz.capa.ruta : ""
+                    ? "file://" + Editor.rutaSonando(voz.capa) : ""
 
                 onMediaStatusChanged: {
                     if (mediaStatus === MediaPlayer.LoadedMedia)

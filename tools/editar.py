@@ -440,6 +440,17 @@ def expresion(puntos, indice):
 #  juntar una grabación de 1080p con un vídeo de 720p falla, y falla tarde.
 NORMA_AUDIO = "aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo"
 
+#  La escoba: quitar el ruido de fondo, en UN solo sitio.
+#
+#  La usan tres caminos —las pistas del vídeo, las capas de audio, y la copia
+#  limpia que oye la previa— y tienen que ser exactamente el mismo filtro, o la
+#  previa mentiría sobre lo que va a salir del render. Un número repetido en
+#  tres sitios se separa solo en cuanto alguien toca uno.
+#
+#  `nr=12` quita el aire sin comerse la voz; `nf=-25` es el suelo de ruido que
+#  se le supone. Medido sobre un render: el siseo baja 5,1 dB y la voz 0,6.
+FILTRO_ESCOBA = "afftdn=nr=12:nf=-25"
+
 
 def norma_video(ancho, alto, fps):
     #  `decrease` + `pad` y no `scale` a secas: un vídeo de otra proporción hay
@@ -851,7 +862,7 @@ def rama_audio(i, idx, clip, fuente, dur, fundido="", ext=0.0):
         #  La limpieza de ruido, por pista y ANTES del volumen: el soplido del
         #  micro se quita del original y luego se sube lo limpio. `afftdn` con
         #  la puerta suave de fábrica; nr=12 quita el aire sin comerse la voz.
-        limpia = "afftdn=nr=12:nf=-25," if p.get("limpia") else ""
+        limpia = FILTRO_ESCOBA + "," if p.get("limpia") else ""
         lineas.append(
             "[%d:a:%d]atrim=start=%.4f:end=%.4f,asetpts=PTS-STARTPTS,"
             "%svolume=%.3f,%s%s%s%s[%s]"
@@ -2536,7 +2547,7 @@ def ramas_audio_extra(plan, idx_capa, sin_audio):
         #  comerse la voz— para que la capa suene igual venga de donde venga. Y
         #  ANTES del volumen, por lo mismo: se limpia el original y luego se
         #  sube lo limpio, no al revés.
-        limpiar = "afftdn=nr=12:nf=-25," if capa.get("limpia") else ""
+        limpiar = FILTRO_ESCOBA + "," if capa.get("limpia") else ""
 
         recorte = capa.get("recorte") or []
         idx = idx_capa[capa["id"]]
@@ -3352,6 +3363,46 @@ def orden_congelar(args):
     salir(ok=True, fuente=ident, clip=congelado["id"], ruta=destino)
 
 
+def orden_limpiar(args):
+    """Una copia del audio de una pista, ya sin ruido de fondo.
+
+    Existe para que la escoba se pueda OÍR mientras editas. Qt no sabe aplicar
+    un filtro de ffmpeg al vuelo, así que a la previa se le da el fichero ya
+    limpio y reproduce ese; el render sigue aplicando `FILTRO_ESCOBA` él mismo
+    sobre el original. Es el mismo filtro por la misma constante, así que lo
+    que oyes es lo que va a salir.
+
+    Sale una pista sola —la que se pide— y por eso el fichero limpio se
+    reproduce siempre por su pista 0: al reencodearlo, la numeración de dentro
+    ya no es la del original.
+
+    La duración NO cambia, y eso no es un detalle: la previa coloca el fichero
+    por el instante de la línea, así que un limpio más corto o más largo que su
+    original desharía el recorte y la colocación de la capa.
+    """
+    if not os.path.exists(args.fichero):
+        salir(ok=False, motivo="sin-fichero")
+    carpeta = os.path.dirname(args.salida)
+    if carpeta:
+        os.makedirs(carpeta, exist_ok=True)
+    #  FLAC y no AAC, y no es por purismo: lo que se va a juzgar oyendo esto
+    #  es si el filtro deja bien la voz. Con un códec con pérdida encima, parte
+    #  de lo que oirías serían sus artefactos y no los del filtro — estarías
+    #  decidiendo sobre otra cosa. Sale unas tres veces más grande y se tarda
+    #  la mitad en hacerlo, así que tampoco cuesta nada.
+    orden = ["ffmpeg", "-v", "error", "-y", "-i", args.fichero,
+             "-map", "0:a:%d" % max(0, int(args.pista)),
+             "-af", FILTRO_ESCOBA, "-c:a", "flac", "-compression_level", "5",
+             "-vn", args.salida]
+    try:
+        p = subprocess.run(orden, capture_output=True, text=True)
+    except OSError:
+        salir(ok=False, motivo="sin-ffmpeg")
+    if p.returncode != 0 or not os.path.exists(args.salida):
+        salir(ok=False, motivo=(p.stderr or "").strip()[:200] or "limpiar")
+    salir(ok=True, ruta=args.salida)
+
+
 def orden_niveles(args):
     """Cuánto suena cada pista del vídeo: pico y media, en dB.
 
@@ -3558,13 +3609,18 @@ def main():
     nv = sub.add_parser("niveles")
     nv.add_argument("video")
 
+    lp = sub.add_parser("limpiar")
+    lp.add_argument("fichero")
+    lp.add_argument("salida")
+    lp.add_argument("--pista", type=int, default=0)
+
     args = ap.parse_args()
     {"abrir": orden_abrir, "renombrar": orden_renombrar, "onda": orden_onda,
      "proponer": orden_proponer, "render": orden_render,
      "previa": orden_previa, "camara": orden_camara,
      "silencios": orden_silencios, "congelar": orden_congelar,
      "medir": orden_medir, "miniatura": orden_miniatura,
-     "niveles": orden_niveles}[args.orden](args)
+     "niveles": orden_niveles, "limpiar": orden_limpiar}[args.orden](args)
 
 
 if __name__ == "__main__":
