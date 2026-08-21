@@ -368,28 +368,65 @@ Item {
     function fijarPistaAudio(i) { mp.activeAudioTrack = i }
 
     //  La mezcla no cuenta como pista que monitorizar: existe para el mundo de
-    //  fuera. Si es la que está sonando —lo es de fábrica, por ir la primera—
-    //  se cambia a la primera de las que el editor sí enseña.
-    function monitorizarUnaDeVerdad() {
-        const pistas = Editor.pistasAudio
-        if (!pistas || pistas.length === 0)
-            return
-        for (let i = 0; i < pistas.length; ++i)
-            if (pistas[i].i === mp.activeAudioTrack)
-                return
-        fijarPistaAudio(primeraQueSuena(pistas))
+    //  fuera. En cuanto se sabe cuál de las de verdad suena, se pasa a esa.
+    //
+    //  **Y no antes.** Aquí había una carrera: se cambiaba de pista en cuanto
+    //  llegaba la LISTA, sin esperar a los NIVELES, y a ciegas «la primera que
+    //  no esté muda» es Sistema. En una grabación de pantalla sin nada sonando
+    //  por los altavoces, Sistema es silencio digital: abrías el vídeo, le
+    //  dabas al play y no se oía nada, aunque el fichero suene entero.
+    //
+    //  Y no era determinista, que es lo que lo hacía difícil de creer: medido
+    //  abriendo el mismo fichero cuatro veces, tres sonaba el micro y una la
+    //  mezcla, según quién llegara antes. Ahora no se elige hasta saber, y
+    //  mientras no se sepa manda la mezcla —que lleva TODO y por eso es donde
+    //  Qt empieza—: peor que oír de más es no oír nada.
+    function hayNiveles() {
+        const n = Editor.nivelesPistas
+        for (const k in n)
+            return true
+        return false
     }
 
-    //  Cuál monitorizar: la primera que no esté silenciada Y QUE SUENE.
+    //  Cuál suena de verdad, o -1 si ninguna. Se prefiere la que ya está
+    //  puesta: no hay razón para saltar de una que suena a otra que suena.
+    function pistaQueSuena(pistas) {
+        const niveles = Editor.nivelesPistas
+        for (let i = 0; i < pistas.length; ++i) {
+            const n = niveles[pistas[i].i]
+            if (pistas[i].i === mp.activeAudioTrack && !pistas[i].mudo
+                    && n !== undefined && n.pico > -60)
+                return pistas[i].i
+        }
+        for (let i = 0; i < pistas.length; ++i) {
+            const n = niveles[pistas[i].i]
+            if (!pistas[i].mudo && n !== undefined && n.pico > -60)
+                return pistas[i].i
+        }
+        return -1
+    }
+
+    function monitorizarUnaDeVerdad() {
+        const pistas = Editor.pistasAudio
+        if (!pistas || pistas.length === 0 || !hayNiveles())
+            return
+        const buena = pistaQueSuena(pistas)
+        //  Si NINGUNA de las de verdad suena, la mezcla se queda donde está:
+        //  cambiar sería pasar de un silencio a otro, y encima renunciando a
+        //  lo poco que hubiera.
+        if (buena < 0 || buena === mp.activeAudioTrack)
+            return
+        fijarPistaAudio(buena)
+    }
+
+    //  A cuál irse cuando SILENCIAS A MANO la que estabas oyendo.
     //
-    //  Lo segundo importa más de lo que parece. En una grabación de pantalla
-    //  con micro es normalísimo que la pista del sistema esté a silencio
-    //  digital —no sonaba nada por los altavoces— y monitorizar esa es abrir
-    //  el editor y no oír nada, que es justo la queja de la que sale todo
-    //  esto. Los niveles ya se miden al abrir; aquí solo se aprovechan.
-    //
-    //  Mientras no hayan llegado, vale la primera no silenciada: mejor eso que
-    //  esperar callado.
+    //  Aquí sí se acepta una que no suene como último recurso: acabas de decir
+    //  que no quieres oír esa, así que quedarse en ella no vale, y moverse a
+    //  otra es lo que uno espera aunque esté callada. Para elegir SOLO, al
+    //  abrir, esto no sirve —ver `monitorizarUnaDeVerdad`—: a ciegas «la
+    //  primera no silenciada» es Sistema, y en una grabación de pantalla sin
+    //  nada sonando por los altavoces eso es silencio digital.
     function primeraQueSuena(pistas) {
         const niveles = Editor.nivelesPistas
         for (let i = 0; i < pistas.length; ++i) {
@@ -411,14 +448,14 @@ Item {
     //  estaba sonando resulta ser la muda, se cambia sola.
     property Connections nivelesLlegan: Connections {
         target: Editor
-        function onNivelesPistasChanged() {
-            const pistas = Editor.pistasAudio
-            if (!pistas || pistas.length === 0)
-                return
-            const n = Editor.nivelesPistas[mp.activeAudioTrack]
-            if (n !== undefined && n.pico <= -60)
-                repro.fijarPistaAudio(repro.primeraQueSuena(pistas))
-        }
+        //  Los niveles son justo lo que hacía falta para poder elegir, así que
+        //  al llegar se elige y ya está.
+        //
+        //  Antes esto solo miraba si la pista que sonaba estaba muda, y por ahí
+        //  se colaba el caso malo: si en ese momento seguía puesta la MEZCLA,
+        //  `nivelesPistas[0]` no existe —los niveles solo cuentan las de
+        //  verdad—, la condición no se cumplía y no se volvía a decidir nunca.
+        function onNivelesPistasChanged() { repro.monitorizarUnaDeVerdad() }
     }
 
     property Connections pistasCambian: Connections {
