@@ -1023,6 +1023,27 @@ ColumnLayout {
             }
         }
 
+        //  La escoba: quitarle el ruido de fondo a esta capa.
+        //
+        //  Existía por pista del vídeo (en Pistas) y no para las capas, que son
+        //  las que más la piden: una locución grabada con el micro de mesa
+        //  lleva el aire de la habitación, y el audio separado de un trozo
+        //  hereda el mismo soplido. Mismo filtro y mismos números que allí.
+        //
+        //  Solo se oye al renderizar —el reproductor no filtra—, y por eso el
+        //  botón se queda encendido: para que se sepa que está puesto aunque la
+        //  previa suene igual.
+        BotonAccion {
+            visible: Editor.capaSel && Editor.capaSel.tipo === "audio"
+            texto: Editor.capaSel && Editor.capaSel.limpia
+                ? Idioma.t("Sin ruido de fondo (al renderizar)")
+                : Idioma.t("Quitar ruido de fondo")
+            icono: 0xF00E2                        // md-broom
+            activo: Editor.capaSel && !!Editor.capaSel.limpia
+            onPulsado: Editor.fijarCapa(Editor.idSel,
+                { limpia: !Editor.capaSel.limpia })
+        }
+
         //  La música que se agacha: cuando suena quien manda, esta capa baja
         //  sola y vuelve con calma. Solo para capas de audio.
         //
@@ -1072,14 +1093,31 @@ ColumnLayout {
                 model: {
                     const r = [{ id: 0, nombre: Idioma.t("El vídeo") }]
                     const cs = Editor.capas
+                    const cuantas = ({})
                     for (let i = 0; i < cs.length; ++i) {
                         const c = cs[i]
                         if (c.id === Editor.idSel)
                             continue
-                        if (c.tipo === "audio"
-                                || (c.tipo === "video" && c.sonido))
-                            r.push({ id: c.id, nombre: Editor.nombreCapa(c) })
+                        if (c.tipo !== "audio"
+                                && !(c.tipo === "video" && c.sonido))
+                            continue
+                        const n = Editor.nombreCapa(c)
+                        cuantas[n] = (cuantas[n] || 0) + 1
+                        r.push({ id: c.id, nombre: n, t0: c.t0 })
                     }
+                    //  Dos capas pueden llamarse igual —dos trozos separados
+                    //  dan dos «Micrófono»— y entonces el nombre solo no sirve
+                    //  para elegir. A esas, y solo a esas, se les pone detrás
+                    //  el minuto en el que entran, que es lo que las separa.
+                    for (let k = 1; k < r.length; ++k)
+                        if (cuantas[r[k].nombre] > 1) {
+                            //  Minutos y segundos a secas: `Editor.reloj` trae
+                            //  además los fotogramas, y en un chip eso es
+                            //  ruido que le quita sitio al nombre.
+                            const s = Math.max(0, Math.floor(r[k].t0))
+                            r[k].nombre += " · " + Math.floor(s / 60) + ":"
+                                + (s % 60 < 10 ? "0" : "") + (s % 60)
+                        }
                     return r
                 }
 

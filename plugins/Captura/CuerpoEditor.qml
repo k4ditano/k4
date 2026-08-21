@@ -296,7 +296,11 @@ Item {
                    + "/" + Editor.tramos.length
         if (Editor.capaSel) {
             if (Editor.capaSel.tipo === "texto")  return Idioma.t("Rótulo")
-            if (Editor.capaSel.tipo === "audio")  return Idioma.t("Audio")
+            //  «Audio» a secas no dice cuál, y con tres capas de audio en el
+            //  montaje —el sistema, el micro y una locución— la cabecera era
+            //  la misma para las tres. El nombre de verdad lo sabe el Editor.
+            if (Editor.capaSel.tipo === "audio")
+                return Editor.nombreCapa(Editor.capaSel)
             if (Editor.capaSel.tipo === "video")  return Idioma.t("Vídeo encima")
             if (Editor.capaSel.tipo === "zona")   return Editor.nombreCapa(Editor.capaSel)
             if (Editor.capaSel.tipo === "forma")  return Editor.nombreCapa(Editor.capaSel)
@@ -320,9 +324,12 @@ Item {
             return Editor.capaSel.tipo === "texto"
                 ? Editor.capaSel.t0.toFixed(1) + " – "
                   + Editor.capaSel.t1.toFixed(1) + " s"
-                : Editor.capaSel.ruta.split("/").pop()
-                  + (Editor.capaSel.tipo === "audio"
-                     ? "   ·   " + Editor.capaSel.t0.toFixed(1) + " s" : "")
+                : Editor.capaSel.tipo === "audio"
+                  //  Debajo, el fichero: el nombre ya está arriba, y de dos
+                  //  capas que se llaman igual esto es lo que las separa.
+                  ? Editor.capaSel.ruta.split("/").pop()
+                    + "   ·   " + Editor.capaSel.t0.toFixed(1) + " s"
+                  : Editor.capaSel.ruta.split("/").pop()
         }
         if (momento)
             return momento.t0.toFixed(1) + " – " + momento.t1.toFixed(1) + " s"

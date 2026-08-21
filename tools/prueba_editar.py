@@ -1613,6 +1613,23 @@ def prueba_capa_de_audio_que_se_agacha():
     igual("sin agachar no hay compresor", "sidechaincompress" in texto, False)
 
 
+def prueba_capa_de_audio_con_escoba():
+    """`limpia` en una capa de audio mete `afftdn` ANTES del volumen, igual
+    que en una pista del vídeo: se limpia el original y luego se sube."""
+    p = plan([{"id": 1, "fuente": 1, "desde": 0, "hasta": 8}])
+    p["capas"] = [{"id": 1, "tipo": "audio", "ruta": fichero("voz.m4a"),
+                   "t0": 0.0, "t1": 8.0, "volumen": 0.5, "banda": 2,
+                   "limpia": True}]
+    texto, _ = editar.grafo(p)
+    igual("la capa se limpia", "afftdn=nr=12:nf=-25" in texto, True)
+    igual("y la escoba va delante del volumen",
+          texto.index("afftdn=nr=12:nf=-25") < texto.index("volume=0.500"),
+          True)
+    p["capas"][0]["limpia"] = False
+    texto, _ = editar.grafo(p)
+    igual("apagada no filtra nada", "afftdn" in texto, False)
+
+
 def prueba_agacharse_con_otra_capa():
     """Con `llave` apuntando a otra capa, la que manda es ESA y no el vídeo:
     su señal se reparte con un asplit y la mezcla del vídeo no se toca."""

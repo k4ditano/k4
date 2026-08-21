@@ -2525,6 +2525,19 @@ def ramas_audio_extra(plan, idx_capa, sin_audio):
         #  Va antes del `volume` porque cortar y luego bajar es una operación
         #  menos que al revés, y antes del `adelay` porque el retardo cuenta
         #  desde el principio de lo que se oye, no del fichero.
+        #  La escoba: quitarle el ruido de fondo a ESTA capa.
+        #
+        #  Las pistas del vídeo ya la tenían (ver `ramas_audio`, el `limpia` por
+        #  pista); las capas no, y son justo las que más la piden: una locución
+        #  grabada con el micro de mesa lleva el aire de la habitación, y el
+        #  audio separado de un trozo hereda el mismo soplido.
+        #
+        #  Mismo filtro y mismos números que allí —`nr=12` quita el aire sin
+        #  comerse la voz— para que la capa suene igual venga de donde venga. Y
+        #  ANTES del volumen, por lo mismo: se limpia el original y luego se
+        #  sube lo limpio, no al revés.
+        limpiar = "afftdn=nr=12:nf=-25," if capa.get("limpia") else ""
+
         recorte = capa.get("recorte") or []
         idx = idx_capa[capa["id"]]
         recortar = ""
@@ -2537,7 +2550,7 @@ def ramas_audio_extra(plan, idx_capa, sin_audio):
         #  casa es la Mezcla.
         vivas = pistas_vivas_de(plan, capa)
         if len(vivas) == 1:
-            partes = ["[%d:a:%d]%s" % (idx, vivas[0], recortar)]
+            partes = ["[%d:a:%d]%s%s" % (idx, vivas[0], recortar, limpiar)]
         else:
             #  Varias: cada una se recorta por su cuenta y se suman antes de
             #  nada, que es como lo hace la rama de un trozo. El volumen, el
@@ -2546,8 +2559,12 @@ def ramas_audio_extra(plan, idx_capa, sin_audio):
             trozos = []
             for j, n in enumerate(vivas):
                 sub = "axp%d_%d" % (k, j)
-                lineas.append("[%d:a:%d]%s%s[%s]" % (idx, n, recortar,
-                                                     NORMA_AUDIO, sub))
+                #  Se limpia cada pista por su cuenta y ANTES de sumarlas:
+                #  denoise sobre una mezcla ya hecha tiene menos con qué
+                #  distinguir el aire de lo que no lo es.
+                lineas.append("[%d:a:%d]%s%s%s[%s]" % (idx, n, recortar,
+                                                       limpiar, NORMA_AUDIO,
+                                                       sub))
                 trozos.append("[%s]" % sub)
             #  `normalize=0` por lo de siempre: sumar sin repartir, que si no
             #  el micro baja al mezclarlo con el sistema.

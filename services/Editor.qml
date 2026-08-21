@@ -1500,7 +1500,46 @@ Singleton {
         if (c.tipo === "censura")
             return c.modo === "pitido" ? Idioma.t("Pitido")
                                        : Idioma.t("Silenciado")
+
+        //  Una capa de audio se llamaba como su FICHERO, y eso no distingue
+        //  nada donde más falta hace: «separar el audio» saca dos capas del
+        //  mismo vídeo —el sistema y el micro— y las dos salían con el nombre
+        //  del mp4, idénticas. Elegir una así es elegir a ciegas, que es la
+        //  queja de la que sale esto.
+        //
+        //  Lo que las distingue es de qué PISTA salen, y eso el plan lo sabe:
+        //  la fuente lleva el título que puso quien grabó.
+        if (c.tipo === "audio") {
+            const t = tituloDePista(c)
+            if (t.length > 0)
+                return t
+            //  Una locución se llama por lo que es y no `locucion-2.m4a`.
+            const loc = String(c.ruta || "").match(/locucion-(\d+)\.m4a$/)
+            if (loc)
+                return Idioma.t("Locución") + " " + loc[1]
+            //  Y lo demás, el fichero sin la extensión: en un chip, «.mp3» no
+            //  aporta y quita sitio al nombre.
+            const f = String(c.ruta || "").split("/").pop()
+            return f.replace(/\.[^.]+$/, "")
+        }
         return String(c.ruta || "").split("/").pop()
+    }
+
+    //  El título de la pista de la que sale una capa de audio separada, si lo
+    //  lleva. La capa guarda su `ruta` y su `pista`, no de qué fuente vino, así
+    //  que la fuente se busca por la ruta.
+    function tituloDePista(c) {
+        if (!c || c.pista === undefined)
+            return ""
+        for (let i = 0; i < fuentes.length; ++i) {
+            if (fuentes[i].ruta !== c.ruta)
+                continue
+            const ps = fuentes[i].pistas || []
+            for (let j = 0; j < ps.length; ++j)
+                if (ps[j].i === c.pista)
+                    return String(ps[j].titulo || "").trim()
+        }
+        return ""
     }
 
     // El icono que le toca a una capa según de qué sea.
