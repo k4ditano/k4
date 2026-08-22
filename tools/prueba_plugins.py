@@ -500,6 +500,81 @@ def prueba_ancla_lee_el_origen_de_antes():
         igual("y no se inventa un commit", o.get("commit", ""), "")
 
 
+# ── lo que la barra le pregunta al guion ─────────────────────────────
+
+def dice(fn, *a, **k):
+    """Lo que una orden en modo JSON contesta, ya como objeto."""
+    salida = io.StringIO()
+    with contextlib.redirect_stdout(salida):
+        fn(*a, **k)
+    return json.loads(salida.getvalue().strip().splitlines()[-1])
+
+
+def prueba_json_examinar_no_instala_nada():
+    #  El examen es la mitad de arriba del diálogo de permisos: tiene que
+    #  poder mirar sin tocar el disco. Si instalara, aceptar o cancelar daría
+    #  igual, que es justo lo contrario de un consentimiento.
+    repo, viejo, nuevo = repo_con_dos_commits("examen")
+    with DestinoAparte("examen") as destino:
+        d = dice(plugins.json_examinar, str(repo), None, viejo)
+        igual("dice que sí", d["ok"], True)
+        igual("y qué commit ha visto", d["commit"], viejo)
+        igual("con los datos del manifiesto", d["plugin"]["id"], "examen")
+        igual("sabe que va anclado", d["anclado"], True)
+        igual("y NO ha instalado nada", list(destino.iterdir()), [])
+
+
+def prueba_json_examinar_dice_por_que_no():
+    repo, viejo, nuevo = repo_con_dos_commits("examen-malo")
+    with DestinoAparte("examen-malo"):
+        d = dice(plugins.json_examinar, str(repo), None, "0" * 40)
+        igual("no cuela", d["ok"], False)
+        contiene("y explica cuál falta", d["motivo"], "no encuentro el commit")
+
+
+def prueba_json_examinar_avisa_de_que_reemplaza():
+    repo, viejo, nuevo = repo_con_dos_commits("otra-vez")
+    with DestinoAparte("otra-vez"):
+        plugins.instalar(str(repo), True, None, viejo)
+        d = dice(plugins.json_examinar, str(repo), None, nuevo)
+        igual("avisa de que ya está", d["reemplaza"], True)
+        igual("y de en qué commit estaba", d["commitAnterior"], viejo)
+
+
+def prueba_json_buscar_marca_lo_que_tienes():
+    repo, viejo, nuevo = repo_con_dos_commits("tienda")
+    reg = BORRADOR / "registro-prueba.json"
+    reg.write_text(json.dumps({"plugins": [
+        {"id": "tienda", "title": "T", "description": "d",
+         "repo": "https://ejemplo/t", "commit": viejo},
+        {"id": "otro-que-no-tengo", "title": "O", "description": "d",
+         "repo": "https://ejemplo/o", "commit": nuevo},
+    ]}))
+    with DestinoAparte("tienda"):
+        plugins.instalar(str(repo), True, None, viejo)
+        d = dice(plugins.json_buscar, reg.as_uri())
+        por_id = {p["id"]: p for p in d["plugins"]}
+        igual("sabe cuál tienes", por_id["tienda"]["instalado"], True)
+        igual("y que está al día", por_id["tienda"]["alDia"], True)
+        igual("y cuál no tienes",
+              por_id["otro-que-no-tengo"]["instalado"], False)
+
+
+def prueba_json_buscar_descarta_lo_roto():
+    #  Un PR con una entrada mal puesta no puede dejar la tienda en blanco.
+    reg = BORRADOR / "registro-roto.json"
+    reg.write_text(json.dumps({"plugins": [
+        {"id": "bueno", "title": "B", "description": "d",
+         "repo": "https://ejemplo/b"},
+        {"id": "malo", "title": "M", "description": "d",
+         "repo": "https://ejemplo/m", "commit": "corto"},
+    ]}))
+    with DestinoAparte("roto"):
+        d = dice(plugins.json_buscar, reg.as_uri())
+        igual("sirve lo bueno", [p["id"] for p in d["plugins"]], ["bueno"])
+        igual("y dice qué descartó", d["descartadas"], ["malo"])
+
+
 def main():
     pruebas = [v for k, v in sorted(globals().items())
                if k.startswith("prueba_")]

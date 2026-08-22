@@ -14,6 +14,7 @@ No ejecuta QML: comprueba lo que se puede saber antes de arrancar Quickshell.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import pathlib
@@ -495,17 +496,28 @@ def _describir(item):
     return "\n".join(lineas)
 
 
-def instalar(url, sin_preguntar=False, subcarpeta=None, commit=None):
-    """Clonar, validar y —con permiso— instalar un plugin de fuera.
+class Traido:
+    """Lo que sale de traerse un repo y mirarlo: un plugin válido, o el porqué."""
 
-    El orden importa y es el único defendible: se clona a un temporal, se
-    valida ENTERO ahí, y solo entonces se enseña lo que declara y se pide
-    permiso. Nada llega a ~/.config/k4/plugins sin haber pasado el mismo
-    examen que pasan los ya instalados, así que no existe el estado «medio
-    instalado y roto».
+    def __init__(self, ok, motivo="", carpeta=None, item=None, commit=""):
+        self.ok = ok
+        self.motivo = motivo
+        self.carpeta = carpeta
+        self.item = item
+        self.commit = commit
 
-    Y llega DESHABILITADO, siempre. Instalar es traerlo; encenderlo es otra
-    decisión, y se toma en Ajustes viendo estos mismos permisos.
+
+@contextlib.contextmanager
+def _traer(url, subcarpeta=None, commit=None):
+    """Clonar, anclar, encontrar el plugin dentro y validarlo.
+
+    Está aparte porque lo hacen DOS: instalar, y el examen que la barra pide
+    antes de enseñarte los permisos. Y tienen que hacerlo idéntico — si el
+    examen mirase una cosa y la instalación trajese otra, el diálogo de
+    permisos estaría mintiendo. Por eso el examen devuelve el commit que vio y
+    la barra lo pasa como ancla: se instala exactamente lo que se enseñó.
+
+    Cede un `Traido` mientras el temporal sigue vivo. Al salir se borra.
     """
     ids_repo, version_host = _contexto()
     with tempfile.TemporaryDirectory(prefix="k4-plugin-") as tmp:
@@ -519,8 +531,8 @@ def instalar(url, sin_preguntar=False, subcarpeta=None, commit=None):
         try:
             subprocess.run(orden + [url, str(clon)], check=True)
         except (subprocess.CalledProcessError, FileNotFoundError) as exc:
-            print(f"no he podido clonar {url}: {exc}", file=sys.stderr)
-            return 1
+            yield Traido(False, f"no he podido clonar {url}: {exc}")
+            return
 
         #  Si se pide un commit concreto, se va A ESE y no a la punta de la
         #  rama. Un clon `--depth 1` no lo tiene, así que hay que pedirlo
@@ -528,13 +540,13 @@ def instalar(url, sin_preguntar=False, subcarpeta=None, commit=None):
         #  clon entero, que siempre lo tiene.
         if commit:
             if not RE_SHA.fullmatch(commit):
-                print("un commit son 40 caracteres hexadecimales en "
-                      f"minúscula, no {commit!r}", file=sys.stderr)
-                return 1
+                yield Traido(False, "un commit son 40 caracteres hexadecimales"
+                                    f" en minúscula, no {commit!r}")
+                return
             if not _ir_al_commit(clon, url, commit):
-                print(f"no encuentro el commit {commit[:12]} en {url}",
-                      file=sys.stderr)
-                return 1
+                yield Traido(False,
+                             f"no encuentro el commit {commit[:12]} en {url}")
+                return
 
         #  El SHA se apunta SIEMPRE, lo hubieran pedido o no: es la respuesta a
         #  «¿qué tengo instalado exactamente?», y después de borrar el `.git`
@@ -544,18 +556,18 @@ def instalar(url, sin_preguntar=False, subcarpeta=None, commit=None):
 
         carpeta = (clon / subcarpeta) if subcarpeta else _carpeta_del_clon(clon)
         if carpeta is None or not carpeta.is_dir():
-            print("no encuentro un plugin.json ni en la raíz ni en una única "
-                  "subcarpeta; dime cuál con --carpeta <nombre>",
-                  file=sys.stderr)
-            return 1
+            yield Traido(False, "no encuentro un plugin.json ni en la raíz ni "
+                                "en una única subcarpeta; dime cuál con "
+                                "--carpeta <nombre>")
+            return
 
         #  El id manda sobre el nombre del clon: la carpeta se llama como el
         #  repositorio y el manifiesto exige que coincida con el id.
         try:
             ident = json.loads((carpeta / "plugin.json").read_text())["id"]
         except Exception as exc:
-            print(f"plugin.json ilegible: {exc}", file=sys.stderr)
-            return 1
+            yield Traido(False, f"plugin.json ilegible: {exc}")
+            return
         if isinstance(ident, str) and RE_ID.fullmatch(ident) \
                 and carpeta.name != ident:
             nueva = carpeta.parent / ident
@@ -565,9 +577,31 @@ def instalar(url, sin_preguntar=False, subcarpeta=None, commit=None):
 
         item = validar_carpeta(carpeta, ids_repo, version_host)
         if not item.get("cargable"):
-            print(f"ese plugin no se puede cargar: {item.get('motivo')}",
-                  file=sys.stderr)
+            yield Traido(False,
+                         f"ese plugin no se puede cargar: {item.get('motivo')}",
+                         commit=traido)
+            return
+
+        yield Traido(True, "", carpeta, item, traido)
+
+
+def instalar(url, sin_preguntar=False, subcarpeta=None, commit=None):
+    """Clonar, validar y —con permiso— instalar un plugin de fuera.
+
+    El orden importa y es el único defendible: se clona a un temporal, se
+    valida ENTERO ahí, y solo entonces se enseña lo que declara y se pide
+    permiso. Nada llega a ~/.config/k4/plugins sin haber pasado el mismo
+    examen que pasan los ya instalados, así que no existe el estado «medio
+    instalado y roto».
+
+    Y llega DESHABILITADO, siempre. Instalar es traerlo; encenderlo es otra
+    decisión, y se toma en Ajustes viendo estos mismos permisos.
+    """
+    with _traer(url, subcarpeta, commit) as t:
+        if not t.ok:
+            print(t.motivo, file=sys.stderr)
             return 1
+        carpeta, item, traido = t.carpeta, t.item, t.commit
 
         destino = DE_USUARIO / item["id"]
         print(f"\nDe {url}:\n")
@@ -849,6 +883,131 @@ def validar_registro(datos, fallos):
                 fallos.append(f"{donde}: carpeta tiene que ser relativa y sin ..")
 
 
+#  ── hablar con la barra ──────────────────────────────────────────────
+#
+#  Las mismas órdenes, contestando en JSON. No es un guion aparte a propósito:
+#  dos caminos para instalar acabarían divergiendo, y el que se usa menos sería
+#  el que tiene los fallos. Es el mismo código y la misma validación; lo único
+#  que cambia es quién lee la respuesta.
+#
+#  Una línea por suceso y `flush`, como el editor: la barra quiere enseñar
+#  «clonando…» mientras clona, no un tocho cuando acabe.
+
+def _decir(**d):
+    print(json.dumps(d, ensure_ascii=False), flush=True)
+
+
+def json_examinar(url, subcarpeta=None, commit=None):
+    """Traerse un plugin, mirarlo y contarlo SIN instalar nada.
+
+    Es la mitad de arriba del diálogo de permisos de la barra. Devuelve el
+    commit que ha visto, y la barra lo pasa después como `--commit`: así lo
+    que se instala es exactamente lo que se enseñó, aunque la rama se mueva
+    entre que lo lees y le das a instalar.
+    """
+    with _traer(url, subcarpeta, commit) as t:
+        if not t.ok:
+            _decir(ok=False, motivo=t.motivo, commit=t.commit)
+            return 1
+        i = t.item
+        anterior = leer_origen(i["id"]) or {}
+        _decir(ok=True,
+               plugin={
+                   "id": i["id"],
+                   "title": i.get("title", i["id"]),
+                   "version": i.get("version", "0"),
+                   "description": i.get("description", ""),
+                   "permisos": i.get("permisos") or [],
+                   "superficies": i.get("superficies") or [],
+                   "host": i.get("host", ""),
+               },
+               repo=url,
+               carpeta=subcarpeta or "",
+               commit=t.commit,
+               anclado=bool(commit),
+               reemplaza=(DE_USUARIO / i["id"]).is_dir(),
+               commitAnterior=anterior.get("commit", ""))
+    return 0
+
+
+def json_buscar(url=None):
+    """El registro, tal cual, para que lo pinte la barra."""
+    try:
+        datos = leer_registro(url)
+    except Exception as exc:
+        _decir(ok=False, motivo=f"no pude leer el registro: {exc}")
+        return 2
+    fallos_reg = []
+    validar_registro(datos, fallos_reg)
+    #  Un registro con entradas rotas se sirve igual, pero sin las rotas: que
+    #  un PR mal puesto no deje la tienda en blanco.
+    malas = {f.split("/", 1)[1].split(":")[0] for f in fallos_reg if "/" in f}
+    entradas = [e for e in datos.get("plugins") or []
+                if str(e.get("id")) not in malas]
+    instalado = {}
+    for d in (DE_USUARIO.iterdir() if DE_USUARIO.is_dir() else []):
+        if d.is_dir():
+            o = leer_origen(d.name) or {}
+            instalado[d.name] = o.get("commit", "")
+    for e in entradas:
+        i = str(e.get("id"))
+        e["instalado"] = i in instalado
+        e["alDia"] = bool(e.get("commit")) and instalado.get(i) == e["commit"]
+    _decir(ok=True, plugins=entradas, descartadas=sorted(malas))
+    return 0
+
+
+def json_instalados():
+    ids_repo, version_host = _contexto()
+    fuera = []
+    for item in cargar_usuario(ids_repo, version_host):
+        o = leer_origen(item["id"]) or {}
+        fuera.append({
+            "id": item["id"],
+            "version": item.get("version", "0"),
+            "title": item.get("title", item["id"]),
+            "cargable": bool(item.get("cargable")),
+            "motivo": item.get("motivo", ""),
+            "permisos": item.get("permisos") or [],
+            "repo": o.get("repo", ""),
+            "carpeta": o.get("carpeta", ""),
+            "commit": o.get("commit", ""),
+            "cuando": o.get("cuando", 0),
+        })
+    _decir(ok=True, plugins=fuera)
+    return 0
+
+
+def json_comprobar(url=None):
+    ids_repo, version_host = _contexto()
+    try:
+        datos = leer_registro(url)
+    except Exception as exc:
+        _decir(ok=False, motivo=f"no pude leer el registro: {exc}")
+        return 2
+    publicado = {str(e.get("id")): e for e in datos.get("plugins") or []}
+    fuera = []
+    for item in cargar_usuario(ids_repo, version_host):
+        ident = item["id"]
+        mio = str((leer_origen(ident) or {}).get("commit") or "")
+        e = publicado.get(ident)
+        suyo = str((e or {}).get("commit") or "")
+        if not e:
+            estado = "fuera-del-registro"
+        elif not mio:
+            estado = "sin-anclar"
+        elif not suyo:
+            estado = "registro-sin-commit"
+        elif suyo == mio:
+            estado = "al-dia"
+        else:
+            estado = "novedad"
+        fuera.append({"id": ident, "estado": estado,
+                      "mio": mio, "suyo": suyo})
+    _decir(ok=True, plugins=fuera)
+    return 0
+
+
 def comprobar(url=None):
     """Qué tienes instalado que ya no es lo que dice el registro.
 
@@ -939,7 +1098,10 @@ AYUDA = """El catálogo de plugins de k4.
     tools/plugins.py --quitar <id>        desinstala
     tools/plugins.py --buscar [texto]     qué hay publicado en el registro
 
+    tools/plugins.py --examinar <url>     mira un plugin sin instalarlo (JSON)
+
     --commit <sha>  instalar o actualizar ESE commit, no la punta de la rama
+    --json        contestar en JSON, para la barra
     --si          no preguntar (para guiones)
     --con-estado  al quitar, borra también lo que el plugin guardó
     --carpeta <n> al instalar, cuál del repo si hay varias
@@ -1171,20 +1333,39 @@ if __name__ == "__main__":
         sys.exit(0)
     _si = "--si" in sys.argv
     _commit = _valor("--commit")
+    #  `--json` no es un guion aparte: son las mismas órdenes contestando en
+    #  JSON, para que la barra no tenga que leer texto pensado para personas.
+    _json = "--json" in sys.argv
+    if "--examinar" in sys.argv:
+        _url = _valor("--examinar")
+        sys.exit(json_examinar(_url, _valor("--carpeta"), _commit)
+                 if _url else 2)
     if "--instalar" in sys.argv:
         _url = _valor("--instalar")
-        sys.exit(instalar(_url, _si, _valor("--carpeta"), _commit)
-                 if _url else 2)
+        if not _url:
+            sys.exit(2)
+        _r = instalar(_url, _si, _valor("--carpeta"), _commit)
+        if _json:
+            _decir(ok=_r == 0, id=_valor("--instalar"))
+        sys.exit(_r)
     if "--actualizar" in sys.argv:
         _id = _valor("--actualizar")
         sys.exit(actualizar(_id, _si, _commit) if _id else 2)
     if "--comprobar" in sys.argv:
-        sys.exit(comprobar(_valor("--registro")))
+        _u = _valor("--registro")
+        sys.exit(json_comprobar(_u) if _json else comprobar(_u))
     if "--quitar" in sys.argv:
         _id = _valor("--quitar")
-        sys.exit(quitar(_id, _si, "--con-estado" in sys.argv) if _id else 2)
+        if not _id:
+            sys.exit(2)
+        _r = quitar(_id, _si, "--con-estado" in sys.argv)
+        if _json:
+            _decir(ok=_r == 0, id=_id)
+        sys.exit(_r)
     if "--buscar" in sys.argv:
         _t = _valor("--buscar")
+        if _json:
+            sys.exit(json_buscar(_valor("--registro")))
         sys.exit(buscar(None if _t and _t.startswith("--") else _t,
                         _valor("--registro")))
     if "--nuevo" in sys.argv:
@@ -1194,7 +1375,7 @@ if __name__ == "__main__":
         _id = _valor("--probar")
         sys.exit(probar(_id) if _id else 2)
     if "--instalados" in sys.argv:
-        sys.exit(instalados())
+        sys.exit(json_instalados() if _json else instalados())
     if "--recargar" in sys.argv:
         i = sys.argv.index("--recargar")
         sys.exit(recargar(sys.argv[i + 1]) if i + 1 < len(sys.argv) else 2)
