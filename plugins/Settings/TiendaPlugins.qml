@@ -30,6 +30,17 @@ Item {
     property var descartadas: []
     property string queja: ""
 
+    //  ¿Ha saltado algo de lo que impide publicar? En la barra no impide
+    //  instalar —es tu máquina—, pero cambia lo que dice el botón.
+    readonly property bool bloqueado: {
+        if (!examen || !examen.reglas)
+            return false
+        for (let i = 0; i < examen.reglas.length; ++i)
+            if (examen.reglas[i].bloquea)
+                return true
+        return false
+    }
+
     //  El plugin que se está a punto de instalar, tal y como lo vio el examen.
     //  Mientras esto no sea nulo, manda el diálogo.
     property var examen: null
@@ -526,6 +537,63 @@ Item {
                     font.pixelSize: 10
                 }
 
+                //  Lo que hayan saltado las reglas. Un plugin del registro
+                //  no llega aquí con nada que bloquee —eso se para al
+                //  publicar—, pero uno traído a mano sí puede, y entonces es
+                //  justo lo que hay que leer antes de decir que sí.
+                Repeater {
+                    id: reglas
+                    model: tienda.examen ? (tienda.examen.reglas || []) : []
+
+                    RowLayout {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        Layout.topMargin: 4
+                        spacing: 7
+
+                        IconGlyph {
+                            text: String.fromCodePoint(0xF0026)
+                            color: parent.modelData.bloquea ? Theme.red
+                                                            : Theme.yellow
+                            font.pixelSize: 11
+                            Layout.alignment: Qt.AlignTop
+                            Layout.topMargin: 2
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 1
+
+                            IslandLabel {
+                                Layout.fillWidth: true
+                                text: String(parent.parent.modelData.que || "")
+                                textFormat: Text.PlainText
+                                color: parent.parent.modelData.bloquea
+                                    ? Theme.red : Theme.ink
+                                font.pixelSize: 10
+                                wrapMode: Text.WordWrap
+                            }
+
+                            IslandLabel {
+                                Layout.fillWidth: true
+                                text: String(parent.parent.modelData.porque || "")
+                                textFormat: Text.PlainText
+                                color: Theme.muted
+                                font.pixelSize: 9
+                                wrapMode: Text.WordWrap
+                            }
+
+                            IslandLabel {
+                                Layout.fillWidth: true
+                                text: String(parent.parent.modelData.donde || "")
+                                textFormat: Text.PlainText
+                                color: Theme.dim
+                                font.pixelSize: 9
+                            }
+                        }
+                    }
+                }
+
                 //  Y la frase honesta, la misma que sale en la terminal. No
                 //  se suaviza para la barra: los permisos son lo que DECLARA,
                 //  no una jaula.
@@ -552,9 +620,17 @@ Item {
                     }
 
                     BotonTienda {
-                        texto: tienda.examen && tienda.examen.reemplaza
-                            ? Idioma.t("Actualizar") : Idioma.t("Instalar")
-                        resalta: true
+                        //  Si algo bloquea, el botón lo dice y avisa en rojo.
+                        //  No se deshabilita: instalar en TU máquina algo que
+                        //  has traído tú es tu decisión, y quitarte el botón
+                        //  sin explicar nada sería peor que dejarte elegir
+                        //  habiendo leído por qué.
+                        texto: tienda.bloqueado
+                            ? Idioma.t("Instalar de todos modos")
+                            : (tienda.examen && tienda.examen.reemplaza
+                               ? Idioma.t("Actualizar") : Idioma.t("Instalar"))
+                        resalta: !tienda.bloqueado
+                        peligro: tienda.bloqueado
                         habilitado: !PluginManager.ocupado
                         onPulsado: tienda.confirmar()
                     }

@@ -112,12 +112,21 @@ def revisar_permisos(doc, texto):
     #  `[\w-]`: los permisos pueden llevar guion (datos-personales fue el
     #  primero y destapó que `\w+` no los veía).
     documentados = set(re.findall(r"^\| `([\w-]+)` \|", texto, re.M))
+
+    #  La guía tiene DOS tablas con esta forma: los permisos y las reglas con
+    #  nombre. Se separan por lo que son y se comprueban las dos, en vez de
+    #  mirar solo una y que la otra pueda mentir sin que nadie se entere.
+    reglas = {r["id"] for r in getattr(mod, "REGLAS", [])}
+
     for p in sorted(reales - documentados):
         fallos.append(f"{doc}: el permiso `{p}` existe y no está en la tabla")
+    for r in sorted(reglas - documentados):
+        fallos.append(f"{doc}: la regla `{r}` existe y no está en la tabla")
     #  Y al revés: un permiso inventado en la guía manda a alguien a declarar
-    #  algo que se rechazará como «permisos desconocidos».
-    for p in sorted(documentados - reales):
-        fallos.append(f"{doc}: la tabla cita el permiso `{p}` y no existe")
+    #  algo que se rechazará como «permisos desconocidos», y una regla
+    #  inventada le hace buscar un aviso que nunca va a saltar.
+    for p in sorted(documentados - reales - reglas):
+        fallos.append(f"{doc}: la tabla cita `{p}` y no es ni permiso ni regla")
     return fallos
 
 

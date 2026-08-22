@@ -1045,5 +1045,6 @@
   "no carga": "won't load",
   "no está en el registro": "not in the registry",
   "sin commit": "no commit",
-  "tienes el ": "you have "
+  "tienes el ": "you have ",
+  "Instalar de todos modos": "Install anyway"
 }

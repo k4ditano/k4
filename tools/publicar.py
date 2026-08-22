@@ -186,6 +186,25 @@ def informe(d, malos, res):
                  % (ident, str(antes.get("commit") or "?")[:12]))
         l.append("")
 
+    #  Las reglas, si alguna salta. Cada una con su porqué y su arreglo: un
+    #  aviso que no dice cómo arreglarse se ignora, y entonces sobra.
+    reglas = res.get("reglas") or []
+    bloquean = [r for r in reglas if r.get("bloquea")]
+    if reglas:
+        l.append("")
+        l.append("### Lo que ha saltado")
+        l.append("")
+        for r in reglas:
+            l.append("**%s** — %s  \n`%s`"
+                     % ("Hay que arreglarlo" if r.get("bloquea") else "Para mirar",
+                        r.get("que", r.get("id")), r.get("donde", "")))
+            l.append("")
+            l.append("> %s" % r.get("porque", ""))
+            l.append("")
+            for paso in r.get("arreglo") or []:
+                l.append("- %s" % paso)
+            l.append("")
+
     l.append("Validado con `tools/plugins.py`, que compara lo que el "
              "manifiesto declara contra lo que el QML usa de verdad: usar algo "
              "sin declararlo deja el plugin sin cargar y no llegaría hasta "
@@ -198,11 +217,19 @@ def informe(d, malos, res):
 
     #  Pedir permisos no es un problema —un reproductor necesita `sonido`—,
     #  pero sí es lo que una persona tiene que mirar antes de firmar.
-    etiqueta = "revision-de-seguridad" if permisos else "validado"
-    if permisos:
+    if bloquean:
         l.append("")
-        l.append("Pide permisos, así que esto lo mira una persona antes de "
-                 "publicarse.")
+        l.append("Eso de arriba hay que arreglarlo antes de publicar: hace que"
+                 " el código que la gente acabe ejecutando no sea el de este"
+                 " commit, y entonces revisarlo no sirve de nada. Sube el"
+                 " arreglo y edita la incidencia con el SHA nuevo.")
+        return "\n".join(l), "necesita-arreglos"
+
+    etiqueta = ("revision-de-seguridad" if (permisos or reglas) else "validado")
+    if permisos or reglas:
+        l.append("")
+        l.append("Nada de esto impide publicar, pero lo mira una persona antes"
+                 " de firmarlo.")
     return "\n".join(l), etiqueta
 
 
@@ -218,6 +245,14 @@ def anadir(d, res):
     if res.get("commit") != d["commit"]:
         print("el commit revisado (%s) no es el que se aprueba (%s)"
               % (res.get("commit"), d["commit"]), file=sys.stderr)
+        return 1
+    #  Y aunque alguien ponga la etiqueta, esto no se publica: la firma de una
+    #  persona vale para juzgar lo dudoso, no para saltarse lo inequívoco.
+    bloquean = [r for r in (res.get("reglas") or []) if r.get("bloquea")]
+    if bloquean:
+        print("no se publica, hay %d cosa(s) que bloquean: %s"
+              % (len(bloquean), ", ".join(r["id"] for r in bloquean)),
+              file=sys.stderr)
         return 1
 
     p = res["plugin"]

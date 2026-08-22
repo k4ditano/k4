@@ -74,6 +74,120 @@ PERMISOS = {
 #
 #  Declararlo es opcional: un manifiesto sin `superficies` sigue valiendo y esto
 #  no dice nada. Quien lo declare, se compromete.
+#  ── reglas con nombre ────────────────────────────────────────────────
+#
+#  Los permisos dicen qué API de k4 toca un plugin. Esto es otra cosa: patrones
+#  que, estén donde estén —en el QML, en un guion suyo—, hacen que el código
+#  que acabas ejecutando NO sea el que alguien miró.
+#
+#  Cada regla lleva por qué importa y qué hacer, y eso no es adorno: un aviso
+#  que no dice cómo arreglarse se ignora, y entonces da igual tenerlo.
+#
+#  «bloquea» es lo que impide PUBLICAR, no instalar. Si te traes tu propio
+#  plugin a tu propia máquina, allá tú; lo que no puede pasar es que el
+#  registro le sirva a un desconocido algo que se descarga y ejecuta lo que
+#  haya en ese momento en internet.
+#
+#  Y el resto no bloquean: marcan el envío para que lo mire una persona. Pedir
+#  `procesos` no tiene nada de malo —media barra ejecuta cosas— pero es lo que
+#  hay que leer antes de firmar.
+
+REGLAS = [
+    {
+        "id": "descarga-y-ejecuta",
+        "que": "Se descarga algo de internet y se lo pasa a una shell",
+        "porque": "Lo que se ejecuta es lo que haya en esa URL en ese momento,"
+                  " no lo que se revisó. Quien controle la URL controla la"
+                  " máquina de quien instale el plugin.",
+        "arreglo": ["Trae el fichero, compruébalo y ejecútalo por separado.",
+                    "O mejor: mételo en el repositorio del plugin, que así va"
+                    " atado al commit."],
+        "bloquea": True,
+        "patron": re.compile(r"(?:curl|wget)[^\n|;]*\|\s*(?:sudo\s+)?"
+                             r"(?:ba|z|k)?sh\b"),
+    },
+    {
+        "id": "clon-sin-commit",
+        "que": "Clona un repositorio sin fijar el commit",
+        "porque": "Una rama o una etiqueta se mueven. Lo que se ejecute la"
+                  " semana que viene no será lo que se miró hoy.",
+        "arreglo": ["Pásale el SHA completo y haz `checkout` de él.",
+                    "Actualiza ese SHA en un commit tuyo cuando quieras subir"
+                    " de versión."],
+        #  Este NO bloquea, y es a propósito: saber si un clon está anclado
+        #  de verdad es difícil —el `checkout` puede venir tres líneas más
+        #  abajo— y un falso positivo pararía a alguien que lo hizo bien. Se
+        #  marca para que lo mire una persona, que sí sabe leer tres líneas.
+        "bloquea": False,
+        "patron": re.compile(r"git\s+clone(?![^\n]*[0-9a-f]{40})"
+                             r"[^\n]*(?:https?://|git@)"),
+    },
+    {
+        "id": "sudo-sin-contrasena",
+        "que": "Pide root sin que nadie escriba una contraseña",
+        "porque": "Cualquier proceso que corra como tú puede invocar eso como"
+                  " root, y un plugin no está en ninguna jaula.",
+        "arreglo": ["Pide autenticación de verdad, o quítalo.",
+                    "Nada de comodines ni de argumentos que venga de fuera."],
+        "bloquea": True,
+        "patron": re.compile(r"\bNOPASSWD\b|\bsudo\s+-n\b|\bpkexec\b"),
+    },
+    {
+        "id": "qml-desde-texto",
+        "que": "Construye QML a partir de una cadena en tiempo de ejecución",
+        "porque": "Lo que se ejecuta no está en el repositorio, así que"
+                  " revisarlo no dice nada de lo que hará. Si la cadena viene"
+                  " de fuera —un fichero, una respuesta— es peor.",
+        "arreglo": ["Usa un `Loader` con un componente que esté en el"
+                    " repositorio.",
+                    "Si la forma cambia, haz varios componentes y elige."],
+        "bloquea": False,
+        "patron": re.compile(r"\bQt\.createQmlObject\b|\beval\s*\("
+                             r"|\bnew\s+Function\s*\("),
+    },
+    {
+        "id": "borra-a-lo-ancho",
+        "que": "Borra recursivamente con comodines o rutas de fuera",
+        "porque": "Un `rm -rf` con una variable vacía dentro borra otra cosa."
+                  " Ha pasado en proyectos con mucha más gente mirando.",
+        "arreglo": ["Borra rutas concretas, dentro de la carpeta del plugin.",
+                    "Comprueba que la variable no esté vacía antes de usarla."],
+        "bloquea": False,
+        "patron": re.compile(r"rm\s+-[a-z]*[rR][a-z]*f|rm\s+-[a-z]*f[a-z]*[rR]"),
+    },
+]
+
+#  Dónde se buscan: en todo lo que el plugin traiga y pueda acabar
+#  ejecutándose. Un `.md` no ejecuta nada y un README con un ejemplo de
+#  `curl | sh` no es el plugin haciéndolo.
+EJECUTABLES = (".qml", ".js", ".sh", ".bash", ".zsh", ".py", ".mjs")
+
+
+def revisar_reglas(carpeta):
+    """Qué reglas incumple lo que hay en esa carpeta, con dónde."""
+    fuera = []
+    for ruta in sorted(pathlib.Path(carpeta).rglob("*")):
+        if not ruta.is_file() or ruta.suffix.lower() not in EJECUTABLES:
+            continue
+        try:
+            texto = ruta.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        rel = str(ruta.relative_to(carpeta))
+        for regla in REGLAS:
+            for m in regla["patron"].finditer(texto):
+                fuera.append({
+                    "id": regla["id"],
+                    "que": regla["que"],
+                    "porque": regla["porque"],
+                    "arreglo": regla["arreglo"],
+                    "bloquea": regla["bloquea"],
+                    "donde": "%s:%d" % (rel, texto[:m.start()].count("\n") + 1),
+                })
+                break   # una vez por fichero y regla; el resto es ruido
+    return fuera
+
+
 SUPERFICIES = {
     #  Se dibuja en la island: tiene vista.
     "island": re.compile(r"^\s*view\s*:", re.MULTILINE),
@@ -626,6 +740,17 @@ def instalar(url, sin_preguntar=False, subcarpeta=None, commit=None):
         if destino.exists():
             print("  YA EXISTE: se reemplaza la versión instalada.")
         print()
+        #  Los avisos van ANTES de la frase de siempre y antes de preguntar:
+        #  después de un «¿instalar? [s/N]» ya no los lee nadie.
+        avisos = revisar_reglas(carpeta)
+        if avisos:
+            print()
+            for a in avisos:
+                print("  %s %s" % ("BLOQUEA " if a["bloquea"] else "aviso:  ",
+                                   a["que"]))
+                print("           en %s" % a["donde"])
+                print("           %s" % a["porque"])
+        print()
         print("  Un plugin corre dentro de la barra y puede hacer lo que la")
         print("  barra pueda hacer. Los permisos son lo que DECLARA, no una")
         print("  jaula: instalarlo es confiar en quien lo escribió.")
@@ -920,6 +1045,7 @@ def json_examinar(url, subcarpeta=None, commit=None):
         i = t.item
         anterior = leer_origen(i["id"]) or {}
         _decir(ok=True,
+               reglas=revisar_reglas(t.carpeta),
                plugin={
                    "id": i["id"],
                    "title": i.get("title", i["id"]),

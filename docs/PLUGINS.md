@@ -45,6 +45,32 @@ does, and even then the entry is written **only if the commit still matches
 the one that was reviewed** — otherwise approving would mean approving "that
 repository", which is a promise nobody can keep.
 
+### Named rules
+
+Beyond permissions — which say which *k4 API* a plugin touches — the checker
+looks for patterns that make the code you end up running **not** the code
+someone reviewed. Each one carries why it matters and how to fix it, because
+a warning that doesn't say what to do gets ignored:
+
+| Rule | What it looks for |
+|---|---|
+| `descarga-y-ejecuta` | downloading something and piping it to a shell |
+| `sudo-sin-contrasena` | `NOPASSWD`, `sudo -n`, `pkexec` |
+| `clon-sin-commit` | `git clone` of a remote without a pinned SHA |
+| `qml-desde-texto` | `Qt.createQmlObject`, `eval`, `new Function` |
+| `borra-a-lo-ancho` | recursive deletes with wildcards |
+
+Only the first two **block publication**, and that split is deliberate. They
+are unambiguous: whatever the URL serves, or whatever runs as root, was never
+part of the commit anyone looked at. The rest can be perfectly reasonable in
+context, so they mark the submission for a person to read rather than stopping
+it — and even a maintainer's label cannot publish past a blocking rule.
+
+Blocking applies to *publishing*, never to installing. If you bring your own
+plugin to your own machine, the bar tells you what fired and why, and the
+button says "Install anyway". Taking the choice away without explaining it
+would be worse than letting you make it having read the reason.
+
 None of this is a security audit and the report says so. Static checks on one
 commit are what it is: a plugin runs inside the bar and can do whatever the
 bar can do.

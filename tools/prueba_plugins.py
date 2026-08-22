@@ -576,6 +576,84 @@ def prueba_json_buscar_descarta_lo_roto():
         igual("y dice qué descartó", d["descartadas"], ["malo"])
 
 
+# ── las reglas con nombre ────────────────────────────────────────────
+
+def con_ficheros(nombre, ficheros):
+    d = BORRADOR / ("reglas-" + nombre)
+    if d.exists():
+        shutil.rmtree(d)
+    d.mkdir(parents=True)
+    for ruta, contenido in ficheros.items():
+        f = d / ruta
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(contenido)
+    return d
+
+
+def ids_de(d):
+    return sorted(r["id"] for r in plugins.revisar_reglas(d))
+
+
+def prueba_reglas_descarga_y_ejecuta():
+    d = con_ficheros("curl", {
+        "i.sh": "#!/bin/sh\ncurl -sL https://x/y.sh | sh\n"})
+    igual("curl a la shell", ids_de(d), ["descarga-y-ejecuta"])
+    d = con_ficheros("curl2", {
+        "i.sh": "wget -qO- https://x/y | sudo bash\n"})
+    igual("y con wget y sudo también", ids_de(d), ["descarga-y-ejecuta"])
+    d = con_ficheros("curl-ok", {
+        "i.sh": "curl -sL https://x/datos.json -o datos.json\n"})
+    igual("bajar un fichero y ya, no", ids_de(d), [])
+
+
+def prueba_reglas_sudo_sin_contrasena():
+    d = con_ficheros("sudo", {"i.sh": "sudo -n systemctl restart x\n"})
+    igual("sudo -n", ids_de(d), ["sudo-sin-contrasena"])
+    d = con_ficheros("nopass", {"i.sh": "# NOPASSWD: /usr/bin/x\n"})
+    igual("NOPASSWD", ids_de(d), ["sudo-sin-contrasena"])
+
+
+def prueba_reglas_qml_desde_texto():
+    d = con_ficheros("qml", {
+        "V.qml": "import QtQuick\nItem { function f(t) "
+                 "{ return Qt.createQmlObject(t, this) } }\n"})
+    igual("QML de una cadena", ids_de(d), ["qml-desde-texto"])
+
+
+def prueba_reglas_no_miran_la_documentacion():
+    #  Un README con un ejemplo de `curl | sh` no es el plugin haciéndolo.
+    d = con_ficheros("doc", {
+        "LEEME.md": "Instálalo así: curl -sL https://x/y | sh\n"})
+    igual("la documentación no cuenta", ids_de(d), [])
+
+
+def prueba_reglas_solo_dos_bloquean():
+    #  Bloquear se reserva para lo inequívoco. Lo demás marca el envío para
+    #  que lo lea una persona, que es distinto de pararlo.
+    igual("las que bloquean",
+          sorted(r["id"] for r in plugins.REGLAS if r["bloquea"]),
+          ["descarga-y-ejecuta", "sudo-sin-contrasena"])
+
+
+def prueba_reglas_dicen_como_arreglarse():
+    #  Un aviso que no dice qué hacer se ignora, y entonces da igual tenerlo.
+    for r in plugins.REGLAS:
+        igual("%s explica por qué" % r["id"], len(r["porque"]) > 30, True)
+        igual("%s dice qué hacer" % r["id"], len(r["arreglo"]) >= 1, True)
+
+
+def prueba_reglas_no_saltan_con_los_plugins_de_casa():
+    #  Los 27 del repo son el patrón de referencia: si una regla salta ahí, o
+    #  el plugin está mal o la regla es demasiado ansiosa.
+    saltan = []
+    for d in sorted((plugins.RAIZ / "plugins").iterdir()):
+        if d.is_dir():
+            for r in plugins.revisar_reglas(d):
+                if r["bloquea"]:
+                    saltan.append("%s: %s" % (d.name, r["donde"]))
+    igual("ninguna bloqueante en los plugins de casa", saltan, [])
+
+
 # ── el proceso de publicación ────────────────────────────────────────
 #
 #  Es la puerta por la que entra código de un desconocido al registro, así que
