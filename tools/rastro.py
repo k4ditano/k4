@@ -58,7 +58,7 @@ def posicion():
 
 
 def main():
-    ap = argparse.ArgumentParser(add_help=False)
+    ap = argparse.ArgumentParser()
     ap.add_argument("--salida", required=True)
     ap.add_argument("--hz", type=float, default=30.0)
     ap.add_argument("--region", default="")     # "X,Y WxH"

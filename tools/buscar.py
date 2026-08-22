@@ -115,8 +115,28 @@ def describir(ruta, consulta):
     }
 
 
+AYUDA = """Busca ficheros por nombre y devuelve JSON.
+
+    tools/buscar.py <texto>              busca en tu home
+    tools/buscar.py <texto> --ambito /   dónde buscar
+    tools/buscar.py <texto> --tope 30    cuántos devolver
+    tools/buscar.py <texto> --solo dir   sólo carpetas (`dir`) o ficheros
+    tools/buscar.py <texto> --ext png,jpg
+
+Con menos de dos letras devuelve la lista vacía a propósito: la barra llama a
+esto en cada tecla y buscar por una sola letra recorrería el home entero.
+"""
+
+
 def main():
     args = sys.argv[1:]
+    #  Lo que no reconoce, abajo, se toma como el texto a buscar — que es lo
+    #  correcto para una consulta pero convertía `--help` en una búsqueda de
+    #  «--help». Cero resultados y ninguna pista.
+    if args and args[0] in ("-h", "--help", "--ayuda"):
+        print(AYUDA)
+        return
+
     consulta = ""
     ambito = "home"
     tope = TOPE

@@ -235,7 +235,7 @@ def listar_audios():
 
 
 def main():
-    ap = argparse.ArgumentParser(add_help=False)
+    ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="orden", required=True)
 
     f = sub.add_parser("foto")

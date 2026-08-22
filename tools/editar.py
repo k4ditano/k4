@@ -3682,7 +3682,7 @@ def orden_previa(args):
 
 
 def main():
-    ap = argparse.ArgumentParser(add_help=False)
+    ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="orden", required=True)
 
     e = sub.add_parser("abrir")
