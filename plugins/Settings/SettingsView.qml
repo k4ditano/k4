@@ -15,6 +15,10 @@ FadeIn {
 
     required property var plugin
 
+    //  La tienda tapa los ajustes en vez de abrirse aparte: es una pantalla
+    //  entera y compartir la ventana evita otro nivel de gestión de foco.
+    property bool tiendaAbierta: false
+
 
 
 
@@ -498,6 +502,11 @@ FadeIn {
                 font.pixelSize: 13
             }
 
+            BotonTienda {
+                texto: Idioma.t("Plugins")
+                onPulsado: view.tiendaAbierta = true
+            }
+
             IslandLabel {
                 Layout.fillWidth: true
                 text: PluginManager.catalogo.length + Idioma.t(" plugins · ")
@@ -575,6 +584,55 @@ FadeIn {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    //  ── la tienda ────────────────────────────────────────────────────
+    Rectangle {
+        anchors.fill: parent
+        visible: view.tiendaAbierta
+        color: Theme.islandBg
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 18
+            anchors.rightMargin: 18
+            anchors.topMargin: 12
+            anchors.bottomMargin: 22
+            spacing: 10
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                K4.Baldosa {
+                    Layout.preferredWidth: 30
+                    Layout.preferredHeight: 30
+                    radius: 15
+                    onPulsada: view.tiendaAbierta = false
+
+                    IconGlyph {
+                        anchors.centerIn: parent
+                        text: String.fromCodePoint(0xF004D)
+                        color: Theme.muted
+                        font.pixelSize: 14
+                    }
+                }
+
+                IslandLabel {
+                    Layout.fillWidth: true
+                    text: Idioma.t("Plugins")
+                    textFormat: Text.PlainText
+                    color: Theme.ink
+                    font.pixelSize: 14
+                    font.weight: Font.DemiBold
+                }
+            }
+
+            TiendaPlugins {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
             }
         }
     }

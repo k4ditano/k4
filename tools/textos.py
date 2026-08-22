@@ -191,6 +191,12 @@ def ficheros():
                     yield os.path.join(raiz, n)
 
 
+#  `Idioma.t("…")` o `Idioma.t('…')`, en cualquier sitio del fichero. Sin
+#  escapes dentro: una cadena de interfaz con comillas escapadas es rarísima y
+#  aceptarlas obligaría a un analizador de verdad para ganar muy poco.
+RE_ENVUELTA = re.compile(r'Idioma\.t\(\s*(["\'])((?:[^"\'\\\n]|\\.)*?)\1')
+
+
 def recolectar():
     """Todas las cadenas de la interfaz, envueltas o no, con dónde salen."""
     encontradas = {}
@@ -209,6 +215,19 @@ def recolectar():
                     continue
                 if traducible(contenido):
                     encontradas.setdefault(contenido, set()).add(rel)
+
+        #  Y, esté donde esté, lo que ya va envuelto en `Idioma.t("…")`.
+        #
+        #  Lo de arriba solo mira las PROPIEDADES conocidas —`text:`, `título:`
+        #  y compañía—, así que una cadena traducida dentro de un `model:`, de
+        #  un `return` o de un operador ternario no se veía. No es teórico: al
+        #  portar el editor aparecieron 51 sin traducir, y el «100 %» que
+        #  daba esta herramienta era 100 % de lo que alcanzaba a ver.
+        #
+        #  Aquí no hace falta `traducible()`: si alguien se ha molestado en
+        #  envolverla, es que quiere que se traduzca.
+        for m in RE_ENVUELTA.finditer(texto):
+            encontradas.setdefault(m.group(2), set()).add(rel)
     return encontradas
 
 

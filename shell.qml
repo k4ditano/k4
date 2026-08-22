@@ -202,12 +202,22 @@ Scope {
         function pluginRetry(id: string): void { PluginManager.reintentar(id) }
         function pluginReload(id: string): void { PluginManager.recargar(id) }
         function pluginRefresh(): void { PluginManager.releerCatalogo() }
-        function pluginStatus(): void {
-            console.log(JSON.stringify(PluginManager.catalogo.map(function (m) {
+        //  Devuelve, no imprime. Lo de antes hacía `console.log`, así que el
+        //  JSON acababa en el log de Quickshell y quien lo había pedido por
+        //  IPC no recibía nada: se podía leer, pero solo si además ibas a
+        //  buscar el log. Con tipo de retorno, `quickshell ipc call` lo
+        //  escribe en tu terminal, que es lo que uno espera al preguntar.
+        function pluginStatus(): string {
+            return JSON.stringify(PluginManager.catalogo.map(function (m) {
                 return { id: m.id, enabled: PluginManager.estaHabilitado(m.id),
                          error: PluginManager.errores[m.id] || "" }
-            })))
+            }))
         }
+
+        //  Pregunta al registro qué hay más nuevo. Contesta al momento y el
+        //  resultado llega después a `PluginManager.novedades`: la respuesta
+        //  útil la enseña la barra, aquí solo se dispara.
+        function pluginCheck(): void { PluginManager.comprobarNovedades() }
         function wifi(): void { _p("panel")?.openTab("wifi") }
         function bluetooth(): void { _p("panel")?.openTab("bluetooth") }
         function sonido(): void { _p("panel")?.openTab("sonido") }

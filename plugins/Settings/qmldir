@@ -5,3 +5,5 @@
 
 SettingsPlugin 1.0 SettingsPlugin.qml
 SettingsView 1.0 SettingsView.qml
+TiendaPlugins 1.0 TiendaPlugins.qml
+BotonTienda 1.0 BotonTienda.qml

@@ -716,6 +716,157 @@ Singleton {
         }
     }
 
+    //  ── la tienda ────────────────────────────────────────────────────
+    //
+    //  Buscar, examinar, instalar, actualizar y quitar, todo contra el MISMO
+    //  `tools/plugins.py` que se usa desde la terminal. No hay un camino
+    //  «de la barra» y otro «de consola»: serían dos validaciones distintas y
+    //  la menos usada acabaría siendo la que tiene los agujeros.
+    //
+    //  Una obra cada vez. Instalar y quitar tocan el disco, y dos a la vez
+    //  sobre el mismo plugin es una carrera que no hace falta ganar.
+
+    signal registroListo(var entradas, var descartadas)
+    signal examenListo(var d)
+    signal obraHecha(string que, string id, bool bien, string motivo)
+    signal obraFallo(string que, string motivo)
+
+    property bool ocupado: false
+    property string ocupadaEn: ""
+
+    function buscarEnRegistro() {
+        return _obrar("buscar", "", ["--buscar", "--json"])
+    }
+
+    //  Mirar sin instalar. Devuelve, entre otras cosas, el commit que ha
+    //  visto — y ese es el que hay que pasarle luego a `instalarDesde`, para
+    //  que se instale exactamente lo que se enseñó en el diálogo.
+    function examinar(repo, carpeta, commit) {
+        return _obrar("examinar", "", ["--examinar", repo, "--json"]
+                      .concat(carpeta ? ["--carpeta", carpeta] : [])
+                      .concat(commit ? ["--commit", commit] : []))
+    }
+
+    function instalarDesde(repo, carpeta, commit, id) {
+        return _obrar("instalar", id || "",
+                      ["--instalar", repo, "--json", "--si"]
+                      .concat(carpeta ? ["--carpeta", carpeta] : [])
+                      .concat(commit ? ["--commit", commit] : []))
+    }
+
+    function actualizarPlugin(id, commit) {
+        return _obrar("actualizar", id,
+                      ["--actualizar", id, "--json", "--si"]
+                      .concat(commit ? ["--commit", commit] : []))
+    }
+
+    function quitarPlugin(id, conEstado) {
+        return _obrar("quitar", id, ["--quitar", id, "--json", "--si"]
+                      .concat(conEstado ? ["--con-estado"] : []))
+    }
+
+    function comprobarNovedades() {
+        return _obrar("comprobar", "", ["--comprobar", "--json"])
+    }
+
+    property var _obra: ({ que: "", id: "", args: [] })
+    property string _queja: ""
+
+    function _obrar(que, id, args) {
+        if (ocupado)
+            return false
+        _queja = ""
+        _obra = { que: que, id: id, args: args }
+        ocupado = true
+        ocupadaEn = id
+        tienda.running = true
+        return true
+    }
+
+    function _recibirTienda(texto) {
+        //  El guion escribe una línea de JSON por suceso; la última es el
+        //  veredicto. Se busca hacia atrás porque delante puede haber avisos.
+        const lineas = String(texto || "").trim().split("\n")
+        for (let i = lineas.length - 1; i >= 0; --i) {
+            const l = lineas[i].trim()
+            if (!l.startsWith("{"))
+                continue
+            try {
+                return JSON.parse(l)
+            } catch (e) {
+                //  Una línea que empieza por `{` y no es JSON: se sigue
+                //  mirando hacia atrás en vez de darlo todo por perdido.
+            }
+        }
+        return null
+    }
+
+    Process {
+        id: tienda
+        command: ["python3", Quickshell.shellPath("tools/plugins.py")]
+                 .concat(manager._obra.args || [])
+        stdout: StdioCollector {
+            onStreamFinished: manager._salidaTienda = String(this.text)
+        }
+        stderr: StdioCollector {
+            onStreamFinished: manager._queja = String(this.text).trim()
+        }
+        onExited: function (codigo) {
+            const que = manager._obra.que
+            const id = manager._obra.id
+            const d = manager._recibirTienda(manager._salidaTienda)
+            manager._salidaTienda = ""
+            manager.ocupado = false
+            manager.ocupadaEn = ""
+
+            //  Un guion que peta sin decir nada deja al usuario mirando una
+            //  rueda para siempre. Si no hay veredicto, el motivo es lo que
+            //  haya escrito en stderr, y si tampoco hay, al menos el código.
+            const bien = codigo === 0 && d && d.ok
+            const motivo = (d && d.motivo) || manager._queja
+                           || qsTr("el guion terminó con el código %1").arg(codigo)
+
+            if (que === "buscar") {
+                if (bien)
+                    manager.registroListo(d.plugins || [], d.descartadas || [])
+                else
+                    manager.obraFallo(que, motivo)
+                return
+            }
+            if (que === "examinar") {
+                if (bien)
+                    manager.examenListo(d)
+                else
+                    manager.obraFallo(que, motivo)
+                return
+            }
+            if (que === "comprobar") {
+                if (bien)
+                    manager.novedades = d.plugins || []
+                else
+                    manager.obraFallo(que, motivo)
+                return
+            }
+            //  Instalar, actualizar y quitar cambian el disco: el catálogo que
+            //  tiene la barra en memoria ya no es el de fuera.
+            if (bien)
+                manager.releerCatalogo()
+            manager.obraHecha(que, id, bien, bien ? "" : motivo)
+        }
+    }
+
+    property string _salidaTienda: ""
+
+    //  Lo que dice `--comprobar`: por id, si hay algo más nuevo publicado.
+    property var novedades: []
+
+    function novedadDe(id) {
+        for (let i = 0; i < novedades.length; ++i)
+            if (novedades[i].id === id)
+                return novedades[i]
+        return null
+    }
+
     Process {
         command: ["mkdir", "-p", Quickshell.env("HOME") + "/.local/state/k4"]
         running: true

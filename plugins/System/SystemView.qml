@@ -89,10 +89,10 @@ FadeIn {
 
             Repeater {
                 model: [
-                    { id: "cpu", nombre: Idioma.t("CPU"), tono: Idioma.t("#0a84ff") },
-                    { id: "ram", nombre: Idioma.t("Memoria"), tono: Idioma.t("#bf5af2") },
-                    { id: "gpu", nombre: Idioma.t("GPU"), tono: Idioma.t("#30d158") },
-                    { id: "red", nombre: Idioma.t("Red"), tono: Idioma.t("#ff9f0a") }
+                    { id: "cpu", nombre: Idioma.t("CPU"), tono: "#0a84ff" },
+                    { id: "ram", nombre: Idioma.t("Memoria"), tono: "#bf5af2" },
+                    { id: "gpu", nombre: Idioma.t("GPU"), tono: "#30d158" },
+                    { id: "red", nombre: Idioma.t("Red"), tono: "#ff9f0a" }
                 ]
 
                 delegate: Rectangle {

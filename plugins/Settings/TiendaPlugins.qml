@@ -1,0 +1,612 @@
+//  La tienda de plugins: lo que tienes y lo que hay publicado.
+//
+//  Hasta ahora instalar un plugin era exclusivamente de terminal, y en la
+//  barra los permisos aparecían concatenados a la descripción en nueve píxeles
+//  truncados. Eso no es enseñar unos permisos: es tenerlos escritos.
+//
+//  Lo que hace esta vista, y por qué está separada de Ajustes: aquí hay sitio
+//  para decir de dónde viene un plugin, en qué commit está, qué pide y qué
+//  significa cada cosa que pide. En una fila de opciones no cabe, y por eso
+//  antes no estaba.
+//
+//  Todo pasa por `tools/plugins.py`, el mismo que usa la terminal. No hay un
+//  camino «de la barra»: serían dos validaciones distintas, y la menos usada
+//  sería la que tiene los agujeros.
+
+import QtQuick
+import QtQuick.Layouts
+import K4 as K4
+import "../../core"
+import "../../services"
+
+Item {
+    id: tienda
+
+    //  Qué se está mirando: 0 lo instalado, 1 lo publicado.
+    property int pestana: 0
+
+    //  Lo que devolvió el registro, ya con `instalado` y `alDia` marcados.
+    property var entradas: []
+    property var descartadas: []
+    property string queja: ""
+
+    //  El plugin que se está a punto de instalar, tal y como lo vio el examen.
+    //  Mientras esto no sea nulo, manda el diálogo.
+    property var examen: null
+
+    //  Lo instalado, del catálogo que ya tiene la barra: así la pestaña de
+    //  siempre funciona aunque no haya red.
+    readonly property var mios: PluginManager.catalogo.filter(function (m) {
+        return !!m.deUsuario
+    })
+
+    Component.onCompleted: {
+        PluginManager.comprobarNovedades()
+    }
+
+    Connections {
+        target: PluginManager
+
+        function onRegistroListo(lista, fuera) {
+            tienda.entradas = lista
+            tienda.descartadas = fuera
+            tienda.queja = ""
+        }
+
+        function onExamenListo(d) {
+            tienda.examen = d
+        }
+
+        function onObraFallo(que, motivo) {
+            tienda.queja = motivo
+            //  Si falla el examen, el diálogo no llega a abrirse: lo que se
+            //  ve es el porqué, y no una ventana pidiendo permiso para algo
+            //  que no se ha podido mirar.
+            tienda.examen = null
+        }
+
+        function onObraHecha(que, id, bien, motivo) {
+            tienda.queja = bien ? "" : motivo
+            tienda.examen = null
+            if (bien && tienda.pestana === 1)
+                PluginManager.buscarEnRegistro()
+            if (bien)
+                PluginManager.comprobarNovedades()
+        }
+    }
+
+    onPestanaChanged: {
+        if (pestana === 1 && entradas.length === 0)
+            PluginManager.buscarEnRegistro()
+    }
+
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: 10
+
+        //  ── las dos pestañas ─────────────────────────────────────────
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Repeater {
+                model: [Idioma.t("Instalados"), Idioma.t("Descubrir")]
+
+                K4.Baldosa {
+                    required property int index
+                    required property string modelData
+
+                    Layout.preferredWidth: 108
+                    Layout.preferredHeight: 30
+                    radius: 15
+                    activa: tienda.pestana === index
+                    onPulsada: tienda.pestana = index
+
+                    IslandLabel {
+                        anchors.centerIn: parent
+                        text: parent.modelData
+                        textFormat: Text.PlainText
+                        color: tienda.pestana === parent.index
+                            ? Theme.ink : Theme.muted
+                        font.pixelSize: 11
+                    }
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+
+            //  Refrescar. En «Descubrir» vuelve a pedir el registro; en
+            //  «Instalados», a preguntar si hay algo más nuevo.
+            K4.Baldosa {
+                Layout.preferredWidth: 30
+                Layout.preferredHeight: 30
+                radius: 15
+                pulsable: !PluginManager.ocupado
+                onPulsada: {
+                    if (tienda.pestana === 1)
+                        PluginManager.buscarEnRegistro()
+                    else
+                        PluginManager.comprobarNovedades()
+                }
+
+                IconGlyph {
+                    anchors.centerIn: parent
+                    text: String.fromCodePoint(0xF0450)
+                    color: PluginManager.ocupado ? Theme.dim : Theme.muted
+                    font.pixelSize: 13
+
+                    RotationAnimation on rotation {
+                        running: PluginManager.ocupado
+                        loops: Animation.Infinite
+                        from: 0
+                        to: 360
+                        duration: 900
+                    }
+                }
+            }
+        }
+
+        //  ── lo que haya salido mal, dicho y no escondido ─────────────
+        IslandLabel {
+            Layout.fillWidth: true
+            visible: tienda.queja.length > 0
+            text: tienda.queja
+            textFormat: Text.PlainText
+            color: Theme.red
+            font.pixelSize: 10
+            wrapMode: Text.WordWrap
+        }
+
+        //  ── la lista ─────────────────────────────────────────────────
+        ListView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+            spacing: 8
+            model: tienda.pestana === 0 ? tienda.mios : tienda.entradas
+
+            ScrollBar.vertical: IslandScrollBar {}
+
+            delegate: K4.Baldosa {
+                id: fila
+                required property var modelData
+
+                width: ListView.view ? ListView.view.width : 0
+                height: cuerpo.implicitHeight + 22
+                pulsable: false
+
+                readonly property bool esDelRegistro: tienda.pestana === 1
+                readonly property string ident: String(modelData.id || "")
+                readonly property var novedad: PluginManager.novedadDe(ident)
+
+                ColumnLayout {
+                    id: cuerpo
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: 14
+                    anchors.rightMargin: 14
+                    spacing: 4
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        IslandLabel {
+                            text: String(fila.modelData.title || fila.ident)
+                            textFormat: Text.PlainText
+                            color: Theme.ink
+                            font.pixelSize: 12
+                            font.weight: Font.DemiBold
+                            elide: Text.ElideRight
+                            Layout.maximumWidth: 200
+                        }
+
+                        IslandLabel {
+                            visible: !!fila.modelData.version
+                            text: "v" + String(fila.modelData.version || "")
+                            textFormat: Text.PlainText
+                            color: Theme.dim
+                            font.pixelSize: 9
+                        }
+
+                        //  El sello de estado. Que se lea de un vistazo qué
+                        //  pasa con este plugin es la mitad del trabajo.
+                        Rectangle {
+                            visible: fila.sello.length > 0
+                            radius: 7
+                            Layout.preferredHeight: 15
+                            Layout.preferredWidth: selloTexto.implicitWidth + 12
+                            color: Qt.rgba(fila.selloColor.r, fila.selloColor.g,
+                                           fila.selloColor.b, 0.16)
+
+                            IslandLabel {
+                                id: selloTexto
+                                anchors.centerIn: parent
+                                text: fila.sello
+                                textFormat: Text.PlainText
+                                color: fila.selloColor
+                                font.pixelSize: 8
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    IslandLabel {
+                        Layout.fillWidth: true
+                        visible: text.length > 0
+                        text: String(fila.modelData.description || "")
+                        textFormat: Text.PlainText
+                        color: Theme.muted
+                        font.pixelSize: 10
+                        wrapMode: Text.WordWrap
+                        maximumLineCount: 2
+                        elide: Text.ElideRight
+                    }
+
+                    //  De dónde viene y en qué commit. Antes esto no se
+                    //  enseñaba en ningún sitio de la barra.
+                    IslandLabel {
+                        Layout.fillWidth: true
+                        visible: text.length > 0
+                        text: fila.procedencia
+                        textFormat: Text.PlainText
+                        color: Theme.dim
+                        font.pixelSize: 9
+                        elide: Text.ElideRight
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 4
+                        spacing: 6
+
+                        //  Los permisos, uno a uno y no en una lista pegada
+                        //  a la descripción.
+                        Repeater {
+                            model: fila.modelData.permisos || []
+
+                            Rectangle {
+                                required property string modelData
+                                radius: 6
+                                Layout.preferredHeight: 15
+                                Layout.preferredWidth: permiso.implicitWidth + 12
+                                color: Theme.track
+
+                                IslandLabel {
+                                    id: permiso
+                                    anchors.centerIn: parent
+                                    text: parent.modelData
+                                    textFormat: Text.PlainText
+                                    color: Theme.muted
+                                    font.pixelSize: 8
+                                }
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        BotonTienda {
+                            visible: fila.esDelRegistro && !fila.modelData.instalado
+                            texto: Idioma.t("Instalar")
+                            resalta: true
+                            onPulsado: tienda.pedirInstalar(fila.modelData)
+                        }
+
+                        BotonTienda {
+                            visible: fila.esDelRegistro && !!fila.modelData.instalado
+                                     && !fila.modelData.alDia
+                            texto: Idioma.t("Actualizar")
+                            resalta: true
+                            onPulsado: tienda.pedirInstalar(fila.modelData)
+                        }
+
+                        BotonTienda {
+                            visible: !fila.esDelRegistro && !!fila.novedad
+                                     && fila.novedad.estado === "novedad"
+                            texto: Idioma.t("Actualizar")
+                            resalta: true
+                            onPulsado: PluginManager.actualizarPlugin(
+                                fila.ident, fila.novedad.suyo)
+                        }
+
+                        BotonTienda {
+                            visible: !fila.esDelRegistro
+                            texto: Idioma.t("Quitar")
+                            peligro: true
+                            onPulsado: PluginManager.quitarPlugin(fila.ident, false)
+                        }
+                    }
+                }
+
+                //  ── el sello de esta fila ────────────────────────────
+                readonly property string sello: {
+                    if (esDelRegistro)
+                        return modelData.instalado
+                            ? (modelData.alDia ? Idioma.t("al día")
+                                               : Idioma.t("hay novedad"))
+                            : ""
+                    if (PluginManager.errores[ident])
+                        return Idioma.t("no carga")
+                    if (novedad && novedad.estado === "novedad")
+                        return Idioma.t("hay novedad")
+                    if (novedad && novedad.estado === "sin-anclar")
+                        return Idioma.t("sin commit")
+                    if (novedad && novedad.estado === "al-dia")
+                        return Idioma.t("al día")
+                    return ""
+                }
+
+                readonly property color selloColor: {
+                    if (sello === Idioma.t("no carga"))
+                        return Theme.red
+                    if (sello === Idioma.t("hay novedad"))
+                        return Theme.yellow
+                    if (sello === Idioma.t("al día"))
+                        return Theme.green
+                    return Theme.dim
+                }
+
+                readonly property string procedencia: {
+                    if (esDelRegistro) {
+                        const sha = String(modelData.commit || "")
+                        return String(modelData.repo || "")
+                            + (sha ? "  ·  " + sha.substring(0, 12) : "")
+                    }
+                    if (!novedad)
+                        return ""
+                    if (novedad.estado === "sin-anclar")
+                        return Idioma.t("instalado antes de que se guardara el commit")
+                    if (novedad.estado === "fuera-del-registro")
+                        return Idioma.t("no está en el registro")
+                    const mio = String(novedad.mio || "").substring(0, 12)
+                    return mio ? Idioma.t("commit ") + mio : ""
+                }
+            }
+        }
+
+        //  Cuántas entradas del registro venían mal puestas. Se dice en vez de
+        //  callarlo: si alguien publica algo roto, quiere enterarse.
+        IslandLabel {
+            Layout.fillWidth: true
+            visible: tienda.pestana === 1 && tienda.descartadas.length > 0
+            text: tienda.descartadas.length
+                  + Idioma.t(" entrada(s) del registro mal puestas, no se enseñan")
+            textFormat: Text.PlainText
+            color: Theme.yellow
+            font.pixelSize: 9
+        }
+    }
+
+    //  ── el diálogo de permisos ───────────────────────────────────────
+    //
+    //  Lo que hace que instalar desde la barra sea defendible. Enseña QUÉ se
+    //  va a instalar, DE DÓNDE y EN QUÉ COMMIT — y ese commit es el que se
+    //  instala después, porque es el que devolvió el examen: si la rama se
+    //  mueve mientras lees esto, lo que llega sigue siendo lo que leíste.
+    Rectangle {
+        anchors.fill: parent
+        visible: !!tienda.examen
+        color: Qt.rgba(0, 0, 0, 0.72)
+
+        //  Que no se pulse lo de detrás mientras el diálogo está abierto.
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            onClicked: {}
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: Math.min(parent.width - 24, 380)
+            height: dialogo.implicitHeight + 32
+            radius: 18
+            color: Theme.surface
+
+            ColumnLayout {
+                id: dialogo
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.margins: 18
+                spacing: 8
+
+                IslandLabel {
+                    Layout.fillWidth: true
+                    text: tienda.examen
+                        ? (tienda.examen.reemplaza ? Idioma.t("Actualizar ")
+                                                   : Idioma.t("Instalar "))
+                          + String(tienda.examen.plugin.title || "")
+                        : ""
+                    textFormat: Text.PlainText
+                    color: Theme.ink
+                    font.pixelSize: 14
+                    font.weight: Font.DemiBold
+                    elide: Text.ElideRight
+                }
+
+                IslandLabel {
+                    Layout.fillWidth: true
+                    text: tienda.examen
+                        ? String(tienda.examen.plugin.description || "") : ""
+                    textFormat: Text.PlainText
+                    color: Theme.muted
+                    font.pixelSize: 10
+                    wrapMode: Text.WordWrap
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 2
+                    Layout.preferredHeight: 1
+                    color: Theme.track
+                }
+
+                //  El origen, con el commit entero a la vista.
+                IslandLabel {
+                    Layout.fillWidth: true
+                    text: tienda.examen ? String(tienda.examen.repo || "") : ""
+                    textFormat: Text.PlainText
+                    color: Theme.muted
+                    font.pixelSize: 9
+                    elide: Text.ElideMiddle
+                }
+
+                IslandLabel {
+                    Layout.fillWidth: true
+                    text: tienda.examen
+                        ? Idioma.t("commit ") + String(tienda.examen.commit || "")
+                        : ""
+                    textFormat: Text.PlainText
+                    color: Theme.dim
+                    font.pixelSize: 9
+                    elide: Text.ElideMiddle
+                }
+
+                IslandLabel {
+                    Layout.fillWidth: true
+                    visible: !!tienda.examen && !!tienda.examen.commitAnterior
+                             && tienda.examen.commitAnterior !== tienda.examen.commit
+                    text: tienda.examen
+                        ? Idioma.t("tienes el ")
+                          + String(tienda.examen.commitAnterior || "").substring(0, 12)
+                        : ""
+                    textFormat: Text.PlainText
+                    color: Theme.dim
+                    font.pixelSize: 9
+                }
+
+                //  Los permisos, desglosados y explicados. Esta es la parte
+                //  que no cabía en Ajustes.
+                IslandLabel {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 4
+                    text: Idioma.t("Pide:")
+                    textFormat: Text.PlainText
+                    color: Theme.ink
+                    font.pixelSize: 10
+                    visible: permisos.count > 0
+                }
+
+                Repeater {
+                    id: permisos
+                    model: tienda.examen ? (tienda.examen.plugin.permisos || []) : []
+
+                    RowLayout {
+                        required property string modelData
+                        Layout.fillWidth: true
+                        spacing: 7
+
+                        IconGlyph {
+                            text: String.fromCodePoint(0xF0133)
+                            color: Theme.yellow
+                            font.pixelSize: 10
+                            Layout.alignment: Qt.AlignTop
+                            Layout.topMargin: 2
+                        }
+
+                        IslandLabel {
+                            Layout.fillWidth: true
+                            text: tienda.explicar(parent.modelData)
+                            textFormat: Text.PlainText
+                            color: Theme.muted
+                            font.pixelSize: 10
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+                }
+
+                IslandLabel {
+                    Layout.fillWidth: true
+                    visible: permisos.count === 0
+                    text: Idioma.t("No pide ningún permiso.")
+                    textFormat: Text.PlainText
+                    color: Theme.muted
+                    font.pixelSize: 10
+                }
+
+                //  Y la frase honesta, la misma que sale en la terminal. No
+                //  se suaviza para la barra: los permisos son lo que DECLARA,
+                //  no una jaula.
+                IslandLabel {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 4
+                    text: Idioma.t("Un plugin corre dentro de la barra y puede hacer lo que la barra pueda hacer. Los permisos son lo que declara, no una jaula: instalarlo es confiar en quien lo escribió.")
+                    textFormat: Text.PlainText
+                    color: Theme.dim
+                    font.pixelSize: 9
+                    wrapMode: Text.WordWrap
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 8
+                    spacing: 8
+
+                    Item { Layout.fillWidth: true }
+
+                    BotonTienda {
+                        texto: Idioma.t("Cancelar")
+                        onPulsado: tienda.examen = null
+                    }
+
+                    BotonTienda {
+                        texto: tienda.examen && tienda.examen.reemplaza
+                            ? Idioma.t("Actualizar") : Idioma.t("Instalar")
+                        resalta: true
+                        habilitado: !PluginManager.ocupado
+                        onPulsado: tienda.confirmar()
+                    }
+                }
+            }
+        }
+    }
+
+    //  ── lo que hacen los botones ─────────────────────────────────────
+
+    function pedirInstalar(e) {
+        queja = ""
+        //  Se examina con el commit del registro: lo que se enseña es lo
+        //  publicado, no lo que haya en la rama en este momento.
+        PluginManager.examinar(String(e.repo || ""),
+                               String(e.carpeta || ""),
+                               String(e.commit || ""))
+    }
+
+    function confirmar() {
+        if (!examen)
+            return
+        const d = examen
+        examen = null
+        //  El commit que se instala es el que VIO el examen, no el que decía
+        //  el registro: si el registro estuviera sin anclar, aquí ya hay un
+        //  SHA concreto y se usa ese.
+        PluginManager.instalarDesde(String(d.repo || ""),
+                                    String(d.carpeta || ""),
+                                    String(d.commit || ""),
+                                    String(d.plugin.id || ""))
+    }
+
+    //  Qué significa cada permiso, en una frase. Es el mismo texto que la
+    //  tabla de la guía; aquí sale cuando importa, que es al aceptar.
+    //
+    //  La traducción se pide AQUÍ, en cada rama, y no fuera con el resultado:
+    //  `Idioma.t(explicar(p))` deja las frases fuera del alcance de
+    //  `tools/textos.py`, que busca literales dentro de `Idioma.t(`. Quedarían
+    //  en español para todo el mundo sin que nada avisara.
+    function explicar(p) {
+        switch (p) {
+        case "red":            return Idioma.t("Salir a internet.")
+        case "procesos":       return Idioma.t("Ejecutar programas de tu sistema.")
+        case "ficheros":       return Idioma.t("Leer y escribir ficheros.")
+        case "portapapeles":   return Idioma.t("Leer y escribir el portapapeles.")
+        case "notificaciones": return Idioma.t("Enviar notificaciones.")
+        case "sonido":         return Idioma.t("Reproducir sonido.")
+        case "ubicacion":      return Idioma.t("Saber dónde estás.")
+        case "atajos":         return Idioma.t("Registrar atajos de teclado.")
+        case "ipc":            return Idioma.t("Recibir órdenes de fuera de la barra.")
+        default:               return p
+        }
+    }
+}

@@ -355,9 +355,17 @@ def cargar_usuario(ids_repo, version_host):
     """
     if not DE_USUARIO.is_dir():
         return []
-    return [validar_carpeta(d, ids_repo, version_host)
-            for d in sorted(DE_USUARIO.iterdir())
-            if d.is_dir() and not d.name.startswith(".")]
+    fuera = []
+    for d in sorted(DE_USUARIO.iterdir()):
+        if not d.is_dir() or d.name.startswith("."):
+            continue
+        item = validar_carpeta(d, ids_repo, version_host)
+        #  Marcado para la barra: un plugin de casa no se puede quitar ni
+        #  actualizar, y la tienda necesita distinguirlos sin adivinar por el
+        #  id. Va aquí porque es aquí donde se sabe de dónde salió.
+        item["deUsuario"] = True
+        fuera.append(item)
+    return fuera
 
 
 def enlazar_externos():
