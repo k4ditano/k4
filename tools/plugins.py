@@ -920,7 +920,10 @@ def _valor(bandera):
 
 
 if __name__ == "__main__":
-    if "--ayuda" in sys.argv or "-h" in sys.argv:
+    #  `--help` también, aunque todo esto esté en español: es lo que teclea
+    #  cualquiera por reflejo, y sin ello NO fallaba —se caía a validar el
+    #  catálogo entero, que tarda y no es lo que le habías pedido.
+    if ("--ayuda" in sys.argv or "--help" in sys.argv or "-h" in sys.argv):
         print(AYUDA)
         sys.exit(0)
     _si = "--si" in sys.argv
