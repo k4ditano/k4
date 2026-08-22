@@ -1,244 +1,149 @@
 # k4
 
-[![Follow @k4ditano on X](https://img.shields.io/badge/follow-%40k4ditano-000000?style=flat&logo=x&logoColor=white)](https://x.com/k4ditano)
+**A Dynamic Island for Hyprland.** It sits collapsed at the edge of your
+screen and expands only when it has something to say — and everything it does,
+including the parts that look built in, is a plugin.
 
-An extensible Dynamic Island-style bar for [Hyprland](https://hyprland.org/),
-built with [Quickshell](https://quickshell.org/). k4 stays compact at the
-edge of the screen — top or bottom, wherever you put it — and expands only
-when it has something to show.
+[![Follow @k4ditano on X](https://img.shields.io/badge/follow-%40k4ditano-000000?style=flat&logo=x&logoColor=white)](https://x.com/k4ditano)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
+[![Built with Quickshell](https://img.shields.io/badge/built%20with-Quickshell-5c6bc0?style=flat)](https://quickshell.org/)
 
 <img src="screenshots/bar.png" width="100%" alt="The k4 bar at rest, collapsed at the top edge of the screen">
-
-| | |
-|:--:|:--:|
-| <img src="screenshots/launcher.png" alt="Application launcher"> | <img src="screenshots/control-center.png" alt="Control center with Wi-Fi, Bluetooth, sound and media"> |
-| **The launcher** — applications, package search and installation. | **The control center** — Wi-Fi, Bluetooth, per-device sound and the player. |
-| <img src="screenshots/theme.png" alt="Hyprland theme panel"> | <img src="screenshots/shortcuts.png" alt="Searchable shortcut viewer"> |
-| **Hyprland's theme**, edited live: colors, gaps, borders, blur, animations. | **Every shortcut**, searchable — yours and the ones k4 installs. |
-
-<p align="center">
-  <img src="screenshots/settings.png" width="62%" alt="k4 settings, with per-plugin rows">
-</p>
-<p align="center"><em>Settings, where every plugin contributes its own rows.</em></p>
-
-## Features
-
-- A media player with artwork, transport controls, seeking and a visualizer.
-- A control center for Wi-Fi, Bluetooth, audio, notifications and system
-  actions — including a sound panel that picks the output and input device,
-  sets each one's own level and marks where the device's natural level is, so
-  you can see when you are amplifying instead of turning up.
-- A native notification server with actions, application focusing and recent
-  notification history.
-- An application launcher with package search, updates and uninstallation support on Arch.
-- Hyprland theme controls: colors, gaps, borders, blur, shadows, animations and
-  wallpaper.
-- System tray support, clipboard history, window switching, session controls and
-  configurable shortcuts.
-- A screen capture and recording workflow with region/window selection, video
-  preview, folder/editor actions and a full non-linear editor.
-- Games as ordinary plugins, not special cases: an idle roguelite, and
-  [Digivice](https://github.com/k4ditano/digivice) — a virtual pet whose road
-  advances on how you actually use the computer, reading nothing but *that* a
-  window changed.
-- Plugin enable/disable state, plugin indicators and a documented public API:
-  plugins contribute their own Settings rows (switches, choices, free-text
-  fields with secret masking for API keys), launcher results and pill
-  indicators.
-- The island as a stage for plugins: tint the whole bar's ambience, request
-  physical gestures (shake, push, tug), read the island's real screen
-  geometry to draw outside it, and slide it along its edge for the length of
-  a scene.
-- The bar lives where you put it: top or bottom edge, aligned left, center
-  or right — and plugins adapt through the API instead of assuming.
-- Spanish UI with translation files for additional languages.
-
-The editor supports layered video and image timelines, cuts, empty layers,
-cropping, resizing, audio tracks, subtitles, camera overlays and rendering to
-MP4, WebM or GIF.
-
-<img src="screenshots/editor.png" width="100%" alt="The video editor: preview, tool panel and a two-layer timeline">
-
-*The editor is not a separate application — it is the capture plugin's other
-half. Zoom, text, censoring, markers, silence detection and transcription down
-the side; the timeline below; MP4, WebM, GIF or 9:16 on the way out.*
-
-## Plugins
-
-Everything the bar does is a plugin — including the things that look built in.
-They load dynamically and in isolation: a broken one is recorded with its error
-and the bar starts without it.
-
-**Shipped with the bar** (27, all enabled by default except the Digivice):
-
-| The island itself | |
-|---|---|
-| `idle` | The folded pill: artwork, workspaces, clock, visualizer |
-| `player` | Player with artwork, scrubbing and transport |
-| `clock` | Date and time on hover, when there is no music |
-| `volume` | Volume HUD, only when it changes from outside |
-| `sonido` | Output, input and per-device levels |
-| `toast` | Notification pop-up that waits while your pointer is on it |
-| `tray` | System tray |
-| `weather` | Weather |
-
-| Control and system | |
-|---|---|
-| `panel` | Control center: Wi-Fi, Bluetooth, sound, media, shortcuts |
-| `settings` | The bar's settings, inside the island |
-| `system` | System monitor |
-| `session` | Power menu and lock screen |
-| `windows` | Window switcher |
-| `apps` | Everything the bar knows how to open, in one grid |
-| `keys` | Shortcut cheat sheet, without opening the config file |
-
-| Tools | |
-|---|---|
-| `launcher` | Spotlight-style launcher, with a package-install mode |
-| `clipboard` | Clipboard history, searchable |
-| `files` | File finder |
-| `captura` | Screen capture and recording, with the video editor |
-| `terminal` | The house terminal, seen from the bar |
-| `ssh` | Your servers, two clicks away |
-| `agentes` | How your agent CLIs are doing against their limits |
-| `ask` | Quick question to Codex CLI |
-| `hyprtheme` | Theme Hyprland from the island: colors, windows, effects, wallpaper |
-| `pantallas` | Arrange monitors visually and assign workspaces to each screen |
-
-| Games | |
-|---|---|
-| `game` | **Mazmorra** — an idle dungeon roguelite |
-| `digivice` | **[Digivice](https://github.com/k4ditano/digivice)** — a virtual pet that walks on how you use the computer. Ships disabled; published separately |
-
-**Installable from a repository.** Browse them with `python3 tools/plugins.py
---buscar` and install with `--instalar <url>`; they arrive disabled and declare
-the permissions they use.
-
-| Plugin | What it is | Where |
-|---|---|---|
-| **Senda** | Creature roguelike autobattler: branching map, three regions, the real type chart | [k4ditano/senda](https://github.com/k4ditano/senda) |
-| **La Grieta** | Typing roguelike: the island *is* the crack, and you seal what crawls out | [k4ditano/grieta](https://github.com/k4ditano/grieta) |
-| `hola` | The minimal plugin from the guide: one view, one counter, its settings | [`ejemplos/hola`](ejemplos/hola) |
-| `snake` | The usual snake, playable in the island | [`ejemplos/snake`](ejemplos/snake) |
-| `piezas` | Sampler of the API's visual components | [`ejemplos/piezas`](ejemplos/piezas) |
-| `efectos` | Showcase of tinting, gestures and drawing outside the island | [`ejemplos/efectos`](ejemplos/efectos) |
-
-Yours live in `~/.config/k4/plugins/<id>/` with a `plugin.json` manifest. To
-list yours in the registry, open a PR adding your entry to
-[`plugins/registro.json`](plugins/registro.json).
-
-## Installation
-
-The installer targets Arch Linux and reads the single dependency list in
-[`dependencias.tsv`](dependencias.tsv).
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/k4ditano/k4/main/instalar | sh
 ```
 
-It installs the missing base packages, writes the Hyprland integration, starts
-the bar and keeps a local checkout at `~/.config/quickshell/k4`.
+Arch Linux and Hyprland. Installs what is missing, writes the Hyprland
+integration, starts the bar, and keeps a checkout at
+`~/.config/quickshell/k4`. Run `./instalar --seco` first if you would rather
+see what it would do.
 
-To update an existing installation:
+---
+
+## What you get
+
+| | |
+|:--:|:--:|
+| <img src="screenshots/launcher.png" alt="Application launcher"> | <img src="screenshots/control-center.png" alt="Control center with Wi-Fi, Bluetooth, sound and media"> |
+| **Launcher** — apps, package search, install and update. | **Control center** — Wi-Fi, Bluetooth, per-device sound, player. |
+| <img src="screenshots/theme.png" alt="Hyprland theme panel"> | <img src="screenshots/shortcuts.png" alt="Searchable shortcut viewer"> |
+| **Hyprland's theme**, live — colors, gaps, borders, blur, animations. | **Every shortcut**, searchable — yours and the ones k4 adds. |
+
+Plus notifications with actions and history, a system tray, clipboard history,
+a window switcher, and a bar that lives wherever you put it — top or bottom,
+left, center or right.
+
+### Capture, and an editor that is not a separate app
+
+<img src="screenshots/editor.png" width="100%" alt="The video editor: preview, tool panel and a two-layer timeline">
+
+Region, window or screen; record; then land straight in a non-linear editor.
+Layered video and image timelines, cuts, crops, audio tracks with ducking and
+live noise removal, subtitles, camera overlay, silence detection, Whisper
+transcription. Out the other side: MP4, WebM, GIF or 9:16 for Shorts.
+
+---
+
+## Plugins
+
+The clock is a plugin. So is the launcher, the control center, the capture
+tool. There is no privileged inner circle — **the API a stranger's plugin gets
+is the API the launcher uses.** Plugins load in isolation, and a broken one is
+recorded with its error while the bar starts without it.
+
+### Install one from the bar
+
+<table>
+<tr>
+<td width="50%"><img src="screenshots/plugins-discover.png" alt="The Discover tab, listing published plugins with their commit"></td>
+<td width="50%"><img src="screenshots/plugins-installed.png" alt="The Installed tab, showing each plugin's permissions and origin"></td>
+</tr>
+<tr>
+<td><b>Discover</b> — what is published, with the commit each entry pins.</td>
+<td><b>Installed</b> — what you have, where it came from, what it asked for.</td>
+</tr>
+</table>
+
+Installing shows you what the plugin declares, where it came from and **which
+commit** — and installs that exact commit, so a branch moving while you read
+cannot change what lands. From the terminal:
 
 ```sh
-~/.config/quickshell/k4/instalar
+python3 tools/plugins.py --buscar          # what's published
+python3 tools/plugins.py --instalar <url> --commit <sha>
+python3 tools/plugins.py --comprobar       # what of yours has something newer
 ```
 
-Useful modes:
-
-| Option | Effect |
-|---|---|
-| `--seco` | Diagnose without changing anything |
-| `--si` | Do not ask for confirmation |
-| `--opcionales` | Install optional packages too |
-| `--sin-paquetes` | Skip package management |
-| `--sin-reiniciar` | Do not restart the running bar |
-
-The wallpaper selector requires `swaybg` (or a compatible `awww`/`swww`
-installation). `swaybg` is part of the base dependency set because wallpaper
-selection is a built-in feature.
-
-To start the installed bar manually, use the wrapper so the `K4` QML module is
-available:
+### Write one in a minute
 
 ```sh
-~/.config/quickshell/k4/arrancar
+python3 tools/plugins.py --nuevo mi-plugin   # a plugin that already runs
+python3 tools/plugins.py --probar mi-plugin  # opens it alone, not in your bar
 ```
 
-## Requirements
+`--probar` matters more than it sounds: it runs the plugin in its own instance
+with no bar, no services and no notifications, so an infinite loop takes down
+a test window instead of your desktop.
 
-The installer is the source of truth. The main runtime requirements include:
+Then `quickshell ipc -p shell.qml call k4 pluginReload mi-plugin` swaps the
+running code for what is on disk, without restarting anything.
 
-| Package | Purpose |
-|---|---|
-| `quickshell` and `hyprland` | Bar runtime and compositor |
-| `python` | Helper tools |
-| `qt6-multimedia` and `qt6-multimedia-ffmpeg` | Video/audio preview |
-| `grim`, `slurp`, `satty` | Capture, region selection and annotation |
-| `wf-recorder` | Screen recording |
-| `swaybg` | Wallpaper backend |
-| `ffmpeg`, `ffprobe`, `imagemagick` | Editing, probing and thumbnails |
-| `zenity` | File selection dialogs |
-| `wl-clipboard` | Clipboard integration |
-| `fd` | Launcher and editor search |
-| `pactl`, `wpctl`, `nmcli`, `bluez` | Audio, network and Bluetooth |
-| `notify-send`, `xdg-open`, `xdg-user-dir` | Desktop integration |
+### Or have an agent write it
 
-Optional packages provide Whisper transcription, AUR support, NVIDIA metrics,
-Codex integration and other enhancements.
+k4 ships a skill for coding agents. `./instalar` links it into
+`~/.claude/skills/` and `~/.config/agents/skills/`, so Claude Code, Codex and
+anything else that reads those will already know they are on a k4 machine,
+what the API looks like, which permissions exist and how to test a plugin
+without restarting your bar.
 
-### k4term, optional but well fitted
+```sh
+python3 tools/agente.py            # where it is, and whether it's linked
+python3 tools/agente.py --instalar # link it
+```
 
-[k4term](https://github.com/k4ditano/k4term) is this project's own terminal.
-The bar does not require it and never assumes it: `services/Consola.qml` looks
-for a terminal at startup — `k4term`, then `$TERMINAL`, then the usual
-suspects — and everything that opens one goes through it, so with any other
-terminal installed the update flow, the launcher and the Terminal plugin all
-work the same. If k4term shows up later, the bar notices within a minute and
-the island terminal turns itself on; if it goes away, the bar finds out when
-you open Settings or when an island session dies stillborn. Either way, you do
-not have to restart it.
+Then just ask: *"make me a k4 plugin that shows the train times to work."*
 
-What you get by having it is what needs both sides:
+### Publish it
 
-- a real terminal **inside the island** (`SUPER + Shift + T`), whose session
-  outlives the view — closing it does not stop what is running;
-- **several of them at once**, one per tab: `alt`+`←`/`→` to switch, `alt`+`T`
-  for a new one, `alt`+`W` to close it, `alt`+`1`…`9` to jump (or the `✕` on
-  the tab, middle-click, or plain `exit`). Keep an agent in one and a build in
-  another; a pill in the bar counts them while the view is hidden, and clicking
-  it brings them back;
-- `SUPER + Alt + T` to pop that same session out into a window, in the
-  directory it was left in;
-- a pill in the bar counting long commands, and a notice when an agent rings
-  the bell with its window unfocused;
-- system updates and AUR installs running **inside the island** instead of
-  opening a window — close the view and they keep going;
-- k4term's own settings inside k4's Settings, and the bar's tint reaching the
-  terminal background live;
-- **saved passwords** in the Servers plugin (`SUPER + Alt + S`): for machines
-  that ask for one instead of using a key. They live in
-  `~/.config/k4term/claves.json` with `600` permissions and **in clear text** —
-  the same deal as an SSH key without a passphrase — and never touch
-  `~/.ssh/config` or `hosts.json`. The terminal itself types them when the
-  other side asks, watching its own PTY, so the field only shows up when a
-  k4term is installed: no other terminal can do it;
-- **the agents' door** (`ctrl+G` on a server): a dedicated key
-  (`~/.ssh/k4-agentes`) and a dedicated alias (`<server>-agentes`, with
-  `IdentitiesOnly`) so that whatever runs inside the terminal — an AI agent, a
-  script — can reach that machine without your password and with whatever you
-  chose to allow it in `authorized_keys`. Revoking is the same key again.
-  Servers with the door open show a `⚙`; every session also gets the names of
-  your servers in `K4_SERVIDORES`.
+Open the **Publish a plugin** issue with your repository and a full commit
+SHA. A bot fetches that exact commit, validates it **without running any of
+it**, and comments with what the manifest declares, which permissions it asks
+for, and anything that tripped a named rule. A maintainer signs off; the bot
+never publishes on its own.
 
-Without k4term, the island terminal and the pill simply do not appear, and the
-Terminal plugin opens your default terminal instead.
+### On permissions, honestly
 
-## Default shortcuts
+A plugin declares what it uses, and `tools/plugins.py` checks that declaration
+against what the QML actually calls — using something undeclared makes the
+plugin refuse to load. On top of that, named rules flag patterns that make the
+code you run stop being the code someone reviewed: `curl | sh`, passwordless
+`sudo`, unpinned clones.
 
-The installer writes these bindings to `~/.config/hypr/config/k4.lua` (or the
-equivalent `k4.conf` for the legacy Hyprland format):
+**This is informed consent plus static analysis, not a sandbox.** A plugin
+runs inside the bar and can do what the bar can do. Install what you have read
+or what you trust — everything above exists to make that judgement possible,
+not to remove it.
+
+Full guide: [docs/PLUGINS.md](docs/PLUGINS.md) · API: [docs/API.md](docs/API.md)
+
+---
+
+## Games, as ordinary plugins
+
+Not special cases — the same contract as everything else. An idle roguelite, a
+typing roguelike, an autobattler, and
+[Digivice](https://github.com/k4ditano/digivice): a virtual pet whose road
+advances on how you actually use the computer, reading nothing but *that* a
+window changed.
+
+---
+
+<details>
+<summary><b>Shortcuts</b></summary>
+
+Written to `~/.config/hypr/config/k4.lua` (or `k4.conf` on the legacy format).
+That file is owned by k4; put your overrides after it.
 
 | Shortcut | Action |
 |---|---|
@@ -260,21 +165,18 @@ equivalent `k4.conf` for the legacy Hyprland format):
 | `SUPER + Alt + T` | Pop that session out into a window |
 | `Print` / `Shift + Print` / `Ctrl + Print` | Region / screen / window capture |
 
-The generated Hyprland file is owned by k4. User-specific overrides should be
-placed after it in the main Hyprland configuration.
+</details>
 
-## IPC
-
-The host exposes a compatibility target and each plugin exposes its own target.
-For example:
+<details>
+<summary><b>IPC</b></summary>
 
 ```sh
+quickshell ipc -p ~/.config/quickshell/k4/shell.qml show   # every target
 quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4 toggleLauncher
-quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4.theme toggle
-quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4.editor abrir
 ```
 
-Important targets include:
+`show` is the authoritative list — targets come and go with the plugins that
+publish them.
 
 | Target | Examples |
 |---|---|
@@ -283,76 +185,97 @@ Important targets include:
 | `k4.theme` | `toggle`, `tab`, `preset`, `wallpaper`, `apply`, `save` |
 | `k4.captura` | `menu`, `region`, `grabar`, `parar`, `grande` |
 | `k4.editor` | `abrir`, `editar`, `retomar`, `imagen`, `formato`, `silencios` |
-| `k4.game` | `toggle`, `nueva`, `pausa`, `ver`, `cofre`, `estado` |
-| `k4.term` | `isla`, `nueva`, `siguiente`, `anterior`, `irA`, `escribir`, `sacar`, `ejecutar` |
+| `k4.term` | `isla`, `nueva`, `siguiente`, `anterior`, `irA`, `ejecutar` |
 
-Plugin management is also available from the host:
+Plugin management: `pluginEnable <id>`, `pluginDisable <id>`,
+`pluginToggle <id>`, `pluginReload <id>`, `pluginRefresh`, `pluginStatus`,
+`pluginCheck`.
 
-```text
-pluginEnable <id>   pluginDisable <id>
-pluginToggle <id>   pluginStatus
-```
+</details>
 
-## Architecture
+<details>
+<summary><b>Requirements and install options</b></summary>
+
+The installer is the source of truth and reads
+[`dependencias.tsv`](dependencias.tsv). The main ones:
+
+| Package | Purpose |
+|---|---|
+| `quickshell`, `hyprland` | Bar runtime and compositor |
+| `python` | Helper tools |
+| `qt6-multimedia`, `qt6-multimedia-ffmpeg` | Video/audio preview |
+| `grim`, `slurp`, `satty` | Capture, region selection, annotation |
+| `wf-recorder` | Screen recording |
+| `swaybg` | Wallpaper backend |
+| `ffmpeg`, `imagemagick` | Editing, probing, thumbnails |
+| `zenity`, `wl-clipboard`, `fd` | Dialogs, clipboard, search |
+| `pactl`, `wpctl`, `nmcli`, `bluez` | Audio, network, Bluetooth |
+
+Optional packages add Whisper transcription, AUR support, NVIDIA metrics and
+Codex integration.
+
+| Option | Effect |
+|---|---|
+| `--seco` | Diagnose without changing anything |
+| `--si` | Do not ask for confirmation |
+| `--opcionales` | Install optional packages too |
+| `--sin-paquetes` | Skip package management |
+| `--sin-reiniciar` | Do not restart the running bar |
+
+Update with `~/.config/quickshell/k4/instalar`. Start it by hand with
+`~/.config/quickshell/k4/arrancar` — use the wrapper, so the `K4` QML module
+resolves.
+
+**[k4term](https://github.com/k4ditano/k4term)** is this project's own
+terminal. It is never assumed: the bar looks for `k4term`, then `$TERMINAL`,
+then the usual suspects, so everything works the same with any terminal. If
+k4term shows up later the bar notices within a minute and the island terminal
+turns itself on.
+
+</details>
+
+<details>
+<summary><b>Architecture and contributing</b></summary>
 
 ```text
 shell.qml       host, arbitration and layer surface
-core/           theme tokens, K4Plugin contract and stateless widgets
+core/           theme tokens, the K4Plugin contract, stateless widgets
 api/K4/         public plugin API
 services/       persistent domain services and singletons
 widgets/        data-driven reusable widgets
 plugins/        one directory per built-in plugin
-docs/           public API, plugin and game guides
+agentes/        the skill coding agents read
+docs/           API, plugin and game guides
 tools/          helper scripts and validators
-hypr/           generated Hyprland integration templates
+hypr/           generated Hyprland integration
 ```
 
-The dependency direction is `core → services → widgets → plugins`. Plugins do
-not import each other; references are injected by `shell.qml`.
+Dependencies flow `core → services → widgets → plugins`. Plugins never import
+each other; references are injected by `shell.qml`.
 
-## Developer documentation
-
-- [Public API](docs/API.md): plugin contract, processes, state, IPC, windows,
-  shortcuts and pill indicators.
-- [Creating a plugin](docs/PLUGINS.md): directory layout, catalog registration,
-  lifecycle, dependencies and PR checks.
-- [Creating a game plugin](docs/GAMES.md): persistent simulation, offline
-  progress, tabs, components and balancing.
-- [API quick reference](api/LEEME.md): the exported `K4` types and implementation
-  notes.
-
-On the security model, since [Plugins](#plugins) covers the rest: a plugin
-arrives disabled and declares the permissions it uses, which the installer
-shows you and `tools/api.py` checks statically. That is **informed consent plus
-static analysis, not a sandbox** — a plugin can run local processes, so only
-install code you have read or trust.
-
-Before opening a pull request, run:
+Before opening a pull request:
 
 ```sh
-python3 tools/plugins.py
-python3 tools/api.py
-python3 tools/guia.py
-python3 tools/layouts.py
-python3 tools/glifos.py
-python3 tools/prueba_editar.py
+python3 tools/plugins.py && python3 tools/api.py && python3 tools/guia.py
+python3 tools/layouts.py && python3 tools/glifos.py
+python3 tools/prueba_editar.py && python3 tools/prueba_plugins.py
+python3 tools/prueba_rutas.py && python3 tools/prueba_texto.py
 git diff --check
 ```
 
-## Contributing
+Naming: the `K4Plugin` contract keeps its English members (`open`, `close`,
+`toggle`, `active`, `view`); everything else — services, properties, functions,
+signals — is Spanish, which is the project's voice. Do not add a third variant
+of an existing pair: if a file already has `abrir()`/`cerrar()`, extend that.
+The codebase predates the rule, so migrate names when you touch them, never in
+bulk.
 
-Please keep new functionality inside the appropriate layer, document new IPC
-commands and dependencies, and do not import private host services from a
-plugin. Plugins can currently execute local processes, so only reviewed code
-should be installed.
+More: [docs/API.md](docs/API.md) · [docs/PLUGINS.md](docs/PLUGINS.md) ·
+[docs/GAMES.md](docs/GAMES.md) · [api/LEEME.md](api/LEEME.md)
 
-Naming convention (the codebase predates it; migrate names when you touch
-them, never in bulk): the `K4Plugin` contract keeps its English members
-(`open`, `close`, `toggle`, `active`, `view`), and everything else — services,
-properties, functions, signals — is named in Spanish, which is the project's
-voice. Do not add a third variant of an existing pair: if a file already has
-`abrir()`/`cerrar()`, extend that.
+</details>
 
-## License
+---
 
-k4 is released under the [MIT License](LICENSE).
+MIT. Spanish UI with translation files in [`traducciones/`](traducciones/) —
+English and Russian included.

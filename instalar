@@ -688,6 +688,28 @@ paso_codigo() {
     fi
 }
 
+# ─── Paso: la habilidad para agentes ─────────────────────────────────────────
+# Un agente que trabaja en esta máquina no sabe que hay una barra llamada k4 ni
+# que todo lo suyo son plugins. Se lo puedes contar cada vez, o dejarlo escrito
+# una vez donde lo lea solo.
+#
+# Se enlaza, no se copia: así al actualizar k4 se actualiza también lo que lee.
+paso_agente() {
+    titulo "Para los agentes"
+    if [ ! -d "$RAIZ/agentes/skills/k4" ]; then
+        aviso "No encuentro la habilidad; me la salto."
+        return
+    fi
+    if ! command -v python3 >/dev/null 2>&1; then
+        aviso "Sin python3 no la puedo enlazar."
+        return
+    fi
+    python3 "$RAIZ/tools/agente.py" --instalar 2>/dev/null | while read -r l; do
+        nota "$l"
+    done
+    bien "Claude, Codex y compañía sabrán qué es esto y cómo escribirle un plugin"
+}
+
 # ─── Paso: reiniciar ─────────────────────────────────────────────────────────
 paso_reiniciar() {
     titulo "La barra"
@@ -759,6 +781,7 @@ fi
 paso_codigo
 paso_paquetes
 paso_hyprland
+paso_agente
 paso_reiniciar
 
 titulo "Listo"

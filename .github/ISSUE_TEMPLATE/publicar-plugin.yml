@@ -1,32 +1,38 @@
 #  El formulario por el que se publica un plugin en el registro de k4.
 #
+#  En inglés, aunque el proyecto hable español por dentro: esto lo rellena
+#  gente de fuera, y un ecosistema al que solo puede entrar quien sepa español
+#  no es un ecosistema. La regla del idioma es para los identificadores del
+#  código, no para lo que lee un desconocido.
+#
 #  Pide un COMMIT y no una rama a propósito: una rama se mueve después de que
 #  alguien la haya mirado, y entonces lo que se instala deja de ser lo que se
 #  revisó. Publicar una versión nueva es abrir otra incidencia con el SHA
 #  nuevo, que cuesta un minuto y hace que la revisión signifique algo.
 
-name: Publicar un plugin
-description: Añadir tu plugin al registro para que se pueda instalar desde k4
+name: Publish a plugin
+description: Add your plugin to the registry so it can be installed from k4
 title: "[plugin] "
 labels: ["envio"]
 body:
   - type: markdown
     attributes:
       value: |
-        Al abrir esto, un robot se trae ese commit exacto, lo valida con
-        `tools/plugins.py` —**sin ejecutar nada de tu plugin**— y comenta lo
-        que ve: qué declara, qué permisos pide y qué superficies ocupa.
+        When you open this, a bot fetches that exact commit, validates it with
+        `tools/plugins.py` — **without running any of your plugin** — and
+        comments with what it found: what the manifest declares, which
+        permissions it asks for, which surfaces it occupies.
 
-        Eso no es una auditoría de seguridad, y no se presenta como tal. Un
-        plugin corre dentro de la barra y puede hacer lo que la barra pueda
-        hacer. Publicar lo firma una persona, no el robot.
+        That is not a security audit and is not presented as one. A plugin
+        runs inside the bar and can do whatever the bar can do. A person signs
+        off on publishing, not the bot.
 
   - type: input
-    id: repositorio
+    id: repository
     attributes:
-      label: Repositorio
-      description: Público, en GitHub, la URL de la raíz
-      placeholder: https://github.com/tu-nombre/tu-plugin
+      label: Repository
+      description: Public, on GitHub, the root URL
+      placeholder: https://github.com/your-name/your-plugin
     validations:
       required: true
 
@@ -35,32 +41,33 @@ body:
     attributes:
       label: Commit
       description: >
-        El SHA completo de 40 caracteres que quieres publicar.
-        Lo saca `git rev-parse HEAD`.
+        The full 40-character SHA you want published — `git rev-parse HEAD`.
+        A branch will not do: it moves after review, and then what people
+        install is no longer what was reviewed.
       placeholder: 4f1c2ab9e0d3c7b1a58f6e2d0c9b8a7f6e5d4c3b
     validations:
       required: true
 
   - type: input
-    id: carpeta
+    id: folder
     attributes:
-      label: Carpeta
-      description: Solo si el `plugin.json` no está en la raíz del repositorio
-      placeholder: ejemplos/mi-plugin
+      label: Folder
+      description: Only if `plugin.json` is not at the repository root
+      placeholder: examples/my-plugin
 
   - type: checkboxes
-    id: enterado
+    id: checked
     attributes:
-      label: Antes de enviarlo
+      label: Before you send it
       options:
         - label: >
-            `python3 tools/plugins.py` pasa sobre mi plugin, y los permisos que
-            declara son los que usa.
+            `python3 tools/plugins.py` passes on my plugin, and the permissions
+            it declares are the ones it uses.
           required: true
         - label: >
-            El repositorio es público y tiene licencia.
+            The repository is public and has a license.
           required: true
         - label: >
-            Entiendo que publicar una versión nueva es abrir otra incidencia
-            con el SHA nuevo.
+            I understand that publishing a new version means opening another
+            submission with the new SHA.
           required: true

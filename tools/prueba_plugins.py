@@ -665,6 +665,18 @@ def formulario(repo="https://github.com/quien/que",
             "### Carpeta\n\n%s\n" % (repo, commit, carpeta))
 
 
+def prueba_publicar_lee_el_formulario_en_ingles():
+    #  El formulario de verdad está en inglés —lo rellena gente de fuera— pero
+    #  los rótulos en español se siguen leyendo: hubo envíos con ellos y no
+    #  pueden dejar de entenderse porque cambiásemos la plantilla.
+    cuerpo = ("### Repository\n\nhttps://github.com/quien/que\n\n"
+              "### Commit\n\n%s\n\n### Folder\n\nexamples/x\n" % ("a" * 40))
+    d, malos = publicar.envio(cuerpo)
+    igual("sin quejas", malos, [])
+    igual("el repo", d["repo"], "https://github.com/quien/que")
+    igual("la carpeta", d["carpeta"], "examples/x")
+
+
 def prueba_publicar_lee_el_formulario():
     d, malos = publicar.envio(formulario(carpeta="ejemplos/x"))
     igual("sin quejas", malos, [])
