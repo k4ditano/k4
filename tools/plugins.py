@@ -22,12 +22,18 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 CATALOGO = RAIZ / "plugins" / "catalog.json"
 DE_USUARIO = pathlib.Path.home() / ".config" / "k4" / "plugins"
 
 RE_ID = re.compile(r"[a-z0-9][a-z0-9-]*")
+
+#  Cuarenta caracteres, en minúsculas y completo. Un SHA corto o una rama NO
+#  valen aquí a propósito: la gracia de anclar es que lo que se revisó sea
+#  exactamente lo que se instala, y una rama se mueve después de la revisión.
+RE_SHA = re.compile(r"[0-9a-f]{40}")
 
 #  Qué puede pedir un plugin de fuera, y qué delata cada permiso en el QML.
 #
@@ -378,11 +384,88 @@ def enlazar_externos():
         pass
 
 
+#  El papel que un plugin instalado lleva encima: de dónde salió y, sobre
+#  todo, EN QUÉ COMMIT. Antes era un `.origen` con la URL suelta, y con eso no
+#  se podía contestar a «¿qué versión tengo puesta?» ni a «¿ha cambiado el
+#  repo desde que la puse?». Se sigue leyendo el viejo para no romper lo que ya
+#  está instalado; a la primera actualización se queda en el formato de ahora.
+ORIGEN = ".origen.json"
+
+
+def leer_origen(ident):
+    """El papel de un plugin instalado, en el formato de ahora o en el viejo."""
+    d = DE_USUARIO / ident
+    nuevo = d / ORIGEN
+    if nuevo.is_file():
+        try:
+            o = json.loads(nuevo.read_text())
+            if isinstance(o, dict) and o.get("repo"):
+                return o
+        except Exception:
+            pass
+    viejo = d / ".origen"
+    if viejo.is_file():
+        #  El formato de antes: una URL y nada más. Sin carpeta —que era un
+        #  fallo: actualizar un plugin que vivía en una subcarpeta del repo
+        #  volvía a adivinarla— y sin commit.
+        return {"repo": viejo.read_text().strip()}
+    return None
+
+
+def escribir_origen(destino, repo, subcarpeta, commit, item):
+    (destino / ORIGEN).write_text(json.dumps({
+        "repo": repo,
+        "carpeta": subcarpeta or "",
+        "commit": commit or "",
+        "version": item.get("version", "0"),
+        "cuando": int(time.time()),
+    }, ensure_ascii=False, indent=1) + "\n")
+
+
 def _contexto():
     """El par que hace falta para juzgar a un plugin: ids de casa y versión."""
     datos, plugins = leer_catalogo()
     return ({item.get("id") for item in plugins},
             str(datos.get("version", "1.0.0")))
+
+
+def _commit_de(clon):
+    """En qué commit ha quedado el clon, o cadena vacía si no se sabe."""
+    try:
+        p = subprocess.run(["git", "-C", str(clon), "rev-parse", "HEAD"],
+                           capture_output=True, text=True, timeout=20)
+        sha = p.stdout.strip()
+        return sha if RE_SHA.fullmatch(sha) else ""
+    except Exception:
+        return ""
+
+
+def _ir_al_commit(clon, url, commit):
+    """Dejar el clon EXACTAMENTE en ese commit. ¿Se ha podido?"""
+    g = ["git", "-C", str(clon)]
+    #  ¿Ya lo tiene? Pasa cuando el commit pedido es la punta de la rama.
+    try:
+        if subprocess.run(g + ["cat-file", "-e", commit + "^{commit}"],
+                          capture_output=True, timeout=20).returncode == 0:
+            return subprocess.run(g + ["checkout", "-q", "--detach", commit],
+                                  capture_output=True, timeout=60).returncode == 0
+    except Exception:
+        return False
+    #  Si no, pedirlo suelto. Y si el servidor no los sirve, traer el
+    #  historial entero: lento, pero es la única forma de garantizar que se
+    #  instala lo que se revisó.
+    for traer in (["fetch", "-q", "--depth", "1", url, commit],
+                  ["fetch", "-q", "--unshallow"],
+                  ["fetch", "-q", url]):
+        try:
+            subprocess.run(g + traer, capture_output=True, timeout=600)
+            if subprocess.run(g + ["checkout", "-q", "--detach", commit],
+                              capture_output=True,
+                              timeout=60).returncode == 0:
+                return True
+        except Exception:
+            continue
+    return False
 
 
 def _carpeta_del_clon(base):
@@ -412,7 +495,7 @@ def _describir(item):
     return "\n".join(lineas)
 
 
-def instalar(url, sin_preguntar=False, subcarpeta=None):
+def instalar(url, sin_preguntar=False, subcarpeta=None, commit=None):
     """Clonar, validar y —con permiso— instalar un plugin de fuera.
 
     El orden importa y es el único defendible: se clona a un temporal, se
@@ -438,6 +521,25 @@ def instalar(url, sin_preguntar=False, subcarpeta=None):
         except (subprocess.CalledProcessError, FileNotFoundError) as exc:
             print(f"no he podido clonar {url}: {exc}", file=sys.stderr)
             return 1
+
+        #  Si se pide un commit concreto, se va A ESE y no a la punta de la
+        #  rama. Un clon `--depth 1` no lo tiene, así que hay que pedirlo
+        #  aparte; si el servidor no sirve SHAs sueltos —GitHub sí—, se cae al
+        #  clon entero, que siempre lo tiene.
+        if commit:
+            if not RE_SHA.fullmatch(commit):
+                print("un commit son 40 caracteres hexadecimales en "
+                      f"minúscula, no {commit!r}", file=sys.stderr)
+                return 1
+            if not _ir_al_commit(clon, url, commit):
+                print(f"no encuentro el commit {commit[:12]} en {url}",
+                      file=sys.stderr)
+                return 1
+
+        #  El SHA se apunta SIEMPRE, lo hubieran pedido o no: es la respuesta a
+        #  «¿qué tengo instalado exactamente?», y después de borrar el `.git`
+        #  ya no hay a quién preguntárselo.
+        traido = _commit_de(clon)
         shutil.rmtree(clon / ".git", ignore_errors=True)
 
         carpeta = (clon / subcarpeta) if subcarpeta else _carpeta_del_clon(clon)
@@ -470,6 +572,13 @@ def instalar(url, sin_preguntar=False, subcarpeta=None):
         destino = DE_USUARIO / item["id"]
         print(f"\nDe {url}:\n")
         print(_describir(item))
+        if traido:
+            #  El commit sale ANTES de pedir permiso, no después: es parte de
+            #  lo que estás aceptando. «Confío en este repo» y «confío en este
+            #  código» no son la misma frase.
+            print(f"  Commit:   {traido[:12]}"
+                  + ("  (el que pediste)" if commit else "  (punta de la rama)"))
+        anterior = leer_origen(item["id"]) or {}
         print("\n  Se instalará en", destino)
         print("  Llega apagado: se enciende en Ajustes.")
         if destino.exists():
@@ -493,11 +602,16 @@ def instalar(url, sin_preguntar=False, subcarpeta=None):
         if reemplaza:
             shutil.rmtree(destino)
         shutil.copytree(carpeta, destino)
-        (destino / ".origen").write_text(url + "\n")
+        escribir_origen(destino, url, subcarpeta, traido, item)
 
     ident = item["id"]
     if reemplaza:
         print(f"\nactualizado: {ident} v{item.get('version', '0')}.")
+        antes = (anterior.get("commit") or "")[:12]
+        if traido and antes and antes != traido[:12]:
+            print(f"  {antes} → {traido[:12]}")
+        elif traido and antes:
+            print(f"  sigue en {traido[:12]}: no había nada nuevo.")
         #  Si estaba encendido, en la barra sigue corriendo el código viejo:
         #  el disco cambió, la instancia no.
         print(f"  Si lo tenías encendido: `k4 pluginReload {ident}`.")
@@ -507,14 +621,23 @@ def instalar(url, sin_preguntar=False, subcarpeta=None):
     return 0
 
 
-def actualizar(ident, sin_preguntar=False):
-    """Reinstalar desde el origen que quedó apuntado al instalar."""
-    marca = DE_USUARIO / ident / ".origen"
-    if not marca.is_file():
+def actualizar(ident, sin_preguntar=False, commit=None):
+    """Reinstalar desde donde vino, y a la carpeta correcta.
+
+    Lo de la carpeta no es un detalle: antes solo se guardaba la URL, así que
+    actualizar un plugin que vive en una subcarpeta del repo —los ejemplos de
+    k4, sin ir más lejos— volvía a adivinarla, y con más de un candidato ya no
+    se podía. Ahora va apuntada.
+
+    Sin `--commit`, actualizar es «tráeme la punta de la rama», que es lo que
+    uno espera al pedir una actualización. Con él, «tráeme exactamente este».
+    """
+    o = leer_origen(ident)
+    if not o:
         print(f"{ident} no se instaló desde una URL, no sé de dónde "
               "actualizarlo.", file=sys.stderr)
         return 1
-    return instalar(marca.read_text().strip(), sin_preguntar)
+    return instalar(o["repo"], sin_preguntar, o.get("carpeta") or None, commit)
 
 
 def quitar(ident, sin_preguntar=False, con_estado=False):
@@ -552,10 +675,16 @@ def instalados():
         return 0
     for item in externos:
         estado = "ok" if item.get("cargable") else f"NO CARGA: {item['motivo']}"
-        origen = DE_USUARIO / item["id"] / ".origen"
-        de = origen.read_text().strip() if origen.is_file() else "local"
+        o = leer_origen(item["id"])
+        de = o["repo"] if o else "local"
+        if o and o.get("carpeta"):
+            de += "  ·  " + o["carpeta"]
+        sha = (o or {}).get("commit") or ""
         print(f"{item['id']:<16} v{item.get('version', '0'):<8} {estado}")
         print(f"{'':<16} {de}")
+        #  Sin commit apuntado es que se instaló antes de que esto existiera:
+        #  se sabe de dónde vino pero no QUÉ vino, y eso hay que decirlo.
+        print(f"{'':<16} {sha[:12] if sha else 'commit desconocido (instalado con la versión de antes)'}")
     return 0
 
 
@@ -626,12 +755,17 @@ REGISTRO = ("https://raw.githubusercontent.com/k4ditano/k4/main/"
             "plugins/registro.json")
 
 
+def leer_registro(url=None):
+    """El registro publicado. Lanza si no se puede leer."""
+    import urllib.request
+    with urllib.request.urlopen(url or REGISTRO, timeout=10) as r:
+        return json.loads(r.read().decode("utf-8"))
+
+
 def buscar(termino=None, url=None):
     """Lista lo publicado en el registro, filtrado si hay término."""
-    import urllib.request
     try:
-        with urllib.request.urlopen(url or REGISTRO, timeout=10) as r:
-            datos = json.loads(r.read().decode("utf-8"))
+        datos = leer_registro(url)
     except Exception as exc:
         print(f"no pude leer el registro: {exc}", file=sys.stderr)
         return 2
@@ -653,10 +787,109 @@ def buscar(termino=None, url=None):
               + (f"  ·  de {e['autor']}" if e.get("autor") else ""))
         if e.get("description"):
             print(f"    {e['description']}")
+        sha = str(e.get("commit") or "")
+        if sha:
+            print(f"    commit {sha[:12]}")
         orden = f"    instalar: tools/plugins.py --instalar {e.get('repo')}"
         if e.get("carpeta"):
             orden += f" --carpeta {e['carpeta']}"
+        #  La orden que se copia y se pega lleva el commit dentro. Si no, la
+        #  gente instala la punta de la rama y el ancla no sirve de nada.
+        if sha:
+            orden += f" --commit {sha}"
         print(orden + "\n")
+    return 0
+
+
+FICHERO_REGISTRO = RAIZ / "plugins" / "registro.json"
+
+
+def validar_registro(datos, fallos):
+    """El registro es un PR de un desconocido: se revisa como tal.
+
+    Se comprueba aquí, en CI, y no al instalar: una entrada mal puesta que
+    llegue a `main` se la come todo el que busque, y el error saldría en la
+    máquina de otro. Es el mismo trato que reciben los manifiestos.
+    """
+    entradas = datos.get("plugins")
+    if not isinstance(entradas, list):
+        fallos.append("el registro no trae una lista de plugins")
+        return
+    vistos = set()
+    for i, e in enumerate(entradas):
+        donde = f"registro[{i}]"
+        if not isinstance(e, dict):
+            fallos.append(f"{donde}: no es un objeto")
+            continue
+        ident = e.get("id")
+        donde = f"registro/{ident}" if ident else donde
+        if not isinstance(ident, str) or not RE_ID.fullmatch(ident):
+            fallos.append(f"{donde}: id ausente o con formato raro")
+        elif ident in vistos:
+            fallos.append(f"{donde}: id repetido")
+        else:
+            vistos.add(ident)
+        for campo in ("title", "description", "repo"):
+            if not isinstance(e.get(campo), str) or not e[campo].strip():
+                fallos.append(f"{donde}: falta {campo}")
+        repo = str(e.get("repo") or "")
+        if repo and not repo.startswith(("https://", "http://")):
+            fallos.append(f"{donde}: el repo tiene que ser una URL http(s)")
+        #  El commit es opcional MIENTRAS dure la transición, pero si está
+        #  tiene que ser un SHA entero: medio ancla no ancla.
+        sha = e.get("commit")
+        if sha is not None and (not isinstance(sha, str)
+                                or not RE_SHA.fullmatch(sha)):
+            fallos.append(f"{donde}: commit tiene que ser un SHA de 40 en "
+                          "minúscula")
+        carpeta = e.get("carpeta")
+        if carpeta is not None:
+            c = str(carpeta)
+            if c.startswith("/") or ".." in c.split("/"):
+                fallos.append(f"{donde}: carpeta tiene que ser relativa y sin ..")
+
+
+def comprobar(url=None):
+    """Qué tienes instalado que ya no es lo que dice el registro.
+
+    Es la pregunta que antes no se podía contestar: sabías de dónde vino un
+    plugin, pero no qué versión de allí, así que «¿tengo lo último?» y «¿me han
+    cambiado el código debajo?» eran las dos indistinguibles.
+    """
+    ids_repo, version_host = _contexto()
+    externos = cargar_usuario(ids_repo, version_host)
+    if not externos:
+        print("no hay plugins de usuario instalados.")
+        return 0
+    try:
+        datos = leer_registro(url)
+    except Exception as exc:
+        print(f"no pude leer el registro: {exc}", file=sys.stderr)
+        return 2
+    publicado = {str(e.get("id")): e for e in datos.get("plugins") or []}
+
+    novedades = 0
+    for item in externos:
+        ident = item["id"]
+        o = leer_origen(ident) or {}
+        mio = str(o.get("commit") or "")
+        e = publicado.get(ident)
+        if not e:
+            que = "no está en el registro (instalado a mano)"
+        elif not mio:
+            que = "no sé en qué commit está (instalado con la versión de antes)"
+        elif not e.get("commit"):
+            que = "el registro no dice commit, no puedo comparar"
+        elif str(e["commit"]) == mio:
+            que = f"al día  ·  {mio[:12]}"
+        else:
+            que = f"hay novedad  ·  {mio[:12]} → {str(e['commit'])[:12]}"
+            novedades += 1
+        print(f"{ident:<16} {que}")
+
+    if novedades:
+        print(f"\n{novedades} con novedad. Para traerla:"
+              " tools/plugins.py --actualizar <id> --commit <sha>")
     return 0
 
 
@@ -669,6 +902,14 @@ def main():
         return 2
 
     ids = validar_repo(plugins, fallos)
+
+    #  Y el escaparate, si está: es parte del repo y se rompe igual de fácil.
+    if FICHERO_REGISTRO.is_file():
+        try:
+            validar_registro(json.loads(FICHERO_REGISTRO.read_text()), fallos)
+        except Exception as exc:
+            fallos.append(f"registro.json ilegible: {exc}")
+
     if fallos:
         print("El catálogo de plugins tiene problemas:\n")
         print("\n".join("  - " + x for x in fallos))
@@ -694,9 +935,11 @@ AYUDA = """El catálogo de plugins de k4.
     tools/plugins.py --instalados         qué hay instalado de fuera
     tools/plugins.py --instalar <url>     clona, valida, pregunta e instala
     tools/plugins.py --actualizar <id>    reinstala desde su origen
+    tools/plugins.py --comprobar          qué instalado no es lo que dice el registro
     tools/plugins.py --quitar <id>        desinstala
     tools/plugins.py --buscar [texto]     qué hay publicado en el registro
 
+    --commit <sha>  instalar o actualizar ESE commit, no la punta de la rama
     --si          no preguntar (para guiones)
     --con-estado  al quitar, borra también lo que el plugin guardó
     --carpeta <n> al instalar, cuál del repo si hay varias
@@ -927,12 +1170,16 @@ if __name__ == "__main__":
         print(AYUDA)
         sys.exit(0)
     _si = "--si" in sys.argv
+    _commit = _valor("--commit")
     if "--instalar" in sys.argv:
         _url = _valor("--instalar")
-        sys.exit(instalar(_url, _si, _valor("--carpeta")) if _url else 2)
+        sys.exit(instalar(_url, _si, _valor("--carpeta"), _commit)
+                 if _url else 2)
     if "--actualizar" in sys.argv:
         _id = _valor("--actualizar")
-        sys.exit(actualizar(_id, _si) if _id else 2)
+        sys.exit(actualizar(_id, _si, _commit) if _id else 2)
+    if "--comprobar" in sys.argv:
+        sys.exit(comprobar(_valor("--registro")))
     if "--quitar" in sys.argv:
         _id = _valor("--quitar")
         sys.exit(quitar(_id, _si, "--con-estado" in sys.argv) if _id else 2)

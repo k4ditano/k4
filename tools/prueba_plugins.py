@@ -11,8 +11,12 @@ esta puerta ninguna era el desequilibrio más llamativo del proyecto.
 Cada prueba fabrica su carpeta de plugin en un temporal: nada depende de lo
 que haya en la máquina.
 """
+import contextlib
+import io
 import json
 import pathlib
+import shutil
+import subprocess
 import struct
 import sys
 import tempfile
@@ -252,6 +256,248 @@ def prueba_icono_con_ruta():
                 {"Plugin.qml": "Item {}\n"})
     v = plugins.validar_carpeta(d, set(), HOST)
     igual("un icono con ruta no cuela", v["cargable"], False)
+
+
+# ── el registro, que es un PR de un desconocido ──────────────────────
+
+def _reg(**e):
+    """Los fallos que da una entrada de registro suelta."""
+    base = {"id": "x", "title": "X", "description": "d",
+            "repo": "https://ejemplo/repo"}
+    base.update(e)
+    fallos_reg = []
+    plugins.validar_registro({"plugins": [base]}, fallos_reg)
+    return fallos_reg
+
+
+def prueba_registro_entrada_correcta():
+    igual("una entrada bien puesta no da fallos",
+          _reg(commit="a" * 40, carpeta="ejemplos/x"), [])
+
+
+def prueba_registro_commit_entero_o_ninguno():
+    #  Medio ancla no ancla: un SHA corto no identifica un commit sin
+    #  ambigüedad, y uno en mayúsculas no casa con lo que devuelve git.
+    igual("un sha corto no vale", len(_reg(commit="abc123")), 1)
+    igual("en mayúsculas tampoco", len(_reg(commit="A" * 40)), 1)
+    igual("una rama menos todavía", len(_reg(commit="main")), 1)
+    igual("sin commit se acepta, que la transición dura",
+          _reg(), [])
+
+
+def prueba_registro_campos_y_forma():
+    igual("hace falta title", len(_reg(title="")), 1)
+    igual("hace falta description", len(_reg(description=None)), 1)
+    igual("el repo es una URL", len(_reg(repo="git@github:a/b")), 1)
+    igual("el id tiene formato", len(_reg(id="Mal Id")), 1)
+
+
+def prueba_registro_carpeta_no_se_escapa():
+    #  La carpeta acaba concatenada a un clon temporal. Con `..` dentro,
+    #  apuntaría fuera de él.
+    igual("nada de ..", len(_reg(carpeta="../fuera")), 1)
+    igual("ni absoluta", len(_reg(carpeta="/etc")), 1)
+    igual("una normal pasa", _reg(carpeta="ejemplos/x"), [])
+
+
+def prueba_registro_sin_ids_repetidos():
+    fallos_reg = []
+    plugins.validar_registro({"plugins": [
+        {"id": "x", "title": "X", "description": "d", "repo": "https://a/b"},
+        {"id": "x", "title": "Y", "description": "d", "repo": "https://a/c"},
+    ]}, fallos_reg)
+    igual("dos entradas con el mismo id", len(fallos_reg), 1)
+
+
+def prueba_registro_de_verdad_es_valido():
+    #  El que se publica, no uno de mentira.
+    if plugins.FICHERO_REGISTRO.is_file():
+        fallos_reg = []
+        plugins.validar_registro(
+            json.loads(plugins.FICHERO_REGISTRO.read_text()), fallos_reg)
+        igual("el registro que publicamos pasa su propio validador",
+              fallos_reg, [])
+
+
+# ── el ancla: instalar UN commit, y saber cuál ───────────────────────
+#
+#  Estas se instalan de verdad, pero NUNCA en `~/.config/k4/plugins`: se
+#  redirige `plugins.DE_USUARIO` a un temporal. Una prueba que te toque los
+#  plugins de verdad es una prueba que no puedes correr con la barra abierta.
+
+def _git(d, *args):
+    subprocess.run(["git", "-C", str(d)] + list(args),
+                   check=True, capture_output=True)
+
+
+def repo_con_dos_commits(nombre="anclado", dentro=""):
+    """Un repo git de mentira con un plugin y dos versiones de él.
+
+    Devuelve (ruta, sha_viejo, sha_nuevo). El plugin cambia de versión entre
+    los dos commits, que es lo que deja ver cuál se instaló de verdad.
+    """
+    d = BORRADOR / ("repo-" + nombre)
+    if d.exists():
+        shutil.rmtree(d)
+    base = (d / dentro) if dentro else d
+    base.mkdir(parents=True)
+    _git_init = subprocess.run(["git", "init", "-q", "-b", "main", str(d)],
+                               check=True, capture_output=True)
+    _git(d, "config", "user.email", "prueba@k4")
+    _git(d, "config", "user.name", "prueba")
+
+    man = manifiesto_base(nombre)
+    (base / "plugin.json").write_text(json.dumps(man))
+    (base / "Plugin.qml").write_text("import QtQuick\nItem {}\n")
+    _git(d, "add", "-A")
+    _git(d, "commit", "-q", "-m", "uno")
+    viejo = subprocess.run(["git", "-C", str(d), "rev-parse", "HEAD"],
+                           capture_output=True, text=True).stdout.strip()
+
+    man["version"] = "2.0.0"
+    (base / "plugin.json").write_text(json.dumps(man))
+    _git(d, "add", "-A")
+    _git(d, "commit", "-q", "-m", "dos")
+    nuevo = subprocess.run(["git", "-C", str(d), "rev-parse", "HEAD"],
+                           capture_output=True, text=True).stdout.strip()
+    return d, viejo, nuevo
+
+
+class DestinoAparte:
+    """Mientras dure, `plugins.DE_USUARIO` apunta a un temporal."""
+
+    def __init__(self, nombre):
+        self.d = BORRADOR / ("destino-" + nombre)
+
+    def __enter__(self):
+        if self.d.exists():
+            shutil.rmtree(self.d)
+        self.d.mkdir(parents=True)
+        self.antes = plugins.DE_USUARIO
+        plugins.DE_USUARIO = self.d
+        #  Instalar habla mucho —permisos, destino, el aviso de que esto no es
+        #  una jaula— y está bien que hable. Aquí no: ocho instalaciones dejan
+        #  la salida de las pruebas ilegible y lo único que importa es la
+        #  última línea. Se guarda por si una falla y hay que mirarla.
+        self.dicho = io.StringIO()
+        self.silencio = contextlib.redirect_stdout(self.dicho)
+        self.silencio.__enter__()
+        return self.d
+
+    def __exit__(self, *_):
+        self.silencio.__exit__(None, None, None)
+        plugins.DE_USUARIO = self.antes
+        return False
+
+
+def arbol(d):
+    """Qué ficheros hay y qué contienen, para comparar dos instalaciones."""
+    fuera = {}
+    for f in sorted(d.rglob("*")):
+        if f.is_file():
+            fuera[str(f.relative_to(d))] = f.read_bytes()
+    return fuera
+
+
+def prueba_ancla_instala_el_commit_pedido():
+    repo, viejo, nuevo = repo_con_dos_commits("pedido")
+    with DestinoAparte("pedido") as destino:
+        igual("instala sin quejarse",
+              plugins.instalar(str(repo), True, None, viejo), 0)
+        o = json.loads((destino / "pedido" / plugins.ORIGEN).read_text())
+        igual("apunta el commit que se pidió", o["commit"], viejo)
+        man = json.loads((destino / "pedido" / "plugin.json").read_text())
+        igual("y el contenido es el de ESE commit, no el de la punta",
+              man["version"], "1.0.0")
+
+
+def prueba_ancla_sin_pedir_commit_va_a_la_punta():
+    repo, viejo, nuevo = repo_con_dos_commits("punta")
+    with DestinoAparte("punta") as destino:
+        igual("instala", plugins.instalar(str(repo), True), 0)
+        o = json.loads((destino / "punta" / plugins.ORIGEN).read_text())
+        igual("apunta la punta", o["commit"], nuevo)
+        igual("y aun sin pedirlo, queda apuntado",
+              plugins.RE_SHA.fullmatch(o["commit"]) is not None, True)
+
+
+def prueba_ancla_actualizar_lleva_al_commit_dado():
+    repo, viejo, nuevo = repo_con_dos_commits("subir")
+    with DestinoAparte("subir") as destino:
+        plugins.instalar(str(repo), True, None, viejo)
+        igual("actualiza al commit pedido",
+              plugins.actualizar("subir", True, nuevo), 0)
+        o = json.loads((destino / "subir" / plugins.ORIGEN).read_text())
+        igual("y queda en él", o["commit"], nuevo)
+        man = json.loads((destino / "subir" / "plugin.json").read_text())
+        igual("con el contenido nuevo", man["version"], "2.0.0")
+
+
+def prueba_ancla_actualizar_conserva_la_subcarpeta():
+    #  El fallo que había: solo se guardaba la URL, así que actualizar un
+    #  plugin que vive en una subcarpeta del repo tenía que volver a
+    #  adivinarla. Con dos candidatos ya no podía.
+    repo, viejo, nuevo = repo_con_dos_commits("dentro", dentro="ejemplos/dentro")
+    (repo / "otro").mkdir()
+    (repo / "otro" / "plugin.json").write_text(
+        json.dumps(manifiesto_base("otro")))
+    (repo / "otro" / "Plugin.qml").write_text("import QtQuick\nItem {}\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "un segundo candidato")
+
+    with DestinoAparte("dentro") as destino:
+        igual("instala diciendo la carpeta",
+              plugins.instalar(str(repo), True, "ejemplos/dentro"), 0)
+        o = json.loads((destino / "dentro" / plugins.ORIGEN).read_text())
+        igual("la carpeta queda apuntada", o["carpeta"], "ejemplos/dentro")
+        igual("y actualizar la encuentra sola",
+              plugins.actualizar("dentro", True), 0)
+
+
+def prueba_ancla_mismo_commit_mismo_arbol():
+    repo, viejo, nuevo = repo_con_dos_commits("gemelo")
+    with DestinoAparte("gemelo-a") as a:
+        plugins.instalar(str(repo), True, None, viejo)
+        uno = arbol(a / "gemelo")
+    with DestinoAparte("gemelo-b") as b:
+        plugins.instalar(str(repo), True, None, viejo)
+        dos = arbol(b / "gemelo")
+    #  El papel del origen lleva la hora dentro, así que ese no se compara:
+    #  lo que tiene que salir idéntico es el CÓDIGO.
+    uno.pop(plugins.ORIGEN, None)
+    dos.pop(plugins.ORIGEN, None)
+    igual("el mismo commit da el mismo árbol, dos veces", uno, dos)
+    igual("y no está vacío", len(uno) > 0, True)
+
+
+def prueba_ancla_rechaza_un_commit_que_no_lo_es():
+    repo, viejo, nuevo = repo_con_dos_commits("raro")
+    with DestinoAparte("raro") as destino:
+        igual("una rama no vale como ancla",
+              plugins.instalar(str(repo), True, None, "main"), 1)
+        igual("ni un sha corto",
+              plugins.instalar(str(repo), True, None, viejo[:8]), 1)
+        igual("y no ha instalado nada", list(destino.iterdir()), [])
+
+
+def prueba_ancla_rechaza_un_commit_inexistente():
+    repo, viejo, nuevo = repo_con_dos_commits("fantasma")
+    with DestinoAparte("fantasma") as destino:
+        igual("un commit que no está en ese repo",
+              plugins.instalar(str(repo), True, None, "0" * 40), 1)
+        igual("y no ha instalado nada", list(destino.iterdir()), [])
+
+
+def prueba_ancla_lee_el_origen_de_antes():
+    #  Lo ya instalado con la versión vieja no puede quedarse tirado: se sabe
+    #  de dónde vino aunque no en qué commit.
+    with DestinoAparte("viejo") as destino:
+        d = destino / "antiguo"
+        d.mkdir()
+        (d / ".origen").write_text("https://ejemplo/repo\n")
+        o = plugins.leer_origen("antiguo")
+        igual("se lee el repo", o["repo"], "https://ejemplo/repo")
+        igual("y no se inventa un commit", o.get("commit", ""), "")
 
 
 def main():

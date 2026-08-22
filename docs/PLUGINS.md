@@ -22,14 +22,28 @@ python3 tools/plugins.py --buscar
 python3 tools/plugins.py --buscar snake
 ```
 
-Each entry prints its exact install command. To publish yours, open a PR
-adding an entry to `plugins/registro.json` (id, title, description, git
-repo, and `carpeta` if the plugin does not live at the repo root). And if
-someone handed you a repository directly:
+Each entry prints its exact install command, with the commit already in it.
+To publish yours, open a PR adding an entry to `plugins/registro.json`: id,
+title, description, git repo, **commit** (the full 40-character SHA you want
+published) and `carpeta` if the plugin does not live at the repo root.
+
+**A registry entry publishes a commit, not a branch.** A branch moves after
+it is reviewed, so what someone installs next month would not be what was
+looked at — the point of pinning is that those two are the same thing. To
+publish a new version, open another PR with the new SHA.
+
+And if someone handed you a repository directly:
 
 ```sh
 python3 tools/plugins.py --instalar https://github.com/quien/su-plugin
+python3 tools/plugins.py --instalar https://github.com/quien/su-plugin \
+                         --commit 4f1c2ab...   # that exact one
 ```
+
+Without `--commit` you get the tip of the default branch, which is fine for
+your own code and worth thinking about for someone else's. Either way the
+commit that landed is written down, so you can always answer "what exactly
+do I have installed?".
 
 It clones to a temporary directory, validates the whole thing there, and
 **only then** shows what it claims to be and which permissions it declares,
@@ -42,11 +56,19 @@ It arrives **off**. Turning it on is a separate decision, made in Settings,
 looking at those same permissions.
 
 ```sh
-python3 tools/plugins.py --instalados        # what you have and where it came from
-python3 tools/plugins.py --actualizar snake  # reinstall from its origin
+python3 tools/plugins.py --instalados        # what you have, from where, at which commit
+python3 tools/plugins.py --comprobar         # what no longer matches the registry
+python3 tools/plugins.py --actualizar snake  # reinstall from its origin (tip)
+python3 tools/plugins.py --actualizar snake --commit 4f1c2ab...   # or that one
 python3 tools/plugins.py --quitar snake      # uninstall (--con-estado also
                                              # deletes what it saved)
 ```
+
+`--comprobar` answers the question the old installer could not: it compares
+the commit each installed plugin actually came from against what the registry
+publishes today, and tells you which ones have something new upstream — and
+which ones were installed before any of this existed, so their commit is
+simply unknown.
 
 With the bar running, `k4 pluginRefresh` makes it re-read the catalog: what
 you just installed appears and what you removed disappears without

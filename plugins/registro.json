@@ -1,7 +1,8 @@
 {
  "_meta": {
   "que": "El registro público de plugins de k4: lo que se puede instalar con tools/plugins.py --buscar / --instalar.",
-  "publicar": "Abre un PR añadiendo tu entrada: id, title, description, repo (git) y, si el plugin no vive en la raíz del repo, carpeta."
+  "publicar": "Abre un PR añadiendo tu entrada: id, title, description, repo (git), commit (el SHA completo de 40 que quieres publicar) y, si el plugin no vive en la raíz del repo, carpeta.",
+  "commit": "Se publica un COMMIT, no una rama. Así lo que se revisó es exactamente lo que se instala, y una rama que se mueva después no cambia lo que le llega a la gente. Para publicar una versión nueva, otro PR con el SHA nuevo."
  },
  "plugins": [
   {
@@ -10,6 +11,7 @@
    "description": "El plugin mínimo de la guía: una vista, un contador y sus ajustes",
    "autor": "k4",
    "repo": "https://github.com/k4ditano/k4",
+   "commit": "320a3a971633b6602421e052289847fd9970c65e",
    "carpeta": "ejemplos/hola"
   },
   {
@@ -18,6 +20,7 @@
    "description": "La serpiente de siempre, jugable en la island",
    "autor": "k4",
    "repo": "https://github.com/k4ditano/k4",
+   "commit": "320a3a971633b6602421e052289847fd9970c65e",
    "carpeta": "ejemplos/snake"
   },
   {
@@ -26,6 +29,7 @@
    "description": "Muestrario de los componentes visuales de la API",
    "autor": "k4",
    "repo": "https://github.com/k4ditano/k4",
+   "commit": "a1584de2b4261d336454a000830ef69b109160df",
    "carpeta": "ejemplos/piezas"
   },
   {
@@ -34,6 +38,7 @@
    "description": "Escaparate del tinte, los gestos y pintar fuera de la island",
    "autor": "k4",
    "repo": "https://github.com/k4ditano/k4",
+   "commit": "320a3a971633b6602421e052289847fd9970c65e",
    "carpeta": "ejemplos/efectos"
   },
   {
@@ -41,14 +46,16 @@
    "title": "La Grieta",
    "description": "Roguelike de tecleo: sella con el teclado lo que sale por la grieta de la barra",
    "autor": "k4",
-   "repo": "https://github.com/k4ditano/grieta"
+   "repo": "https://github.com/k4ditano/grieta",
+   "commit": "a73b83d8b6785db317d70481bc20322908eb9d4d"
   },
   {
    "id": "senda",
    "title": "Senda",
    "description": "Roguelike autobattler de criaturas: mapa ramificado, tres regiones y combate por tipos",
    "autor": "k4",
-   "repo": "https://github.com/k4ditano/senda"
+   "repo": "https://github.com/k4ditano/senda",
+   "commit": "f5b8ebf7f60ae905695bc0cdf806b2fe533e342b"
   }
  ]
 }
