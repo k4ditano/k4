@@ -30,7 +30,24 @@ published) and `carpeta` if the plugin does not live at the repo root.
 **A registry entry publishes a commit, not a branch.** A branch moves after
 it is reviewed, so what someone installs next month would not be what was
 looked at — the point of pinning is that those two are the same thing. To
-publish a new version, open another PR with the new SHA.
+publish a new version, open another submission with the new SHA.
+
+The easier route is the **Publish a plugin** issue form. Opening it (or
+editing it afterwards) makes a bot fetch that exact commit, validate it with
+`tools/plugins.py` — **without running any of your plugin** — and comment
+with what it found: what the manifest declares, which permissions it asks
+for, which surfaces it occupies. It then labels the issue `validado`, or
+`revision-de-seguridad` if the plugin asks for permissions, or
+`necesita-arreglos` with the reason.
+
+The bot never publishes. Only a maintainer applying the `publicado` label
+does, and even then the entry is written **only if the commit still matches
+the one that was reviewed** — otherwise approving would mean approving "that
+repository", which is a promise nobody can keep.
+
+None of this is a security audit and the report says so. Static checks on one
+commit are what it is: a plugin runs inside the bar and can do whatever the
+bar can do.
 
 And if someone handed you a repository directly:
 

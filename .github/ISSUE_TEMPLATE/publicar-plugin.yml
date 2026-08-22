@@ -1,0 +1,66 @@
+#  El formulario por el que se publica un plugin en el registro de k4.
+#
+#  Pide un COMMIT y no una rama a propósito: una rama se mueve después de que
+#  alguien la haya mirado, y entonces lo que se instala deja de ser lo que se
+#  revisó. Publicar una versión nueva es abrir otra incidencia con el SHA
+#  nuevo, que cuesta un minuto y hace que la revisión signifique algo.
+
+name: Publicar un plugin
+description: Añadir tu plugin al registro para que se pueda instalar desde k4
+title: "[plugin] "
+labels: ["envio"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Al abrir esto, un robot se trae ese commit exacto, lo valida con
+        `tools/plugins.py` —**sin ejecutar nada de tu plugin**— y comenta lo
+        que ve: qué declara, qué permisos pide y qué superficies ocupa.
+
+        Eso no es una auditoría de seguridad, y no se presenta como tal. Un
+        plugin corre dentro de la barra y puede hacer lo que la barra pueda
+        hacer. Publicar lo firma una persona, no el robot.
+
+  - type: input
+    id: repositorio
+    attributes:
+      label: Repositorio
+      description: Público, en GitHub, la URL de la raíz
+      placeholder: https://github.com/tu-nombre/tu-plugin
+    validations:
+      required: true
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      description: >
+        El SHA completo de 40 caracteres que quieres publicar.
+        Lo saca `git rev-parse HEAD`.
+      placeholder: 4f1c2ab9e0d3c7b1a58f6e2d0c9b8a7f6e5d4c3b
+    validations:
+      required: true
+
+  - type: input
+    id: carpeta
+    attributes:
+      label: Carpeta
+      description: Solo si el `plugin.json` no está en la raíz del repositorio
+      placeholder: ejemplos/mi-plugin
+
+  - type: checkboxes
+    id: enterado
+    attributes:
+      label: Antes de enviarlo
+      options:
+        - label: >
+            `python3 tools/plugins.py` pasa sobre mi plugin, y los permisos que
+            declara son los que usa.
+          required: true
+        - label: >
+            El repositorio es público y tiene licencia.
+          required: true
+        - label: >
+            Entiendo que publicar una versión nueva es abrir otra incidencia
+            con el SHA nuevo.
+          required: true

@@ -24,6 +24,7 @@ import zlib
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import plugins
+import publicar
 
 fallos = []
 BORRADOR = pathlib.Path(tempfile.mkdtemp(prefix="k4-prueba-plugins-"))
@@ -573,6 +574,104 @@ def prueba_json_buscar_descarta_lo_roto():
         d = dice(plugins.json_buscar, reg.as_uri())
         igual("sirve lo bueno", [p["id"] for p in d["plugins"]], ["bueno"])
         igual("y dice qué descartó", d["descartadas"], ["malo"])
+
+
+# ── el proceso de publicación ────────────────────────────────────────
+#
+#  Es la puerta por la que entra código de un desconocido al registro, así que
+#  lo que se prueba aquí es sobre todo lo que tiene que RECHAZAR.
+
+def formulario(repo="https://github.com/quien/que",
+               commit="a" * 40, carpeta="_No response_"):
+    return ("### Repositorio\n\n%s\n\n### Commit\n\n%s\n\n"
+            "### Carpeta\n\n%s\n" % (repo, commit, carpeta))
+
+
+def prueba_publicar_lee_el_formulario():
+    d, malos = publicar.envio(formulario(carpeta="ejemplos/x"))
+    igual("sin quejas", malos, [])
+    igual("el repo", d["repo"], "https://github.com/quien/que")
+    igual("el commit", d["commit"], "a" * 40)
+    igual("la carpeta", d["carpeta"], "ejemplos/x")
+
+
+def prueba_publicar_carpeta_vacia_es_vacia():
+    #  «_No response_» es lo que escribe GitHub en un campo opcional en blanco.
+    #  Tomarlo como nombre de carpeta buscaría un plugin llamado así.
+    d, malos = publicar.envio(formulario())
+    igual("no se cuela el relleno de GitHub", d["carpeta"], "")
+
+
+def prueba_publicar_exige_un_commit_de_verdad():
+    for malo in ("main", "HEAD", "a" * 39, "a" * 41, "z" * 40, ""):
+        d, malos = publicar.envio(formulario(commit=malo))
+        igual("no cuela el commit %r" % malo, len(malos) >= 1, True)
+
+
+def prueba_publicar_normaliza_el_commit():
+    #  Un SHA en mayúsculas es el MISMO commit, así que se acepta y se pasa a
+    #  minúsculas en vez de rechazarlo: el registro lo guarda en un solo
+    #  formato y comparar dos SHA no puede depender de cómo lo pegaron.
+    d, malos = publicar.envio(formulario(commit="A" * 40))
+    igual("se acepta", malos, [])
+    igual("y queda en minúscula", d["commit"], "a" * 40)
+
+
+def prueba_publicar_exige_un_repo_de_github():
+    for malo in ("git@github.com:a/b.git", "https://gitlab.com/a/b",
+                 "https://github.com/a/b/c", "ftp://github.com/a/b"):
+        d, malos = publicar.envio(formulario(repo=malo))
+        igual("no cuela el repo %r" % malo, len(malos) >= 1, True)
+    d, malos = publicar.envio(formulario(repo="https://github.com/a/b/"))
+    igual("la barra final se quita", d["repo"], "https://github.com/a/b")
+
+
+def prueba_publicar_carpeta_no_se_escapa():
+    d, malos = publicar.envio(formulario(carpeta="../../etc"))
+    igual("nada de ..", len(malos), 1)
+    d, malos = publicar.envio(formulario(carpeta="/etc"))
+    igual("ni absoluta", len(malos), 1)
+
+
+def prueba_publicar_no_firma_otro_commit():
+    #  El corazón del asunto: se revisa un commit y se aprueba ese. Si entre
+    #  medias cambia, publicar tiene que pararse — si no, aprobar sería
+    #  aprobar «ese repositorio», que es una promesa que nadie puede cumplir.
+    d = {"repo": "https://github.com/quien/que", "commit": "a" * 40,
+         "carpeta": ""}
+    res = {"ok": True, "commit": "b" * 40,
+           "plugin": {"id": "x", "title": "X", "description": "d"}}
+    igual("no publica un commit distinto del revisado",
+          publicar.anadir(d, res), 1)
+
+
+def prueba_publicar_marca_para_revision_si_pide_permisos():
+    d = {"repo": "https://github.com/quien/que", "commit": "a" * 40,
+         "carpeta": ""}
+    limpio = {"ok": True, "commit": "a" * 40,
+              "plugin": {"id": "sin-permisos", "title": "X",
+                         "description": "d", "permisos": []}}
+    _, etiqueta = publicar.informe(d, [], limpio)
+    igual("sin permisos, validado", etiqueta, "validado")
+
+    pide = {"ok": True, "commit": "a" * 40,
+            "plugin": {"id": "con-permisos", "title": "X",
+                       "description": "d", "permisos": ["procesos"]}}
+    _, etiqueta = publicar.informe(d, [], pide)
+    igual("pidiendo permisos, lo mira una persona",
+          etiqueta, "revision-de-seguridad")
+
+
+def prueba_publicar_dice_que_no_es_una_auditoria():
+    #  Que el informe no prometa más de lo que hace no es cosmética: es la
+    #  diferencia entre un sello útil y uno que engaña.
+    d = {"repo": "https://github.com/quien/que", "commit": "a" * 40,
+         "carpeta": ""}
+    res = {"ok": True, "commit": "a" * 40,
+           "plugin": {"id": "x", "title": "X", "description": "d",
+                      "permisos": []}}
+    texto, _ = publicar.informe(d, [], res)
+    contiene("lo dice en el informe", texto, "no es una auditoría de seguridad")
 
 
 def main():

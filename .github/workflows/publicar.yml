@@ -1,0 +1,128 @@
+#  El proceso de publicación de un plugin en el registro.
+#
+#  Dos trabajos y una regla entre ellos: el robot MIRA, la persona FIRMA.
+#
+#  `revisar` corre en cada apertura y edición de un envío y no toca el
+#  registro: se trae el commit que dice el formulario, lo valida y comenta lo
+#  que ve. `publicar` solo se dispara cuando alguien con permiso de escritura
+#  pone la etiqueta `publicado`, y antes de escribir nada vuelve a validar y
+#  comprueba que el commit sea el mismo que se revisó.
+#
+#  Sobre la seguridad de esto: el cuerpo de una incidencia lo escribe
+#  cualquiera, así que NUNCA se interpola en un `run:` —eso es ejecución de
+#  código ajeno en el runner— sino que se pasa por `env:` y se escribe a un
+#  fichero. Y el guion de revisión no ejecuta nada del plugin: clona y compara
+#  ficheros, y ya.
+
+name: publicar plugin
+
+on:
+  issues:
+    types: [opened, edited, labeled]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  revisar:
+    if: >
+      contains(github.event.issue.labels.*.name, 'envio')
+      && github.event.action != 'labeled'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      #  Por `env`, no por interpolación: el cuerpo es texto de un
+      #  desconocido y en un `run:` sería una orden más.
+      - name: El envío, a un fichero
+        env:
+          CUERPO: ${{ github.event.issue.body }}
+        run: printf '%s' "$CUERPO" > /tmp/envio.txt
+
+      - name: Revisar el commit que dice
+        id: revision
+        run: python3 tools/publicar.py --revisar /tmp/envio.txt > /tmp/informe.md
+
+      - name: Contarlo en la incidencia
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMERO: ${{ github.event.issue.number }}
+        run: gh issue comment "$NUMERO" --body-file /tmp/informe.md
+
+      - name: Y dejar dicho en qué estado queda
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMERO: ${{ github.event.issue.number }}
+          ETIQUETA: ${{ steps.revision.outputs.etiqueta }}
+        run: |
+          for vieja in validado necesita-arreglos revision-de-seguridad; do
+            gh issue edit "$NUMERO" --remove-label "$vieja" || true
+          done
+          gh issue edit "$NUMERO" --add-label "$ETIQUETA"
+
+  publicar:
+    if: >
+      github.event.action == 'labeled'
+      && github.event.label.name == 'publicado'
+      && contains(github.event.issue.labels.*.name, 'envio')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      #  Quien pone la etiqueta tiene que poder escribir en el repo. GitHub no
+      #  lo comprueba solo: cualquiera con una incidencia abierta puede
+      #  etiquetar si el repo lo permite, así que se comprueba aquí.
+      - name: ¿Quién ha etiquetado?
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUIEN: ${{ github.event.sender.login }}
+          REPO: ${{ github.repository }}
+        run: |
+          permiso=$(gh api "repos/$REPO/collaborators/$QUIEN/permission" \
+                    --jq .permission || echo ninguno)
+          case "$permiso" in
+            admin|write) echo "vale: $QUIEN tiene $permiso" ;;
+            *) echo "$QUIEN no puede publicar (permiso: $permiso)"; exit 1 ;;
+          esac
+
+      - name: El envío, a un fichero
+        env:
+          CUERPO: ${{ github.event.issue.body }}
+        run: printf '%s' "$CUERPO" > /tmp/envio.txt
+
+      #  Se vuelve a validar en vez de fiarse del informe de antes: entre la
+      #  revisión y la firma pueden haber pasado días, y el guion se niega si
+      #  el commit ya no es el mismo.
+      - name: Validar otra vez y meterlo en el registro
+        run: python3 tools/publicar.py --anadir /tmp/envio.txt
+
+      - name: Que el registro siga siendo válido
+        run: python3 tools/plugins.py
+
+      - name: Guardarlo
+        env:
+          NUMERO: ${{ github.event.issue.number }}
+        run: |
+          git config user.name "k4"
+          git config user.email "k4@users.noreply.github.com"
+          git add plugins/registro.json
+          git commit -m "Publicar un plugin (#$NUMERO)" || exit 0
+          git push
+
+      - name: Y decirlo
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMERO: ${{ github.event.issue.number }}
+        run: |
+          gh issue comment "$NUMERO" --body \
+            'Publicado. Ya sale en \`tools/plugins.py --buscar\` y en la tienda de la barra.'
+          gh issue close "$NUMERO"
