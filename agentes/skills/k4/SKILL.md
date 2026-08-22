@@ -43,7 +43,7 @@ errors, and `quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4
 pluginStatus` tells you which plugins failed and why. A plugin that does not
 appear almost always has an error waiting there.
 
-**Never restart the bar to test a plugin.** `python3 tools/plugins.py --probar
+**Never restart the bar to test a plugin.** `python3 tools/plugins.py --test
 <id>` opens it in a separate instance with no bar, no services and no
 notifications. If it hangs, it hangs alone. Restarting the user's bar loses
 whatever they had open.

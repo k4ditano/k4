@@ -102,11 +102,11 @@ def envio(cuerpo):
 #  ── mirar el plugin ──────────────────────────────────────────────────
 
 def examinar(d):
-    """Lo que dice `plugins.py --examinar` de ese commit exacto."""
-    orden = [sys.executable, str(GUION), "--examinar", d["repo"],
+    """Lo que dice `plugins.py --examine` de ese commit exacto."""
+    orden = [sys.executable, str(GUION), "--examine", d["repo"],
              "--json", "--commit", d["commit"]]
     if d["carpeta"]:
-        orden += ["--carpeta", d["carpeta"]]
+        orden += ["--folder", d["carpeta"]]
     try:
         p = subprocess.run(orden, capture_output=True, text=True, timeout=600)
     except subprocess.TimeoutExpired:

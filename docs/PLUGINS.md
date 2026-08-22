@@ -25,8 +25,8 @@ quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4.hola toggle
 To see what is published in the public registry:
 
 ```sh
-python3 tools/plugins.py --buscar
-python3 tools/plugins.py --buscar snake
+python3 tools/plugins.py --search
+python3 tools/plugins.py --search snake
 ```
 
 Each entry prints its exact install command, with the commit already in it.
@@ -85,8 +85,8 @@ bar can do.
 And if someone handed you a repository directly:
 
 ```sh
-python3 tools/plugins.py --instalar https://github.com/quien/su-plugin
-python3 tools/plugins.py --instalar https://github.com/quien/su-plugin \
+python3 tools/plugins.py --install https://github.com/quien/su-plugin
+python3 tools/plugins.py --install https://github.com/quien/su-plugin \
                          --commit 4f1c2ab...   # that exact one
 ```
 
@@ -106,15 +106,15 @@ It arrives **off**. Turning it on is a separate decision, made in Settings,
 looking at those same permissions.
 
 ```sh
-python3 tools/plugins.py --instalados        # what you have, from where, at which commit
-python3 tools/plugins.py --comprobar         # what no longer matches the registry
-python3 tools/plugins.py --actualizar snake  # reinstall from its origin (tip)
-python3 tools/plugins.py --actualizar snake --commit 4f1c2ab...   # or that one
-python3 tools/plugins.py --quitar snake      # uninstall (--con-estado also
+python3 tools/plugins.py --installed        # what you have, from where, at which commit
+python3 tools/plugins.py --check         # what no longer matches the registry
+python3 tools/plugins.py --update snake  # reinstall from its origin (tip)
+python3 tools/plugins.py --update snake --commit 4f1c2ab...   # or that one
+python3 tools/plugins.py --remove snake      # uninstall (--con-estado also
                                              # deletes what it saved)
 ```
 
-`--comprobar` answers the question the old installer could not: it compares
+`--check` answers the question the old installer could not: it compares
 the commit each installed plugin actually came from against what the registry
 publishes today, and tells you which ones have something new upstream — and
 which ones were installed before any of this existed, so their commit is
@@ -131,7 +131,7 @@ say so.
 Do not start from an empty directory:
 
 ```sh
-tools/plugins.py --nuevo mi-plugin
+tools/plugins.py --new mi-plugin
 ```
 
 That writes a manifest and a plugin that already opens, and tells you the three
@@ -589,7 +589,7 @@ author.
 The fastest loop does not involve your bar at all:
 
 ```sh
-tools/plugins.py --probar hola
+tools/plugins.py --test hola
 ```
 
 That opens **only your plugin**, in a separate Quickshell instance: no bar, no

@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Deja la habilidad de k4 donde los agentes la encuentran.
+"""Put k4's skill where coding agents will find it.
 
-    python3 tools/agente.py              dice dónde está y si está puesta
-    python3 tools/agente.py --instalar   la enlaza
-    python3 tools/agente.py --quitar     la desenlaza
+    python3 tools/agente.py            where it is, and whether it's linked
+    python3 tools/agente.py --install  link it
+    python3 tools/agente.py --remove   unlink it
+
+(`--instalar` y `--quitar` siguen valiendo: las banderas van en inglés porque
+son la puerta, pero nadie tiene que reaprenderse las que ya usaba.)
 
 Un agente que trabaja en esta máquina no sabe que hay una barra llamada k4, ni
 que todo lo suyo son plugins, ni que hay una orden para crear uno que ya
@@ -90,6 +93,9 @@ def quitar():
 
 
 if __name__ == "__main__":
+    #  En inglés, y las de antes también.
+    sys.argv = [{"--install": "--instalar",
+                 "--remove": "--quitar"}.get(a, a) for a in sys.argv]
     if "--instalar" in sys.argv:
         sys.exit(instalar())
     if "--quitar" in sys.argv:

@@ -155,5 +155,5 @@ jobs:
           NUMERO: ${{ github.event.issue.number }}
         run: |
           gh issue comment "$NUMERO" --body \
-            'Publicado. Ya sale en `tools/plugins.py --buscar` y en la tienda de la barra.'
+            'Publicado. Ya sale en `tools/plugins.py --search` y en la tienda de la barra.'
           gh issue close "$NUMERO"

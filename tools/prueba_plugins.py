@@ -681,6 +681,41 @@ def prueba_reglas_no_saltan_con_los_plugins_de_casa():
     igual("ninguna bloqueante en los plugins de casa", saltan, [])
 
 
+# ── las banderas, en los dos idiomas ─────────────────────────────────
+
+def prueba_banderas_en_ingles():
+    #  La puerta se escribe en inglés porque a un ecosistema entra gente que
+    #  no habla español. Que el código de dentro siga en español no es
+    #  contradicción: una bandera no es código, es la puerta.
+    igual("--install es --instalar",
+          plugins.traducir_banderas(["x", "--install", "u"]),
+          ["x", "--instalar", "u"])
+    igual("y --test es --probar",
+          plugins.traducir_banderas(["x", "--test", "id"]),
+          ["x", "--probar", "id"])
+
+
+def prueba_banderas_en_espanol_siguen_valiendo():
+    #  Están en el README, en guiones de gente y en los dedos de quien lleva
+    #  meses usándolas. Retirarlas costaría más de lo que ahorra.
+    for vieja in ("--instalar", "--probar", "--nuevo", "--comprobar",
+                  "--buscar", "--quitar", "--actualizar", "--examinar",
+                  "--listar", "--instalados", "--si", "--carpeta"):
+        igual("%s sigue llegando entera" % vieja,
+              plugins.traducir_banderas(["x", vieja]), ["x", vieja])
+
+
+def prueba_ninguna_bandera_se_come_a_otra():
+    #  `--instalar` sustituido antes que `--instalados` daría «--installdos».
+    #  Es el fallo clásico de traducir por reemplazo y aquí no puede pasar,
+    #  porque se traduce argumento a argumento y no por texto.
+    igual("--installed no se convierte en --install + dos",
+          plugins.traducir_banderas(["x", "--installed"]), ["x", "--instalados"])
+    igual("y lo que no conoce lo deja en paz",
+          plugins.traducir_banderas(["x", "--inventada", "--commit", "abc"]),
+          ["x", "--inventada", "--commit", "abc"])
+
+
 # ── el proceso de publicación ────────────────────────────────────────
 #
 #  Es la puerta por la que entra código de un desconocido al registro, así que

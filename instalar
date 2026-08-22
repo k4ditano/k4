@@ -704,7 +704,7 @@ paso_agente() {
         aviso "Sin python3 no la puedo enlazar."
         return
     fi
-    python3 "$RAIZ/tools/agente.py" --instalar 2>/dev/null | while read -r l; do
+    python3 "$RAIZ/tools/agente.py" --install 2>/dev/null | while read -r l; do
         nota "$l"
     done
     bien "Claude, Codex y compañía sabrán qué es esto y cómo escribirle un plugin"

@@ -6,7 +6,7 @@ Read this before creating or editing anything under `~/.config/k4/plugins/`.
 
 ```sh
 cd ~/.config/quickshell/k4
-python3 tools/plugins.py --nuevo mi-plugin
+python3 tools/plugins.py --new mi-plugin
 ```
 
 That writes `~/.config/k4/plugins/mi-plugin/` with a manifest and a QML file
@@ -17,11 +17,11 @@ on screen, and from there every change is small enough to see.
 Then, still without touching the running bar:
 
 ```sh
-python3 tools/plugins.py --probar mi-plugin     # opens it in its own instance
+python3 tools/plugins.py --test mi-plugin     # opens it in its own instance
 python3 tools/plugins.py                        # validates it
 ```
 
-## What `--nuevo` gives you
+## What `--new` gives you
 
 This is the whole thing it writes, and it is worth reading before changing
 anything — it is the shape every k4 plugin has.

@@ -385,7 +385,7 @@ Singleton {
 
     property var procesoRecarga: Process {
         command: ["python3", Quickshell.shellPath("tools/plugins.py"),
-                  "--recargar", manager._pendienteRecarga]
+                  "--reload", manager._pendienteRecarga]
         stdout: StdioCollector {
             onStreamFinished: {
                 const id = manager._pendienteRecarga
@@ -599,7 +599,7 @@ Singleton {
         arrancar()
     }
 
-    //  El catálogo lo emite `tools/plugins.py --listar`: los del repo más los
+    //  El catálogo lo emite `tools/plugins.py --list`: los del repo más los
     //  de ~/.config/k4/plugins, ya validados y con su veredicto. La validación
     //  vive en UN sitio —python— y aquí solo se consume; un manifiesto roto
     //  llega como `cargable: false` con su motivo, nunca como una barra que no
@@ -705,7 +705,7 @@ Singleton {
     Process {
         id: listador
         command: ["python3", Quickshell.shellPath("tools/plugins.py"),
-                  "--listar"]
+                  "--list"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: manager.recibirCatalogo(String(this.text))
@@ -737,38 +737,38 @@ Singleton {
     property string ocupadaEn: ""
 
     function buscarEnRegistro() {
-        return _obrar("buscar", "", ["--buscar", "--json"])
+        return _obrar("buscar", "", ["--search", "--json"])
     }
 
     //  Mirar sin instalar. Devuelve, entre otras cosas, el commit que ha
     //  visto — y ese es el que hay que pasarle luego a `instalarDesde`, para
     //  que se instale exactamente lo que se enseñó en el diálogo.
     function examinar(repo, carpeta, commit) {
-        return _obrar("examinar", "", ["--examinar", repo, "--json"]
-                      .concat(carpeta ? ["--carpeta", carpeta] : [])
+        return _obrar("examinar", "", ["--examine", repo, "--json"]
+                      .concat(carpeta ? ["--folder", carpeta] : [])
                       .concat(commit ? ["--commit", commit] : []))
     }
 
     function instalarDesde(repo, carpeta, commit, id) {
         return _obrar("instalar", id || "",
-                      ["--instalar", repo, "--json", "--si"]
-                      .concat(carpeta ? ["--carpeta", carpeta] : [])
+                      ["--install", repo, "--json", "--yes"]
+                      .concat(carpeta ? ["--folder", carpeta] : [])
                       .concat(commit ? ["--commit", commit] : []))
     }
 
     function actualizarPlugin(id, commit) {
         return _obrar("actualizar", id,
-                      ["--actualizar", id, "--json", "--si"]
+                      ["--update", id, "--json", "--yes"]
                       .concat(commit ? ["--commit", commit] : []))
     }
 
     function quitarPlugin(id, conEstado) {
-        return _obrar("quitar", id, ["--quitar", id, "--json", "--si"]
-                      .concat(conEstado ? ["--con-estado"] : []))
+        return _obrar("quitar", id, ["--remove", id, "--json", "--yes"]
+                      .concat(conEstado ? ["--with-state"] : []))
     }
 
     function comprobarNovedades() {
-        return _obrar("comprobar", "", ["--comprobar", "--json"])
+        return _obrar("comprobar", "", ["--check", "--json"])
     }
 
     property var _obra: ({ que: "", id: "", args: [] })
@@ -891,7 +891,7 @@ Singleton {
 
     property string _salidaTienda: ""
 
-    //  Lo que dice `--comprobar`: por id, si hay algo más nuevo publicado.
+    //  Lo que dice `--check`: por id, si hay algo más nuevo publicado.
     property var novedades: []
 
     function novedadDe(id) {

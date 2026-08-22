@@ -79,19 +79,19 @@ commit** — and installs that exact commit, so a branch moving while you read
 cannot change what lands. From the terminal:
 
 ```sh
-python3 tools/plugins.py --buscar          # what's published
-python3 tools/plugins.py --instalar <url> --commit <sha>
-python3 tools/plugins.py --comprobar       # what of yours has something newer
+python3 tools/plugins.py --search          # what's published
+python3 tools/plugins.py --install <url> --commit <sha>
+python3 tools/plugins.py --check       # what of yours has something newer
 ```
 
 ### Write one in a minute
 
 ```sh
-python3 tools/plugins.py --nuevo mi-plugin   # a plugin that already runs
-python3 tools/plugins.py --probar mi-plugin  # opens it alone, not in your bar
+python3 tools/plugins.py --new mi-plugin   # a plugin that already runs
+python3 tools/plugins.py --test mi-plugin  # opens it alone, not in your bar
 ```
 
-`--probar` matters more than it sounds: it runs the plugin in its own instance
+`--test` matters more than it sounds: it runs the plugin in its own instance
 with no bar, no services and no notifications, so an infinite loop takes down
 a test window instead of your desktop.
 
@@ -109,16 +109,16 @@ That works, and it is the point. k4 installs a skill for coding agents —
 - that this machine runs k4, and that everything in the bar is a plugin;
 - the shape of a plugin, with the whole starter file in front of them;
 - which permissions exist, and that using an undeclared one makes it refuse to load;
-- to test with `--probar` instead of restarting your bar;
+- to test with `--test` instead of restarting your bar;
 - to read `pluginStatus` when something does not show up.
 
 Without that, an agent asked for "a widget for my bar" starts by guessing.
-With it, it starts by running `--nuevo` and editing something that already
+With it, it starts by running `--new` and editing something that already
 works.
 
 ```sh
 python3 tools/agente.py             # where it is, and whether it's linked
-python3 tools/agente.py --instalar  # link it (./instalar does this for you)
+python3 tools/agente.py --install   # link it (./instalar does this for you)
 ```
 
 The skill is [`agentes/skills/k4/`](agentes/skills/k4/) — a page on writing a
@@ -256,7 +256,7 @@ Codex integration.
 | Option | Effect |
 |---|---|
 | `--seco` | Diagnose without changing anything |
-| `--si` | Do not ask for confirmation |
+| `--yes` | Do not ask for confirmation |
 | `--opcionales` | Install optional packages too |
 | `--sin-paquetes` | Skip package management |
 | `--sin-reiniciar` | Do not restart the running bar |

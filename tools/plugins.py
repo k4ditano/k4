@@ -800,7 +800,7 @@ def instalar(url, sin_preguntar=False, subcarpeta=None, commit=None):
                     print("nada instalado.")
                     return 1
             except EOFError:
-                print("sin terminal para preguntar; usa --si si estás seguro.",
+                print("sin terminal para preguntar; usa --yes si estás seguro.",
                       file=sys.stderr)
                 return 1
 
@@ -864,7 +864,7 @@ def quitar(ident, sin_preguntar=False, con_estado=False):
                 print("nada borrado.")
                 return 1
         except EOFError:
-            print("sin terminal para preguntar; usa --si.", file=sys.stderr)
+            print("sin terminal para preguntar; usa --yes.", file=sys.stderr)
             return 1
     shutil.rmtree(d)
     if con_estado:
@@ -999,9 +999,9 @@ def buscar(termino=None, url=None):
         sha = str(e.get("commit") or "")
         if sha:
             print(f"    commit {sha[:12]}")
-        orden = f"    instalar: tools/plugins.py --instalar {e.get('repo')}"
+        orden = f"    install: tools/plugins.py --install {e.get('repo')}"
         if e.get("carpeta"):
-            orden += f" --carpeta {e['carpeta']}"
+            orden += f" --folder {e['carpeta']}"
         #  La orden que se copia y se pega lleva el commit dentro. Si no, la
         #  gente instala la punta de la rama y el ancla no sirve de nada.
         if sha:
@@ -1227,7 +1227,7 @@ def comprobar(url=None):
 
     if novedades:
         print(f"\n{novedades} con novedad. Para traerla:"
-              " tools/plugins.py --actualizar <id> --commit <sha>")
+              " tools/plugins.py --update <id> --commit <sha>")
     return 0
 
 
@@ -1264,27 +1264,31 @@ def main():
     return 0
 
 
-AYUDA = """El catálogo de plugins de k4.
+AYUDA = """k4's plugin catalog.
 
-    tools/plugins.py                      valida el repo y los instalados
-    tools/plugins.py --nuevo <id>         crea uno que ya arranca
-    tools/plugins.py --probar <id>        lo abre aparte, sin tocar tu barra
-    tools/plugins.py --listar             emite el catálogo combinado (JSON)
-    tools/plugins.py --instalados         qué hay instalado de fuera
-    tools/plugins.py --instalar <url>     clona, valida, pregunta e instala
-    tools/plugins.py --actualizar <id>    reinstala desde su origen
-    tools/plugins.py --comprobar          qué instalado no es lo que dice el registro
-    tools/plugins.py --quitar <id>        desinstala
-    tools/plugins.py --buscar [texto]     qué hay publicado en el registro
+    tools/plugins.py                    validate the repo and what's installed
+    tools/plugins.py --new <id>         create one that already runs
+    tools/plugins.py --test <id>        open it on its own, without touching your bar
+    tools/plugins.py --list             emit the combined catalog (JSON)
+    tools/plugins.py --installed        what you have from outside
+    tools/plugins.py --install <url>    clone, validate, ask, install
+    tools/plugins.py --update <id>      reinstall from where it came
+    tools/plugins.py --check            what you have that the registry has moved past
+    tools/plugins.py --remove <id>      uninstall
+    tools/plugins.py --search [text]    what's published in the registry
+    tools/plugins.py --examine <url>    look at a plugin without installing it (JSON)
 
-    tools/plugins.py --examinar <url>     mira un plugin sin instalarlo (JSON)
+    --commit <sha>  install or update THAT commit, not the tip of the branch
+    --folder <dir>  when plugin.json is not at the repo root
+    --registry <url>  point at a registry other than the published one
+    --json          answer in JSON, for the bar
+    --yes           don't ask (for scripts)
+    --with-state    when removing, also delete what the plugin saved
+    --help          this
 
-    --commit <sha>  instalar o actualizar ESE commit, no la punta de la rama
-    --json        contestar en JSON, para la barra
-    --si          no preguntar (para guiones)
-    --con-estado  al quitar, borra también lo que el plugin guardó
-    --carpeta <n> al instalar, cuál del repo si hay varias
-    --registro <url>  otro registro que no sea el de la casa
+The Spanish flags this started with —--instalar, --probar, --nuevo…— still
+work and are not going away. The code speaks Spanish; the door doesn't have
+to.
 """
 
 
@@ -1316,7 +1320,7 @@ PLANTILLA_QML = """//  %(titulo)s
 //
 //  Para probarlo sin tocar tu barra:
 //
-//      tools/plugins.py --probar %(id)s
+//      tools/plugins.py --test %(id)s
 
 import QtQuick
 import K4 as K4
@@ -1367,13 +1371,13 @@ def nuevo(ident):
     (destino / (clase + "Plugin.qml")).write_text(PLANTILLA_QML % datos)
     print("Hecho: %s" % destino)
     print()
-    print("  tools/plugins.py --probar %s    lo abre sin tocar tu barra" % ident)
-    print("  tools/plugins.py                 lo valida")
+    print("  tools/plugins.py --test %s    opens it without touching your bar" % ident)
+    print("  tools/plugins.py                 validates it")
     print("  quickshell ipc -p shell.qml call k4 pluginEnable %s" % ident)
     return 0
 
 
-BANCO = """//  Banco de pruebas de un plugin. Lo genera `tools/plugins.py --probar`.
+BANCO = """//  Banco de pruebas de un plugin. Lo genera `tools/plugins.py --test`.
 //
 //  Carga UN plugin y nada más: ni barra, ni servicios, ni tus notificaciones.
 //  Si el plugin se cuelga, se cuelga esto y no tu escritorio.
@@ -1503,7 +1507,46 @@ def _valor(bandera):
     return None
 
 
+#  Las banderas se escriben en inglés, y las de antes siguen valiendo.
+#
+#  El código de este proyecto habla español y va a seguir hablándolo, pero una
+#  bandera de línea de órdenes no es código: es la puerta. Quien llega a
+#  instalar un plugin puede no saber qué es «probar», y un ecosistema al que
+#  solo entra quien sepa español no es un ecosistema — el mismo motivo por el
+#  que el formulario de publicar está en inglés.
+#
+#  Las españolas no se retiran ni se avisa de que están viejas: están en el
+#  README, en guiones de gente y en los dedos de quien lleva meses usándolas.
+#  Cuestan un diccionario.
+EN_ESPANOL = {
+    "--install": "--instalar",
+    "--test": "--probar",
+    "--new": "--nuevo",
+    "--check": "--comprobar",
+    "--search": "--buscar",
+    "--remove": "--quitar",
+    "--update": "--actualizar",
+    "--examine": "--examinar",
+    "--list": "--listar",
+    "--installed": "--instalados",
+    "--reload": "--recargar",
+    "--yes": "--si",
+    "--folder": "--carpeta",
+    "--registry": "--registro",
+    "--with-state": "--con-estado",
+}
+
+
+def traducir_banderas(argv):
+    """Las banderas en inglés, pasadas a las de dentro."""
+    return [EN_ESPANOL.get(a, a) for a in argv]
+
+
 if __name__ == "__main__":
+    #  Antes de mirar nada: así el resto del guion solo conoce un juego de
+    #  nombres y no hay que acordarse de aceptar los dos en cada `if`.
+    sys.argv = traducir_banderas(sys.argv)
+
     #  `--help` también, aunque todo esto esté en español: es lo que teclea
     #  cualquiera por reflejo, y sin ello NO fallaba —se caía a validar el
     #  catálogo entero, que tarda y no es lo que le habías pedido.
