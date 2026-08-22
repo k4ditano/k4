@@ -25,6 +25,29 @@ permissions:
   issues: write
 
 jobs:
+  #  Las etiquetas tienen que EXISTIR antes de que nadie las use: el primer
+  #  envío de verdad falló con «'envio' not found», porque el formulario las
+  #  pide y nadie las había creado. Esto las crea si faltan y no toca las que
+  #  ya estén, así que se puede quedar corriendo siempre.
+  etiquetas:
+    if: contains(github.event.issue.labels.*.name, 'envio')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Que existan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          crear() {
+            gh label create "$1" --repo "$REPO" --color "$2" \
+              --description "$3" 2>/dev/null || true
+          }
+          crear envio                 1D76DB "Un plugin enviado para el registro"
+          crear validado              0E8A16 "El robot lo ha validado en ese commit"
+          crear necesita-arreglos     D93F0B "Algo que arreglar antes de publicarlo"
+          crear revision-de-seguridad FBCA04 "Pide permisos o saltó una regla: lo mira una persona"
+          crear publicado             5319E7 "Publicado en el registro (la pone un mantenedor)"
+
   revisar:
     if: >
       contains(github.event.issue.labels.*.name, 'envio')
@@ -124,5 +147,5 @@ jobs:
           NUMERO: ${{ github.event.issue.number }}
         run: |
           gh issue comment "$NUMERO" --body \
-            'Publicado. Ya sale en \`tools/plugins.py --buscar\` y en la tienda de la barra.'
+            'Publicado. Ya sale en `tools/plugins.py --buscar` y en la tienda de la barra.'
           gh issue close "$NUMERO"
