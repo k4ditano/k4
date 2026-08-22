@@ -56,6 +56,13 @@
    "autor": "k4",
    "repo": "https://github.com/k4ditano/senda",
    "commit": "f5b8ebf7f60ae905695bc0cdf806b2fe533e342b"
+  },
+  {
+   "id": "pinza",
+   "title": "Pinza",
+   "description": "Abre K4 Pinza, el editor de pixel art, desde la island",
+   "repo": "https://github.com/k4ditano/k4-plugin-pinza",
+   "commit": "77cdc91026ce358fa3ab3a46713782e57c8e741f"
   }
  ]
 }
