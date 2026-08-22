@@ -3,5 +3,6 @@
 #  resolución implícita de hermanos no existe.
 #  `python3 tools/plugins.py` comprueba que esté completo.
 
-SettingsPlugin 1.0 SettingsPlugin.qml
-SettingsView 1.0 SettingsView.qml
+TiendaPlugin 1.0 TiendaPlugin.qml
+TiendaVista 1.0 TiendaVista.qml
+BotonTienda 1.0 BotonTienda.qml

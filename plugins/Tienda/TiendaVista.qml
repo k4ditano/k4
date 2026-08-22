@@ -1,13 +1,12 @@
 //  La tienda de plugins: lo que tienes y lo que hay publicado.
 //
-//  Hasta ahora instalar un plugin era exclusivamente de terminal, y en la
-//  barra los permisos aparecían concatenados a la descripción en nueve píxeles
+//  Instalar un plugin era exclusivamente de terminal, y en la barra los
+//  permisos aparecían concatenados a la descripción en nueve píxeles
 //  truncados. Eso no es enseñar unos permisos: es tenerlos escritos.
 //
-//  Lo que hace esta vista, y por qué está separada de Ajustes: aquí hay sitio
-//  para decir de dónde viene un plugin, en qué commit está, qué pide y qué
-//  significa cada cosa que pide. En una fila de opciones no cabe, y por eso
-//  antes no estaba.
+//  Aquí hay sitio para decir de dónde viene un plugin, en qué commit está, qué
+//  pide y qué significa cada cosa que pide. En una fila de Ajustes no cabía, y
+//  por eso antes no estaba.
 //
 //  Todo pasa por `tools/plugins.py`, el mismo que usa la terminal. No hay un
 //  camino «de la barra»: serían dos validaciones distintas, y la menos usada
@@ -22,6 +21,10 @@ import "../../services"
 
 Item {
     id: tienda
+
+    //  El host inyecta el plugin al crear la vista; el estado que tiene que
+    //  sobrevivir a cerrar la island vive ahí, no aquí.
+    required property var plugin
 
     //  Qué se está mirando: 0 lo instalado, 1 lo publicado.
     property int pestana: 0

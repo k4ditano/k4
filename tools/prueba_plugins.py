@@ -551,20 +551,20 @@ def prueba_json_examinar_avisa_de_que_reemplaza():
 
 
 def prueba_json_buscar_marca_lo_que_tienes():
-    repo, viejo, nuevo = repo_con_dos_commits("tienda")
+    repo, viejo, nuevo = repo_con_dos_commits("de-mentira-tienda")
     reg = BORRADOR / "registro-prueba.json"
     reg.write_text(json.dumps({"plugins": [
-        {"id": "tienda", "title": "T", "description": "d",
+        {"id": "de-mentira-tienda", "title": "T", "description": "d",
          "repo": "https://ejemplo/t", "commit": viejo},
         {"id": "otro-que-no-tengo", "title": "O", "description": "d",
          "repo": "https://ejemplo/o", "commit": nuevo},
     ]}))
-    with DestinoAparte("tienda"):
+    with DestinoAparte("de-mentira-tienda"):
         plugins.instalar(str(repo), True, None, viejo)
         d = dice(plugins.json_buscar, reg.as_uri())
         por_id = {p["id"]: p for p in d["plugins"]}
-        igual("sabe cuál tienes", por_id["tienda"]["instalado"], True)
-        igual("y que está al día", por_id["tienda"]["alDia"], True)
+        igual("sabe cuál tienes", por_id["de-mentira-tienda"]["instalado"], True)
+        igual("y que está al día", por_id["de-mentira-tienda"]["alDia"], True)
         igual("y cuál no tienes",
               por_id["otro-que-no-tengo"]["instalado"], False)
 
