@@ -19,6 +19,15 @@ integration, starts the bar, and keeps a checkout at
 `~/.config/quickshell/k4`. Run `./instalar --seco` first if you would rather
 see what it would do.
 
+> ### Want your own widget? Ask your agent.
+>
+> k4 installs a skill for coding agents, so Claude Code or Codex already know
+> what a k4 plugin looks like, how to test one without restarting your bar,
+> and how to publish it. Say *"make me a k4 plugin that shows the train times
+> to work"* and it starts from something that already runs.
+>
+> [How that works ↓](#or-just-ask-your-agent-for-one) · [Publishing yours ↓](#publish-it)
+
 ---
 
 ## What you get
@@ -89,28 +98,58 @@ a test window instead of your desktop.
 Then `quickshell ipc -p shell.qml call k4 pluginReload mi-plugin` swaps the
 running code for what is on disk, without restarting anything.
 
-### Or have an agent write it
+### Or just ask your agent for one
 
-k4 ships a skill for coding agents. `./instalar` links it into
-`~/.claude/skills/` and `~/.config/agents/skills/`, so Claude Code, Codex and
-anything else that reads those will already know they are on a k4 machine,
-what the API looks like, which permissions exist and how to test a plugin
-without restarting your bar.
+> **"Make me a k4 plugin that shows the train times to work."**
+
+That works, and it is the point. k4 installs a skill for coding agents —
+`./instalar` links it into `~/.claude/skills/` and `~/.config/agents/skills/`
+— so Claude Code, Codex and anything else that reads those already know:
+
+- that this machine runs k4, and that everything in the bar is a plugin;
+- the shape of a plugin, with the whole starter file in front of them;
+- which permissions exist, and that using an undeclared one makes it refuse to load;
+- to test with `--probar` instead of restarting your bar;
+- to read `pluginStatus` when something does not show up.
+
+Without that, an agent asked for "a widget for my bar" starts by guessing.
+With it, it starts by running `--nuevo` and editing something that already
+works.
 
 ```sh
-python3 tools/agente.py            # where it is, and whether it's linked
-python3 tools/agente.py --instalar # link it
+python3 tools/agente.py             # where it is, and whether it's linked
+python3 tools/agente.py --instalar  # link it (./instalar does this for you)
 ```
 
-Then just ask: *"make me a k4 plugin that shows the train times to work."*
+The skill is [`agentes/skills/k4/`](agentes/skills/k4/) — a page on writing a
+plugin and a page on driving the bar. It is linked, not copied, so it stays
+current when k4 updates.
 
 ### Publish it
 
-Open the **Publish a plugin** issue with your repository and a full commit
-SHA. A bot fetches that exact commit, validates it **without running any of
-it**, and comments with what the manifest declares, which permissions it asks
-for, and anything that tripped a named rule. A maintainer signs off; the bot
-never publishes on its own.
+**1.** Push it to a public repository with a license, and check it passes:
+
+```sh
+python3 tools/plugins.py     # the permissions you declare are the ones you use
+git rev-parse HEAD           # the SHA you want published
+```
+
+**2.** Open the [**Publish a plugin**](../../issues/new?template=publicar-plugin.yml)
+issue with the repository URL and that full 40-character SHA.
+
+**3.** A bot fetches **that exact commit**, validates it *without running any
+of it*, and comments with what the manifest declares, which permissions it
+asks for, and anything that tripped a named rule. Fix and edit the issue —
+it re-reviews itself.
+
+**4.** A maintainer applies the `publicado` label and it lands in the
+registry. The bot never publishes on its own, and even a maintainer's label
+will not publish past a blocking rule.
+
+You publish a **commit, not a branch** — a branch moves after it is reviewed,
+and then what people install is not what was looked at. New version, new
+submission with the new SHA. That is a minute of work and it is what makes
+the review mean anything.
 
 ### On permissions, honestly
 

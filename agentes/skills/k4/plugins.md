@@ -21,6 +21,67 @@ python3 tools/plugins.py --probar mi-plugin     # opens it in its own instance
 python3 tools/plugins.py                        # validates it
 ```
 
+## What `--nuevo` gives you
+
+This is the whole thing it writes, and it is worth reading before changing
+anything — it is the shape every k4 plugin has.
+
+`plugin.json`:
+
+```json
+{
+  "id": "demo",
+  "entry": "DemoPlugin.qml",
+  "version": "0.1.0",
+  "title": "Demo",
+  "description": "Un plugin recién nacido",
+  "host": ">=1.1.0",
+  "permisos": [],
+  "superficies": ["island"]
+}
+```
+
+`DemoPlugin.qml`:
+
+```qml
+import QtQuick
+import K4 as K4
+
+K4.Plugin {
+    id: raiz
+
+    name: "demo"
+    title: "Demo"
+
+    //  How much room it asks for in the island.
+    islandWidth: 320
+    islandHeight: 120
+
+    //  The host opens and closes through these.
+    property bool abierto: false
+    active: abierto
+    function toggle() { abierto = !abierto }
+    //  Without close(), ESC does nothing: the host closes by calling it.
+    function close() { abierto = false }
+
+    view: Component {
+        Item {
+            K4.Etiqueta {
+                anchors.centerIn: parent
+                text: "Hola desde Demo"
+                font.pixelSize: 16
+            }
+        }
+    }
+}
+```
+
+Three things that are easy to get wrong and cost an hour each:
+
+- **The plugin object is created once and stays alive; the *view* comes and goes.** Keep state on the plugin, not in the view, or it resets every time the user closes it.
+- **`close()` is not optional.** The host closes a plugin by calling it. Without it, ESC does nothing and the user has to click away.
+- **Use `K4.Etiqueta`, not a bare `Text`.** It carries the theme, and it already sets `textFormat` — see the trap at the bottom of this file.
+
 ## The two files
 
 `plugin.json` — the manifest:

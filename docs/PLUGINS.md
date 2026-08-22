@@ -13,6 +13,13 @@ quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4 pluginEnable hola
 quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4.hola toggle
 ```
 
+> **You may not need to read this.** k4 installs a skill for coding agents
+> (`agentes/skills/k4/`, linked by `./instalar`), so Claude Code, Codex and
+> anything else that reads `~/.claude/skills/` or `~/.config/agents/skills/`
+> already know everything on this page. Asking for the plugin you want is a
+> legitimate way to get one — this guide is here for when you want to know
+> what it is doing, or when you are doing it yourself.
+
 ## 0 · Installing one that already exists
 
 To see what is published in the public registry:
