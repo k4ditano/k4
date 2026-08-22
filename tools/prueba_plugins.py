@@ -584,6 +584,25 @@ def prueba_json_buscar_descarta_lo_roto():
         igual("y dice qué descartó", d["descartadas"], ["malo"])
 
 
+def prueba_superficies_llegan_al_resultado():
+    #  Se validaban y se tiraban: el manifiesto declaraba `island` y la tienda
+    #  recibía una lista vacía. Toda la gracia de las superficies es que
+    #  alguien las VEA antes de encender el plugin, así que si no viajan, no
+    #  sirven de nada.
+    d = carpeta("con-superficie",
+                dict(manifiesto_base("con-superficie"), superficies=["island"]),
+                {"Plugin.qml": "import QtQuick\nItem {}\n"})
+    v = plugins.validar_carpeta(d, set(), HOST)
+    igual("carga", v["cargable"], True)
+    igual("y las superficies llegan", v.get("superficies"), ["island"])
+
+    #  Sin declararlas, no se inventa ninguna.
+    d2 = carpeta("sin-superficie", manifiesto_base("sin-superficie"),
+                 {"Plugin.qml": "import QtQuick\nItem {}\n"})
+    v2 = plugins.validar_carpeta(d2, set(), HOST)
+    igual("y sin declararlas no aparecen", v2.get("superficies"), None)
+
+
 # ── las reglas con nombre ────────────────────────────────────────────
 
 def con_ficheros(nombre, ficheros):

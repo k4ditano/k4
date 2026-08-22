@@ -444,6 +444,11 @@ def validar_carpeta(d, ids_repo, version_host):
     sup_declaradas = m.get("superficies")
     if sup_declaradas is not None:
         sup_declaradas = set(sup_declaradas or [])
+        #  Y se pasan al resultado, que si no se validan y se tiran: la tienda
+        #  y el informe de un envío preguntan por ellas y les llegaba una
+        #  lista vacía aunque el manifiesto las declarase. Toda la gracia de
+        #  las superficies es que alguien las VEA antes de encender el plugin.
+        item["superficies"] = sorted(sup_declaradas)
         raras = sup_declaradas - set(SUPERFICIES)
         if raras:
             return mal("superficies-raras",
