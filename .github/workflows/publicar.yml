@@ -135,8 +135,16 @@ jobs:
         env:
           NUMERO: ${{ github.event.issue.number }}
         run: |
-          git config user.name "k4"
-          git config user.email "k4@users.noreply.github.com"
+          #  La identidad del bot de Actions, y NO una inventada.
+          #
+          #  Puse `k4@users.noreply.github.com` pensando que era un correo sin
+          #  dueño. GitHub mapea `<usuario>@users.noreply.github.com` a la
+          #  cuenta de ese usuario, y `k4` es una persona real: le atribuí un
+          #  commit y apareció como colaborador de un repo que no ha tocado en
+          #  su vida. Un correo `noreply` no es un correo libre.
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
           git add plugins/registro.json
           git commit -m "Publicar un plugin (#$NUMERO)" || exit 0
           git push
