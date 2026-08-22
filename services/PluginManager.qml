@@ -770,17 +770,44 @@ Singleton {
     }
 
     property var _obra: ({ que: "", id: "", args: [] })
+    property var _cola: []
     property string _queja: ""
 
+    //  Se ENCOLA, no se descarta. Descartar parecía razonable —una obra cada
+    //  vez— hasta que se vio en pantalla: abrir la tienda lanza la comprobación
+    //  de novedades, y la búsqueda en el registro que viene medio segundo
+    //  después se perdía. La pestaña «Descubrir» se quedaba vacía para siempre,
+    //  sin error ni rueda: no había fallado nada, es que nadie la había pedido.
+    //
+    //  Una misma clase de obra no se repite en la cola: pulsar «refrescar» tres
+    //  veces son tres iguales, y con la primera basta.
     function _obrar(que, id, args) {
-        if (ocupado)
-            return false
-        _queja = ""
-        _obra = { que: que, id: id, args: args }
-        ocupado = true
-        ocupadaEn = id
-        tienda.running = true
+        const tarea = { que: que, id: id, args: args }
+        if (ocupado) {
+            for (let i = 0; i < _cola.length; ++i)
+                if (_cola[i].que === que && _cola[i].id === id)
+                    return true
+            _cola = _cola.concat([tarea])
+            return true
+        }
+        _arrancarObra(tarea)
         return true
+    }
+
+    function _arrancarObra(tarea) {
+        _queja = ""
+        _obra = tarea
+        ocupado = true
+        ocupadaEn = tarea.id
+        tienda.running = true
+    }
+
+    function _siguienteObra() {
+        if (ocupado || _cola.length === 0)
+            return
+        const t = _cola[0]
+        _cola = _cola.slice(1)
+        _arrancarObra(t)
     }
 
     function _recibirTienda(texto) {
@@ -818,6 +845,9 @@ Singleton {
             manager._salidaTienda = ""
             manager.ocupado = false
             manager.ocupadaEn = ""
+            //  Lo siguiente de la cola arranca pase lo que pase con esta: que
+            //  una falle no puede dejar plantadas a las que venían detrás.
+            Qt.callLater(manager._siguienteObra)
 
             //  Un guion que peta sin decir nada deja al usuario mirando una
             //  rueda para siempre. Si no hay veredicto, el motivo es lo que
