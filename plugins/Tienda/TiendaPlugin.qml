@@ -28,7 +28,10 @@ K4Plugin {
     //  procedencia, y en un panel estrecho eso se convierte en una columna de
     //  texto cortado. Es la misma razón por la que no cabía en Ajustes.
     islandWidth: 620
-    islandHeight: 640
+    //  700 y no 640: con 640 la quinta tarjeta quedaba cortada por abajo. Con
+    //  más plugins la lista hará scroll de todos modos —para eso está— pero
+    //  que el caso normal de hoy entre entero se nota.
+    islandHeight: 700
 
     function toggle() { abierto = !abierto }
     //  Sin `close()` el ESC no cierra: el host cierra llamándola.
