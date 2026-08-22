@@ -52,5 +52,13 @@ jobs:
       - name: Las pruebas del instalador de plugins
         run: python3 tools/prueba_plugins.py
 
+      #  Estas dos guardan agujeros que ya existieron, y por eso están aquí:
+      #  una prueba de regresión que no corre sola es una nota, no una prueba.
+      - name: Ninguna ruta ajena sale a la red ni escribe fuera de su carpeta
+        run: python3 tools/prueba_rutas.py
+
+      - name: Ningún texto de usuario se interpreta como marcado
+        run: python3 tools/prueba_texto.py
+
       - name: Sin restos de conflictos ni espacios colgando
         run: git diff --check
