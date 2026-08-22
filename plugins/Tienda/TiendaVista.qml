@@ -19,7 +19,11 @@ import K4 as K4
 import "../../core"
 import "../../services"
 
-Item {
+//  `FadeIn` y no `Item`: es lo que usan las demás vistas y es lo que hace que
+//  aparezca como aparecen ellas. Salió de vivir dentro de Ajustes, donde el
+//  padre ponía la aparición, los márgenes y la cabecera; al sacarla a
+//  aplicación se quedó sin las tres y pegada a los bordes.
+FadeIn {
     id: tienda
 
     //  El host inyecta el plugin al crear la vista; el estado que tiene que
@@ -97,7 +101,48 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
+        //  Los mismos de Ajustes y del resto: 18 a los lados, 12 arriba y 22
+        //  abajo, que lo último de la columna no quede pegado al borde.
+        anchors.leftMargin: 18
+        anchors.rightMargin: 18
+        anchors.topMargin: 12
+        anchors.bottomMargin: 22
         spacing: 10
+
+        //  ── cabecera ─────────────────────────────────────────────────
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 24
+            spacing: 9
+
+            IconGlyph {
+                text: String.fromCodePoint(0xF0431)
+                color: Theme.muted
+                font.pixelSize: 16
+                Layout.alignment: Qt.AlignVCenter
+            }
+
+            IslandLabel {
+                text: Idioma.t("Plugins")
+                textFormat: Text.PlainText
+                font.pixelSize: 15
+                font.weight: Font.DemiBold
+                Layout.alignment: Qt.AlignVCenter
+            }
+
+            Item { Layout.fillWidth: true }
+
+            //  Cerrar. El ESC también cierra —el host llama a `close()`— pero
+            //  un panel sin botón de cerrar obliga a saberlo, y eso no se
+            //  supone: el resto de aplicaciones lo tienen.
+            MediaButton {
+                glyph: Theme.ico.close
+                glyphSize: 15
+                glyphColor: Theme.muted
+                onActivated: tienda.plugin.close()
+                Layout.alignment: Qt.AlignVCenter
+            }
+        }
 
         //  ── las dos pestañas ─────────────────────────────────────────
         RowLayout {
