@@ -76,13 +76,15 @@ K4.Plugin {
 }
 ```
 
-Five things that are easy to get wrong and cost an hour each:
+Six things that are easy to get wrong and cost an hour each:
 
 - **The plugin object is created once and stays alive; the *view* comes and goes.** Keep state on the plugin, not in the view, or it resets every time the user closes it.
 - **`close()` is not optional.** The host closes a plugin by calling it. Without it, ESC does nothing and the user has to click away.
 - **Use `K4.Etiqueta`, not a bare `Text`.** It carries the theme, and it already sets `textFormat` — see the trap at the bottom of this file.
 - **A separate view file needs its plugin handed to it, by the plugin.** Write `view: Component { MiVista { plugin: raiz } }`. The host injects nothing. Miss it and the view starts with "Required property plugin was not initialized" and renders blank. The generated template hides this because its view is inline.
 - **Declare `K4.Ipc`, `K4.Process` and timers as plain children, never as named properties.** `services` is `K4.Plugin`'s default property, and it is where the manager looks for IpcHandlers to switch off when it tears a plugin down. Tucked inside `property K4.Ipc ordenes: ...` it never finds them, so hot-reloading leaves the target held by the corpse: the new instance registers in vain ("another handler is registered") and IPC answers "Function not found" from the dead one. Restarting the bar hides it, which is what makes it hard to see.
+
+- **A panel that opens, gets read and gets closed needs `grabKeyboard`.** Without it the layer only receives keys if the user *clicks* it, and nobody clicks a panel opened from the app centre, the launcher or a shortcut — so ESC never arrives. The cruel part: it appears to work if you happened to hover it first, so testing by hand says it is fine. `api/K4/Plugin.qml` documents this at length under `tecladoOpcional`; read it before choosing.
 
 And one that is worse than an hour: **never run a probe that can block.** A `Process` a plugin fires on a timer will pile up if the command hangs — in testing, a probe that talked to another app over IPC left ten stuck processes, one every five seconds, in a live bar. Give any probe a watchdog timer that stops it, and prefer a command that cannot wait on anything.
 

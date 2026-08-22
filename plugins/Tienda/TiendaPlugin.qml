@@ -24,6 +24,19 @@ K4Plugin {
 
     property bool abierto: false
 
+    //  El teclado, mientras esté abierta.
+    //
+    //  Sin esto no llega ni una tecla: la capa solo recibe teclas si la
+    //  PINCHAS, y a esto se llega desde el centro de aplicaciones o por IPC,
+    //  donde nadie la pincha. El ESC no cerraba, y encima parecía funcionar si
+    //  antes habías pasado el ratón por encima — que es la peor forma de estar
+    //  roto, porque probándolo a mano sale bien.
+    //
+    //  Es lo mismo que declaran Ajustes, Portapapeles y Sistema, y por la
+    //  misma razón: esto se abre, se mira y se cierra. Está escrito en
+    //  `tecladoOpcional`, en api/K4/Plugin.qml, y aun así me lo salté.
+    grabKeyboard: abierto
+
     //  Grande a propósito: se listan plugins con descripción, permisos y
     //  procedencia, y en un panel estrecho eso se convierte en una columna de
     //  texto cortado. Es la misma razón por la que no cabía en Ajustes.
