@@ -103,14 +103,14 @@ def prueba_sin_manifiesto():
     d = carpeta("roto")
     v = plugins.validar_carpeta(d, set(), HOST)
     igual("sin plugin.json no carga", v["cargable"], False)
-    contiene("y lo dice", v["motivo"], "plugin.json")
+    contiene("y lo dice", v["dice"], "plugin.json")
 
 
 def prueba_manifiesto_ilegible():
     d = carpeta("basura", ficheros={"plugin.json": "{esto no es json"})
     v = plugins.validar_carpeta(d, set(), HOST)
     igual("json roto no carga", v["cargable"], False)
-    contiene("con el motivo", v["motivo"], "ilegible")
+    contiene("con el motivo", v["dice"], "ilegible")
 
 
 def prueba_id_invalido():
@@ -125,7 +125,7 @@ def prueba_id_no_coincide_con_carpeta():
                 {"Plugin.qml": "Item {}\n"})
     v = plugins.validar_carpeta(d, set(), HOST)
     igual("id distinto de la carpeta no carga", v["cargable"], False)
-    contiene("y nombra a los dos", v["motivo"], "otra-cosa")
+    contiene("y nombra a los dos", v["dice"], "otra-cosa")
 
 
 def prueba_id_del_repo_gana():
@@ -162,7 +162,7 @@ def prueba_permiso_desconocido():
                 {"Plugin.qml": "Item {}\n"})
     v = plugins.validar_carpeta(d, set(), HOST)
     igual("un permiso inventado no carga", v["cargable"], False)
-    contiene("y se nombra", v["motivo"], "superpoderes")
+    contiene("y se nombra", v["dice"], "superpoderes")
 
 
 def prueba_usa_sin_declarar():
@@ -170,7 +170,12 @@ def prueba_usa_sin_declarar():
                 {"Plugin.qml": "Item { K4.Process { command: [\"ls\"] } }\n"})
     v = plugins.validar_carpeta(d, set(), HOST)
     igual("usar K4.Process sin declararlo no carga", v["cargable"], False)
-    contiene("y el motivo dice cuál", v["motivo"], "procesos")
+    #  El motivo es un código, para que la barra escriba la frase en el
+    #  idioma del usuario; el permiso que falta va en el detalle, y la frase
+    #  en español en `dice`, que es lo que lee quien está en una terminal.
+    igual("con su código", v["motivo"], "sin-declarar")
+    contiene("y el detalle dice cuál", v["detalle"], "procesos")
+    contiene("y la frase sigue estando", v["dice"], "usa sin declarar")
 
 
 def prueba_usa_declarado():
@@ -196,7 +201,7 @@ def prueba_huella_exige_permiso():
     v = plugins.validar_carpeta(d, set(), HOST)
     igual("nombrar K4.Huella sin datos-personales no carga",
           v["cargable"], False)
-    contiene("y el motivo lo dice", v["motivo"], "datos-personales")
+    contiene("y el motivo lo dice", v["dice"], "datos-personales")
 
 
 def prueba_portapapeles_delata_al_leer():
@@ -205,7 +210,7 @@ def prueba_portapapeles_delata_al_leer():
                  "Item { property var h: K4.Portapapeles.entradas }\n"})
     v = plugins.validar_carpeta(d, set(), HOST)
     igual("solo LEER el portapapeles ya exige permiso", v["cargable"], False)
-    contiene("con su nombre", v["motivo"], "portapapeles")
+    contiene("con su nombre", v["dice"], "portapapeles")
 
 
 def prueba_la_vista_tambien_se_examina():
@@ -240,7 +245,7 @@ def prueba_icono_pequeno():
                 {"Plugin.qml": "Item {}\n", "i.png": png(32, 32)})
     v = plugins.validar_carpeta(d, set(), HOST)
     igual("un PNG de 32px no llega al mínimo", v["cargable"], False)
-    contiene("y el motivo lo explica", v["motivo"], "32x32")
+    contiene("y el motivo lo explica", v["dice"], "32x32")
 
 
 def prueba_icono_decente():
@@ -530,7 +535,10 @@ def prueba_json_examinar_dice_por_que_no():
     with DestinoAparte("examen-malo"):
         d = dice(plugins.json_examinar, str(repo), None, "0" * 40)
         igual("no cuela", d["ok"], False)
-        contiene("y explica cuál falta", d["motivo"], "no encuentro el commit")
+        #  Un código, no una frase: la frase la escribe la barra en el idioma
+        #  del usuario. Ver `Idioma.porque()`.
+        igual("y dice cuál es el problema", d["motivo"], "sin-commit")
+        contiene("con el commit en el detalle", d["detalle"], "000000000000")
 
 
 def prueba_json_examinar_avisa_de_que_reemplaza():

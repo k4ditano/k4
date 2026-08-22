@@ -194,6 +194,9 @@ def ficheros():
 #  `Idioma.t("…")` o `Idioma.t('…')`, en cualquier sitio del fichero. Sin
 #  escapes dentro: una cadena de interfaz con comillas escapadas es rarísima y
 #  aceptarlas obligaría a un analizador de verdad para ganar muy poco.
+#  `"clave": "valor"` de un mapa de QML.
+RE_PAR = re.compile(r'"([^"\n]+)"\s*:\s*"([^"\n]*)"')
+
 RE_ENVUELTA = re.compile(r'Idioma\.t\(\s*(["\'])((?:[^"\'\\\n]|\\.)*?)\1')
 
 
@@ -228,6 +231,20 @@ def recolectar():
         #  envolverla, es que quiere que se traduzca.
         for m in RE_ENVUELTA.finditer(texto):
             encontradas.setdefault(m.group(2), set()).add(rel)
+
+        #  Y la tabla de motivos, que es un caso aparte y hay que nombrarlo.
+        #
+        #  `Idioma.porque()` traduce en tiempo de ejecución —`t(motivos[c])`—
+        #  así que sus frases SÍ hay que traducirlas, pero no están envueltas:
+        #  son los valores de un mapa `código: frase`. Sin esto, el contador
+        #  volvería a decir 100 % con cincuenta frases sin traducir dentro, que
+        #  es exactamente el fallo que tenía antes.
+        if rel.endswith("services/Idioma.qml"):
+            dentro = texto.split("property var motivos")
+            if len(dentro) > 1:
+                for m in RE_PAR.finditer(dentro[1].split("})")[0]):
+                    if traducible(m.group(2)):
+                        encontradas.setdefault(m.group(2), set()).add(rel)
     return encontradas
 
 

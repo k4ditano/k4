@@ -1176,7 +1176,8 @@ Singleton {
     //  que quedó pendiente, o un fallo que la cancela.
     function recibirMedida(d) {
         if (!d || !d.ok || audioPendiente.length === 0) {
-            fallo(d && d.motivo ? d.motivo : "no-se-puede-medir")
+            fallo(d && d.motivo ? d.motivo : "no-se-puede-medir",
+                  (d && d.detalle) || "")
             audioPendiente = ""
             extraPendiente = null
             return
@@ -1414,7 +1415,7 @@ Singleton {
             if (editor.estadoVoz !== "abriendo")
                 return
             editor.cancelarVoz()
-            editor.fallo("el micrófono no llegó a arrancar")
+            editor.fallo("sin-microfono")
         }
     }
 
@@ -2790,7 +2791,7 @@ Singleton {
     signal planListo()
     signal renderListo(string ruta)
     signal miniaturaGuardada(string ruta)
-    signal fallo(string motivo)
+    signal fallo(string motivo, string detalle)
 
     //  La cámara que se grabó a la vez, si la hubo.
     //
@@ -2953,9 +2954,9 @@ Singleton {
             editor.planAlAbrir = editor.planSerializado()
         }
 
-        onRenombrarFallo: function (motivo) {
+        onRenombrarFallo: function (motivo, detalle) {
             editor.renombrando = false
-            editor.fallo(motivo)
+            editor.fallo(motivo, detalle)
         }
 
         //  Reasignando el objeto entero y no escribiendo dentro: QML solo emite
@@ -2991,9 +2992,9 @@ Singleton {
             editor.ondasDur = n
         }
 
-        onAbrirFallo: function (motivo) {
+        onAbrirFallo: function (motivo, detalle) {
             editor.estado = ""
-            editor.fallo(motivo)
+            editor.fallo(motivo, detalle)
         }
 
         //  Sin rastro no hay zoom que proponer, pero sí vídeo que editar: se
@@ -3003,7 +3004,9 @@ Singleton {
         //  El plan lo ha cambiado python, así que hay que releerlo: lo que hay
         //  en memoria se ha quedado viejo.
         onCongelado: editor.abrir(editor.rutaVideo, "")
-        onCongelarFallo: function (motivo) { editor.fallo(motivo) }
+        onCongelarFallo: function (motivo, detalle) {
+            editor.fallo(motivo, detalle)
+        }
 
         onSilenciosListos: function (tramos) { editor.aplicarSilencios(tramos) }
         onSilenciosFallo: editor.estadoSilencios = "fallo"
@@ -3027,7 +3030,8 @@ Singleton {
 
         onMiniaturaLista: function (d) {
             if (!d || !d.ok) {
-                editor.fallo(d && d.motivo ? d.motivo : "miniatura")
+                editor.fallo(d && d.motivo ? d.motivo : "miniatura",
+                             (d && d.detalle) || "")
                 return
             }
             editor.miniaturaGuardada(d.ruta)
@@ -3055,13 +3059,13 @@ Singleton {
             editor.renderListo(ruta)
         }
 
-        onRenderFallo: function (motivo) {
+        onRenderFallo: function (motivo, detalle) {
             //  Un render descartado a medias puede seguir muriéndose por
             //  detrás; su despedida ya no le importa a nadie.
             if (editor.estado !== "renderizando")
                 return
             editor.estado = ""
-            editor.fallo(motivo)
+            editor.fallo(motivo, detalle)
         }
     }
 

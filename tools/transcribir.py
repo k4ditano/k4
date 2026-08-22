@@ -147,7 +147,7 @@ def orden_hacer(args):
     #  un directorio a cuenta de lo que dijera el fichero.
     if re.match(r"^[A-Za-z][A-Za-z0-9+.-]*://", args.video or "") \
             or not os.path.exists(args.video):
-        salir(ok=False, motivo="el vídeo no es un fichero local")
+        salir(ok=False, motivo="no-es-local", detalle=str(args.video))
 
     carpeta = args.salida or os.path.dirname(os.path.abspath(args.video))
     os.makedirs(carpeta, exist_ok=True)

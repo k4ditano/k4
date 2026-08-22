@@ -421,9 +421,14 @@ K4Plugin {
             marcharse.restart()
         }
 
-        function onVideoFallido(motivo) {
+        function onVideoFallido(motivo, detalle) {
+            //  `porque()` y no el motivo pelado: los guiones devuelven un
+            //  código en español y esto es una notificación que lee el
+            //  usuario. Con la barra en inglés salía el título traducido y el
+            //  porqué debajo en español.
             K4.Sistema.lanzar(["notify-send", "-a", "k4", "-u", "critical",
-                                     Idioma.t("No se pudo grabar"), motivo])
+                                     Idioma.t("No se pudo grabar"),
+                                     Idioma.porque(motivo, detalle)])
         }
 
         function onFotoLista(ruta) {
@@ -432,11 +437,12 @@ K4Plugin {
             marcharse.restart()
         }
 
-        function onFotoFallida(motivo) {
+        function onFotoFallida(motivo, detalle) {
             // Un fallo de verdad sí merece aviso del sistema: puede pasar con
             // la island cerrada y sin nadie mirando la barra.
             K4.Sistema.lanzar(["notify-send", "-a", "k4", "-u", "critical",
-                                     Idioma.t("No se pudo capturar"), motivo])
+                                     Idioma.t("No se pudo capturar"),
+                                     Idioma.porque(motivo, detalle)])
         }
     }
 
@@ -464,9 +470,10 @@ K4Plugin {
                                      ruta.split("/").pop()])
         }
 
-        function onFallo(motivo) {
+        function onFallo(motivo, detalle) {
             K4.Sistema.lanzar(["notify-send", "-a", "k4", "-u", "critical",
-                                     Idioma.t("No se pudo editar"), motivo])
+                                     Idioma.t("No se pudo editar"),
+                                     Idioma.porque(motivo, detalle)])
         }
 
         function onMiniaturaGuardada(ruta) {

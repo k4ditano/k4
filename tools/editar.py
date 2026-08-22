@@ -465,6 +465,14 @@ SIN_RED = ["-protocol_whitelist", "file,crypto,data"]
 #  la lista vacía parece que el fichero no tenía audio, y eso engaña— y protege
 #  de protocolos que no van por la red pero tampoco son ficheros.
 
+#  Los motivos van como CÓDIGO, no como frase. La frase la escribe la barra,
+#  que es quien sabe en qué idioma está el usuario: con la prosa aquí dentro,
+#  una barra en inglés enseñaba el título traducido y el motivo en español
+#  debajo. El dato —la ruta, el protocolo— va aparte, en `detalle`.
+#
+#  Para quien lee el JSON a mano no se pierde nada: `{"motivo": "no-es-local",
+#  "detalle": "http://…"}` dice lo mismo y encima se puede comparar.
+
 def es_local(ruta):
     """¿Es una ruta de fichero y no otra cosa disfrazada?"""
     r = str(ruta or "")
@@ -484,9 +492,9 @@ def es_local(ruta):
 def exigir_local(ruta, que="fichero"):
     """La ruta, o se sale diciendo qué pasa."""
     if not es_local(ruta):
-        salir(ok=False, motivo="%s no es una ruta local: %s" % (que, ruta))
+        salir(ok=False, motivo="no-es-local", que=que, detalle=str(ruta))
     if not os.path.exists(ruta):
-        salir(ok=False, motivo="no existe el %s: %s" % (que, ruta))
+        salir(ok=False, motivo="no-existe", que=que, detalle=str(ruta))
     return ruta
 
 
@@ -499,7 +507,7 @@ def dentro_de(base, ruta):
 
 def exigir_dentro(base, ruta, que="salida"):
     if not dentro_de(base, ruta):
-        salir(ok=False, motivo="la %s se sale de su carpeta: %s" % (que, ruta))
+        salir(ok=False, motivo="fuera-de-carpeta", que=que, detalle=str(ruta))
     return ruta
 
 
@@ -517,8 +525,8 @@ def correr_sondeo(orden, **kw):
     try:
         return subprocess.run(orden, timeout=ESPERA_SONDEO, **kw)
     except subprocess.TimeoutExpired:
-        salir(ok=False, motivo="el fichero no responde: %s"
-                               % (orden[-1] if orden else "?"))
+        salir(ok=False, motivo="no-responde",
+              detalle=(orden[-1] if orden else ""))
 
 
 #  La escoba: quitar el ruido de fondo, en UN solo sitio.
@@ -2989,8 +2997,8 @@ def revisar_rutas(plan, deDonde=""):
         if c.get("ruta") and not es_local(c["ruta"]):
             malas.append(c["ruta"])
     if malas:
-        salir(ok=False, motivo="el proyecto apunta fuera del disco: %s"
-                               % ", ".join(malas[:3]))
+        salir(ok=False, motivo="fuera-del-disco",
+              detalle=", ".join(malas[:3]))
     return plan
 
 
@@ -3781,7 +3789,7 @@ def main():
     for cual in ("salida", "guardar"):
         v = getattr(args, cual, "")
         if v and not es_local(v):
-            salir(ok=False, motivo="%s no es una ruta local: %s" % (cual, v))
+            salir(ok=False, motivo="no-es-local", que=cual, detalle=str(v))
 
     {"abrir": orden_abrir, "renombrar": orden_renombrar, "onda": orden_onda,
      "proponer": orden_proponer, "render": orden_render,

@@ -354,18 +354,30 @@ def validar_carpeta(d, ids_repo, version_host):
             "enabledByDefault": False, "cargable": True,
             "permisos": [], "version": "0"}
 
-    def mal(motivo):
+    #  Dos cosas a la vez, y las dos hacen falta:
+    #
+    #  `motivo` es un CÓDIGO, para la barra, que escribe la frase en el idioma
+    #  del usuario. `dice` es la frase en español, para quien está mirando una
+    #  terminal — que es el público de este guion y no merece leer códigos.
+    #
+    #  Antes solo estaba la frase, y acababa en la interfaz: con la barra en
+    #  inglés salía el título traducido y el porqué debajo en español.
+    def mal(codigo, dice, detalle=""):
         item["cargable"] = False
-        item["motivo"] = motivo
+        item["motivo"] = codigo
+        item["dice"] = dice
+        if detalle:
+            item["detalle"] = detalle
         return item
 
     manifiesto = d / "plugin.json"
     if not manifiesto.is_file():
-        return mal("sin plugin.json")
+        return mal("sin-manifiesto", "sin plugin.json")
     try:
         m = json.loads(manifiesto.read_text())
     except Exception as exc:
-        return mal(f"plugin.json ilegible: {exc}")
+        return mal("manifiesto-ilegible", f"plugin.json ilegible: {exc}",
+                   str(exc))
 
     for clave in ("id", "title", "version", "description", "permisos", "host",
                   "aplicacion"):
@@ -373,19 +385,24 @@ def validar_carpeta(d, ids_repo, version_host):
             item[clave] = m[clave]
     ident = m.get("id")
     if not isinstance(ident, str) or not RE_ID.fullmatch(ident):
-        return mal(f"id inválido: {ident!r}")
+        return mal("id-invalido", f"id inválido: {ident!r}", str(ident))
     if ident != d.name:
-        return mal(f"el id {ident!r} no coincide con la carpeta {d.name!r}")
+        return mal("id-no-coincide",
+                   f"el id {ident!r} no coincide con la carpeta {d.name!r}",
+                   f"{ident} / {d.name}")
     if ident in ids_repo:
-        return mal("el id ya lo usa un plugin de la barra")
+        return mal("id-ocupado", "el id ya lo usa un plugin de la barra")
     entrada = m.get("entry")
     if not isinstance(entrada, str) or "/" in entrada:
-        return mal("entry debe ser un fichero de la propia carpeta")
+        return mal("entrada-fuera",
+                   "entry debe ser un fichero de la propia carpeta")
     ruta = d / entrada
     if not ruta.is_file():
-        return mal(f"no existe {entrada}")
+        return mal("sin-entrada", f"no existe {entrada}", str(entrada))
     if not host_compatible(m.get("host"), version_host):
-        return mal(f"pide barra {m.get('host')} y esta es {version_host}")
+        return mal("barra-vieja",
+                   f"pide barra {m.get('host')} y esta es {version_host}",
+                   str(m.get("host") or ""))
 
     #  El icono, que puede ser un códice de la Nerd Font o una imagen propia.
     #  Se valida aquí para que uno mal puesto sea un error de instalación y no
@@ -393,13 +410,17 @@ def validar_carpeta(d, ids_repo, version_host):
     if m.get("icono") is not None:
         fallo = revisar_icono(d, m.get("icono"), item)
         if fallo:
-            return mal(fallo)
+            #  El icono trae su propia frase ya escrita; el código es común
+            #  porque para el usuario todos son «ese icono no vale».
+            return mal("icono-malo", fallo)
 
     #  El análisis de permisos: lo que el QML usa contra lo declarado.
     declarados = set(m.get("permisos") or [])
     raros = declarados - set(PERMISOS)
     if raros:
-        return mal("permisos desconocidos: " + ", ".join(sorted(raros)))
+        return mal("permisos-raros",
+                   "permisos desconocidos: " + ", ".join(sorted(raros)),
+                   ", ".join(sorted(raros)))
     usados = set()
     for qml in d.glob("**/*.qml"):
         texto = "\n".join(re.sub(r"//.*$", "", l)
@@ -409,7 +430,9 @@ def validar_carpeta(d, ids_repo, version_host):
                 usados.add(permiso)
     sin_declarar = usados - declarados
     if sin_declarar:
-        return mal("usa sin declarar: " + ", ".join(sorted(sin_declarar)))
+        return mal("sin-declarar",
+                   "usa sin declarar: " + ", ".join(sorted(sin_declarar)),
+                   ", ".join(sorted(sin_declarar)))
 
     #  Las superficies: qué OCUPA, frente a qué TOCA.
     #
@@ -423,7 +446,9 @@ def validar_carpeta(d, ids_repo, version_host):
         sup_declaradas = set(sup_declaradas or [])
         raras = sup_declaradas - set(SUPERFICIES)
         if raras:
-            return mal("superficies desconocidas: " + ", ".join(sorted(raras)))
+            return mal("superficies-raras",
+                       "superficies desconocidas: " + ", ".join(sorted(raras)),
+                       ", ".join(sorted(raras)))
         sup_usadas = set()
         for qml in d.glob("**/*.qml"):
             texto = "\n".join(re.sub(r"//.*$", "", l)
@@ -433,7 +458,9 @@ def validar_carpeta(d, ids_repo, version_host):
                     sup_usadas.add(sup)
         faltan = sup_usadas - sup_declaradas
         if faltan:
-            return mal("ocupa sin declarar: " + ", ".join(sorted(faltan)))
+            return mal("superficie-sin-declarar",
+                       "ocupa sin declarar: " + ", ".join(sorted(faltan)),
+                       ", ".join(sorted(faltan)))
 
     #  El qmldir, generado si falta o si envejeció: con el esquema de URLs de
     #  Quickshell los tipos hermanos no se resuelven solos, y pedirle a cada
@@ -451,7 +478,7 @@ def validar_carpeta(d, ids_repo, version_host):
                 "#  carpeta, para que se resuelvan bajo el esquema qs:.\n\n"
                 + "".join(f"{n} 1.0 {n}.qml\n" for n in reales))
         except OSError:
-            return mal("no puedo escribir el qmldir")
+            return mal("sin-qmldir", "no puedo escribir el qmldir")
 
     #  Cargable. La entrada sale ABSOLUTA: el gestor no tiene por qué saber
     #  dónde viven los de usuario.
@@ -619,14 +646,24 @@ def _describir(item):
 
 
 class Traido:
-    """Lo que sale de traerse un repo y mirarlo: un plugin válido, o el porqué."""
+    """Lo que sale de traerse un repo y mirarlo: un plugin válido, o el porqué.
 
-    def __init__(self, ok, motivo="", carpeta=None, item=None, commit=""):
+    El `motivo` es un CÓDIGO y el dato va en `detalle`, para que la frase la
+    escriba quien sabe en qué idioma está el usuario. Ver `Idioma.porque()`.
+    """
+
+    def __init__(self, ok, motivo="", carpeta=None, item=None, commit="",
+                 detalle=""):
         self.ok = ok
         self.motivo = motivo
+        self.detalle = detalle
         self.carpeta = carpeta
         self.item = item
         self.commit = commit
+
+    def contar(self):
+        """Para una persona en una terminal, que sí quiere la frase entera."""
+        return self.motivo + (": " + self.detalle if self.detalle else "")
 
 
 @contextlib.contextmanager
@@ -653,7 +690,7 @@ def _traer(url, subcarpeta=None, commit=None):
         try:
             subprocess.run(orden + [url, str(clon)], check=True)
         except (subprocess.CalledProcessError, FileNotFoundError) as exc:
-            yield Traido(False, f"no he podido clonar {url}: {exc}")
+            yield Traido(False, "sin-clonar", detalle=f"{url}: {exc}")
             return
 
         #  Si se pide un commit concreto, se va A ESE y no a la punta de la
@@ -662,12 +699,11 @@ def _traer(url, subcarpeta=None, commit=None):
         #  clon entero, que siempre lo tiene.
         if commit:
             if not RE_SHA.fullmatch(commit):
-                yield Traido(False, "un commit son 40 caracteres hexadecimales"
-                                    f" en minúscula, no {commit!r}")
+                yield Traido(False, "commit-raro", detalle=str(commit))
                 return
             if not _ir_al_commit(clon, url, commit):
-                yield Traido(False,
-                             f"no encuentro el commit {commit[:12]} en {url}")
+                yield Traido(False, "sin-commit",
+                             detalle="%s · %s" % (commit[:12], url))
                 return
 
         #  El SHA se apunta SIEMPRE, lo hubieran pedido o no: es la respuesta a
@@ -678,9 +714,7 @@ def _traer(url, subcarpeta=None, commit=None):
 
         carpeta = (clon / subcarpeta) if subcarpeta else _carpeta_del_clon(clon)
         if carpeta is None or not carpeta.is_dir():
-            yield Traido(False, "no encuentro un plugin.json ni en la raíz ni "
-                                "en una única subcarpeta; dime cuál con "
-                                "--carpeta <nombre>")
+            yield Traido(False, "sin-plugin")
             return
 
         #  El id manda sobre el nombre del clon: la carpeta se llama como el
@@ -688,7 +722,7 @@ def _traer(url, subcarpeta=None, commit=None):
         try:
             ident = json.loads((carpeta / "plugin.json").read_text())["id"]
         except Exception as exc:
-            yield Traido(False, f"plugin.json ilegible: {exc}")
+            yield Traido(False, "ilegible", detalle=str(exc))
             return
         if isinstance(ident, str) and RE_ID.fullmatch(ident) \
                 and carpeta.name != ident:
@@ -699,8 +733,9 @@ def _traer(url, subcarpeta=None, commit=None):
 
         item = validar_carpeta(carpeta, ids_repo, version_host)
         if not item.get("cargable"):
-            yield Traido(False,
-                         f"ese plugin no se puede cargar: {item.get('motivo')}",
+            yield Traido(False, "no-cargable",
+                         detalle=str(item.get("dice")
+                                     or item.get("motivo") or ""),
                          commit=traido)
             return
 
@@ -721,7 +756,7 @@ def instalar(url, sin_preguntar=False, subcarpeta=None, commit=None):
     """
     with _traer(url, subcarpeta, commit) as t:
         if not t.ok:
-            print(t.motivo, file=sys.stderr)
+            print(t.contar(), file=sys.stderr)
             return 1
         carpeta, item, traido = t.carpeta, t.item, t.commit
 
@@ -841,7 +876,9 @@ def instalados():
         print("no hay plugins de usuario instalados.")
         return 0
     for item in externos:
-        estado = "ok" if item.get("cargable") else f"NO CARGA: {item['motivo']}"
+        estado = ("ok" if item.get("cargable")
+                  else "NO CARGA: %s" % (item.get("dice")
+                                         or item.get("motivo") or "?"))
         o = leer_origen(item["id"])
         de = o["repo"] if o else "local"
         if o and o.get("carpeta"):
@@ -1040,7 +1077,8 @@ def json_examinar(url, subcarpeta=None, commit=None):
     """
     with _traer(url, subcarpeta, commit) as t:
         if not t.ok:
-            _decir(ok=False, motivo=t.motivo, commit=t.commit)
+            _decir(ok=False, motivo=t.motivo, detalle=t.detalle,
+                   commit=t.commit)
             return 1
         i = t.item
         anterior = leer_origen(i["id"]) or {}
@@ -1069,7 +1107,7 @@ def json_buscar(url=None):
     try:
         datos = leer_registro(url)
     except Exception as exc:
-        _decir(ok=False, motivo=f"no pude leer el registro: {exc}")
+        _decir(ok=False, motivo="sin-registro", detalle=str(exc))
         return 2
     fallos_reg = []
     validar_registro(datos, fallos_reg)
@@ -1102,6 +1140,8 @@ def json_instalados():
             "title": item.get("title", item["id"]),
             "cargable": bool(item.get("cargable")),
             "motivo": item.get("motivo", ""),
+            "detalle": item.get("detalle", ""),
+            "dice": item.get("dice", ""),
             "permisos": item.get("permisos") or [],
             "repo": o.get("repo", ""),
             "carpeta": o.get("carpeta", ""),
@@ -1117,7 +1157,7 @@ def json_comprobar(url=None):
     try:
         datos = leer_registro(url)
     except Exception as exc:
-        _decir(ok=False, motivo=f"no pude leer el registro: {exc}")
+        _decir(ok=False, motivo="sin-registro", detalle=str(exc))
         return 2
     publicado = {str(e.get("id")): e for e in datos.get("plugins") or []}
     fuera = []
@@ -1215,7 +1255,7 @@ def main():
           + (f" · {len(externos)} de usuario" if externos else "")
           + (f" ({len(rotos)} no cargables)" if rotos else "") + ".")
     for e in rotos:
-        print(f"  - {e['id']}: {e.get('motivo')}")
+        print(f"  - {e['id']}: {e.get('dice') or e.get('motivo')}")
     return 0
 
 

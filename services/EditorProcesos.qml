@@ -34,7 +34,7 @@ Scope {
 
     // ── abrir y proponer ──────────────────────────────────────────
     signal planRecibido(var d)
-    signal abrirFallo(string motivo)
+    signal abrirFallo(string motivo, string detalle)
     //  Sin rastro no hay zoom que proponer; el Editor decide reabrir a secas.
     signal proponerFallo()
 
@@ -159,7 +159,7 @@ Scope {
     //  carpeta adjunta— y hay que esquivar los nombres ocupados sin pisar el
     //  montaje de nadie. Aquí solo se pide y se cuenta lo que contesta.
     signal renombrado(string plan)
-    signal renombrarFallo(string motivo)
+    signal renombrarFallo(string motivo, string detalle)
 
     function renombrar(nombre) {
         if (rutaPlan.length === 0)
@@ -177,7 +177,8 @@ Scope {
                 if (d && d.ok && d.plan)
                     procesos.renombrado(d.plan)
                 else
-                    procesos.renombrarFallo(d && d.motivo ? d.motivo : "fallo")
+                    procesos.renombrarFallo(d && d.motivo ? d.motivo : "fallo",
+                                            (d && d.detalle) || "")
             }
         }
         stderr: SplitParser {
@@ -203,7 +204,8 @@ Scope {
                 let d = null
                 try { d = JSON.parse(this.text) } catch (e) { }
                 if (!d || !d.ok) {
-                    procesos.abrirFallo(d && d.motivo ? d.motivo : "fallo")
+                    procesos.abrirFallo(d && d.motivo ? d.motivo : "fallo",
+                                        (d && d.detalle) || "")
                     return
                 }
                 procesos.planRecibido(d)
@@ -233,7 +235,7 @@ Scope {
     property bool congelando: false
 
     signal congelado()
-    signal congelarFallo(string motivo)
+    signal congelarFallo(string motivo, string detalle)
 
     function congelar(t, segundos) {
         congelando = true
@@ -250,7 +252,8 @@ Scope {
                 let d = null
                 try { d = JSON.parse(this.text) } catch (e) { }
                 if (!d || !d.ok) {
-                    procesos.congelarFallo(d && d.motivo ? d.motivo : "congelar")
+                    procesos.congelarFallo(d && d.motivo ? d.motivo : "congelar",
+                                           (d && d.detalle) || "")
                     return
                 }
                 procesos.congelado()
@@ -470,7 +473,7 @@ Scope {
     // ── renderizar ────────────────────────────────────────────────
     signal renderProgreso(real progreso)
     signal renderFin(string ruta)
-    signal renderFallo(string motivo)
+    signal renderFallo(string motivo, string detalle)
 
     //  Si el render sigue vivo para este fichero. Es lo que distingue un
     //  proceso que muere sin despedirse de uno que ya contó su final.
@@ -509,7 +512,7 @@ Scope {
                 }
                 if (d.ok === false) {
                     procesos.renderActivo = false
-                    procesos.renderFallo(d.motivo || "fallo")
+                    procesos.renderFallo(d.motivo || "fallo", d.detalle || "")
                 }
             }
         }

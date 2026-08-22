@@ -309,6 +309,49 @@ def revisar_ejemplos(doc, texto):
     return fallos
 
 
+def revisar_motivos():
+    """Todo motivo que alguien emita tiene que tener frase en `Idioma`.
+
+    Un motivo sin frase no falla: sale el código crudo en la interfaz —
+    «sin-declarar» en mitad de Ajustes—, que es feo y además no dice nada a
+    quien no ha leído el guion. Es exactamente el fallo que había, y la única
+    manera de que no vuelva es que añadir uno sin su frase pare el flujo.
+    """
+    fallos = []
+    idioma = RAIZ / "services" / "Idioma.qml"
+    if not idioma.is_file():
+        return ["falta services/Idioma.qml"]
+    bloque = idioma.read_text().split("readonly property var motivos")
+    if len(bloque) < 2:
+        return ["services/Idioma.qml ya no tiene la tabla de motivos"]
+    conocidos = set(re.findall(r'"([^"\n]+)"\s*:\s*"',
+                               bloque[1].split("})")[0]))
+
+    #  Los que emiten los guiones y los que emite la propia barra.
+    emitidos = {}
+    for ruta in list((RAIZ / "tools").glob("*.py")):
+        if ruta.name.startswith("prueba_"):
+            continue
+        t = ruta.read_text()
+        for m in re.finditer(r'motivo=["\']([a-z][a-z0-9-]*)["\']', t):
+            emitidos.setdefault(m.group(1), set()).add(ruta.name)
+        for m in re.finditer(r'mal\(\s*"([a-z][a-z0-9-]*)"', t):
+            emitidos.setdefault(m.group(1), set()).add(ruta.name)
+    for ruta in list((RAIZ / "services").glob("*.qml")) \
+            + list((RAIZ / "plugins").glob("*/*.qml")):
+        t = ruta.read_text()
+        for m in re.finditer(
+                r'(?:fallo|fotoFallida|videoFallido)\(\s*"([a-z][a-z0-9-]*)"', t):
+            emitidos.setdefault(m.group(1), set()).add(ruta.name)
+
+    for codigo, donde in sorted(emitidos.items()):
+        if codigo not in conocidos:
+            fallos.append("services/Idioma.qml: falta la frase del motivo "
+                          "`%s`, que emite %s"
+                          % (codigo, ", ".join(sorted(donde))))
+    return fallos
+
+
 def main():
     fallos = []
     for doc in DOCUMENTOS:
@@ -325,6 +368,8 @@ def main():
         fallos += revisar_numeros(doc, texto)
         fallos += revisar_atajos(doc, texto)
         fallos += revisar_ejemplos(doc, texto)
+
+    fallos += revisar_motivos()
 
     if not fallos:
         print("%d documentos revisados, no le mienten al código."

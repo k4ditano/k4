@@ -323,6 +323,18 @@ Item {
                                 fila.ident, fila.novedad.suyo)
                         }
 
+                        IslandLabel {
+                            visible: !fila.esDelRegistro
+                                     && fila.modelData.cargable === false
+                            Layout.fillWidth: true
+                            text: Idioma.porque(fila.modelData.motivo,
+                                                fila.modelData.detalle)
+                            textFormat: Text.PlainText
+                            color: Theme.red
+                            font.pixelSize: 9
+                            elide: Text.ElideRight
+                        }
+
                         BotonTienda {
                             visible: !fila.esDelRegistro
                             texto: Idioma.t("Quitar")

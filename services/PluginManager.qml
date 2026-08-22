@@ -520,7 +520,9 @@ Singleton {
             }
             const sinRequisito = !requisitoCumplido(m)
             if (m.cargable === false)
-                desc = m.motivo || "no cargable"
+                //  `porque()` y no el motivo pelado: el guion devuelve un
+                //  código y esta línea la lee el usuario en su idioma.
+                desc = Idioma.porque(m.motivo || "no-cargable", m.detalle)
             else if (sinRequisito)
                 desc = motivoDelRequisito(m)
             else if (error.length > 0)
@@ -853,8 +855,10 @@ Singleton {
             //  rueda para siempre. Si no hay veredicto, el motivo es lo que
             //  haya escrito en stderr, y si tampoco hay, al menos el código.
             const bien = codigo === 0 && d && d.ok
-            const motivo = (d && d.motivo) || manager._queja
-                           || qsTr("el guion terminó con el código %1").arg(codigo)
+            const motivo = (d && d.motivo)
+                ? Idioma.porque(d.motivo, d.detalle)
+                : (manager._queja
+                   || Idioma.f("El guion terminó con el código %1", codigo))
 
             if (que === "buscar") {
                 if (bien)

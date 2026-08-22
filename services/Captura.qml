@@ -53,7 +53,7 @@ Singleton {
     // Se emite cuando una foto acaba bien: el plugin la usa para asomarse un
     // momento con la miniatura.
     signal fotoLista(string ruta)
-    signal fotoFallida(string motivo)
+    signal fotoFallida(string motivo, string detalle)
 
     // ── carpetas ──────────────────────────────────────────────────
     property string carpetaFotos: ""
@@ -280,7 +280,7 @@ Singleton {
     property int cuentaAtras: 0
 
     signal videoListo(string ruta)
-    signal videoFallido(string motivo)
+    signal videoFallido(string motivo, string detalle)
 
     readonly property string duracionTexto: {
         const m = Math.floor(duracion / 60)
