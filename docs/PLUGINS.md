@@ -296,6 +296,7 @@ bar's directory, not yours.
 | `K4.Etiqueta` | text with the bar's defaults |
 | `K4.Glifo` | a Nerd Font icon (find them with `tools/glifos.py`) |
 | `K4.Icono` | a desktop-theme icon, by name |
+| `K4.Miniatura` | the live thumbnail of an open window, by its address |
 | `K4.Interruptor` | the bar's switch; it notifies, it does not flip itself |
 | `K4.Deslizador` | slider with label and value |
 | `K4.Medidor` | a bar that measures and is not touched: volume, progress, how much of a quota is gone |

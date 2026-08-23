@@ -48,6 +48,7 @@ PanelWindow {
     //  recibe una tecla.
     property bool conTeclado: false
 
+
     // Por encima de todo, la island incluida.
     property bool encima: true
 
@@ -58,15 +59,45 @@ PanelWindow {
     //  siendo utilizable mientras la ventana está delante.
     property Item zonaActiva: null
 
-    anchors.top: true
-    anchors.left: true
-    anchors.right: true
-    anchors.bottom: true
+    //  A qué bordes se pega. Los cuatro —lo de fábrica— es pantalla completa,
+    //  que es lo que quiere quien viene a pintar por encima. Soltando uno, la
+    //  ventana se vuelve una franja pegada al borde de enfrente, que es la
+    //  forma que necesita algo que quiera reservar sitio.
+    property bool pegadaArriba: true
+    property bool pegadaAbajo: true
+    property bool pegadaIzquierda: true
+    property bool pegadaDerecha: true
+
+    anchors.top: pegadaArriba
+    anchors.left: pegadaIzquierda
+    anchors.right: pegadaDerecha
+    anchors.bottom: pegadaAbajo
 
     color: "transparent"
 
-    // No reserva sitio: las ventanas de debajo no se recolocan por su culpa.
-    exclusionMode: ExclusionMode.Ignore
+    //  Sitio que le quita al escritorio por su borde, en píxeles. Cero —lo
+    //  normal— es no quitarle ninguno: la ventana flota por encima y las
+    //  ventanas de debajo no se recolocan por su culpa.
+    //
+    //  Lo pide lo que se QUEDA: un dock, una franja permanente. Lo que solo
+    //  pasa por delante —una animación, un aviso, una mano que asoma— tiene
+    //  que seguir en cero, o el escritorio entero se recolocaría a su paso.
+    //
+    //  Solo tiene sentido en una franja: pegada a los cuatro bordes no hay un
+    //  borde del que quitar sitio, y el compositor lo ignora.
+    property int reserva: 0
+
+    //  Y -1 es el caso contrario y hace falta más de lo que parece: no reserva
+    //  nada Y ADEMÁS se salta las reservas de los demás, así que se dibuja de
+    //  borde a borde por debajo de ellas.
+    //
+    //  Lo necesita cualquiera que quiera pintar SOBRE la franja de la barra. Sin
+    //  esto, una ventana a pantalla completa empieza donde acaba la barra y todo
+    //  lo que dibuje sale 34 px más abajo de donde cree —medido, con el modo
+    //  dual: los trozos salían en `y: 34-67` en vez de `0-33`, despegados del
+    //  canto de la pantalla—.
+    exclusionMode: reserva > 0 ? ExclusionMode.Normal : ExclusionMode.Ignore
+    exclusiveZone: reserva
 
     mask: ventana.zonaActiva ? recorteZona : null
 

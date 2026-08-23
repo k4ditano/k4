@@ -64,6 +64,7 @@ not be declared inside the view.
 | `K4.Sistema` | Launch, open, notify, copy and read environment |
 | `K4.Apps` | Installed applications and icons |
 | `K4.Icono` | Theme-aware application icon |
+| `K4.Miniatura` | Live thumbnail of an open window, given its address |
 | `K4.Ventana` | Full-screen layer-shell surface |
 | `K4.PorPantalla` | One instance per monitor |
 | `K4.Cargador` | Lazy-load expensive content |

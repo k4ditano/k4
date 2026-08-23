@@ -35,6 +35,18 @@ QtObject {
     readonly property var rect: (_i && _i.rect) ? _i.rect
         : ({ x: 0, y: 0, ancho: 0, alto: 0 })
 
+    //  En qué pantalla está desplegada AHORA, por nombre (los de `hyprctl
+    //  monitors`). La píldora existe en todas; una vista abierta vive en una
+    //  sola, y esta es esa.
+    //
+    //  Es lo que hay que pasarle a `pantalla` de una K4.Ventana para asomar
+    //  por la island correcta. Sin esto no había forma de saberlo desde fuera:
+    //  `rect` da la de la pantalla PRINCIPAL, así que con dos monitores lo que
+    //  pintaras salía anclado a una island que estaba en la otra —y como las
+    //  coordenadas son locales a cada monitor, ni siquiera se veía mal: se veía
+    //  en otro sitio, o no se veía—.
+    readonly property string pantalla: _i ? (_i.pantallaActiva || "") : ""
+
     function rectEn(pantalla) {
         const d = _i ? _i.rects : null
         return (d && d[pantalla]) ? d[pantalla] : rect

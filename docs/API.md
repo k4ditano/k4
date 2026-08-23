@@ -62,6 +62,7 @@ The bar's look, ready to assemble — every piece takes the palette from
 | `K4.Glifo` | A Nerd Font glyph (find codepoints with `tools/glifos.py`) |
 | `K4.Icono` | An `IconImage` ready to render application icons |
 | `K4.IconoPlugin` | A plugin's own image, falling back to a glyph |
+| `K4.Miniatura` | The live thumbnail of an open window, by address |
 | `K4.Interruptor` | The bar's switch |
 | `K4.Deslizador` | The bar's slider |
 | `K4.Medidor` | A read-only bar: `valor` out of `maximo`, with the house track and easing |
@@ -164,6 +165,30 @@ const home = K4.Sistema.entorno("HOME")
 `K4.Apps.lista` contains installed desktop entries; `K4.Apps.porId(id)` looks
 one up and `K4.Apps.icono(name)` resolves its icon. `K4.Icono` is an
 `IconImage` ready to render.
+
+### Window thumbnails
+
+`K4.Miniatura` paints what is inside another window, and keeps painting it —
+it is live, not a photo taken when the panel opened. A window switcher, an
+Alt+Tab, a preview on hover: places where the title is not enough, because
+three terminals are called the same and look nothing alike.
+
+```qml
+K4.Miniatura {
+    width: 160; height: 100
+    direccion: "0x5622613de2c0"      // the one `hyprctl clients` gives
+}
+```
+
+You hand it the window's **address**, not the window: a plugin cannot talk to
+the compositor — that is what services are for — but it does have the address,
+which is what `hyprctl` returns and what you already use to focus a window.
+Finding whose window it is happens inside.
+
+If the window does not exist, or closes while you are looking at it, nothing
+is painted. That is deliberate and there is no signal for it: whoever shows
+the thumbnail already knows which windows they have, and a thumbnail that
+shouts when its window goes is more annoying than a gap.
 
 ## Reading the machine
 

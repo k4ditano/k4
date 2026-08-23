@@ -57,6 +57,7 @@ singleton Terminal 1.0 Terminal.qml
 singleton Apps 1.0 Apps.qml
 Fichero 1.0 Fichero.qml
 Icono 1.0 Icono.qml
+Miniatura 1.0 Miniatura.qml
 MenuBandeja 1.0 MenuBandeja.qml
 Ventana 1.0 Ventana.qml
 PorPantalla 1.0 PorPantalla.qml
