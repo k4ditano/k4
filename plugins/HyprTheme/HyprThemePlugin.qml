@@ -120,10 +120,136 @@ K4Plugin {
         fondos = d
         saveState()
         ponerSuelo()
+        sacarPaleta()
     }
 
     // Marca de agua: los presets solo se ven "elegidos" mientras no toques nada.
     property bool dirty: false
+
+    //  ── la paleta, sacada del fondo ──────────────────────────────
+    //
+    //  Encendido —lo de fábrica—, los colores salen del fondo que pongas y se
+    //  reparten a los dos sitios donde se ven: el tinte de la barra y los bordes
+    //  de Hyprland. Cambias de fondo y el ambiente entero se recoloca.
+    //
+    //  Y hay un tercer sitio de regalo: `services/Ambiente.qml` ya publica el
+    //  tema TEÑIDO en `tema.json` para quien vive fuera de la barra, así que
+    //  k4term se tiñe con el fondo sin escribir una línea de más.
+    //
+    //  Se apaga solo al tocar un preset: quien elige un color a mano no quiere
+    //  que el siguiente fondo se lo pise, y apagarlo por su cuenta evita el
+    //  ajuste que nadie encuentra.
+    property bool paletaAuto: true
+
+    //  De qué fondo sale. Con dos monitores y dos fondos distintos alguno tiene
+    //  que mandar, y manda el de la pantalla donde vive la island: es el que
+    //  estás mirando cuando la barra se tiñe.
+    function fondoDeReferencia() {
+        const p = K4.Isla.pantalla
+        const propio = p && p.length > 0 ? fondoDe(p) : ""
+        return propio.length > 0 ? propio : wallpaper
+    }
+
+    property var paletaSacada: []
+
+    K4.Process {
+        id: sacaColores
+        environment: ({ "LC_ALL": "C" })
+
+        onSalida: function (texto) {
+            const lineas = String(texto).split("\n")
+            const cols = []
+            for (let i = 0; i < lineas.length; ++i) {
+                //  «   8392: (39,39,113) #272771 srgb(39,39,113)»
+                const m = lineas[i].match(/^\s*(\d+):\s*\(\s*(\d+),\s*(\d+),\s*(\d+)/)
+                if (!m)
+                    continue
+                cols.push({ peso: parseInt(m[1], 10), r: +m[2], g: +m[3], b: +m[4] })
+            }
+            if (cols.length === 0)
+                return
+            self.paletaSacada = cols
+            self.repartirPaleta(cols)
+        }
+    }
+
+    function sacarPaleta() {
+        if (!paletaAuto)
+            return
+        const fondo = fondoDeReferencia()
+        if (fondo.length === 0)
+            return
+        //  De un vídeo o un GIF, su póster: magick abriría el vídeo entero para
+        //  sacar un fotograma, y el póster ya está hecho.
+        const fuente = esQuieto(fondo) ? fondo : posterDe(fondo)
+        sacaColores.running = false
+        //  Recortado al centro y a 200×200 antes de contar: es mucho más rápido
+        //  y el resultado no cambia — lo que manda en un fondo son las masas de
+        //  color, no los píxeles sueltos de las esquinas.
+        sacaColores.command = ["sh", "-c",
+            "[ -f \"$1\" ] || exit 0; magick \"$1\" -resize 200x200^"
+            + " -gravity center -extent 200x200 -colors 8 -depth 8"
+            + " -format %c histogram:info:-", "sh", fuente]
+        sacaColores.running = true
+    }
+
+    //  ── de una lista de colores a un ambiente ────────────────────
+    //
+    //  No vale el más frecuente: en la mayoría de los fondos es un gris o un
+    //  casi-negro, y un acento gris no es un acento. Se busca el que más COLOR
+    //  tiene con peso suficiente, y se descartan los extremos — lo casi negro no
+    //  se ve sobre la barra y lo casi blanco se come el texto.
+    function _hsv(c) {
+        const r = c.r / 255, g = c.g / 255, b = c.b / 255
+        const mx = Math.max(r, g, b), mn = Math.min(r, g, b)
+        return { v: mx, s: mx <= 0 ? 0 : (mx - mn) / mx }
+    }
+
+    function repartirPaleta(cols) {
+        let total = 0
+        for (let i = 0; i < cols.length; ++i)
+            total += cols[i].peso
+
+        let mejor = null, mejorNota = -1
+        for (let i = 0; i < cols.length; ++i) {
+            const c = cols[i]
+            const h = _hsv(c)
+            if (h.v < 0.18 || h.v > 0.94 || h.s < 0.12)
+                continue
+            //  La nota premia el color y castiga poco el peso: un acento que
+            //  ocupa el 5 % del fondo sigue siendo el acento de ese fondo, y
+            //  premiando el peso salía siempre el cielo o la pared.
+            const nota = h.s * (0.55 + 0.45 * Math.min(1, c.peso / total * 4))
+            if (nota > mejorNota) {
+                mejorNota = nota
+                mejor = c
+            }
+        }
+        //  Sin ningún color aprovechable —un fondo en blanco y negro— se deja lo
+        //  que hubiera: inventarse un acento es peor que no tener uno.
+        if (!mejor)
+            return
+
+        const base = Qt.rgba(mejor.r / 255, mejor.g / 255, mejor.b / 255, 1)
+        accentFrom = Qt.lighter(base, 1.25)
+        accentTo = Qt.darker(base, 1.9)
+        //  El inactivo tiene que LEERSE como apagado al lado del activo, así que
+        //  se le quita color además de luz: oscurecer a secas deja dos bordes del
+        //  mismo tono y no se distingue cuál tiene el foco.
+        const gris = (mejor.r + mejor.g + mejor.b) / 3 / 255
+        inactive = Qt.rgba((mejor.r / 255 * 0.35 + gris * 0.65) * 0.75,
+                           (mejor.g / 255 * 0.35 + gris * 0.65) * 0.75,
+                           (mejor.b / 255 * 0.35 + gris * 0.65) * 0.75, 1)
+        dirty = false
+        preset = "fondo"
+        apply()
+        saveState()
+
+        //  Y la barra. La fuerza va baja a propósito: la island es negra y tiene
+        //  que seguir siéndolo — esto es un ambiente, no una capa de pintura. El
+        //  tope de la casa es 0,45 y aquí sobra con la mitad.
+        K4.Tema.tintar("hyprtheme", base, 0.22, 0)
+    }
 
     readonly property var presets: [
         { id: "cachyos", name: "CachyOS",  from: "#82dccc", to: "#007d6f", inactive: "#798bb2" },
@@ -139,6 +265,10 @@ K4Plugin {
             if (presets[i].id !== id)
                 continue
 
+            //  Elegir un preset es elegir a mano: quien lo hace no quiere que
+            //  el siguiente fondo se lo pise.
+            paletaAuto = false
+            K4.Tema.destintar("hyprtheme")
             preset = id
             accentFrom = presets[i].from
             accentTo = presets[i].to
@@ -237,6 +367,7 @@ K4Plugin {
             wallpaper: wallpaper,
             fondos: fondos,
             transicion: transicion,
+            paletaAuto: paletaAuto,
             dirty: dirty
         }, null, 2))
     }
@@ -277,6 +408,12 @@ K4Plugin {
         //  queda a medias sin decir por qué.
         if (s.transicion && transiciones.indexOf(s.transicion) >= 0)
             transicion = s.transicion
+        if (s.paletaAuto !== undefined)
+            paletaAuto = !!s.paletaAuto
+        //  Y al cargar se rehace, que el tinte vive en memoria y no sobrevive a
+        //  un reinicio de la barra.
+        if (paletaAuto)
+            sacarPaleta()
         dirty = s.dirty === true
 
         //  El suelo se repone al cargar: swaybg no sobrevive a un reinicio de
@@ -381,6 +518,7 @@ K4Plugin {
         fondos = ({})
         saveState()
         ponerSuelo()
+        sacarPaleta()
     }
 
     //  ── el suelo ─────────────────────────────────────────────────
@@ -642,6 +780,24 @@ K4Plugin {
 
         //  Cambiar la transición sin pantalla todavía. Devuelve lo que ha
         //  quedado puesto, para no tener que preguntarlo aparte.
+        //  La paleta: encenderla, apagarla y mirar lo que ha sacado.
+        function paleta(auto: string): string {
+            if (auto === "si" || auto === "no") {
+                self.paletaAuto = (auto === "si")
+                if (self.paletaAuto)
+                    self.sacarPaleta()
+                else
+                    K4.Tema.destintar("hyprtheme")
+                self.saveState()
+            }
+            return JSON.stringify({ auto: self.paletaAuto,
+                                    fuente: self.fondoDeReferencia(),
+                                    from: String(self.accentFrom),
+                                    to: String(self.accentTo),
+                                    inactive: String(self.inactive),
+                                    sacados: self.paletaSacada })
+        }
+
         function transicion(cual: string): string {
             if (self.transiciones.indexOf(cual) >= 0) {
                 self.transicion = cual

@@ -135,6 +135,78 @@ FadeIn {
                 spacing: 14
                 visible: view.plugin.tab === "tema"
 
+                //  ── el color, ¿lo pone el fondo o lo pones tú? ──
+                //
+                //  Va lo primero porque es la decisión que manda sobre todo lo
+                //  demás de esta pestaña: con el fondo mandando, elegir un
+                //  preset es apagarlo.
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 46
+                    radius: 10
+                    color: Theme.islandBg
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 12
+                        anchors.rightMargin: 12
+                        spacing: 10
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 0
+
+                            IslandLabel {
+                                text: Idioma.t("El color lo pone el fondo")
+                                font.pixelSize: 12
+                                font.weight: Font.DemiBold
+                            }
+
+                            IslandLabel {
+                                text: view.plugin.paletaAuto
+                                    ? Idioma.t("Cambia de fondo y se recolocan la barra, los bordes y la terminal")
+                                    : Idioma.t("Apagado al elegir un preset o un color a mano")
+                                color: Theme.dim
+                                font.pixelSize: 9
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+                        }
+
+                        //  Lo que ha salido del fondo, para que se vea que no es
+                        //  magia: los tres colores que se están repartiendo.
+                        Repeater {
+                            model: view.plugin.paletaAuto
+                                ? [view.plugin.accentFrom, view.plugin.accentTo,
+                                   view.plugin.inactive] : []
+
+                            delegate: Rectangle {
+                                required property var modelData
+                                Layout.preferredWidth: 18
+                                Layout.preferredHeight: 18
+                                Layout.alignment: Qt.AlignVCenter
+                                radius: 9
+                                color: modelData
+                                border.width: 1
+                                border.color: Qt.rgba(1, 1, 1, 0.12)
+                            }
+                        }
+
+                        IslandSwitch {
+                            checked: view.plugin.paletaAuto
+                            Layout.alignment: Qt.AlignVCenter
+                            onToggled: {
+                                view.plugin.paletaAuto = !view.plugin.paletaAuto
+                                if (view.plugin.paletaAuto)
+                                    view.plugin.sacarPaleta()
+                                else
+                                    Theme.destintar("hyprtheme")
+                                view.plugin.saveState()
+                            }
+                        }
+                    }
+                }
+
                 IslandLabel {
                     text: Idioma.t("Presets")
                     color: Theme.muted

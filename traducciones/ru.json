@@ -1318,5 +1318,8 @@
   "GIF": "GIF",
   "No hay fondos en tus carpetas de imágenes ni en las del sistema": "Нет фонов ни в ваших папках с изображениями, ни в системных",
   "Transición": "Переход",
-  "vídeo": "видео"
+  "vídeo": "видео",
+  "El color lo pone el fondo": "Цвет берётся из обоев",
+  "Cambia de fondo y se recolocan la barra, los bordes y la terminal": "Смените обои — и панель, рамки и терминал подстроятся",
+  "Apagado al elegir un preset o un color a mano": "Выключается, когда выбираете пресет или цвет вручную"
 }

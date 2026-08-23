@@ -1318,5 +1318,8 @@
   "GIF": "GIF",
   "No hay fondos en tus carpetas de imágenes ni en las del sistema": "No backgrounds in your picture folders or the system ones",
   "Transición": "Transition",
-  "vídeo": "video"
+  "vídeo": "video",
+  "El color lo pone el fondo": "The colour comes from the wallpaper",
+  "Cambia de fondo y se recolocan la barra, los bordes y la terminal": "Change the wallpaper and the bar, the borders and the terminal follow",
+  "Apagado al elegir un preset o un color a mano": "Turned off when you pick a preset or a colour by hand"
 }
