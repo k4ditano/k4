@@ -52,6 +52,41 @@ Layered video and image timelines, cuts, crops, audio tracks with ducking and
 live noise removal, subtitles, camera overlay, silence detection, Whisper
 transcription. Out the other side: MP4, WebM, GIF or 9:16 for Shorts.
 
+### Dual mode: the bar leaves the top and becomes a dock
+
+<img src="screenshots/dual.gif" width="100%" alt="The bar splits in two, the halves run down the side edges of the screen and join at the bottom into a dock">
+
+One shortcut and the bar splits in two. The halves run down the side edges of
+the screen like drops, meet at the bottom and close back into a dock — the
+same silhouette, mirrored.
+
+The top bar does not linger: it hands back the space it was reserving, and the
+dock takes its own, so the desktop reflows once and then follows the movement.
+While the halves are travelling they reserve nothing and pass over your
+windows.
+
+<table>
+<tr>
+<td width="46%"><img src="screenshots/dual.png" alt="The dock at the bottom of the screen with its app drawer open above it"></td>
+<td>
+
+**It behaves like a dock.** What you pin stays; what you open shows up and
+leaves on its own. Drag to reorder, drag out to drop. Clicking something
+already running goes **to its window** instead of starting another — and when
+there is more than one, a badge counts them and a row of live previews lets
+you pick.
+
+The app drawer grows out of the dock itself, with the applications on your
+system: type to filter, `Enter` opens the best match, drag one onto the dock
+to keep it there.
+
+Any island shortcut brings the bar home — the dock retracts, the halves climb
+back up, and what you asked for opens in the island.
+
+</td>
+</tr>
+</table>
+
 ---
 
 ## Plugins
@@ -191,6 +226,7 @@ That file is owned by k4; put your overrides after it.
 | `SUPER + N` / `SUPER + A` | Notifications |
 | `SUPER + Z` | k4 settings |
 | `SUPER + Tab` | Window switcher |
+| `SUPER + Shift + D` | Dual mode: the bar becomes a dock |
 | `SUPER + Shift + W` | Hyprland theme |
 | `SUPER + V` | Clipboard history |
 | `SUPER + B` | File browser |

@@ -239,6 +239,16 @@
    "enabledByDefault": false,
    "icono": "0xF06D3",
    "aplicacion": true
+  },
+  {
+   "id": "dual",
+   "entry": "Dual/DualPlugin.qml",
+   "version": "1.0.0",
+   "title": "Modo dual",
+   "enabledByDefault": true,
+   "permisos": [
+    "procesos"
+   ]
   }
  ],
  "version": "1.1.0"

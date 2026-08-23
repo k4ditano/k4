@@ -53,6 +53,13 @@ hl.bind(mod .. " + B",           hl.dsp.exec_cmd(k4 .. "files"))
 hl.bind(mod .. " + K",           hl.dsp.exec_cmd(k4 .. "keys"))
 hl.bind(mod .. " + L",           hl.dsp.exec_cmd(k4 .. "lock"))
 hl.bind(mod .. " + ALT + C",     hl.dsp.exec_cmd(k4 .. "session"))
+-- Modo dual: la barra se parte en dos, baja por los bordes y se hace dock.
+-- Va por atajo global y no por IPC porque no hace falta levantar un proceso
+-- para alternarla: la barra recibe la señal del compositor.
+--
+-- SHIFT y no SUPER+D a secas: esa ya es «pantalla completa» en la
+-- configuración de CachyOS, y pisarla no es cosa nuestra.
+hl.bind(mod .. " + SHIFT + D",   hl.dsp.global("k4:dual"))
 
 ----------------------------------------------------------------------------
 -- La terminal

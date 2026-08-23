@@ -283,10 +283,52 @@ Scope {
             readonly property var pluginVisible: root.activePlugin
                 && (root.activePlugin.name === "idle" || esPantallaActiva)
                 ? root.activePlugin : idlePlugin
-            readonly property int anchoIsla: pluginVisible
-                ? pluginVisible.islandWidth : 176
-            readonly property int altoIsla: pluginVisible
-                ? pluginVisible.islandHeight : Theme.baseHeight
+            //  ── la barra apartada de UNA pantalla ─────────────────────
+            //
+            //  `activePlugin` es uno solo y global: gana el de más prioridad y
+            //  mientras esté activo NADIE más puede activarse, en ninguna
+            //  pantalla. Eso vale para un módulo que se abre y se cierra, pero
+            //  no para uno que se queda —el modo dual se lleva la barra al
+            //  borde de abajo y ahí sigue— porque deja la island de los otros
+            //  monitores muerta: ni se despliega ni responde.
+            //
+            //  Así que apartar la barra deja de ser cosa de ocupar la island.
+            //  Un módulo declara `barraApartada` con la pantalla que se lleva y
+            //  el sitio que hay que seguir guardándole, y esa pantalla se queda
+            //  sin barra sin que el resto se entere. Quien no la declare da
+            //  `undefined` y todo sigue como siempre.
+            readonly property var apartada: {
+                const lista = PluginManager.instancias
+                for (let i = 0; i < lista.length; ++i) {
+                    const p = lista[i]
+                    if (!p.habilitado)
+                        continue
+                    const a = p.barraApartada
+                    if (a && a.pantalla === panelWindow.screen.name)
+                        return a
+                }
+                return null
+            }
+
+            //  Apartada es apartada, ocupe la island quien la ocupe.
+            //
+            //  Antes se hacía la excepción de dejarla salir en cuanto un módulo
+            //  se activaba —el lanzador, el portapapeles—, para que su atajo no
+            //  pareciese roto. El precio era que la barra REAPARECÍA DE GOLPE
+            //  en el sitio donde ya no estaba, sin recorrido y con el dock aún
+            //  abajo: dos barras a la vez.
+            //
+            //  Quien aparta la barra es quien tiene que devolverla, y con su
+            //  animación. El contrato de `barraApartada` es ese: si te la
+            //  llevas, mira `K4.Isla.ocupadaPor` y tráela cuando alguien la
+            //  pida. Un módulo que se abre mientras tanto espera lo que dure el
+            //  regreso, y entonces sale con ella.
+            readonly property bool sinBarra: apartada !== null
+
+            readonly property int anchoIsla: sinBarra ? 0
+                : (pluginVisible ? pluginVisible.islandWidth : 176)
+            readonly property int altoIsla: sinBarra ? 0
+                : (pluginVisible ? pluginVisible.islandHeight : Theme.baseHeight)
 
             anchors.top: !abajo
             anchors.bottom: abajo
@@ -325,9 +367,32 @@ Scope {
                 return WlrKeyboardFocus.None
             }
 
-            // se reserva solo la franja plegada: las ventanas nunca se meten
-            // bajo la píldora, y todo lo que crece por encima flota
-            exclusiveZone: Theme.baseHeight
+            //  Se reserva solo la franja plegada: las ventanas nunca se meten
+            //  bajo la píldora, y todo lo que crece por encima flota.
+            //
+            //  Salvo que no haya píldora. Un módulo puede pedir la island de
+            //  alto CERO, que es como se dice «ahora mismo aquí no hay barra»
+            //  —lo usa el modo dual, que se lleva la barra al borde de abajo—,
+            //  y entonces seguir quitándole 34 px al escritorio sería cobrar
+            //  por una franja que no se ve.
+            //  Y quien lo decide es el módulo, no su altura.
+            //
+            //  Atado a `altoIsla > 0`, la franja se soltaba en el instante en
+            //  que un módulo pedía la island a cero, y el escritorio entero
+            //  pegaba un salto ANTES de que hubiera pasado nada. Quien manda la
+            //  barra de viaje sabe cuándo ya no hace falta guardarle el sitio;
+            //  la barra, no.
+            //
+            //  Se lee sin que el contrato la declare: un plugin que no la
+            //  define da `undefined`, que no es `false`, así que reserva —el
+            //  comportamiento de siempre para los otros veintisiete—.
+            //  En PÍXELES, para que quien la mande pueda soltarla poco a poco
+            //  y el escritorio acompañe en vez de pegar un salto.
+            exclusiveZone: panelWindow.sinBarra
+                ? (panelWindow.apartada.reserva || 0)
+                : (panelWindow.pluginVisible
+                   && typeof panelWindow.pluginVisible.reservaBarra === "number"
+                   ? panelWindow.pluginVisible.reservaBarra : Theme.baseHeight)
 
             // Redimensionar una layer surface cuesta un ciclo configure/ack, así
             // que hacerlo por frame es lo que hacía parpadear el panel. La
