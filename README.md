@@ -315,7 +315,16 @@ The Spanish flags this started with — `--seco`, `--si`, `--opcionales`,
 **Update with the same script**: `~/.config/quickshell/k4/instalar`. It pulls
 with `--ff-only`, refreshes packages and shortcuts and offers to restart the
 bar. With uncommitted changes in the checkout it leaves the code alone and
-tells you so — nobody loses work to an update. Start it by hand with
+tells you so — nobody loses work to an update.
+
+**And the bar tells you when there is one.** Settings shows the commit you are
+on, and checks in the background — once a minute after start until it manages
+to look, then every six hours — whether `origin` has moved. If it has, a pill
+in the header says how many commits you are behind and runs the updater for
+you. With uncommitted changes it says that instead of offering the button: the
+installer would refuse anyway, and a button that does nothing is worse than no
+button. `quickshell ipc -p shell.qml call k4.settings version` prints the same
+thing as JSON. Start it by hand with
 `~/.config/quickshell/k4/arrancar` — use the wrapper, so the `K4` QML module
 resolves.
 

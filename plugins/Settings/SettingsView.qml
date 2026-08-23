@@ -50,7 +50,69 @@ FadeIn {
                 Layout.alignment: Qt.AlignVCenter
             }
 
+            // ── qué versión llevas, y si hay otra ────────────────
+            //
+            //  El commit va pegado al título y en gris: es la respuesta a «¿qué
+            //  tengo?», que hasta ahora no estaba escrita en ninguna parte de la
+            //  barra, pero no es una noticia y no tiene que competir con nada.
+            IslandLabel {
+                visible: view.plugin.version.commit.length > 0
+                text: view.plugin.version.commit
+                color: Theme.dim
+                font.pixelSize: 9
+                Layout.alignment: Qt.AlignVCenter
+                Layout.leftMargin: 2
+            }
+
             Item { Layout.fillWidth: true }
+
+            //  Y la novedad SÍ es una noticia, así que se pone azul y se pulsa.
+            //
+            //  Con cambios sin guardar no se ofrece el botón: `./instalar` no
+            //  toca el código con el árbol sucio —a propósito— así que sería un
+            //  botón que no hace lo que dice. Se dice lo que pasa y se deja que
+            //  quien lo lea decida, que es de quien es el trabajo sin guardar.
+            Rectangle {
+                id: novedad
+                visible: view.plugin.version.hayNovedad
+                Layout.preferredWidth: textoNovedad.implicitWidth + 22
+                Layout.preferredHeight: 22
+                Layout.alignment: Qt.AlignVCenter
+                radius: 11
+
+                readonly property bool ofrece: !view.plugin.version.sucio
+
+                color: !ofrece ? Theme.track
+                    : (ratonNovedad.containsMouse ? "#4a9eff" : Theme.blue)
+
+                Behavior on color { ColorAnimation { duration: 120 } }
+
+                IslandLabel {
+                    id: textoNovedad
+                    anchors.centerIn: parent
+                    textFormat: Text.PlainText
+                    text: novedad.ofrece
+                        ? Idioma.f(Idioma.t("%1 nuevos · Actualizar"),
+                                   view.plugin.version.detras)
+                        : Idioma.f(Idioma.t("%1 nuevos · guarda tus cambios"),
+                                   view.plugin.version.detras)
+                    color: novedad.ofrece ? Theme.ink : Theme.muted
+                    font.pixelSize: 10
+                    font.weight: novedad.ofrece ? Font.DemiBold : Font.Normal
+                }
+
+                MouseArea {
+                    id: ratonNovedad
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    enabled: novedad.ofrece
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        view.plugin.version.actualizar()
+                        view.plugin.close()
+                    }
+                }
+            }
 
             MediaButton {
                 glyph: Theme.ico.close

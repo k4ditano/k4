@@ -1315,5 +1315,7 @@
   "Gota": "Drop",
   "Seco": "Instant",
   "Barra y dock a la vez": "Bar and dock at once",
-  "La barra se queda arriba en vez de convertirse en el dock": "The bar stays up top instead of turning into the dock"
+  "La barra se queda arriba en vez de convertirse en el dock": "The bar stays up top instead of turning into the dock",
+  "%1 nuevos · Actualizar": "%1 new · Update",
+  "%1 nuevos · guarda tus cambios": "%1 new · save your changes first"
 }

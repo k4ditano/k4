@@ -1315,5 +1315,7 @@
   "Gota": "Капля",
   "Seco": "Мгновенно",
   "Barra y dock a la vez": "Панель и док вместе",
-  "La barra se queda arriba en vez de convertirse en el dock": "Панель остаётся сверху, а не превращается в док"
+  "La barra se queda arriba en vez de convertirse en el dock": "Панель остаётся сверху, а не превращается в док",
+  "%1 nuevos · Actualizar": "%1 новых · Обновить",
+  "%1 nuevos · guarda tus cambios": "%1 новых · сначала сохраните правки"
 }

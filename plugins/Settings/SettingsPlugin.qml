@@ -26,6 +26,15 @@ K4Plugin {
     property bool open: false
     property var panel: null
 
+    //  ── ¿hay k4 nuevo? ───────────────────────────────────────────
+    //
+    //  Vive aquí y no en un servicio por una razón práctica: un singleton nuevo
+    //  en `services/` no se carga en caliente —hace falta reiniciar la barra
+    //  entera— y esto se ha escrito, probado y ajustado con `pluginReload
+    //  settings`. Y por una de fondo: quien lo enseña son los Ajustes, así que
+    //  que lo sepa quien lo enseña.
+    property Version version: Version {}
+
     islandWidth: 600
     //  El contenido ya no cabe en una pantalla y se recorre, así que esto no es
     //  «lo que mide» sino «cuánto se enseña de una vez». 640 deja ver cinco filas
@@ -55,7 +64,27 @@ K4Plugin {
             //  lo esté: si has instalado —o desinstalado— k4term desde que
             //  arrancó la barra, esta lista tiene que decir la verdad.
             Consola.revisar()
+            //  Y de mirar si hay versión nueva. Trae su propia gracia de diez
+            //  minutos, así que abrir y cerrar los Ajustes tres veces seguidas
+            //  no son tres viajes a la red.
+            self.version.mirar(false)
         }
+    }
+
+    //  El vistazo de fondo, para que la novedad no dependa de que se abran los
+    //  Ajustes. Cada seis horas y uno al arrancar — con un minuto de cortesía,
+    //  que el arranque de la barra ya tiene bastante que hacer y una llamada a
+    //  la red en ese momento solo compite con lo que sí se ve.
+    //
+    //  Y el plazo va atado a que se haya MIRADO, no a que se haya averiguado.
+    //  Atado al resultado —«¿sigue sin haber commit? pues al minuto otra vez»—
+    //  una copia que no es un clon de git no averigua nunca nada, así que se
+    //  quedaba lanzando un `sh` y cuatro `git` cada minuto para siempre.
+    property Timer _vistazo: Timer {
+        interval: self.version.ultima > 0 ? 6 * 3600 * 1000 : 60000
+        repeat: true
+        running: self.habilitado
+        onTriggered: self.version.mirar(true)
     }
 
     function close() { open = false }
@@ -65,6 +94,21 @@ K4Plugin {
         function toggle(): void { self.toggle() }
         function close(): void { self.close() }
         function alternar(id: string): void { Settings.alternar(id) }
+
+        //  Para poder mirarle las tripas sin abrir nada: en qué commit está la
+        //  barra, cuánto le lleva `origin` y por qué no se sabe, si no se sabe.
+        function version(): string {
+            return JSON.stringify({
+                commit: self.version.commit,
+                detras: self.version.detras,
+                sucio: self.version.sucio,
+                pega: self.version.pega,
+                mirando: self.version.mirando
+            })
+        }
+
+        //  Y para lanzarlo desde fuera, que es lo que hace el botón.
+        function actualizar(): void { self.version.actualizar() }
     }
 
     view: Component {
