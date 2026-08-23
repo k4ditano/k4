@@ -202,6 +202,91 @@ SUPERFICIES = {
 }
 
 
+#  Los COMANDOS que un plugin registra: los targets de IPC por los que se le
+#  puede llamar desde fuera y los nombres de atajo que le pide al escritorio.
+#
+#  Se sacan del QML y no del manifiesto porque es lo que de verdad se registra:
+#  un manifiesto puede declarar misa, pero quien se queda `k4.notas` es el
+#  `K4.Ipc` que hay escrito. Es la misma idea que los permisos —mirar la fuente
+#  y no fiarse de lo declarado— aplicada a lo que se reparte entre plugins.
+#
+#  La ventana de 400 caracteres es un apaño consciente: en QML `target` y `name`
+#  se escriben en la primera o segunda línea del bloque, y casar llaves
+#  anidadas con una expresión regular es peor negocio que este recorte. Si
+#  alguien esconde su target quinientos caracteres más abajo, aquí no sale — y
+#  el choque se lo encontrará en el log, como hasta ahora.
+RE_IPC_BLOQUE = re.compile(r"\bK4\.Ipc\b\s*\{")
+RE_ATAJO_BLOQUE = re.compile(r"\bK4\.Atajo\b\s*\{")
+RE_TARGET = re.compile(r"\btarget\s*:\s*[\"']([^\"']+)[\"']")
+RE_NOMBRE = re.compile(r"\bname\s*:\s*[\"']([^\"']+)[\"']")
+
+
+def comandos_de_texto(texto, ipc, atajos):
+    """Apunta en `ipc` y `atajos` lo que registre este QML."""
+    for m in RE_IPC_BLOQUE.finditer(texto):
+        hallado = RE_TARGET.search(texto[m.end():m.end() + 400])
+        if hallado:
+            ipc.add(hallado.group(1))
+    for m in RE_ATAJO_BLOQUE.finditer(texto):
+        hallado = RE_NOMBRE.search(texto[m.end():m.end() + 400])
+        if hallado:
+            atajos.add(hallado.group(1))
+
+
+def comandos_de_carpeta(d):
+    """`{"ipc": [...], "atajos": [...]}` de una carpeta de plugin."""
+    ipc, atajos = set(), set()
+    for qml in d.glob("**/*.qml"):
+        try:
+            texto = "\n".join(re.sub(r"//.*$", "", l)
+                              for l in qml.read_text().split("\n"))
+        except OSError:
+            continue
+        comandos_de_texto(texto, ipc, atajos)
+    return {"ipc": sorted(ipc), "atajos": sorted(atajos)}
+
+
+def marcar_choques(combinado):
+    """Marca no cargable a quien pida un comando que ya se ha llevado otro.
+
+    Quién gana: el primero del catálogo combinado, y el combinado va con los
+    del repo delante. O sea que un plugin de fuera nunca le quita un comando a
+    uno de casa — la misma regla que ya rige con los ids.
+
+    Sin esto el choque no se ve: Quickshell registra el primero, deja el
+    segundo MUERTO y lo cuenta en el log y en ningún sitio más. El plugin
+    figura cargado y sin error, y sus comandos sencillamente no contestan.
+    """
+    dueno_ipc, dueno_atajo = {}, {}
+    for item in combinado:
+        if not item.get("cargable", True):
+            continue
+        cmds = item.get("comandos") or {}
+        ident = item.get("id")
+        choque = None
+        for t in cmds.get("ipc") or []:
+            if t in dueno_ipc:
+                choque = ("comando-ocupado",
+                          f"el comando {t} ya lo registra «{dueno_ipc[t]}»", t)
+                break
+        if choque is None:
+            for n in cmds.get("atajos") or []:
+                if n in dueno_atajo:
+                    choque = ("atajo-ocupado",
+                              f"el atajo {n} ya lo registra «{dueno_atajo[n]}»",
+                              n)
+                    break
+        if choque:
+            item["cargable"] = False
+            item["motivo"], item["dice"], item["detalle"] = choque
+            continue
+        for t in cmds.get("ipc") or []:
+            dueno_ipc[t] = ident
+        for n in cmds.get("atajos") or []:
+            dueno_atajo[n] = ident
+    return combinado
+
+
 def version_tupla(v):
     try:
         return tuple(int(x) for x in str(v).split("."))
@@ -466,6 +551,10 @@ def validar_carpeta(d, ids_repo, version_host):
             return mal("superficie-sin-declarar",
                        "ocupa sin declarar: " + ", ".join(sorted(faltan)),
                        ", ".join(sorted(faltan)))
+
+    #  Los comandos que registra, para que la barra los enseñe y para que
+    #  `marcar_choques` pueda cruzarlos con los del resto.
+    item["comandos"] = comandos_de_carpeta(d)
 
     #  El qmldir, generado si falta o si envejeció: con el esquema de URLs de
     #  Quickshell los tipos hermanos no se resuelven solos, y pedirle a cada
@@ -951,7 +1040,21 @@ def listar():
     datos, plugins = leer_catalogo()
     version_host = str(datos.get("version", "1.0.0"))
     ids_repo = {item.get("id") for item in plugins}
-    combinado = list(plugins) + cargar_usuario(ids_repo, version_host)
+
+    #  Los del repo no pasan por `validar_carpeta` —su catálogo va escrito a
+    #  mano—, así que se les miran las fuentes aquí. Sin esto el cruce solo
+    #  vería a los de fuera y un plugin de usuario podría quitarle el comando
+    #  al lanzador sin que nadie chistara.
+    for item in plugins:
+        entrada = item.get("entry")
+        if not entrada:
+            continue
+        carpeta = (RAIZ / "plugins" / entrada).parent
+        if carpeta.is_dir():
+            item["comandos"] = comandos_de_carpeta(carpeta)
+
+    combinado = marcar_choques(list(plugins)
+                               + cargar_usuario(ids_repo, version_host))
     print(json.dumps({"schema": 1, "version": version_host,
                       "plugins": combinado}, ensure_ascii=False))
     return 0
@@ -1254,7 +1357,19 @@ def main():
         return 1
 
     version_host = str(datos.get("version", "1.0.0"))
+
+    #  El mismo cruce que hace `listar()`, para que quien valida desde la
+    #  terminal vea el choque aquí y no cuando el plugin deje de contestar.
+    for item in plugins:
+        entrada = item.get("entry")
+        if not entrada:
+            continue
+        carpeta = (RAIZ / "plugins" / entrada).parent
+        if carpeta.is_dir():
+            item["comandos"] = comandos_de_carpeta(carpeta)
+
     externos = cargar_usuario(ids, version_host)
+    marcar_choques(list(plugins) + externos)
     rotos = [e for e in externos if not e.get("cargable")]
     print(f"{len(plugins)} plugins del repo verificados"
           + (f" · {len(externos)} de usuario" if externos else "")

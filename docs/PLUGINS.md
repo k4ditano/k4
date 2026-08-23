@@ -544,6 +544,38 @@ All three deregister on their own when your plugin is destroyed — disabled,
 reloaded, uninstalled — and the manager also sweeps by id: a Settings row
 that calls a dead plugin cannot exist.
 
+## 3b · Commands: IPC targets and shortcuts
+
+An `K4.Ipc` target and a `K4.Atajo` name are **shared between every plugin
+on the bar**. Two plugins cannot hold `k4.notes`: the compositor and
+Quickshell hand it to whoever registered first, and the loser stays loaded,
+without errors, simply not answering. That failure is invisible — it only
+shows up in the log, and only for IPC; duplicate shortcut names say nothing
+at all.
+
+So the bar checks it for you. `tools/plugins.py` reads the targets and
+shortcut names **out of your QML** — not out of the manifest, because what
+is registered is what the code says — and cross-checks them against
+everything already installed. Whoever asks for a taken command is listed as
+not loadable, with the reason:
+
+```
+  - notas: el comando k4.launcher ya lo registra «launcher»
+```
+
+Repo plugins come first in the combined catalog, so an outside plugin never
+takes a command away from one of the bar's own — the same rule that already
+governs ids. The commands each plugin registers travel in the catalog under
+`comandos`, so Settings and the store can show them before you turn
+anything on.
+
+Two things this does not do yet, and it is better to know: the scan looks
+for `target` and `name` in the first 400 characters of the block, so a
+target hidden far below is not seen; and a shortcut **name** is not a key —
+the key lives in the compositor's config (`hypr/k4.conf`), so a plugin
+installed from the store declares its shortcut but nobody presses it until
+that binding exists.
+
 ## 4 · Permissions
 
 The manifest declares what you use; the bar checks it **before listing**:
