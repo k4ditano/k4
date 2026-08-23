@@ -88,19 +88,95 @@ K4.PorPantalla {
     readonly property real umbralVisible: 0.08
 
     //  Las ventanas que hay delante, en coordenadas de escritorio.
-    function cajasVistas() {
-        const cajas = []
-        const lista = Ventanas.lista
-        for (let i = 0; i < lista.length; ++i) {
-            const t = lista[i]
-            if (!Ventanas.seVe(t))
-                continue
-            const d = Ventanas.datos(t)
-            if (!d || !d.at || !d.size || d.hidden === true)
-                continue
-            cajas.push([d.at[0], d.at[1], d.at[0] + d.size[0], d.at[1] + d.size[1]])
+    //  ── las ventanas que hay delante ────────────────────────────
+    //
+    //  Se le preguntan a `hyprctl` directamente y no al servicio de ventanas, y
+    //  no por gusto: `Ventanas.refrescar()` llama a `Hyprland.refreshToplevels()`
+    //  **si existe**, y en esta versión de Quickshell no existe — el `typeof` de
+    //  guardia lo convierte en un no-op silencioso. Consecuencia medida: una
+    //  ventana recién abierta salía en la lista con su `lastIpcObject` VACÍO
+    //  (`ws=None at=None`), se caía del filtro, el lienzo daba `libres 144/144`
+    //  y el vídeo seguía corriendo debajo de una ventana que lo tapaba entero.
+    //
+    //  Qué escritorios están delante sí sale de `Workspaces`, que trae el
+    //  `active` de cada uno al día — eso se comprobó y venía bien.
+    property var cajas: []
+
+    //  En una property con nombre y no como hijo suelto: la propiedad por
+    //  defecto de `Variants` es `delegate`, así que un hijo pelado se le asigna
+    //  ahí y el id nunca llega a existir. Síntoma: `ReferenceError:
+    //  mirarVentanas is not defined` y cero ventanas contadas, con el delegate
+    //  funcionando igual porque su asignación explícita gana.
+    property var procVentanas: K4.Process {
+        command: ["hyprctl", "clients", "-j"]
+
+        onSalida: function (texto) {
+            let l = []
+            try {
+                l = JSON.parse(texto)
+            } catch (e) {
+                return
+            }
+            const delante = ({})
+            const ws = Workspaces.list
+            for (let i = 0; i < ws.length; ++i)
+                if (ws[i].active)
+                    delante[ws[i].id] = true
+
+            const nuevas = []
+            for (let i = 0; i < l.length; ++i) {
+                const c = l[i]
+                if (!c || !c.at || !c.size || c.hidden === true)
+                    continue
+                if (!c.workspace || delante[c.workspace.id] !== true)
+                    continue
+                nuevas.push([c.at[0], c.at[1],
+                             c.at[0] + c.size[0], c.at[1] + c.size[1]])
+            }
+            //  Contenedor NUEVO: mutar el que hay no repinta nada en QML, y
+            //  entonces `aLaVista` no se entera de que el mundo ha cambiado.
+            lienzo.cajas = nuevas
         }
-        return cajas
+    }
+
+    function pedirVentanas() {
+        if (lienzo.procVentanas && !lienzo.procVentanas.running)
+            lienzo.procVentanas.running = true
+    }
+
+    function cajasVistas() { return lienzo.cajas }
+
+    //  ¿Hay algo que se mueva ahora mismo? De la lista guardada y no de las
+    //  telas, porque esto tiene que ser REACTIVO y `instances` no lo es.
+    readonly property bool hayMovimiento: {
+        if (!lienzo.plugin)
+            return false
+        const mueve = function (r) {
+            const t = lienzo.tipoDe(r)
+            return t === "video" || t === "animado"
+        }
+        const f = lienzo.plugin.fondos || ({})
+        for (const k in f)
+            if (mueve(f[k]))
+                return true
+        return mueve(lienzo.plugin.wallpaper)
+    }
+
+    //  Dos disparadores. El bueno es abrir o cerrar una ventana, que sí llega
+    //  por señal y hace que la pausa responda al instante; el reloj es la red
+    //  para lo que no avisa —mover o redimensionar— y solo corre mientras haya
+    //  algo que se mueva. Con todo quieto no se lanza un solo proceso.
+    property Connections escucha: Connections {
+        target: Ventanas
+        function onListaChanged() { lienzo.pedirVentanas() }
+    }
+
+    property Timer vigia: Timer {
+        interval: 2000
+        repeat: true
+        running: lienzo.hayMovimiento
+        triggeredOnStart: true
+        onTriggered: lienzo.pedirVentanas()
     }
 
     function libresEn(x0, y0, ancho, alto) {
