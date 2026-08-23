@@ -245,7 +245,11 @@ quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4.hello toggle
 ```
 
 - `K4.Ventana`: a full-screen `wlr-layer-shell` surface that does not reserve
-  layout space.
+  layout space. `capa` picks the level: `"encima"` above everything (the
+  island included), `"normal"` above windows and below the island, and
+  `"fondo"` **below the windows** — the desktop background layer, which is
+  what an animated wallpaper needs. Give a background window a 0×0
+  `zonaActiva`, or its `null` mask swallows every click on the desktop.
 - `K4.PorPantalla`: one instance per monitor.
 - `K4.Cargador`: a `LazyLoader` for expensive views or windows.
 - `K4.Atajo`: a global shortcut identified by `appid: "k4"` and `name`.

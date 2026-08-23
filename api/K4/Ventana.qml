@@ -52,6 +52,28 @@ PanelWindow {
     // Por encima de todo, la island incluida.
     property bool encima: true
 
+    //  En qué capa se pone. Tres, y la de en medio es la de siempre:
+    //
+    //   · "fondo"  — DEBAJO de las ventanas. Es la capa del fondo de escritorio:
+    //     no la tapa la island porque no la tapa nada, y a cambio no se ve en
+    //     cuanto hay una ventana maximizada delante.
+    //   · "normal" — encima de las ventanas y debajo de la island.
+    //   · "encima" — encima de todo, la island incluida.
+    //
+    //  `encima` es lo que había y sigue valiendo: es el atajo para las dos de
+    //  siempre, y por eso `capa` nace enlazada a él. En cuanto alguien asigne
+    //  `capa` el enlace se rompe solo, que es justo lo que se quiere — manda lo
+    //  más concreto— y quien no la asigne nunca no nota que existe.
+    //
+    //  OJO en "fondo" con `zonaActiva`: sin ella el mask se queda en `null` y
+    //  esta superficie se lleva TODOS los clics del escritorio, que en la capa
+    //  de abajo significa un escritorio que deja de responder. Un fondo no
+    //  recoge clics: dale un Item de 0×0, como hacen las escenas del modo dual.
+    property string capa: ventana.encima ? "encima" : "normal"
+
+    //  Y de paso: un fondo no le quita sitio a nadie —lo de debajo no puede
+    //  empujar a lo de arriba— así que `reserva` ahí no significa nada.
+
     //  Qué parte de la superficie captura los clics.
     //
     //  Sin esto, una ventana a pantalla completa se traga TODO el ratón aunque
@@ -104,7 +126,8 @@ PanelWindow {
     property Region recorteZona: Region { item: ventana.zonaActiva }
 
     WlrLayershell.namespace: ventana.nombre
-    WlrLayershell.layer: ventana.encima ? WlrLayer.Overlay : WlrLayer.Top
+    WlrLayershell.layer: ventana.capa === "fondo" ? WlrLayer.Background
+        : (ventana.capa === "encima" ? WlrLayer.Overlay : WlrLayer.Top)
     WlrLayershell.keyboardFocus: ventana.conTeclado
         ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 }
