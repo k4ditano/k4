@@ -71,6 +71,44 @@ K4Plugin {
 
     property string wallpaper: ""
 
+    //  ── el fondo, ahora por pantalla ─────────────────────────────
+    //
+    //  `{ "DP-3": "/ruta/a.mp4", "HDMI-A-1": "/ruta/b.png" }`. Con dos
+    //  monitores, uno solo para los dos era una limitación que no tenía por qué
+    //  existir: la superficie ya es una por pantalla.
+    //
+    //  `wallpaper` no se retira y no es por compatibilidad de adorno: es lo que
+    //  tiene guardado quien ya usaba esto, y quien no haya elegido nada para una
+    //  pantalla concreta debe seguir viendo lo que veía.
+    property var fondos: ({})
+
+    function fondoDe(pantalla) {
+        const propio = fondos[pantalla]
+        return propio && propio.length > 0 ? propio : wallpaper
+    }
+
+    //  Contenedor NUEVO y no mutar el que hay: QML solo propaga cuando cambia
+    //  la IDENTIDAD de la property, así que tocando la de dentro el lienzo no
+    //  se entera de nada.
+    function ponerFondoEn(pantalla, ruta) {
+        if (!pantalla || pantalla.length === 0)
+            return
+        const d = ({})
+        for (const k in fondos)
+            d[k] = fondos[k]
+        //  Vacío es QUITAR la elección de esa pantalla, no guardar una cadena
+        //  vacía: `fondoDe` ya sabe volver al fondo común cuando no hay clave, y
+        //  una clave con "" dentro es un estado que no significa nada y que hay
+        //  que recordar filtrar en cada sitio que lea el mapa.
+        if (String(ruta || "").length === 0)
+            delete d[pantalla]
+        else
+            d[pantalla] = String(ruta)
+        fondos = d
+        saveState()
+        ponerSuelo()
+    }
+
     // Marca de agua: los presets solo se ven "elegidos" mientras no toques nada.
     property bool dirty: false
 
@@ -184,6 +222,7 @@ K4Plugin {
             activeOpacity: activeOpacity, inactiveOpacity: inactiveOpacity, shadow: shadow,
             animEnabled: animEnabled, animSpeed: animSpeed,
             wallpaper: wallpaper,
+            fondos: fondos,
             dirty: dirty
         }, null, 2))
     }
@@ -218,7 +257,12 @@ K4Plugin {
         animEnabled = s.animEnabled !== undefined ? s.animEnabled : animEnabled
         animSpeed = s.animSpeed !== undefined ? s.animSpeed : animSpeed
         wallpaper = s.wallpaper !== undefined ? s.wallpaper : wallpaper
+        fondos = (s.fondos && typeof s.fondos === "object") ? s.fondos : ({})
         dirty = s.dirty === true
+
+        //  El suelo se repone al cargar: swaybg no sobrevive a un reinicio de
+        //  sesión y lo que hay debajo tiene que ser lo que se eligió.
+        ponerSuelo()
 
         // Si el detector del daemon terminó antes de leer el estado, no
         // habrá cambio de wallTool que dispare la aplicación; cubrimos ese
@@ -240,6 +284,94 @@ K4Plugin {
         "/usr/share/wallpapers",
         "/usr/share/backgrounds"
     ]
+
+    //  ── el suelo ─────────────────────────────────────────────────
+    //
+    //  swaybg se queda debajo con el fotograma quieto de cada pantalla. Lo que
+    //  dibuja la barra vive mientras vive la barra, y entre entrar a la sesión y
+    //  que arranque quickshell hay un rato sin nadie; si ahí el fondo es negro,
+    //  hemos empeorado algo que funcionaba. Para un vídeo o un GIF, el suelo es
+    //  su póster (ver `posterDe`).
+    //
+    //  Una sola llamada con todas las pantallas: swaybg admite repetir `-o/-i`,
+    //  y matarlo y levantarlo dos veces —una por monitor— deja al segundo sin la
+    //  primera imagen, porque el nuevo proceso se queda los dos salidas.
+    //  Las pantallas que hay, preguntadas al lienzo y no a `fondos`.
+    //
+    //  Recorriendo las claves de `fondos` solo salen las que tienen elección
+    //  PROPIA, y a las demás se les quedaba sin poner el suelo: con dos
+    //  monitores y un fondo elegido en uno, swaybg arrancaba con `-o HDMI-A-1`
+    //  a secas y el otro se quedaba sin fondo en cuanto la barra no estuviera.
+    //  Quien sabe cuántas pantallas hay es el lienzo, que es una por cada una.
+    function pantallasConocidas() {
+        const l = []
+        for (let i = 0; i < lienzo.instances.length; ++i) {
+            const t = lienzo.instances[i]
+            if (t && t.cual && t.cual.length > 0)
+                l.push(t.cual)
+        }
+        return l
+    }
+
+    function ponerSuelo() {
+        const trozos = []
+        const pantallas = pantallasConocidas()
+        for (let i = 0; i < pantallas.length; ++i) {
+            const suelo = sueloDe(fondoDe(pantallas[i]))
+            if (suelo.length > 0)
+                trozos.push("-o " + JSON.stringify(pantallas[i])
+                            + " -i " + JSON.stringify(suelo) + " -m fill")
+        }
+        //  Y si el lienzo todavía no existe —al arrancar—, el de siempre para
+        //  todas, que es exactamente lo que hacía esto antes.
+        if (trozos.length === 0 && wallpaper.length > 0)
+            trozos.push("-i " + JSON.stringify(sueloDe(wallpaper)) + " -m fill")
+        if (trozos.length === 0)
+            return
+
+        //  `pkill -x`, nunca `-f`: con `-f` el patrón casa también con la línea
+        //  de esta misma orden y se mata a sí misma antes de llegar a swaybg.
+        K4.Sistema.lanzar(["sh", "-c",
+            "pkill -x swaybg 2>/dev/null; swaybg " + trozos.join(" ")
+            + " >/dev/null 2>&1 &"])
+    }
+
+    //  Qué imagen quieta representa a un fondo. Para una foto, ella misma; para
+    //  lo que se mueve, su póster cacheado — y si todavía no existe se manda
+    //  hacer y de momento no se pone suelo, que es mejor que poner uno vacío.
+    readonly property string cachePosters:
+        K4.Sistema.entorno("HOME") + "/.cache/k4/fondos"
+
+    function esQuieto(ruta) {
+        return !/\.(mp4|webm|mkv|mov|m4v|avi|gif|webp|apng)$/i.test(String(ruta))
+    }
+
+    function posterDe(ruta) {
+        return cachePosters + "/" + Qt.md5(String(ruta)) + ".png"
+    }
+
+    property var postersPedidos: ({})
+
+    function sueloDe(ruta) {
+        if (!ruta || ruta.length === 0)
+            return ""
+        if (esQuieto(ruta))
+            return ruta
+
+        const destino = posterDe(ruta)
+        if (postersPedidos[destino] === true)
+            return destino
+        postersPedidos[destino] = true
+
+        //  Al segundo y no al primer fotograma: muchos vídeos empiezan en negro,
+        //  y un póster negro es lo mismo que no tener póster.
+        K4.Sistema.lanzar(["sh", "-c",
+            "mkdir -p " + JSON.stringify(cachePosters)
+            + "; [ -f " + JSON.stringify(destino) + " ] || ffmpeg -v error -y"
+            + " -ss 1 -i " + JSON.stringify(ruta) + " -frames:v 1 "
+            + JSON.stringify(destino) + " >/dev/null 2>&1"])
+        return destino
+    }
 
     function applyWallpaper(path) {
         if (path.length === 0 || wallTool.length === 0)
@@ -344,6 +476,11 @@ K4Plugin {
         }
     }
 
+    //  Quien dibuja. Va en el plugin y no en `view` porque una vista solo
+    //  existe mientras se tiene la island, y el fondo tiene que estar puesto
+    //  esté abierto el módulo o no.
+    Lienzo { id: lienzo; plugin: self }
+
     K4.Ipc {
         target: "k4.theme"
         function toggle(): void { self.toggle() }
@@ -356,6 +493,31 @@ K4Plugin {
             self.tab = name
         }
         function wallpaper(path: string): void { self.setWallpaper(path) }
+
+        //  ── el lienzo, mientras no tiene pantalla propia ──────────
+        //
+        //  Se conduce por aquí a propósito: así la parte que dibuja se puede
+        //  probar entera —vídeo, GIF, foto, dos monitores— antes de que exista
+        //  un solo botón, y sin que la interfaz condicione lo que hace.
+        function fondo(pantalla: string, ruta: string): void {
+            self.ponerFondoEn(pantalla, ruta)
+        }
+
+        function fondos(): string { return self.fondosEstado() }
+    }
+
+    //  El estado del lienzo, en una función del plugin y no solo dentro del
+    //  IpcHandler: así lo puede pedir también quien lo cargue por su cuenta —un
+    //  banco de pruebas— sin pelearse por el nombre de IPC con la barra viva.
+    function fondosEstado() {
+        const salida = []
+        for (let i = 0; i < lienzo.instances.length; ++i) {
+            const t = lienzo.instances[i]
+            if (t && typeof t.estado === "function")
+                salida.push(t.estado())
+        }
+        return JSON.stringify({ telas: salida, guardado: self.fondos,
+                                global: self.wallpaper })
     }
 
     view: Component {
