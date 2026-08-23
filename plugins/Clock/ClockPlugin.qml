@@ -20,9 +20,23 @@ K4Plugin {
     property var tray: null
     property var juego: null
 
-    // Mismo criterio que la píldora: los dos flancos ocupan lo del más ancho,
-    // así la hora cae en el centro exacto. La fecha ronda los 96 y la derecha
-    // depende de la bandeja, del aviso del juego y de las píldoras.
+    // Mismo criterio que la píldora, y ahora también la misma forma: cada zona
+    // ocupa LO SUYO y se encadena con la siguiente, en vez de reservar los dos
+    // flancos el ancho del más gordo.
+    //
+    //  ── por qué ya no se reserva a los dos lados ──────────────────
+    //
+    //  Con la hora en el centro exacto de la caja, `islandWidth` reservaba
+    //  `ladoAncho` a CADA lado, así que cada píxel de indicador costaba dos y
+    //  hacía falta un tope para que la island no se comiera la pantalla. Y al
+    //  tocar ese tope no pasaba nada bueno: la fila de la derecha iba anclada al
+    //  borde derecho, crecía hacia dentro y acababa pintada ENCIMA de la hora.
+    //  Con dos agentes trabajando se veía casi siempre.
+    //
+    //  Encadenadas —fecha, hora, indicadores, cada una colgada de la anterior—
+    //  el solape deja de ser posible: lo que no quepa se sale por la derecha y
+    //  lo recorta la island. Y como ahora cada píxel vale uno, en el mismo ancho
+    //  de island cabe casi el doble de flanco derecho que antes.
     //
     //  ── por qué esto se MIDE y no se suma ─────────────────────────
     //
@@ -42,31 +56,46 @@ K4Plugin {
     //  cerrada no hay vista que mida, y al abrirse el tamaño se decide antes de
     //  que la vista se disponga. Sin ese suelo, el primer fotograma saldría
     //  estrecho. Manda el mayor de los dos.
+    property int anchoIzqMedido: 0
+    property int anchoCentroMedido: 0
     property int anchoDerechoMedido: 0
 
     readonly property int ladoEstimado: (Tray.count > 0
         ? Math.min(Tray.count, 5) * 24 + 8 : 0) + 48
         + (Captura.grabando || Captura.estado === "cerrando" ? 60 : 0)
         + Modulos.count * 180
+        + (Game.cargado ? 52 : 0)
         + Indicadores.anchoAproximado
 
-    readonly property int ladoDer: Math.max(ladoEstimado, anchoDerechoMedido)
-
-    //  Y un techo, porque esto se multiplica por dos.
+    //  Las sumas y los suelos se quedan como ARRANQUE y red de seguridad, y en
+    //  cuanto la vista existe manda lo medido — que es como ya lo hace la
+    //  píldora plegada. La fecha rondaba los 96 y el reloj los 92, y esos
+    //  números valen para el primer fotograma: cuando la island se abre, su
+    //  tamaño se decide antes de que la vista se disponga.
     //
-    //  `islandWidth` reserva `ladoAncho` a CADA lado para que el reloj quede
-    //  centrado, así que lo que crezca aquí crece el doble abajo. Con varios
-    //  agentes trabajando —cada uno su píldora— la island se iba de ancho hasta
-    //  dejar de parecerse a una island.
-    //
-    //  El tope de verdad lo pone cada píldora recortando su texto; esto es el
-    //  cinturón: aunque un día alguien registre veinte indicadores, la island no
-    //  se come la pantalla. Al pasarse, las píldoras se salen por la derecha en
-    //  vez de estirarlo todo, que es lo menos malo de las dos cosas.
-    readonly property int ladoAncho: Math.max(96, Math.min(ladoDer, 380))
+    //  Antes esto era `Math.max(suma, medido)` y el mayor de los dos mandaba
+    //  siempre. Con las zonas ancladas daba igual —lo de más se repartía entre
+    //  los dos flancos y no se veía— pero encadenadas se nota: la suma estima
+    //  510 donde la fila mide 406, así que sobraban casi cien píxeles de island
+    //  vacía a la derecha de los iconos.
+    readonly property int izqAncho: anchoIzqMedido > 0 ? anchoIzqMedido : 96
+    readonly property int centroAncho: anchoCentroMedido > 0
+        ? anchoCentroMedido : 92
+    readonly property int derMedido: anchoDerechoMedido > 0
+        ? anchoDerechoMedido : ladoEstimado
 
-    islandWidth: 92 + 2 * ladoAncho + 44
-        + (Game.cargado ? 52 : 0)
+    //  Y un techo para el flanco derecho, que sigue haciendo falta: el de verdad
+    //  lo pone cada píldora recortando su texto, y esto es el cinturón —aunque
+    //  un día alguien registre veinte indicadores, la island no se come la
+    //  pantalla—. 480 y no los 380 de antes porque antes se pagaba doble: con
+    //  380 a cada lado el techo de la island era 896 px, y con 480 a uno solo se
+    //  queda en 760 y cabe cien píxeles más de indicadores.
+    readonly property int derAncho: Math.min(derMedido, 480)
+
+    //  El aire entre zonas es el mismo número que reparte la vista.
+    readonly property int hueco: 24
+
+    islandWidth: 44 + izqAncho + hueco + centroAncho + hueco + derAncho
     // crece para dejar sitio a las notificaciones recientes
     //  68 de la zona del reloj, y si hay notificaciones lo que mida la tira más
     //  el hueco de 6 y los 12 de aire de abajo que pone la vista. Esos 18 son los
@@ -82,6 +111,16 @@ K4Plugin {
             //  Por Binding y no asignando en un `on…Changed`: así el valor
             //  llega también en la primera disposición, que es justo cuando
             //  hace falta.
+            Binding {
+                target: self
+                property: "anchoIzqMedido"
+                value: anchoIzquierdo
+            }
+            Binding {
+                target: self
+                property: "anchoCentroMedido"
+                value: anchoCentro
+            }
             Binding {
                 target: self
                 property: "anchoDerechoMedido"
