@@ -197,7 +197,21 @@ FadeIn {
                             delegate: Rectangle {
                                 id: opcion
                                 required property var modelData
-                                readonly property bool activa: Settings.valor(modelData.id)
+                                //  Con `!!` y no a secas. `Settings.valor`
+                                //  contesta `undefined` a las opciones que aún
+                                //  no tienen nada guardado y a las que no son
+                                //  interruptores, y asignar eso a un bool es un
+                                //  aviso en el log por CADA fila y CADA vez que
+                                //  se abren los Ajustes — ruido que tapa los
+                                //  avisos de verdad.
+                                //
+                                //  Coaccionar y no comparar con `true`: esto
+                                //  enciende el ICONO de la fila, y una elección
+                                //  vale «viaje» y un campo de texto vale una
+                                //  URL. Con `=== true` se apagaban todas las
+                                //  filas que no fueran un interruptor.
+                                readonly property bool activa:
+                                    !!Settings.valor(modelData.id)
 
                                 //  El valor de una opción de texto, siempre como
                                 //  cadena: un registro externo contesta `false`
