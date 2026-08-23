@@ -394,11 +394,51 @@ K4.Plugin {
     //  OJO con la sintaxis: la configuración de Hyprland de esta máquina es
     //  Lua, y los dispatch clásicos —`hyprctl dispatch focuswindow address:…`—
     //  fallan EN SILENCIO: no dan error y no hacen nada. Van contra `hl.dsp`.
+    //  Y SIN llevarse el ratón detrás.
+    //
+    //  Hyprland, de fábrica, teletransporta el puntero al centro de la ventana
+    //  que enfocas. Con el teclado eso tiene sentido —te lleva donde vas a
+    //  mirar—, pero aquí el ratón ya está donde tú lo has puesto: acabas de
+    //  pulsar un icono del dock con él. Que te lo muevan a mitad de pantalla es
+    //  perder el sitio sin haber pedido nada. Medido: de (300,900) saltaba a
+    //  (960,557), el centro justo de la ventana.
+    //
+    //  Se apaga el salto, se enfoca y se devuelve el ajuste a como estaba. Y por
+    //  `hl.config` y no por `hyprctl keyword`, que con el parser Lua de esta
+    //  máquina no aplica nada y encima contesta «ok» — comprobado: el `keyword`
+    //  se ejecutaba, `getoption` seguía diciendo `false` y el puntero saltaba
+    //  igual. Es la misma trampa que ya documenta el módulo del tema.
+    //
+    //  El valor al que se vuelve se lee UNA vez al arrancar y no antes de cada
+    //  clic: leyéndolo cada vez, dos clics seguidos hacen que el segundo lea el
+    //  `true` que puso el primero y lo deje encendido para siempre.
+    property string warpsDeCasa: ""
+
+    K4.Process {
+        command: ["sh", "-c",
+            "hyprctl getoption cursor:no_warps | head -1 | awk '{print $2}'"]
+        running: true
+        onSalida: function (texto) {
+            const v = String(texto).trim()
+            self.warpsDeCasa = (v === "true" || v === "false") ? v : "false"
+        }
+    }
+
     function enfocar(direccion) {
         if (!direccion)
             return
-        K4.Sistema.lanzar(["hyprctl", "dispatch",
-            'hl.dsp.focus({ window = "address:' + direccion + '" })'])
+        const ir = 'hyprctl dispatch \'hl.dsp.focus({ window = "address:'
+            + direccion + '" })\' >/dev/null'
+        //  Si ya lo tienes apagado, no hay nada que apagar: se enfoca y ya.
+        if (warpsDeCasa === "true") {
+            K4.Sistema.lanzar(["sh", "-c", ir])
+            return
+        }
+        K4.Sistema.lanzar(["sh", "-c",
+            "hyprctl eval 'hl.config({ cursor = { no_warps = true } })' >/dev/null; "
+            + ir + "; "
+            + "hyprctl eval 'hl.config({ cursor = { no_warps = "
+            + warpsDeCasa + " } })' >/dev/null"])
     }
 
     function estaFijada(id) { return idsDock.indexOf(id) >= 0 }
