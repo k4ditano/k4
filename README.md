@@ -37,7 +37,7 @@ see what it would do.
 | <img src="screenshots/launcher.png" alt="Application launcher"> | <img src="screenshots/control-center.png" alt="Control center with Wi-Fi, Bluetooth, sound and media"> |
 | **Launcher** — apps, package search, install and update. | **Control center** — Wi-Fi, Bluetooth, per-device sound, player. |
 | <img src="screenshots/theme.png" alt="Hyprland theme panel"> | <img src="screenshots/shortcuts.png" alt="Searchable shortcut viewer"> |
-| **Hyprland's theme**, live — colors, gaps, borders, blur, animations. | **Every shortcut**, searchable — yours and the ones k4 adds. |
+| **Hyprland's theme**, live — colors, gaps, borders, blur, animations, and the wallpaper. | **Every shortcut**, searchable — yours and the ones k4 adds. |
 
 Plus notifications with actions and history, a system tray, clipboard history,
 a window switcher, and a bar that lives wherever you put it — top or bottom,
@@ -51,6 +51,29 @@ Region, window or screen; record; then land straight in a non-linear editor.
 Layered video and image timelines, cuts, crops, audio tracks with ducking and
 live noise removal, subtitles, camera overlay, silence detection, Whisper
 transcription. Out the other side: MP4, WebM, GIF or 9:16 for Shorts.
+
+### Wallpapers that move, and a palette that comes out of them
+
+<img src="screenshots/fondos.gif" width="100%" alt="The wallpaper tab: picking a different video wallpaper, which crossfades in and keeps playing behind the bar">
+
+The bar draws the wallpaper itself, on its own layer below the windows, so a
+wallpaper can be a video or a GIF and not only a picture. Nothing new to
+install: QtMultimedia was already a dependency, for the video editor.
+
+And because k4 is the one drawing it, it can do what a wallpaper daemon cannot:
+**pause the video when no window leaves any of it visible.** Measured on a
+twelve-core machine, a 1080p60 loop costs about 1.5% of it while you can see it
+and next to nothing while you cannot — which matters, because a daemon left to
+itself decodes all day for nobody.
+
+One wallpaper per monitor, and a transition when you change it: a crossfade, an
+iris that grows out of the island, or a tide that rises from the bottom edge
+with a wavy front.
+
+The colour comes from the wallpaper too. k4 pulls a palette out of the image
+and hands it to the three places colour shows up — the bar's own tint,
+Hyprland's window borders, and the terminal. Pick a preset by hand and it
+steps aside.
 
 ### Dual mode: the bar leaves the top and becomes a dock
 
