@@ -28,10 +28,10 @@ K4Plugin {
         && Game.cargado && Settings.juegoEnPildora
         ? (Game.cofres > 0 ? 44 : 36) : 0
 
-    // Los dos flancos reservan lo mismo —el del más ancho— para que la hora
-    // quede en el centro de verdad y no se mueva al aparecer o irse un icono.
-    // Sale una píldora algo más ancha cuando un lado va cargado, que es el
-    // precio de la simetría y merece la pena en algo que se mira todo el día.
+    // Cada flanco ocupa lo suyo y la hora se queda quieta por el ancla que se
+    // publica abajo, no por reservar lo mismo a los dos lados. La simetría
+    // hacía que cada píxel de indicador costase dos, y con dos o tres agentes
+    // la island se iba de ancho hasta dejar de parecerse a una island.
     // Grabando: el punto rojo y el mm:ss. Reservarlo es obligatorio, no
     // cosmético: los flancos tienen hueco fijo y lo que no se reserva se sale
     // por encima de la hora, que es lo que pasaba.
@@ -46,17 +46,21 @@ K4Plugin {
     readonly property int minimizadosWidth: Modulos.count * 116
 
     readonly property int ladoDer: trayWidth + juegoWidth + grabacionWidth
-        + minimizadosWidth
+        + minimizadosWidth + Indicadores.anchoAproximado
 
-    //  La medida REAL de la fila derecha, publicada por la vista. La suma de
-    //  arriba se queda como arranque y red de seguridad: en cuanto la vista
-    //  existe, manda lo medido — y añadir un indicador nuevo deja de exigir
-    //  acordarse de sumar su hueco aquí, que es como se pisó dos veces la
-    //  hora.
+    //  La medida REAL de cada fila, publicada por la vista. Las sumas de arriba
+    //  se quedan como arranque y red de seguridad: en cuanto la vista existe,
+    //  manda lo medido — y añadir un indicador nuevo deja de exigir acordarse
+    //  de sumar su hueco aquí, que es como se pisó dos veces la hora.
+    //
+    //  Ahora también el flanco izquierdo: con la island creciendo hacia un solo
+    //  lado, lo que mida la carátula corre el borde izquierdo, y una cuenta a
+    //  ojo ahí se ve tanto como una a la derecha.
     property int ladoDerMedido: 0
+    property int ladoIzqMedido: 0
 
-    readonly property int ladoAncho: Math.max(ladoIzq,
-        ladoDerMedido > 0 ? ladoDerMedido : ladoDer)
+    readonly property int derAncho: ladoDerMedido > 0 ? ladoDerMedido : ladoDer
+    readonly property int izqAncho: ladoIzqMedido > 0 ? ladoIzqMedido : ladoIzq
 
     // El centro ya no es solo la hora: al cambiar de escritorio enseña los
     // puntos en su lugar, y hay que reservar lo que ocupe el más ancho de los
@@ -66,7 +70,23 @@ K4Plugin {
     // media barra, aunque solo hagan falta el actual y sus vecinos.
     readonly property int centroAncho: 46
 
-    islandWidth: centroAncho + 2 * ladoAncho + 44
+    //  Los cuatro huecos de 11 que separan las tres zonas entre sí y de los
+    //  bordes. La vista reparte con estos mismos números, así que si cambian,
+    //  cambian a la vez en los dos sitios o la cuenta deja de cuadrar.
+    readonly property int holgura: 44
+
+    //  Cada flanco ocupa lo suyo y nada más, en vez de reservar los dos el del
+    //  más ancho. Eso hacía que cada píxel de indicador costase dos y que con
+    //  tres agentes la island ocupase media pantalla, con la mitad vacía.
+    //
+    //  El precio es que la hora se corre un poco al aparecer o irse un
+    //  indicador: la island va centrada, así que crece la mitad por cada lado.
+    //  Se probó a clavarla con un ancla y sale peor de lo que arregla —la
+    //  island deja de abrirse por igual hacia los dos lados, que es lo que se
+    //  mira cada vez que pasas el ratón—. Antes esto se pagaba con el doble de
+    //  ancho SIEMPRE, para que no se notara en un caso que pasa de vez en
+    //  cuando.
+    islandWidth: izqAncho + holgura + centroAncho + derAncho
     islandHeight: Theme.baseHeight
 
     view: Component {

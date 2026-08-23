@@ -18,7 +18,7 @@ RowLayout {
     property bool interactive: false
 
     Repeater {
-        model: Indicadores.lista
+        model: Indicadores.reparto.muestra
         delegate: Item {
             required property var modelData
             visible: modelData.visible !== false
@@ -35,24 +35,20 @@ RowLayout {
                     color: modelData.color || Theme.muted
                     font.pixelSize: 11
                 }
-                //  Con tope y recortado por el final.
+                //  Con tope y recortado por el final. El tope lo pone el
+                //  servicio y no este fichero, porque es el mismo número con el
+                //  que estima el hueco a reservar: separarlos es reservar para
+                //  un texto que no se dibuja.
                 //
-                //  Sin tope, un indicador de nombre largo estiraba la island el
-                //  DOBLE de lo que mide: el reloj va centrado, así que se
-                //  reserva lo mismo a los dos lados y cada píxel de píldora
-                //  cuesta dos. Con dos o tres agentes trabajando, la island se
-                //  iba de ancho hasta dejar de parecerse a una island.
-                //
-                //  Ciento diez son unas quince letras a 11 px: suficiente para
-                //  distinguir de qué es el aviso, que es todo lo que una píldora
-                //  tiene que hacer. El nombre entero está en la notificación.
+                //  Cuántos indicadores caben también lo decide él; aquí solo se
+                //  pintan los que manda.
                 IslandLabel {
                     text: modelData.texto
                     color: Theme.muted
                     font.pixelSize: 11
                     font.weight: Font.Medium
                     elide: Text.ElideRight
-                    Layout.maximumWidth: 110
+                    Layout.maximumWidth: Indicadores.topeTexto
                 }
             }
 
@@ -63,6 +59,28 @@ RowLayout {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: Indicadores.invocado(modelData.id)
             }
+        }
+    }
+
+    //  Los que no caben, en una cápsula.
+    //
+    //  No se pincha: no llevaría a ningún sitio concreto —son varios— y la
+    //  píldora en reposo no atiende el ratón de todas formas. Está para que la
+    //  fila no mienta cuando se queda corta.
+    Rectangle {
+        visible: Indicadores.reparto.ocultos > 0
+        Layout.preferredWidth: Indicadores.anchoResumen
+        Layout.preferredHeight: 18
+        Layout.alignment: Qt.AlignVCenter
+        radius: height / 2
+        color: Theme.surface
+
+        IslandLabel {
+            anchors.centerIn: parent
+            text: "+" + Indicadores.reparto.ocultos
+            color: Theme.muted
+            font.pixelSize: 10
+            font.weight: Font.Medium
         }
     }
 }

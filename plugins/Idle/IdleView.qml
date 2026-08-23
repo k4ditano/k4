@@ -1,14 +1,16 @@
-//  Píldora plegada, en tres zonas.
+//  Píldora plegada, en tres zonas ENCADENADAS: la carátula, la hora colgada de
+//  la carátula y los indicadores colgados de la hora.
 //
-//  El centro va anclado al centro de verdad de la island, no metido entre dos
-//  espaciadores flexibles: con espaciadores, un RowLayout centra el grupo del
-//  medio respecto al CONTENIDO de los flancos, así que la hora se corría medio
-//  ancho de lo que hubiera a la derecha y se movía sola al aparecer un icono de
-//  bandeja o el aviso del juego.
+//  Cada zona empieza donde acaba la anterior, y esa es toda la regla. Antes
+//  iban las tres ancladas a su borde —izquierda, centro, derecha—, y eso obliga
+//  a que lo reservado cuadre al píxel con lo que mide de verdad: en cuanto se
+//  descuadraba, la fila de la derecha caminaba por encima de la hora y el clip
+//  lo escondía en vez de arreglarlo. Encadenadas, el solape no es que no pase:
+//  es que no cabe.
 //
-//  Reparto: los espacios de trabajo a la izquierda, la hora en el centro y los
-//  indicadores a la derecha. El plugin reserva el mismo hueco a los dos lados,
-//  que es lo que hace que se lea simétrica aunque uno esté vacío.
+//  Con espaciadores flexibles tampoco: un RowLayout centra el grupo del medio
+//  respecto al CONTENIDO de los flancos, así que la hora se corría medio ancho
+//  de lo que hubiera a la derecha y bailaba al aparecer un icono de bandeja.
 
 import QtQuick
 import QtQuick.Layouts
@@ -99,6 +101,14 @@ FadeIn {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
 
+            //  Igual que la derecha: el ancho real, al plugin. Este flanco
+            //  abre la cadena, así que lo que mida corre a los otros dos y una
+            //  cuenta a ojo aquí se ve tanto como una al otro lado.
+            onImplicitWidthChanged: if (view.plugin)
+                view.plugin.ladoIzqMedido = Math.ceil(implicitWidth)
+            Component.onCompleted: if (view.plugin)
+                view.plugin.ladoIzqMedido = Math.ceil(implicitWidth)
+
             Artwork {
                 Layout.preferredWidth: 20
                 Layout.preferredHeight: 20
@@ -125,7 +135,12 @@ FadeIn {
         //  que solo importa en el instante en que cambia.
         Item {
             id: centro
-            anchors.horizontalCenter: parent.horizontalCenter
+
+            //  Colgada de la carátula, no al centro de la caja: la caja ya
+            //  no reserva lo mismo a los dos lados, así que su centro no es
+            //  donde va la hora.
+            anchors.left: izquierda.right
+            anchors.leftMargin: 11
             anchors.verticalCenter: parent.verticalCenter
             width: 46
             height: parent.height
@@ -175,7 +190,10 @@ FadeIn {
         //  Es en esas donde la fila es pulsable.
         RowLayout {
             id: derecha
-            anchors.right: parent.right
+
+            //  Colgada de la HORA, cerrando la cadena.
+            anchors.left: centro.right
+            anchors.leftMargin: 11
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
 
