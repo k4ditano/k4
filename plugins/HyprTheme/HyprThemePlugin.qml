@@ -40,7 +40,10 @@ K4Plugin {
     // panel: aquí se arrastran deslizadores y es fácil pasarse del borde.
     closeOnHoverExit: true
     hoverExitDelay: 1000
-    onHoverTimedOut: close()
+    //  Salvo con el selector de ficheros abierto: para elegir hay que sacar el
+    //  ratón de aquí, y cerrarse entonces es cerrarse justo cuando el usuario
+    //  está haciendo lo que le hemos pedido.
+    onHoverTimedOut: if (!eligiendo) close()
 
     readonly property string hyprDir: K4.Sistema.entorno("HOME") + "/.config/hypr"
     readonly property string themeFile: hyprDir + "/config/k4-theme.lua"
@@ -366,6 +369,7 @@ K4Plugin {
             animEnabled: animEnabled, animSpeed: animSpeed,
             wallpaper: wallpaper,
             fondos: fondos,
+            extras: extras,
             transicion: transicion,
             paletaAuto: paletaAuto,
             dirty: dirty
@@ -406,6 +410,7 @@ K4Plugin {
         //  Comprobado contra la lista: un fichero a mano con cualquier otra cosa
         //  dejaría un efecto que no pinta nadie, o sea un cambio de fondo que se
         //  queda a medias sin decir por qué.
+        extras = (s.extras && s.extras.length !== undefined) ? s.extras : []
         if (s.transicion && transiciones.indexOf(s.transicion) >= 0)
             transicion = s.transicion
         if (s.paletaAuto !== undefined)
@@ -431,7 +436,109 @@ K4Plugin {
     // El proyecto swww se renombró a awww, así que se acepta cualquiera de los
     // dos; swaybg es el plan C: sin transiciones y hay que relanzarlo.
     property string wallTool: ""       // "awww" | "swww" | "swaybg" | ""
-    property var wallpapers: []
+
+    //  Lo que ha encontrado el rastreo, y lo que has traído tú.
+    //
+    //  Se guardan por RUTA y no copiando el fichero. Copiar sería más robusto
+    //  —un fondo en un USB deja de existir al sacarlo— pero también sería
+    //  duplicar en silencio un vídeo de trescientos megas porque lo arrastraste
+    //  a una rejilla. Si la ruta deja de existir, se cae sola del rastreo
+    //  siguiente y ya está.
+    property var encontrados: []
+    property var extras: []
+
+    //  Los tuyos primero: si te has molestado en traerlo, no lo busques luego
+    //  entre cuarenta y cinco.
+    readonly property var wallpapers: {
+        const fuera = []
+        for (let i = 0; i < extras.length; ++i)
+            fuera.push(extras[i])
+        for (let j = 0; j < encontrados.length; ++j)
+            if (extras.indexOf(encontrados[j]) < 0)
+                fuera.push(encontrados[j])
+        return fuera
+    }
+
+    function admitido(ruta) {
+        const r = String(ruta || "").toLowerCase()
+        for (let i = 0; i < extensionesFondo.length; ++i)
+            if (r.endsWith("." + extensionesFondo[i]))
+                return true
+        return false
+    }
+
+    //  ── traer uno de fuera ───────────────────────────────────────
+    //
+    //  Por el diálogo del sistema y no arrastrando, y no es la primera opción
+    //  que probé: la de arrastrar estaba escrita y no puede funcionar AQUÍ. Este
+    //  módulo se cierra al salir el ratón (`closeOnHoverExit`), así que para ir
+    //  a por el fichero tienes que salir, y al salir ya no hay dónde soltarlo.
+    //  Una superficie que se cierra al perder el puntero no puede ser destino de
+    //  un arrastre, por bien escrito que esté el `DropArea`.
+    //
+    //  Zenity además trae vista previa, que para elegir un fondo es justo lo que
+    //  hace falta: un fondo se reconoce mirándolo.
+    property bool eligiendo: false
+
+    K4.Process {
+        id: selectorFondo
+        //  Mientras el diálogo esté abierto la island se aparta: va en una capa
+        //  por encima de todo y el selector le saldría por debajo, donde no se
+        //  ve ni se puede pulsar.
+        onArrancado: { self.eligiendo = true; Island.abrirDialogo() }
+        onTerminado: { self.eligiendo = false; Island.cerrarDialogo() }
+        command: ["zenity", "--file-selection", "--multiple", "--separator=\n",
+                  "--title=" + Idioma.t("Elegir fondo"),
+                  "--file-filter=" + Idioma.t("Fondos")
+                  + " | *.jpg *.jpeg *.png *.webp *.avif *.gif *.apng"
+                  + " *.mp4 *.webm *.mkv *.mov *.m4v"]
+
+        onSalida: function (texto) {
+            const rutas = String(texto).trim().split("\n")
+                .filter(function (r) { return r.length > 0 })
+            //  Vacío es que le has dado a cancelar, que no es un fallo.
+            if (rutas.length === 0)
+                return
+            if (self.sumarFondos(rutas) > 0)
+                self.ponerEnElegida(self.extras[0])
+        }
+    }
+
+    function elegirFondo() {
+        if (!selectorFondo.running)
+            selectorFondo.running = true
+    }
+
+    //  Y quitarlo. Poder añadir sin poder quitar es una calle sin salida: una
+    //  ruta que ya no existe se queda enseñando una miniatura rota para siempre.
+    //  Solo se quita de la lista; el fichero no se toca, que no es nuestro.
+    function quitarFondo(ruta) {
+        const l = extras.filter(function (x) { return x !== ruta })
+        if (l.length === extras.length)
+            return false
+        extras = l
+        saveState()
+        return true
+    }
+
+    //  Añadir lo que se ha soltado. Devuelve cuántos han entrado, que es lo que
+    //  la pantalla necesita para decir algo con sentido cuando no entra ninguno.
+    function sumarFondos(rutas) {
+        const nuevos = []
+        for (let i = 0; i < rutas.length; ++i) {
+            const r = String(rutas[i])
+            if (!admitido(r) || extras.indexOf(r) >= 0)
+                continue
+            nuevos.push(r)
+        }
+        if (nuevos.length === 0)
+            return 0
+        //  Contenedor NUEVO: mutar el array no repinta la rejilla.
+        extras = nuevos.concat(extras)
+        saveState()
+        prepararPosters()
+        return nuevos.length
+    }
 
     readonly property var wallDirs: [
         K4.Sistema.entorno("HOME") + "/Imágenes",
@@ -744,7 +851,7 @@ K4Plugin {
         onSalida: function (texto) {
             const found = texto.trim().split("\n").filter(function (p) { return p.length > 0 })
             found.sort()
-            self.wallpapers = found.slice(0, 200)
+            self.encontrados = found.slice(0, 200)
             self.prepararPosters()
         }
     }
@@ -796,6 +903,17 @@ K4Plugin {
                                     to: String(self.accentTo),
                                     inactive: String(self.inactive),
                                     sacados: self.paletaSacada })
+        }
+
+        //  Para poder probar lo de arrastrar sin arrastrar.
+        function sumar(ruta: string): string {
+            return JSON.stringify({ entraron: self.sumarFondos([ruta]),
+                                    extras: self.extras })
+        }
+
+        function quitar(ruta: string): string {
+            return JSON.stringify({ quitado: self.quitarFondo(ruta),
+                                    extras: self.extras })
         }
 
         function transicion(cual: string): string {

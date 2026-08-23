@@ -1321,5 +1321,8 @@
   "vídeo": "video",
   "El color lo pone el fondo": "The colour comes from the wallpaper",
   "Cambia de fondo y se recolocan la barra, los bordes y la terminal": "Change the wallpaper and the bar, the borders and the terminal follow",
-  "Apagado al elegir un preset o un color a mano": "Turned off when you pick a preset or a colour by hand"
+  "Apagado al elegir un preset o un color a mano": "Turned off when you pick a preset or a colour by hand",
+  "Añadir…": "Add…",
+  "Elegir fondo": "Choose a background",
+  "Fondos": "Backgrounds"
 }

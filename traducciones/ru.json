@@ -1321,5 +1321,8 @@
   "vídeo": "видео",
   "El color lo pone el fondo": "Цвет берётся из обоев",
   "Cambia de fondo y se recolocan la barra, los bordes y la terminal": "Смените обои — и панель, рамки и терминал подстроятся",
-  "Apagado al elegir un preset o un color a mano": "Выключается, когда выбираете пресет или цвет вручную"
+  "Apagado al elegir un preset o un color a mano": "Выключается, когда выбираете пресет или цвет вручную",
+  "Añadir…": "Добавить…",
+  "Elegir fondo": "Выбрать фон",
+  "Fondos": "Фоны"
 }

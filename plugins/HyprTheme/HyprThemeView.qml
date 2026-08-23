@@ -532,6 +532,39 @@ FadeIn {
                         Layout.alignment: Qt.AlignVCenter
                     }
 
+                    //  ── traer uno de fuera ──────────────────────
+                    //
+                    //  El rastreo mira unas cuantas carpetas y ninguna tiene por
+                    //  qué ser la tuya: el fondo que te acabas de bajar a un
+                    //  sitio raro no aparece, y la única salida era moverlo.
+                    Rectangle {
+                        Layout.preferredWidth: textoAnadir.implicitWidth + 22
+                        Layout.preferredHeight: 24
+                        Layout.alignment: Qt.AlignVCenter
+                        radius: 12
+                        color: anadirRaton.containsMouse ? Theme.surfaceHi
+                                                         : Theme.surface
+
+                        Behavior on color { ColorAnimation { duration: 120 } }
+
+                        IslandLabel {
+                            id: textoAnadir
+                            anchors.centerIn: parent
+                            textFormat: Text.PlainText
+                            text: Idioma.t("Añadir…")
+                            color: Theme.muted
+                            font.pixelSize: 10
+                        }
+
+                        MouseArea {
+                            id: anadirRaton
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: view.plugin.elegirFondo()
+                        }
+                    }
+
                     MediaButton {
                         glyph: Theme.ico.loading
                         glyphSize: 14
@@ -616,6 +649,9 @@ FadeIn {
                         //  lo de esa pantalla.
                         readonly property bool current: view.destinoActual === modelData
                         readonly property bool mueve: !view.plugin.esQuieto(modelData)
+                        //  ¿Lo has traído tú? Solo esos se pueden quitar.
+                        readonly property bool propio:
+                            view.plugin.extras.indexOf(modelData) >= 0
 
                         Rectangle {
                             anchors.fill: parent
@@ -686,11 +722,49 @@ FadeIn {
                                 }
                             }
 
+                            //  La cruz de quitar, solo en los que has traído
+                            //  tú: los que salen del rastreo no se pueden
+                            //  quitar de una lista en la que no están.
+                            Rectangle {
+                                visible: wallCell.propio
+                                    && (wallMouse.containsMouse || quitarRaton.containsMouse)
+                                anchors.top: parent.top
+                                anchors.left: parent.left
+                                anchors.margins: 6
+                                width: 18
+                                height: 18
+                                radius: 9
+                                color: quitarRaton.containsMouse
+                                    ? Theme.red : "#cc000000"
+
+                                IslandLabel {
+                                    anchors.centerIn: parent
+                                    //  Por codepoint y no como literal: el extractor
+                                    //  de textos ve cualquier cadena en un `text:` y la
+                                    //  mete en la plantilla, y una aspa no se traduce.
+                                    text: String.fromCodePoint(0x00d7)
+                                    font.pixelSize: 12
+                                    font.weight: Font.DemiBold
+                                }
+
+                                MouseArea {
+                                    id: quitarRaton
+                                    anchors.fill: parent
+                                    anchors.margins: -3
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: view.plugin.quitarFondo(wallCell.modelData)
+                                }
+                            }
+
                             MouseArea {
                                 id: wallMouse
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
+                                //  Debajo de la cruz a propósito: declarado
+                                //  después iría encima y se comería su clic.
+                                z: -1
                                 onClicked: view.plugin.ponerEnElegida(wallCell.modelData)
                             }
                         }
@@ -703,6 +777,7 @@ FadeIn {
                         color: Theme.muted
                         font.pixelSize: 12
                     }
+
                 }
             }
         }
