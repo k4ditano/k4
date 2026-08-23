@@ -82,6 +82,19 @@ K4Plugin {
     //  pantalla concreta debe seguir viendo lo que veía.
     property var fondos: ({})
 
+    //  Cómo se pasa de un fondo al siguiente.
+    //
+    //   · "fundido"  — el honesto: uno se va mientras el otro llega. Vale para
+    //     cualquier par de fondos y no cuenta nada que no sea verdad.
+    //   · "iris"     — un círculo que crece DESDE LA ISLAND, que es quien acaba
+    //     de cambiar el fondo: el cambio sale de donde lo has pedido.
+    //   · "marea"    — el nuevo sube desde el canto de abajo con el frente
+    //     ondulado, que es la gramática líquida de la casa.
+    //   · "ninguna"  — corte seco, para quien cambia de fondo veinte veces al
+    //     día y no quiere una película cada vez.
+    readonly property var transiciones: ["fundido", "iris", "marea", "ninguna"]
+    property string transicion: "fundido"
+
     function fondoDe(pantalla) {
         const propio = fondos[pantalla]
         return propio && propio.length > 0 ? propio : wallpaper
@@ -223,6 +236,7 @@ K4Plugin {
             animEnabled: animEnabled, animSpeed: animSpeed,
             wallpaper: wallpaper,
             fondos: fondos,
+            transicion: transicion,
             dirty: dirty
         }, null, 2))
     }
@@ -258,6 +272,11 @@ K4Plugin {
         animSpeed = s.animSpeed !== undefined ? s.animSpeed : animSpeed
         wallpaper = s.wallpaper !== undefined ? s.wallpaper : wallpaper
         fondos = (s.fondos && typeof s.fondos === "object") ? s.fondos : ({})
+        //  Comprobado contra la lista: un fichero a mano con cualquier otra cosa
+        //  dejaría un efecto que no pinta nadie, o sea un cambio de fondo que se
+        //  queda a medias sin decir por qué.
+        if (s.transicion && transiciones.indexOf(s.transicion) >= 0)
+            transicion = s.transicion
         dirty = s.dirty === true
 
         //  El suelo se repone al cargar: swaybg no sobrevive a un reinicio de
@@ -313,7 +332,19 @@ K4Plugin {
         return l
     }
 
-    function ponerSuelo() {
+    //  El suelo no corre prisa —es para cuando la barra NO esté— así que se
+    //  amortigua. Sin esto, dos cambios de fondo seguidos dejaban DOS swaybg
+    //  vivos: el `pkill` del segundo salía antes de que el primero llegara a
+    //  existir, y el escritorio acababa con dos demonios peleándose por la
+    //  misma capa. Medido: `pgrep -c -x swaybg` daba 2.
+    property Timer esperaSuelo: Timer {
+        interval: 300
+        onTriggered: self.ponerSueloYa()
+    }
+
+    function ponerSuelo() { esperaSuelo.restart() }
+
+    function ponerSueloYa() {
         const trozos = []
         const pantallas = pantallasConocidas()
         for (let i = 0; i < pantallas.length; ++i) {
@@ -331,8 +362,11 @@ K4Plugin {
 
         //  `pkill -x`, nunca `-f`: con `-f` el patrón casa también con la línea
         //  de esta misma orden y se mata a sí misma antes de llegar a swaybg.
+        //
+        //  Y con una espera corta antes de levantar el nuevo: matar no es
+        //  instantáneo, y arrancar mientras el viejo agoniza deja los dos.
         K4.Sistema.lanzar(["sh", "-c",
-            "pkill -x swaybg 2>/dev/null; swaybg " + trozos.join(" ")
+            "pkill -x swaybg 2>/dev/null; sleep 0.2; swaybg " + trozos.join(" ")
             + " >/dev/null 2>&1 &"])
     }
 
@@ -504,6 +538,16 @@ K4Plugin {
         }
 
         function fondos(): string { return self.fondosEstado() }
+
+        //  Cambiar la transición sin pantalla todavía. Devuelve lo que ha
+        //  quedado puesto, para no tener que preguntarlo aparte.
+        function transicion(cual: string): string {
+            if (self.transiciones.indexOf(cual) >= 0) {
+                self.transicion = cual
+                self.saveState()
+            }
+            return self.transicion
+        }
     }
 
     //  El estado del lienzo, en una función del plugin y no solo dentro del

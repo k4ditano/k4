@@ -247,8 +247,10 @@ quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4.hello toggle
 - `K4.Ventana`: a full-screen `wlr-layer-shell` surface that does not reserve
   layout space. `capa` picks the level: `"encima"` above everything (the
   island included), `"normal"` above windows and below the island, and
-  `"fondo"` **below the windows** — the desktop background layer, which is
-  what an animated wallpaper needs. Give a background window a 0×0
+  `"fondo"` **below the windows** — what an animated wallpaper needs. It
+  lands on `Bottom`, not `Background`: wallpaper daemons live on
+  `Background`, and within one layer the newest surface wins, so relaunching
+  swaybg would silently cover whatever you drew. Give a background window a 0×0
   `zonaActiva`, or its `null` mask swallows every click on the desktop.
 - `K4.PorPantalla`: one instance per monitor.
 - `K4.Cargador`: a `LazyLoader` for expensive views or windows.

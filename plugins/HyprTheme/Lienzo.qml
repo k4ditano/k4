@@ -35,6 +35,8 @@
 
 import QtQuick
 import QtMultimedia
+import QtQuick.Effects
+import QtQuick.Shapes
 import K4 as K4
 import "../../services"
 
@@ -45,6 +47,18 @@ K4.PorPantalla {
     //  guardarlo aquí porque el estado es del plugin —lo guarda, lo carga y lo
     //  publica por IPC— y esto solo pinta.
     required property var plugin
+
+    //  Qué transición y cuánto dura. Salen del plugin, que es quien las guarda.
+    readonly property string transicion: lienzo.plugin
+        ? lienzo.plugin.transicion : "fundido"
+    readonly property int duracion: 900
+
+    //  Poner una ruta en una capa es poner DOS cosas —la ruta y su tipo— y
+    //  hacerlo por separado deja un fotograma con el tipo de la anterior.
+    function poner(c, r) {
+        c.ruta = String(r || "")
+        c.tipo = lienzo.tipoDe(c.ruta)
+    }
 
     //  Por la extensión y no preguntando al usuario: nadie quiere elegir en un
     //  desplegable si su fichero es un vídeo. `webp` va por el camino animado a
@@ -160,106 +174,221 @@ K4.PorPantalla {
         readonly property string cual: modelData ? modelData.name : ""
         readonly property string ruta: lienzo.plugin
             ? lienzo.plugin.fondoDe(cual) : ""
-        readonly property string tipo: lienzo.tipoDe(ruta)
+
+        //  Solo existe si hay algo que pintar. Sin fondo asignado no se crea la
+        //  superficie: entonces se ve el suelo de swaybg, que es exactamente lo
+        //  que había antes de todo esto.
+        visible: lienzo.tipoDe(ruta) !== "nada"
+
+        // ── las dos capas y el relevo ───────────────────────────
+        //
+        //  Una transición necesita las DOS a la vez: la que se va sigue puesta
+        //  hasta el final, y la que llega se revela encima. `viva` dice cuál
+        //  tiene el fondo puesto; la otra es la que entra, y va siempre arriba.
+        property int viva: 0
+        property real avance: 1
+        readonly property bool cambiando: tela.avance < 1
+
+        readonly property var capaViva: tela.viva === 0 ? capaA : capaB
+        readonly property var capaEntra: tela.viva === 0 ? capaB : capaA
 
         //  ¿Se ve algo de este fondo? Se recalcula solo: depende de
         //  `Ventanas.lista`, que es reactiva, así que abrir o cerrar una ventana
         //  y cambiar de escritorio ya disparan la cuenta. Un fondo quieto no
         //  pregunta: no gasta nada aunque no se vea.
-        readonly property bool aLaVista: tela.tipo === "quieto"
-            || tela.tipo === "nada"
+        readonly property bool aLaVista: lienzo.tipoDe(ruta) === "quieto"
+            || lienzo.tipoDe(ruta) === "nada"
             || !tela.screen
             || lienzo.seVeAlgoEn(tela.screen, tela.screen.x, tela.screen.y,
                                  tela.screen.width, tela.screen.height)
 
-        //  Solo existe si hay algo que pintar. Sin fondo asignado no se crea la
-        //  superficie: entonces se ve el suelo de swaybg, que es exactamente lo
-        //  que había antes de todo esto.
-        visible: tela.tipo !== "nada"
-
-        //  Negro debajo de todo: si la imagen no llena la pantalla —una foto
-        //  vertical en un monitor apaisado con encaje «entera»— lo que asoma es
-        //  esto y no el escritorio de detrás.
-        color: "black"
-
-        // ── quieto ──────────────────────────────────────────────
-        Image {
+        Capa {
+            id: capaA
             anchors.fill: parent
-            visible: tela.tipo === "quieto"
-            source: tela.tipo === "quieto" ? "file://" + tela.ruta : ""
-            fillMode: Image.PreserveAspectCrop
-            asynchronous: true
-            //  A la resolución de la pantalla y no a la del fichero: una foto
-            //  de 6000 px en un monitor de 1920 son 140 MB de textura para
-            //  enseñar exactamente lo mismo.
-            sourceSize.width: tela.screen ? tela.screen.width : 1920
-            sourceSize.height: tela.screen ? tela.screen.height : 1080
+            z: tela.viva === 0 ? 0 : 1
+            animando: tela.aLaVista
+            anchoPantalla: tela.screen ? tela.screen.width : 1920
+            altoPantalla: tela.screen ? tela.screen.height : 1080
         }
 
-        // ── animado (gif, webp) ─────────────────────────────────
-        AnimatedImage {
+        Capa {
+            id: capaB
             anchors.fill: parent
-            visible: tela.tipo === "animado"
-            source: tela.tipo === "animado" ? "file://" + tela.ruta : ""
-            fillMode: Image.PreserveAspectCrop
-            //  Solo late si se ve, y «verse» es dos cosas: que le toque a este
-            //  tipo de fondo Y que no lo tape una ventana. Un AnimatedImage
-            //  sigue descomprimiendo fotogramas aunque no lo mire nadie.
-            playing: visible && tela.aLaVista
-            //  Sin caché: un GIF de fondo son megas que no se van a reusar y
-            //  que se quedarían en la caché de imágenes de todo el motor.
-            cache: false
+            z: tela.viva === 1 ? 0 : 1
+            animando: tela.aLaVista
+            anchoPantalla: tela.screen ? tela.screen.width : 1920
+            altoPantalla: tela.screen ? tela.screen.height : 1080
         }
 
-        // ── vídeo ───────────────────────────────────────────────
-        VideoOutput {
-            id: salida
-            anchors.fill: parent
-            visible: tela.tipo === "video"
-            fillMode: VideoOutput.PreserveAspectCrop
-        }
+        onRutaChanged: tela.relevar()
+        Component.onCompleted: tela.relevar()
 
-        MediaPlayer {
-            id: reproductor
-            videoOutput: salida
-            loops: MediaPlayer.Infinite
-            source: tela.tipo === "video" ? "file://" + tela.ruta : ""
-
-            //  Sin AudioOutput a propósito, y no es un olvido: un fondo no
-            //  suena. Sin salida de audio el descodificador ni siquiera abre la
-            //  pista.
-            onSourceChanged: if (source != "") play()
-
-            //  Y se para cuando no se ve. `pause` y no `stop`: parar rebobina,
-            //  así que al destapar la ventana el fondo volvería a empezar desde
-            //  el principio en vez de seguir donde estaba.
-            Component.onCompleted: tela.acompasar()
-        }
-
-        //  El vídeo va por función y no por un `playing:` enlazado porque
-        //  MediaPlayer no tiene tal property: se le manda `play()` o `pause()`.
-        function acompasar() {
-            if (tela.tipo !== "video")
+        function relevar() {
+            const nueva = tela.ruta
+            //  Sin nada puesto todavía —al arrancar— o sin efecto, no hay
+            //  transición: se pone y ya. Fundir desde un fondo que no existe es
+            //  fundir desde negro, que es peor que no fundir.
+            if (tela.capaViva.ruta === nueva)
                 return
-            if (tela.aLaVista)
-                reproductor.play()
-            else
-                reproductor.pause()
+            if (tela.capaViva.ruta.length === 0
+                    || nueva.length === 0
+                    || lienzo.transicion === "ninguna") {
+                lienzo.poner(tela.capaViva, nueva)
+                lienzo.poner(tela.capaEntra, "")
+                tela.avance = 1
+                return
+            }
+            lienzo.poner(tela.capaEntra, nueva)
+            tela.avance = 0
+            paso.restart()
         }
 
-        onALaVistaChanged: tela.acompasar()
-        onTipoChanged: tela.acompasar()
+        NumberAnimation {
+            id: paso
+            target: tela
+            property: "avance"
+            to: 1
+            duration: lienzo.duracion
+            //  Arranca suave y para suave: lo que se enseña es una superficie
+            //  cambiando, no un objeto que se lanza.
+            easing.type: Easing.InOutCubic
+            onFinished: {
+                //  El relevo: la que entraba pasa a ser la puesta, y la otra se
+                //  vacía. Vaciarla ANTES de cambiar `viva` borraría la que se
+                //  está viendo.
+                tela.viva = tela.viva === 0 ? 1 : 0
+                lienzo.poner(tela.capaEntra, "")
+            }
+        }
 
-        //  Para poder mirarle las tripas desde fuera: qué pinta cada pantalla,
-        //  si se ve y si el vídeo está de verdad en marcha.
+        // ── cómo se revela la que entra ─────────────────────────
+        //
+        //  Una sola vía para los tres efectos: la capa que entra se pinta SIEMPRE
+        //  a través del efecto, y lo que cambia es si lleva máscara o solo
+        //  opacidad. Tenerlos por caminos distintos era tener dos sitios donde
+        //  el relevo puede salir mal.
+        ShaderEffectSource {
+            id: texturaEntra
+            anchors.fill: parent
+            sourceItem: tela.capaEntra
+            //  La esconde: la pinta el efecto, y dibujada dos veces se vería la
+            //  de abajo asomando por donde la máscara la recorta.
+            hideSource: true
+            live: true
+            visible: false
+        }
+
+        //  El molde de la máscara. No se dibuja —lo esconde su propia textura— y
+        //  solo existe para que el efecto tenga de dónde sacar la forma. Blanco
+        //  es «aquí se ve la nueva».
+        Item {
+            id: molde
+            anchors.fill: parent
+
+            //  ── iris: un círculo que crece DESDE LA ISLAND ──
+            //
+            //  Desde la island y no desde el centro de la pantalla porque es la
+            //  island quien acaba de cambiar el fondo: el cambio sale de donde
+            //  lo has pedido. En la pantalla que no la tenga desplegada, su
+            //  píldora sigue estando, así que el punto vale igual.
+            Rectangle {
+                visible: lienzo.transicion === "iris"
+                color: "white"
+                width: tela.radioIris * 2
+                height: width
+                radius: width / 2
+                x: tela.focoX - width / 2
+                y: tela.focoY - height / 2
+            }
+
+            //  ── marea: sube desde el canto de abajo ──
+            //
+            //  Con el frente ondulado y no recto, que es lo que la separa de una
+            //  cortina: dos senos de distinta longitud desfasados, para que no
+            //  se lea el patrón. La onda se apaga al final —`Math.sin(pi·avance)`
+            //  vale 0 en los dos extremos— porque un frente ondulado justo al
+            //  llegar al borde deja el último dedo de fondo viejo asomando.
+            Shape {
+                anchors.fill: parent
+                visible: lienzo.transicion === "marea"
+                antialiasing: true
+
+                ShapePath {
+                    fillColor: "white"
+                    strokeWidth: 0
+                    strokeColor: "transparent"
+
+                    readonly property real frente: tela.height * (1 - tela.avance)
+                    readonly property real onda: tela.height * 0.06
+                        * Math.sin(Math.PI * tela.avance)
+
+                    startX: 0
+                    startY: frente
+
+                    PathQuad {
+                        x: tela.width * 0.5; y: parent.frente
+                        controlX: tela.width * 0.25
+                        controlY: parent.frente - parent.onda * 2
+                    }
+                    PathQuad {
+                        x: tela.width; y: parent.frente
+                        controlX: tela.width * 0.75
+                        controlY: parent.frente + parent.onda * 2
+                    }
+                    PathLine { x: tela.width; y: tela.height }
+                    PathLine { x: 0; y: tela.height }
+                }
+            }
+        }
+
+        ShaderEffectSource {
+            id: texturaMolde
+            anchors.fill: parent
+            sourceItem: molde
+            hideSource: true
+            live: true
+            visible: false
+        }
+
+        MultiEffect {
+            anchors.fill: parent
+            z: 2
+            visible: tela.cambiando
+            source: texturaEntra
+            //  El fundido es opacidad y los otros dos son máscara. Un fundido
+            //  hecho con máscara pediría un molde de gris uniforme y el umbral
+            //  barriéndose, que es dar un rodeo para llegar al mismo sitio.
+            opacity: lienzo.transicion === "fundido" ? tela.avance : 1
+            maskEnabled: lienzo.transicion !== "fundido"
+            maskSource: texturaMolde
+        }
+
+        //  De dónde sale el iris y hasta dónde tiene que crecer para tapar la
+        //  pantalla: la esquina más lejana, que es la que manda.
+        readonly property var rectIsla: K4.Isla.rectEn(tela.cual)
+        readonly property real focoX: rectIsla && rectIsla.ancho > 0
+            ? rectIsla.x + rectIsla.ancho / 2 : tela.width / 2
+        readonly property real focoY: rectIsla && rectIsla.alto > 0
+            ? rectIsla.y + rectIsla.alto : 0
+        readonly property real radioIris: {
+            const dx = Math.max(tela.focoX, tela.width - tela.focoX)
+            const dy = Math.max(tela.focoY, tela.height - tela.focoY)
+            return Math.sqrt(dx * dx + dy * dy) * tela.avance
+        }
+
+        //  Para poder mirarle las tripas desde fuera.
         function estado() {
-            return { pantalla: tela.cual, tipo: tela.tipo, ruta: tela.ruta,
+            return { pantalla: tela.cual, tipo: lienzo.tipoDe(tela.ruta),
+                     ruta: tela.ruta,
                      aLaVista: tela.aLaVista,
                      ventanasDelante: lienzo.cajasVistas().length,
-                     libres: tela.screen ? lienzo.libresEn(tela.screen.x, tela.screen.y, tela.screen.width, tela.screen.height) : -1,
-                     reproduciendo: reproductor.playbackState
-                         === MediaPlayer.PlayingState,
-                     error: String(reproductor.errorString || "") }
+                     libres: tela.screen ? lienzo.libresEn(
+                         tela.screen.x, tela.screen.y,
+                         tela.screen.width, tela.screen.height) : -1,
+                     avance: Math.round(tela.avance * 100) / 100,
+                     viva: tela.viva,
+                     reproduciendo: tela.capaViva.reproduciendo,
+                     error: tela.capaViva.fallo }
         }
     }
 }

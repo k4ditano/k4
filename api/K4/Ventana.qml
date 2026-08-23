@@ -57,6 +57,16 @@ PanelWindow {
     //   · "fondo"  — DEBAJO de las ventanas. Es la capa del fondo de escritorio:
     //     no la tapa la island porque no la tapa nada, y a cambio no se ve en
     //     cuanto hay una ventana maximizada delante.
+    //
+    //     Y va en `Bottom`, no en `Background`, aunque «fondo» suene a lo
+    //     segundo. `Background` es donde viven los demonios de fondo de
+    //     pantalla —swaybg, swww— y dentro de una misma capa manda el orden de
+    //     creación: al cambiar de fondo se relanza swaybg, su superficie nueva
+    //     queda por ENCIMA y lo que pintes deja de verse sin que nada avise.
+    //     Medido: `hyprctl layers` daba `0. k4-fondo` y `1. wallpaper`, y el
+    //     lienzo estaba dibujando perfectamente debajo de su propio suelo.
+    //     `Bottom` sigue estando debajo de todas las ventanas y por encima de
+    //     ellos, que es lo que hace falta para dibujar un fondo de verdad.
     //   · "normal" — encima de las ventanas y debajo de la island.
     //   · "encima" — encima de todo, la island incluida.
     //
@@ -126,7 +136,7 @@ PanelWindow {
     property Region recorteZona: Region { item: ventana.zonaActiva }
 
     WlrLayershell.namespace: ventana.nombre
-    WlrLayershell.layer: ventana.capa === "fondo" ? WlrLayer.Background
+    WlrLayershell.layer: ventana.capa === "fondo" ? WlrLayer.Bottom
         : (ventana.capa === "encima" ? WlrLayer.Overlay : WlrLayer.Top)
     WlrLayershell.keyboardFocus: ventana.conTeclado
         ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
