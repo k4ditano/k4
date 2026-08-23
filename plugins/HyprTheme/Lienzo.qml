@@ -78,14 +78,17 @@ K4.PorPantalla {
     //  algo de fondo a la vista?». Una rejilla de 16×9 son 144 puntos, se
     //  resuelve con cuatro comparaciones cada uno, y se equivoca como mucho en
     //  un dieciseisavo de pantalla.
-    readonly property int rejillaX: 16
-    readonly property int rejillaY: 9
+    readonly property int rejillaX: 24
+    readonly property int rejillaY: 14
 
-    //  Por debajo de esto se para. No es 0 %: con las ventanas en mosaico y los
-    //  huecos de Hyprland siempre asoman unas rendijas de fondo, y dejar un
-    //  vídeo corriendo por ocho píxeles de rendija es justo lo que se quería
-    //  evitar. Un 8 % de pantalla ya es una franja que se ve.
-    readonly property real umbralVisible: 0.08
+    //  Por debajo de esto se para. No es 0 %: con las ventanas en mosaico
+    //  siempre asoman las rendijas de los huecos, y dejar un vídeo corriendo por
+    //  ocho píxeles de rendija es justo lo que se quería evitar.
+    //
+    //  Y es 3 % y no 8 porque la cuenta se hace sobre el área UTILIZABLE (ver
+    //  `libresEn`): sin descontar lo reservado, la franja del dock —62 px— valía
+    //  un 6 % ella sola y con el dock puesto no se paraba nunca.
+    readonly property real umbralVisible: 0.03
 
     //  Las ventanas que hay delante, en coordenadas de escritorio.
     //  ── las ventanas que hay delante ────────────────────────────
@@ -102,21 +105,38 @@ K4.PorPantalla {
     //  `active` de cada uno al día — eso se comprobó y venía bien.
     property var cajas: []
 
+    //  Lo que cada monitor le tiene reservado a las barras, por nombre.
+    property var reservas: ({})
+
     //  En una property con nombre y no como hijo suelto: la propiedad por
     //  defecto de `Variants` es `delegate`, así que un hijo pelado se le asigna
     //  ahí y el id nunca llega a existir. Síntoma: `ReferenceError:
     //  mirarVentanas is not defined` y cero ventanas contadas, con el delegate
     //  funcionando igual porque su asignación explícita gana.
     property var procVentanas: K4.Process {
-        command: ["hyprctl", "clients", "-j"]
+        //  Los dos de una vez y en un solo proceso: hacen falta las ventanas Y
+        //  lo reservado, y dos procesos serían dos respuestas desacompasadas y
+        //  una cuenta hecha con mitad de cada foto.
+        command: ["sh", "-c",
+            "hyprctl monitors -j; echo '@@@'; hyprctl clients -j"]
 
         onSalida: function (texto) {
-            let l = []
+            const partes = String(texto).split("@@@")
+            if (partes.length < 2)
+                return
+            let mons = [], l = []
             try {
-                l = JSON.parse(texto)
+                mons = JSON.parse(partes[0])
+                l = JSON.parse(partes[1])
             } catch (e) {
                 return
             }
+            const res = ({})
+            for (let i = 0; i < mons.length; ++i) {
+                const r = mons[i].reserved
+                res[mons[i].name] = (r && r.length === 4) ? r : [0, 0, 0, 0]
+            }
+            lienzo.reservas = res
             const delante = ({})
             const ws = Workspaces.list
             for (let i = 0; i < ws.length; ++i)
@@ -179,7 +199,22 @@ K4.PorPantalla {
         onTriggered: lienzo.pedirVentanas()
     }
 
-    function libresEn(x0, y0, ancho, alto) {
+    //  Los puntos de la rejilla que no tapa ninguna ventana, contados sobre el
+    //  área UTILIZABLE del monitor y no sobre el monitor entero.
+    //
+    //  Lo reservado —la franja de la barra arriba, la del dock abajo— lo tapa la
+    //  propia barra o el propio dock, que no son ventanas y por tanto no salen
+    //  en `hyprctl clients`. Contándolo, una pantalla con una ventana maximizada
+    //  y el dock puesto daba 16 de 144 puntos «libres» —un 11 %— y el vídeo no
+    //  se paraba nunca. Que es exactamente lo que se veía.
+    function libresEn(nombre, x0, y0, ancho, alto) {
+        const r = lienzo.reservas[nombre] || [0, 0, 0, 0]
+        x0 += r[0]
+        y0 += r[1]
+        ancho -= r[0] + r[2]
+        alto -= r[1] + r[3]
+        if (ancho <= 0 || alto <= 0)
+            return 0
         const cajas = lienzo.cajasVistas()
         let libres = 0
         for (let ix = 0; ix < lienzo.rejillaX; ++ix) {
@@ -199,12 +234,12 @@ K4.PorPantalla {
 
     //  Y la respuesta: ¿queda bastante fondo a la vista como para que valga la
     //  pena moverse?
-    function seVeAlgoEn(pantalla, x0, y0, ancho, alto) {
-        if (!pantalla || ancho <= 0 || alto <= 0)
+    function seVeAlgoEn(nombre, x0, y0, ancho, alto) {
+        if (!nombre || ancho <= 0 || alto <= 0)
             return true
         if (lienzo.cajasVistas().length === 0)
             return true
-        return lienzo.libresEn(x0, y0, ancho, alto)
+        return lienzo.libresEn(nombre, x0, y0, ancho, alto)
             / (lienzo.rejillaX * lienzo.rejillaY) > lienzo.umbralVisible
     }
 
@@ -275,7 +310,7 @@ K4.PorPantalla {
         readonly property bool aLaVista: lienzo.tipoDe(ruta) === "quieto"
             || lienzo.tipoDe(ruta) === "nada"
             || !tela.screen
-            || lienzo.seVeAlgoEn(tela.screen, tela.screen.x, tela.screen.y,
+            || lienzo.seVeAlgoEn(tela.cual, tela.screen.x, tela.screen.y,
                                  tela.screen.width, tela.screen.height)
 
         Capa {
@@ -459,8 +494,9 @@ K4.PorPantalla {
                      aLaVista: tela.aLaVista,
                      ventanasDelante: lienzo.cajasVistas().length,
                      libres: tela.screen ? lienzo.libresEn(
-                         tela.screen.x, tela.screen.y,
+                         tela.cual, tela.screen.x, tela.screen.y,
                          tela.screen.width, tela.screen.height) : -1,
+                     puntos: lienzo.rejillaX * lienzo.rejillaY,
                      avance: Math.round(tela.avance * 100) / 100,
                      viva: tela.viva,
                      reproduciendo: tela.capaViva.reproduciendo,
