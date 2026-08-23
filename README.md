@@ -65,6 +65,17 @@ dock takes its own, so the desktop reflows once and then follows the movement.
 While the halves are travelling they reserve nothing and pass over your
 windows.
 
+**Or a drop falls instead.** In Settings, *Transition effect* picks how the
+change is told: the **trip** above, a **drop** — the bar stays put, a bead
+swells under its bottom edge, the neck thins until it snaps, and it falls,
+stretching, until it hits the bottom of the screen and spreads out into the
+dock — or **instant**, no animation at all. The drop takes a second where the
+trip takes three.
+
+And *Bar and dock at once* keeps the top bar where it is instead of turning it
+into the dock, so you get both. The drop was made for this: it does not tell a
+move, it tells something coming loose, so nothing is missing up top.
+
 <table>
 <tr>
 <td width="46%"><img src="screenshots/dual.png" alt="The dock at the bottom of the screen with its app drawer open above it"></td>
@@ -81,7 +92,8 @@ system: type to filter, `Enter` opens the best match, drag one onto the dock
 to keep it there.
 
 Any island shortcut brings the bar home — the dock retracts, the halves climb
-back up, and what you asked for opens in the island.
+back up, and what you asked for opens in the island. Unless the bar never
+left: with both showing, the shortcut just opens what you asked for.
 
 </td>
 </tr>

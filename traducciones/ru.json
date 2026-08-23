@@ -1309,6 +1309,11 @@
   "Quitar del dock": "Убрать из дока",
   "Mantener en el dock": "Оставить в доке",
   "Arrastra al dock la que quieras tener a mano": "Перетащите в док то, что хотите держать под рукой",
-  "Viaje animado": "Анимированный переход",
-  "Bajan por los bordes hasta hacerse dock; apagado, el cambio es seco": "Половины спускаются по краям и становятся доком; выключено — переход мгновенный"
+  "Efecto del cambio": "Эффект перехода",
+  "Bajando por los cantos, dejando caer una gota, o de golpe": "По краям, каплей или мгновенно",
+  "Viaje": "Путь",
+  "Gota": "Капля",
+  "Seco": "Мгновенно",
+  "Barra y dock a la vez": "Панель и док вместе",
+  "La barra se queda arriba en vez de convertirse en el dock": "Панель остаётся сверху, а не превращается в док"
 }

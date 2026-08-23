@@ -1309,6 +1309,11 @@
   "Quitar del dock": "Remove from the dock",
   "Mantener en el dock": "Keep in the dock",
   "Arrastra al dock la que quieras tener a mano": "Drag onto the dock whatever you want at hand",
-  "Viaje animado": "Animated trip",
-  "Bajan por los bordes hasta hacerse dock; apagado, el cambio es seco": "The halves run down the edges into a dock; off, the change is instant"
+  "Efecto del cambio": "Transition effect",
+  "Bajando por los cantos, dejando caer una gota, o de golpe": "Down the edges, dripping a drop, or all at once",
+  "Viaje": "Trip",
+  "Gota": "Drop",
+  "Seco": "Instant",
+  "Barra y dock a la vez": "Bar and dock at once",
+  "La barra se queda arriba en vez de convertirse en el dock": "The bar stays up top instead of turning into the dock"
 }

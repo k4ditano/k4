@@ -271,6 +271,13 @@ K4.Ventana {
     Connections {
         target: escena.plugin
 
+        //  Solo con SU efecto puesto. Los modos son los mismos para los dos, y
+        //  sin esto la escena del viaje arrancaba su animación de dos segundos
+        //  por debajo de la gota —invisible, porque la ventana no existe, pero
+        //  llamando a `viajeTerminado` cuando le tocaba a ella— y el dock se
+        //  ponía dos veces, la segunda un segundo tarde.
+        enabled: escena.plugin.efectoActivo === "viaje"
+
         //  Los trozos salen cuando el plugin dice, no cuando cambia el modo:
         //  en la recogida esperan a que el dock esté casi encima de ellos.
         function onTrozosFueraChanged() {

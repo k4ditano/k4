@@ -1,9 +1,16 @@
-//  Modo dual: la barra de arriba se va y se convierte en el dock de abajo.
+//  Modo dual: arriba una barra, abajo un dock, y el cambio de una a otro.
 //
-//  La secuencia: la barra se pone negra y se encoge hasta desaparecer, y de sus
-//  dos extremos salen dos gotas que corren cada una por su borde de pantalla
-//  hasta juntarse abajo, donde se estiran y montan el dock. De vuelta, igual al
-//  revés.
+//  Hay dos maneras de contarlo y las dos están aquí:
+//
+//   · el VIAJE — la barra se pone negra y se encoge hasta desaparecer, y de sus
+//     dos extremos salen dos gotas que corren cada una por su borde de pantalla
+//     hasta juntarse abajo, donde se estiran y montan el dock (Escena.qml);
+//   · la GOTA — la barra se queda quieta y de su canto de abajo se descuelga una
+//     gota que cae, se estrella contra el borde y se extiende hasta ser el dock
+//     (Caida.qml).
+//
+//  Y de fondo, si la barra se va o se queda: «las dos a la vez» deja la de
+//  arriba puesta y suma el dock abajo, que es lo que la gota cuenta mejor.
 //
 //  Que la barra de arriba desaparezca se consigue COGIENDO la island con
 //  prioridad alta y pidiéndola de tamaño cero: no hay que tocar el host para
@@ -33,16 +40,29 @@ K4.Plugin {
     property string modo: "barra"
 
     readonly property bool viajando: modo === "bajando" || modo === "subiendo"
-    //  Los trozos están en pantalla también mientras el dock se recoge encima
-    //  de ellos, aunque no se muevan — pero NO desde el principio.
+
+    //  La pieza que hace el relevo —los dos trozos del viaje, o la gota— está
+    //  en pantalla también mientras el dock se recoge encima de ella, aunque no
+    //  se mueva — pero NO desde el principio.
     //
     //  Sacándolos al empezar la recogida se pintaban sobre el dock todavía
     //  entero (van en una capa por encima), y como son negros tapaban la mitad
     //  de abajo de los iconos: parecía que salía una gota encima del dock antes
     //  de que pasara nada. Esperando a que el dock esté casi recogido, aparecen
     //  cuando ya miden lo mismo que él y no se ve el relevo.
-    readonly property bool trozosFuera: viajando
-        || (modo === "recogiendo" && muelle.despliegue < 0.18)
+    //  La gota espera MÁS que los trozos: acaba con el tamaño exacto de la
+    //  semilla del dock, así que si sale con el dock todavía a un 18 % este le
+    //  asoma por los dos lados y luego se le mete debajo. Los trozos son más
+    //  anchos que la semilla y no tienen ese problema.
+    readonly property bool piezasFuera: viajando
+        || (modo === "recogiendo"
+            && muelle.despliegue < (esGota ? 0.06 : 0.18))
+
+    //  Y cuál de las dos escenas la pinta. La otra no existe: son ventanas
+    //  propias a pantalla completa, y una que se quede puesta «por si acaso» ya
+    //  se llevó por delante el ratón del dock una vez (ver Escena.qml).
+    readonly property bool trozosFuera: piezasFuera && !esGota
+    readonly property bool gotaFuera: piezasFuera && esGota
 
     //  ── el ancho de la barra mientras la tenemos cogida ──────────
     //
@@ -124,20 +144,34 @@ K4.Plugin {
     //  bloquea a nadie: con `active` puesto todo el rato y prioridad 90, la
     //  island del otro monitor se quedaba muerta —ni se desplegaba ni
     //  respondía— porque el host solo admite un plugin activo global.
-    readonly property bool mandaIsla: modo === "encogiendo"
-        || modo === "creciendo"
+    //
+    //  Con la gota, CUÁNDO no lo dice el modo: la barra sostiene la gota
+    //  mientras se hincha, así que sigue entera y a su tamaño durante el primer
+    //  tercio de la caída y solo se recoge al romperse el cuello. Lo apunta la
+    //  escena llamando a `desprendida()`.
+    property bool cogiendoIsla: false
+
+    readonly property bool mandaIsla: !ambasActiva
+        && (esGota ? (cogiendoIsla || modo === "creciendo")
+                   : (modo === "encogiendo" || modo === "creciendo"))
 
     priority: 90
     active: mandaIsla
 
+    //  ¿Se ha ido ya la barra de arriba?
+    //
+    //  Se apunta a mano y no se deduce del modo, por lo mismo: con la gota la
+    //  barra sigue puesta buena parte del viaje, y con las dos a la vez no se va
+    //  nunca. Quien la manda irse es quien lo apunta.
+    property bool barraFuera: false
+
     //  La pantalla que se lleva la barra, y lo que hay que seguir guardándole.
-    property var barraApartada: (fuera && !mandaIsla)
+    property var barraApartada: (barraFuera && !mandaIsla)
         ? ({ pantalla: pantalla, reserva: reservaBarra }) : null
     //  Mientras se encoge o crece, la barra conserva su GROSOR y solo cambia
     //  de ancho: es lo que hace que se vea recogerse sobre los trozos en vez de
     //  desinflarse hacia arriba. Se va a cero cuando los trozos ya la tapan.
-    islandHeight: (modo === "encogiendo" || modo === "creciendo")
-        ? K4.Tema.altoPlegado : 0
+    islandHeight: mandaIsla ? K4.Tema.altoPlegado : 0
     view: null
 
     //  De dónde salen las gotas. Se CONGELA al arrancar: en cuanto se coge la
@@ -146,6 +180,10 @@ K4.Plugin {
     property real origenIzqX: 0
     property real origenDerX: 0
     property real origenY: 0
+
+    //  El centro de la barra: de donde se descuelga la gota. Sale de los dos
+    //  origenes y no de una property más para que no puedan discrepar.
+    readonly property real origenX: (origenIzqX + origenDerX) / 2
 
     //  Y en qué pantalla pasa todo. Con dos monitores esto no es un detalle:
     //  `K4.Isla.rect` da la island de la pantalla PRINCIPAL, y si la barra que
@@ -215,8 +253,20 @@ K4.Plugin {
         onCargado: function (d) {
             const l = (d && d.apps) || []
             self.idsDock = l.length > 0 ? l : self.preferidas.slice()
-            if (d && d.animar !== undefined)
-                self.animar = !!d.animar
+
+            //  `animar` es de cuando el único ajuste era encender o apagar el
+            //  viaje. Apagado entonces es "seco" ahora, y se lee ANTES que
+            //  `efecto` para que un guardado nuevo mande sobre el viejo: se
+            //  migra sola en cuanto se toque cualquiera de las dos filas.
+            if (d && d.animar === false)
+                self.efecto = "seco"
+            //  Y comprobado contra la lista: un fichero a mano con cualquier
+            //  otra cosa dejaba un efecto que no pinta ninguna escena, o sea un
+            //  atajo que se queda a medias sin decir por qué.
+            if (d && self.efectos.indexOf(d.efecto) >= 0)
+                self.efecto = d.efecto
+            if (d && d.ambas !== undefined)
+                self.ambas = !!d.ambas
             self.cargado = true
         }
     }
@@ -224,38 +274,89 @@ K4.Plugin {
     function guardarDock() {
         if (!cargado)
             return
-        guardado.guardar({ apps: idsDock, animar: animar })
+        guardado.guardar({ apps: idsDock, efecto: efecto, ambas: ambas })
     }
 
-    //  ── el viaje, o el cambio a secas ────────────────────────────
+    //  ── el efecto del cambio ─────────────────────────────────────
     //
-    //  El viaje es lo que cuenta lo que está pasando: sin él, la barra
+    //  Lo que se anima es lo que CUENTA lo que está pasando: sin nada, la barra
     //  desaparece de arriba y hay un dock abajo, y quien no lo haya visto nunca
-    //  no sabe que son la misma cosa. Pero son tres segundos, y quien ya lo
-    //  sabe los hace veinte veces al día.
+    //  no sabe que son la misma cosa. Pero son segundos, y quien ya lo sabe lo
+    //  hace veinte veces al día. De ahí que haya donde elegir:
     //
-    //  Apagado, no se acelera la animación: se salta entera. Los modos de en
-    //  medio no llegan a existir, así que las gotas no se crean, la barra se
-    //  aparta de golpe y el dock ya está puesto.
-    property bool animar: true
+    //   · "viaje" — la barra se parte en dos y las mitades bajan por los cantos
+    //     hasta juntarse (Escena.qml). Dos segundos largos, y es el que mejor
+    //     cuenta que arriba y abajo son la misma cosa.
+    //   · "gota" — la barra se queda y deja caer una gota que al llegar abajo se
+    //     estrella y se extiende hasta ser el dock (Caida.qml). Un segundo, y es
+    //     el único que se entiende también con la barra puesta, porque no cuenta
+    //     un traslado sino un desprendimiento.
+    //   · "seco" — no se acelera la animación: se salta entera. Los modos de en
+    //     medio no llegan a existir, así que no se crea ninguna escena, la barra
+    //     se aparta de golpe y el dock ya está puesto.
+    readonly property var efectos: ["viaje", "gota", "seco"]
+    property string efecto: "viaje"
+
+    //  Y si la barra se va o se queda.
+    //
+    //  Quedándose no hay relevo que contar —arriba y abajo están a la vez— así
+    //  que el viaje deja de ser «la barra bajando» para ser «la barra soltando
+    //  dos gotas», que es literalmente lo que dibuja. La gota se lee igual de
+    //  bien de las dos maneras, y por eso nació así: la pidieron con la barra
+    //  quieta.
+    property bool ambas: false
+
+    //  Los dos, CONGELADOS mientras dura el cambio y hasta volver arriba.
+    //
+    //  Se leen en `bajar` y valen para la ida y la vuelta. Leyéndolos en vivo,
+    //  cambiarlos con el dock puesto dejaba la barra apartada por un efecto y
+    //  devuelta por otro: la gota se iba a buscarla donde el viaje la había
+    //  dejado, y no había nadie.
+    property string efectoActivo: "viaje"
+    property bool ambasActiva: false
+    readonly property bool esGota: efectoActivo === "gota"
+
+    //  ── el reparto del tiempo de la gota ─────────────────────────
+    //
+    //  Va aquí y no en la escena porque la barra tiene que casar con ella: se
+    //  encoge cuando el cuello se rompe, y al subir tiene que estar puesta antes
+    //  de que el cuello la alcance. Dos sitios con los mismos números es un
+    //  sitio donde olvidarse de uno.
+    readonly property int gotaDura: 1000
+    readonly property real gotaCorte: 0.34      // se rompe el cuello
+    readonly property real gotaSuelo: 0.86      // toca el borde de abajo
 
     K4.Ajustes {
         plugin: "dual"
         grupo: K4.Idioma.t("Modo dual")
         opciones: [{
-            id: "animar",
-            nombre: K4.Idioma.t("Viaje animado"),
+            id: "efecto",
+            tipo: "eleccion",
+            nombre: K4.Idioma.t("Efecto del cambio"),
             //  De una pieza y no partida con un `+`: el extractor de textos
             //  ve DOS literales y en marcha `t()` recibe la suma, que no casa
             //  con ninguno de los dos. La cadena se queda larga y se traduce.
-            desc: K4.Idioma.t("Bajan por los bordes hasta hacerse dock; apagado, el cambio es seco"),
-            glifo: 0xF15B2
+            desc: K4.Idioma.t("Bajando por los cantos, dejando caer una gota, o de golpe"),
+            glifo: 0xF058C,   // md-water
+            alternativas: [
+                { codigo: "viaje", nombre: K4.Idioma.t("Viaje") },
+                { codigo: "gota", nombre: K4.Idioma.t("Gota") },
+                { codigo: "seco", nombre: K4.Idioma.t("Seco") }
+            ]
+        }, {
+            id: "ambas",
+            nombre: K4.Idioma.t("Barra y dock a la vez"),
+            desc: K4.Idioma.t("La barra se queda arriba en vez de convertirse en el dock"),
+            glifo: 0xF0BCB   // md-view_split_horizontal
         }]
-        valores: ({ animar: self.animar })
+        valores: ({ efecto: self.efecto, ambas: self.ambas })
         onCambiado: function (id, valor) {
-            if (id !== "animar")
+            if (id === "efecto")
+                self.efecto = String(valor)
+            else if (id === "ambas")
+                self.ambas = !!valor
+            else
                 return
-            self.animar = valor
             self.guardarDock()
         }
     }
@@ -524,11 +625,16 @@ K4.Plugin {
         //  Lo que ya estuviera abierto al pulsar no cuenta como una petición:
         //  ver `pedidoPendiente`.
         pedidoPendiente = false
+
+        //  Los dos ajustes, congelados para la ida y la vuelta.
+        efectoActivo = efectos.indexOf(efecto) >= 0 ? efecto : "viaje"
+        ambasActiva = ambas
+
         congelarOrigen()
-        //  Se coge la barra exactamente como estaba y se la encoge sobre el
-        //  tamaño de los dos trozos. Solo cuando ha terminado se parte.
+        //  Se coge la barra exactamente como estaba: con el viaje para encogerla
+        //  sobre el tamaño de los dos trozos, con la gota para que no pegue un
+        //  salto cuando se la coja a media caída.
         ponerAncho(anchoLleno)
-        modo = "encogiendo"
 
         //  Y la pantalla se relee AHORA, no en `congelarOrigen`.
         //
@@ -539,15 +645,78 @@ K4.Plugin {
         //  no casaba con ninguna pantalla y la barra no se iba.
         pantalla = K4.Isla.pantalla || pantalla
 
-        //  Sin viaje: ni encogerse ni gotas ni empalme. La barra se aparta y el
+        //  Sin efecto: ni encogerse ni gotas ni empalme. La barra se aparta y el
         //  dock ya está abajo.
-        if (!animar) {
+        if (efectoActivo === "seco") {
+            barraFuera = !ambasActiva
             modo = "dock"
             return
         }
 
+        //  La gota cuelga de la barra ENTERA, así que aquí no se toca: la island
+        //  se coge cuando el cuello se rompe (ver `desprendida`). Y con la barra
+        //  puesta tampoco hay nada que encoger — las dos gotas del viaje salen
+        //  de sus extremos y ella se queda donde está.
+        if (esGota || ambasActiva) {
+            modo = "bajando"
+            return
+        }
+
+        modo = "encogiendo"
         anchoBarra = anchoSemilla
         encogida.restart()
+    }
+
+    //  La gota se ha desprendido: la barra ya no la sostiene.
+    //
+    //  Con la barra puesta no hay nada que recoger y solo queda acusar el peso
+    //  que se va. Sin ella, es AQUÍ donde se coge la island y se encoge, y no al
+    //  arrancar: antes del corte la barra está entera porque es de donde cuelga.
+    function desprendida() {
+        if (modo !== "bajando" || !esGota)
+            return
+        if (ambasActiva) {
+            K4.Isla.efecto("dual", "tiron", 0.5)
+            return
+        }
+        cogiendoIsla = true
+
+        //  El ancho a cero DE GOLPE, y que lo anime el host.
+        //
+        //  Animándolo aquí se animaba dos veces: mi Behavior de 440 ms movía
+        //  `anchoBarra`, y el host perseguía ese valor con OTRA de 440 ms
+        //  encima. La barra tardaba casi el segundo entero de la caída en
+        //  recogerse, y al soltarla —que es dejarla a cero sin más— todavía
+        //  medía ochenta píxeles y pegaba el salto a la vista. Se veía como «la
+        //  island se queda ahí un rato y luego desaparece», que es exactamente
+        //  lo que era.
+        //
+        //  Con una sola, y encima OutBack, el grueso del recogido está hecho en
+        //  un cuarto de segundo: la barra se retira de golpe al romperse el
+        //  cuello, que es lo que hace una superficie que suelta una gota.
+        ponerAncho(0)
+        retirada.restart()
+    }
+
+    Timer {
+        id: retirada
+        //  Cuando al encogido del host ya no le queda nada que enseñar.
+        //
+        //  Pronto, y a propósito: soltarla es lo que le quita el GROSOR.
+        //
+        //  El ancho lo recoge el host en 440 ms y el grosor en otros 400, pero
+        //  el del grosor no empieza hasta que se suelta. Esperando a que el
+        //  ancho terminara, las dos animaciones iban en fila y lo último que
+        //  quedaba era un muñón de 30×34 hundiéndose solo en el canto medio
+        //  segundo después de que la gota se hubiera ido. Soltándola a los 140,
+        //  el grosor se recoge A LA VEZ que el ancho: la barra se mete en el
+        //  borde de la pantalla en diagonal y a los 330 ms del corte no queda
+        //  nada, con la gota todavía a media caída.
+        interval: 140
+        onTriggered: if (self.modo !== "barra") {
+            self.cogiendoIsla = false
+            self.barraFuera = true
+        }
     }
 
     Timer {
@@ -560,6 +729,7 @@ K4.Plugin {
             //  A cero de golpe: los trozos ya están dibujados justo encima y
             //  miden lo mismo, así que el corte no se ve.
             self.ponerAncho(0)
+            self.barraFuera = true
             self.modo = "bajando"
         }
     }
@@ -572,6 +742,11 @@ K4.Plugin {
     //  era la pieza montada con el puente, quieta, y solo después salía la
     //  barra. Dándole la salida antes de tiempo —con el alto todavía a cero,
     //  así que no se ve— al juntarse ya está a su tamaño y crece sin pausa.
+    //  Con la gota no hace falta y por eso no se usa: allí lo que llega arriba
+    //  no es media barra sino un charco que YA tiene el tamaño y la silueta de
+    //  la barra —se estrella contra el canto de arriba y se extiende hasta
+    //  serlo—, así que la island puede aparecer por debajo en el último
+    //  instante y crecer tapada. Se le da el ancho en `viajeTerminado`.
     Timer {
         id: ventaja
         interval: 1700
@@ -584,20 +759,25 @@ K4.Plugin {
         //  Lo justo para que el ancho y el grosor de empalme lleguen a
         //  aplicarse; el crecimiento de verdad lo hace el host al soltar.
         interval: 90
-        onTriggered: if (self.modo === "creciendo") self.modo = "barra"
+        onTriggered: if (self.modo === "creciendo") {
+            self.modo = "barra"
+            self.cogiendoIsla = false
+            self.barraFuera = false
+        }
     }
 
     function subir() {
         if (modo !== "dock")
             return
-        if (!animar) {
+        if (efectoActivo === "seco") {
             ponerAncho(anchoLleno)
+            barraFuera = false
             modo = "barra"
             return
         }
 
-        //  Primero se recoge el dock sobre los dos trozos; el viaje empieza
-        //  cuando ha terminado.
+        //  Primero se recoge el dock sobre la pieza que va a subir; el viaje
+        //  empieza cuando ha terminado.
         ponerAncho(0)
         modo = "recogiendo"
         recogida.restart()
@@ -606,11 +786,13 @@ K4.Plugin {
     Timer {
         id: recogida
         //  Lo que tarda el dock en encogerse, y un pelín más para que no se
-        //  solape con el arranque del viaje.
-        interval: 820
+        //  solape con el arranque del viaje. La gota lo recoge antes porque su
+        //  despliegue también es más corto: 560 ms contra 760.
+        interval: self.esGota ? 640 : 820
         onTriggered: if (self.modo === "recogiendo") {
             self.modo = "subiendo"
-            ventaja.restart()
+            if (!self.esGota)
+                ventaja.restart()
         }
     }
 
@@ -641,6 +823,11 @@ K4.Plugin {
 
     onIslaPedidaChanged: {
         if (!islaPedida)
+            return
+        //  Con la barra puesta no se ha llevado nadie nada: el módulo que pides
+        //  sale donde siempre y el dock se queda abajo, que para eso están las
+        //  dos a la vez.
+        if (ambasActiva)
             return
         pedidoPendiente = true
         reclamada()
@@ -679,15 +866,27 @@ K4.Plugin {
             //  era el reajuste al ancho que pide la píldora de verdad.
             //  El ancho ya lo trae puesto desde `ventaja`; aquí solo se le
             //  devuelve el grosor y se suelta.
+            //
+            //  Con la gota el ancho se pone AQUÍ, en el mismo instante en que se
+            //  coge la island: el charco de arriba ya mide exactamente eso, así
+            //  que la barra nace debajo con su silueta y crece tapada por él
+            //  mientras dura el relevo.
+            if (esGota)
+                ponerAncho(anchoSemilla)
             modo = "creciendo"
             crecida.restart()
         }
     }
 
-    //  Las dos superficies. Van en el PLUGIN y no en `view` porque una vista
-    //  solo existe mientras se tiene la island, y aquí la island está a cero
-    //  justamente para que no se vea.
+    //  Las superficies. Van en el PLUGIN y no en `view` porque una vista solo
+    //  existe mientras se tiene la island, y aquí la island está a cero
+    //  justamente para que no se vea — cuando llega a estarlo.
+    //
+    //  Las dos escenas existen siempre como objetos y ninguna crea su ventana
+    //  hasta que le toca: cada una mira su `…Fuera`, que ya lleva dentro de qué
+    //  efecto es.
     Escena { plugin: self }
+    Caida { id: caida; plugin: self }
 
     //  La franja que RESERVA el sitio del dock, y nada más.
     //
@@ -730,11 +929,18 @@ K4.Plugin {
         //  remataba la sensación de salto. Lo que se está enseñando es masa
         //  extendiéndose, y eso no rebota — arranca suave, coge cuerpo y para
         //  suave, que es lo que hace InOutCubic.
+        //
+        //  Salvo con la gota, que llega ESTRELLÁNDOSE: ahí lo que se extiende ya
+        //  trae toda su velocidad del golpe, así que sale disparado y frena
+        //  —OutCubic— y en menos tiempo, que el impacto ya ha pasado. Con la
+        //  curva del viaje, el dock se lo tomaba con calma justo después de un
+        //  choque y parecían dos animaciones de películas distintas.
         Behavior on despliegue {
-            enabled: self.animar
+            enabled: self.efectoActivo !== "seco"
             NumberAnimation {
-                duration: 760
-                easing.type: Easing.InOutCubic
+                duration: self.esGota ? 560 : 760
+                easing.type: self.esGota ? Easing.OutCubic
+                                         : Easing.InOutCubic
             }
         }
     }
@@ -758,6 +964,10 @@ K4.Plugin {
         function estado(): string {
             return JSON.stringify({
                 modo: self.modo, viajando: self.viajando,
+                efecto: self.efectoActivo, ambas: self.ambasActiva,
+                gota: Math.round(caida.t * 100) / 100,
+                cogiendoIsla: self.cogiendoIsla,
+                barraFuera: self.barraFuera,
                 pantalla: self.pantalla,
                 islaPantalla: K4.Isla.pantalla,
                 izq: Math.round(self.origenIzqX),

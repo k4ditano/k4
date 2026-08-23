@@ -2,6 +2,7 @@
 #  cargando el plugin por URL (esquema qs:).
 
 DualPlugin 1.0 DualPlugin.qml
+Caida 1.0 Caida.qml
 Escena 1.0 Escena.qml
 Gota 1.0 Gota.qml
 Muelle 1.0 Muelle.qml
