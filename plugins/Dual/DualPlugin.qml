@@ -215,6 +215,8 @@ K4.Plugin {
         onCargado: function (d) {
             const l = (d && d.apps) || []
             self.idsDock = l.length > 0 ? l : self.preferidas.slice()
+            if (d && d.animar !== undefined)
+                self.animar = !!d.animar
             self.cargado = true
         }
     }
@@ -222,7 +224,40 @@ K4.Plugin {
     function guardarDock() {
         if (!cargado)
             return
-        guardado.guardar({ apps: idsDock })
+        guardado.guardar({ apps: idsDock, animar: animar })
+    }
+
+    //  ── el viaje, o el cambio a secas ────────────────────────────
+    //
+    //  El viaje es lo que cuenta lo que está pasando: sin él, la barra
+    //  desaparece de arriba y hay un dock abajo, y quien no lo haya visto nunca
+    //  no sabe que son la misma cosa. Pero son tres segundos, y quien ya lo
+    //  sabe los hace veinte veces al día.
+    //
+    //  Apagado, no se acelera la animación: se salta entera. Los modos de en
+    //  medio no llegan a existir, así que las gotas no se crean, la barra se
+    //  aparta de golpe y el dock ya está puesto.
+    property bool animar: true
+
+    K4.Ajustes {
+        plugin: "dual"
+        grupo: K4.Idioma.t("Modo dual")
+        opciones: [{
+            id: "animar",
+            nombre: K4.Idioma.t("Viaje animado"),
+            //  De una pieza y no partida con un `+`: el extractor de textos
+            //  ve DOS literales y en marcha `t()` recibe la suma, que no casa
+            //  con ninguno de los dos. La cadena se queda larga y se traduce.
+            desc: K4.Idioma.t("Bajan por los bordes hasta hacerse dock; apagado, el cambio es seco"),
+            glifo: 0xF15B2
+        }]
+        valores: ({ animar: self.animar })
+        onCambiado: function (id, valor) {
+            if (id !== "animar")
+                return
+            self.animar = valor
+            self.guardarDock()
+        }
     }
 
     //  ── lo que está abierto ──────────────────────────────────────
@@ -503,6 +538,14 @@ K4.Plugin {
         //  recargado el plugin, por ejemplo—. Con la cadena vacía, `apartada`
         //  no casaba con ninguna pantalla y la barra no se iba.
         pantalla = K4.Isla.pantalla || pantalla
+
+        //  Sin viaje: ni encogerse ni gotas ni empalme. La barra se aparta y el
+        //  dock ya está abajo.
+        if (!animar) {
+            modo = "dock"
+            return
+        }
+
         anchoBarra = anchoSemilla
         encogida.restart()
     }
@@ -547,6 +590,12 @@ K4.Plugin {
     function subir() {
         if (modo !== "dock")
             return
+        if (!animar) {
+            ponerAncho(anchoLleno)
+            modo = "barra"
+            return
+        }
+
         //  Primero se recoge el dock sobre los dos trozos; el viaje empieza
         //  cuando ha terminado.
         ponerAncho(0)
@@ -682,6 +731,7 @@ K4.Plugin {
         //  extendiéndose, y eso no rebota — arranca suave, coge cuerpo y para
         //  suave, que es lo que hace InOutCubic.
         Behavior on despliegue {
+            enabled: self.animar
             NumberAnimation {
                 duration: 760
                 easing.type: Easing.InOutCubic

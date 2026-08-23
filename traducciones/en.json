@@ -1308,5 +1308,7 @@
   "Modo dual": "Dual mode",
   "Quitar del dock": "Remove from the dock",
   "Mantener en el dock": "Keep in the dock",
-  "Arrastra al dock la que quieras tener a mano": "Drag onto the dock whatever you want at hand"
+  "Arrastra al dock la que quieras tener a mano": "Drag onto the dock whatever you want at hand",
+  "Viaje animado": "Animated trip",
+  "Bajan por los bordes hasta hacerse dock; apagado, el cambio es seco": "The halves run down the edges into a dock; off, the change is instant"
 }
