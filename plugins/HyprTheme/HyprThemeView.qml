@@ -8,6 +8,17 @@ FadeIn {
 
     required property var plugin
 
+    //  Las pantallas que hay, y qué fondo tiene puesto el destino elegido. Se
+    //  calculan aquí porque los dos los quieren varios sitios de la rejilla y
+    //  llamarlos en cada celda serían cuarenta y cinco llamadas por fotograma.
+    readonly property var pantallas: plugin ? plugin.pantallasConocidas() : []
+    readonly property string destinoActual: {
+        if (!plugin)
+            return ""
+        return plugin.pantallaElegida.length > 0
+            ? plugin.fondoDe(plugin.pantallaElegida) : plugin.wallpaper
+    }
+
     // cualquier retoque a mano deja de ser "el preset tal cual"
     function touched() {
         view.plugin.dirty = true
@@ -389,24 +400,61 @@ FadeIn {
                 spacing: 10
                 visible: view.plugin.tab === "fondo"
 
+                //  ── en qué pantalla estamos trabajando ──────────
+                //
+                //  Con dos monitores, «poner este fondo» es ambiguo, y la
+                //  rejilla de antes decidía por ti: uno para los dos. Aquí se
+                //  elige primero el destino y luego la imagen, que es el orden
+                //  en que se piensa.
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 10
+                    spacing: 6
 
-                    IslandLabel {
-                        text: view.plugin.wallTool.length === 0
-                            ? Idioma.t("Sin programa de fondo instalado")
-                            : view.plugin.wallpapers.length + Idioma.t(" imágenes · usando ") + view.plugin.wallTool
-                        color: view.plugin.wallTool.length === 0 ? Theme.red : Theme.muted
-                        font.pixelSize: 11
-                        Layout.alignment: Qt.AlignVCenter
+                    Repeater {
+                        model: [""].concat(view.pantallas)
+
+                        delegate: Rectangle {
+                            id: chipPantalla
+                            required property var modelData
+                            readonly property bool puesta:
+                                view.plugin.pantallaElegida === modelData
+
+                            Layout.preferredWidth: textoPantalla.implicitWidth + 22
+                            Layout.preferredHeight: 24
+                            radius: 12
+                            color: puesta ? Theme.blue
+                                : (ratonPantalla.containsMouse ? Theme.surfaceHi
+                                                               : Theme.surface)
+
+                            Behavior on color { ColorAnimation { duration: 120 } }
+
+                            IslandLabel {
+                                id: textoPantalla
+                                anchors.centerIn: parent
+                                textFormat: Text.PlainText
+                                text: chipPantalla.modelData.length === 0
+                                    ? Idioma.t("Todas") : chipPantalla.modelData
+                                color: chipPantalla.puesta ? Theme.ink : Theme.muted
+                                font.pixelSize: 10
+                                font.weight: chipPantalla.puesta
+                                    ? Font.DemiBold : Font.Normal
+                            }
+
+                            MouseArea {
+                                id: ratonPantalla
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: view.plugin.pantallaElegida =
+                                    chipPantalla.modelData
+                            }
+                        }
                     }
 
                     Item { Layout.fillWidth: true }
 
                     IslandLabel {
-                        visible: view.plugin.wallTool === "swaybg"
-                        text: Idioma.t("instala awww para tener transiciones")
+                        text: view.plugin.wallpapers.length + Idioma.t(" fondos")
                         color: Theme.dim
                         font.pixelSize: 10
                         Layout.alignment: Qt.AlignVCenter
@@ -419,6 +467,61 @@ FadeIn {
                         onActivated: view.plugin.refreshWallpapers()
                         Layout.alignment: Qt.AlignVCenter
                     }
+                }
+
+                //  ── cómo se pasa de uno a otro ─────────────────
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+
+                    IslandLabel {
+                        text: Idioma.t("Transición")
+                        color: Theme.dim
+                        font.pixelSize: 10
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    Repeater {
+                        model: view.plugin.transiciones
+
+                        delegate: Rectangle {
+                            id: chipTrans
+                            required property var modelData
+                            readonly property bool puesta:
+                                view.plugin.transicion === modelData
+
+                            Layout.preferredWidth: textoTrans.implicitWidth + 20
+                            Layout.preferredHeight: 22
+                            radius: 11
+                            color: puesta ? Theme.blue
+                                : (ratonTrans.containsMouse ? Theme.surfaceHi
+                                                            : Theme.track)
+
+                            Behavior on color { ColorAnimation { duration: 120 } }
+
+                            IslandLabel {
+                                id: textoTrans
+                                anchors.centerIn: parent
+                                textFormat: Text.PlainText
+                                text: chipTrans.modelData
+                                color: chipTrans.puesta ? Theme.ink : Theme.muted
+                                font.pixelSize: 10
+                            }
+
+                            MouseArea {
+                                id: ratonTrans
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    view.plugin.transicion = chipTrans.modelData
+                                    view.plugin.saveState()
+                                }
+                            }
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
                 }
 
                 GridView {
@@ -436,25 +539,58 @@ FadeIn {
                         width: GridView.view.cellWidth
                         height: GridView.view.cellHeight
 
-                        readonly property bool current: view.plugin.wallpaper === modelData
+                        //  Lo puesto EN EL DESTINO elegido, no el fondo común:
+                        //  con «HDMI-A-1» seleccionado, lo que hay que marcar es
+                        //  lo de esa pantalla.
+                        readonly property bool current: view.destinoActual === modelData
+                        readonly property bool mueve: !view.plugin.esQuieto(modelData)
 
                         Rectangle {
                             anchors.fill: parent
                             anchors.margins: 4
                             radius: 10
                             color: Theme.islandBg
-                            border.width: wallCell.current ? 2 : (wallMouse.containsMouse ? 1 : 0)
+                            border.width: wallCell.current ? 2
+                                : (wallMouse.containsMouse ? 1 : 0)
                             border.color: wallCell.current ? Theme.blue : Theme.surfaceHi
                             clip: true
 
                             Image {
                                 anchors.fill: parent
                                 anchors.margins: wallCell.current ? 2 : 0
-                                source: "file://" + wallCell.modelData
+                                //  De un vídeo o un GIF se enseña su póster, que
+                                //  el plugin cocina de una tacada al escanear.
+                                source: "file://"
+                                    + view.plugin.miniaturaDe(wallCell.modelData)
                                 fillMode: Image.PreserveAspectCrop
                                 asynchronous: true
                                 cache: true
                                 sourceSize.width: 320
+                            }
+
+                            //  Que se mueve, y qué es. Sin esto, un vídeo y una
+                            //  foto se ven idénticos en la rejilla —el póster ES
+                            //  una foto— y no sabes lo que estás eligiendo.
+                            Rectangle {
+                                visible: wallCell.mueve
+                                anchors.top: parent.top
+                                anchors.right: parent.right
+                                anchors.margins: 6
+                                width: etiquetaMueve.implicitWidth + 12
+                                height: 16
+                                radius: 8
+                                color: "#cc000000"
+
+                                IslandLabel {
+                                    id: etiquetaMueve
+                                    anchors.centerIn: parent
+                                    textFormat: Text.PlainText
+                                    text: /\.(gif|apng)$/i.test(wallCell.modelData)
+                                        ? "GIF" : Idioma.t("vídeo")
+                                    color: Theme.ink
+                                    font.pixelSize: 8
+                                    font.weight: Font.DemiBold
+                                }
                             }
 
                             // el nombre, legible sobre cualquier imagen
@@ -471,7 +607,8 @@ FadeIn {
                                     anchors.leftMargin: 6
                                     anchors.rightMargin: 6
                                     verticalAlignment: Text.AlignVCenter
-                                    text: wallCell.modelData.substring(wallCell.modelData.lastIndexOf("/") + 1)
+                                    text: wallCell.modelData.substring(
+                                        wallCell.modelData.lastIndexOf("/") + 1)
                                     font.pixelSize: 9
                                     elide: Text.ElideMiddle
                                 }
@@ -482,7 +619,7 @@ FadeIn {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: view.plugin.setWallpaper(wallCell.modelData)
+                                onClicked: view.plugin.ponerEnElegida(wallCell.modelData)
                             }
                         }
                     }
@@ -490,7 +627,7 @@ FadeIn {
                     IslandLabel {
                         anchors.centerIn: parent
                         visible: view.plugin.wallpapers.length === 0
-                        text: Idioma.t("No hay imágenes en Imágenes, Descargas ni en las carpetas del sistema")
+                        text: Idioma.t("No hay fondos en tus carpetas de imágenes ni en las del sistema")
                         color: Theme.muted
                         font.pixelSize: 12
                     }

@@ -18,7 +18,6 @@
   " días": " дн.",
   " hilos": " потоков",
   " héroes": " героев",
-  " imágenes · usando ": " изображений · используется ",
   " logros": " достижений",
   " logros y ": " достижений и ",
   " líneas": " строк",
@@ -340,7 +339,6 @@
   "Ninguna ciudad coincide": "Город не найден",
   "Ningún atajo coincide": "Горячая клавиша не найдена",
   "Ningún paquete coincide": "Пакет не найден",
-  "No hay imágenes en Imágenes, Descargas ni en las carpetas del sistema": "Нет изображений в папках «Изображения», «Загрузки» и системных каталогах",
   "Notificaciones": "Уведомления",
   "Notificaciones al pasar el ratón": "Уведомления при наведении",
   "Notificación": "Уведомление",
@@ -423,7 +421,6 @@
   "Sin notificaciones": "Нет уведомлений",
   "Sin previsión": "Нет прогноза",
   "Sin previsión horaria": "Нет почасового прогноза",
-  "Sin programa de fondo instalado": "Бэкенд обоев не установлен",
   "Sin reproducción": "Ничего не играет",
   "Sin resultados": "Нет результатов",
   "Sin ubicación": "Местоположение не определено",
@@ -486,7 +483,6 @@
   "escribe al menos dos letras": "введите не менее двух символов",
   "gasta tokens en Claude o Codex y seguirán peleando": "тратьте токены в Claude или Codex, и они продолжат бой",
   "hoy ": "сегодня ",
-  "instala awww para tener transiciones": "установите awww для поддержки переходов",
   "instalar ↵": "установить ↵",
   "intro abre · ctrl+intro la carpeta · ctrl+c copia la ruta · tab cambia el ámbito": "enter открывает · ctrl+enter папку · ctrl+c копирует путь · tab меняет область",
   "intro copia · supr borra · ctrl+p fija · esc cierra": "enter копирует · del удаляет · ctrl+p закрепляет · esc закрывает",
@@ -1317,5 +1313,10 @@
   "Barra y dock a la vez": "Панель и док вместе",
   "La barra se queda arriba en vez de convertirse en el dock": "Панель остаётся сверху, а не превращается в док",
   "%1 nuevos · Actualizar": "%1 новых · Обновить",
-  "%1 nuevos · guarda tus cambios": "%1 новых · сначала сохраните правки"
+  "%1 nuevos · guarda tus cambios": "%1 новых · сначала сохраните правки",
+  " fondos": " фонов",
+  "GIF": "GIF",
+  "No hay fondos en tus carpetas de imágenes ni en las del sistema": "Нет фонов ни в ваших папках с изображениями, ни в системных",
+  "Transición": "Переход",
+  "vídeo": "видео"
 }

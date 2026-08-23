@@ -299,10 +299,89 @@ K4Plugin {
     readonly property var wallDirs: [
         K4.Sistema.entorno("HOME") + "/Imágenes",
         K4.Sistema.entorno("HOME") + "/Pictures",
+        K4.Sistema.entorno("HOME") + "/Vídeos",
+        K4.Sistema.entorno("HOME") + "/Videos",
         K4.Sistema.entorno("HOME") + "/Descargas",
         "/usr/share/wallpapers",
         "/usr/share/backgrounds"
     ]
+
+    //  Y lo que NO cuenta como fondo aunque esté en esas carpetas.
+    //
+    //  «Capturas» es donde el propio k4 guarda las fotos y las grabaciones de
+    //  pantalla, así que la rejilla se llenaba de capturas de la barra: en esta
+    //  máquina, de 120 imágenes encontradas la inmensa mayoría eran pantallazos
+    //  de terminales. Un selector de fondos que enseña tus capturas es un
+    //  selector que no has mirado nunca.
+    readonly property var carpetasFuera: ["Capturas", "Screenshots", ".thumbnails"]
+
+    //  Qué se admite. Los de siempre más lo que se mueve, que es de lo que iba
+    //  todo esto.
+    readonly property var extensionesFondo: [
+        "jpg", "jpeg", "png", "webp", "avif",
+        "gif", "apng",
+        "mp4", "webm", "mkv", "mov", "m4v"
+    ]
+
+    //  La miniatura de un fondo: la propia imagen si está quieta, y el póster ya
+    //  cacheado si se mueve. `posterSello` está en la cuenta a propósito: una
+    //  ruta de fichero no cambia cuando el fichero aparece, así que sin algo que
+    //  mueva el enlace la miniatura de un vídeo se quedaría rota hasta que
+    //  cerraras y volvieras a abrir.
+    property int posterSello: 0
+    function miniaturaDe(ruta) {
+        if (esQuieto(ruta))
+            return ruta
+        return posterSello >= 0 ? posterDe(ruta) : ""
+    }
+
+    //  Los pósters, todos de una tacada y en UN proceso.
+    //
+    //  Uno por fichero serían treinta ffmpeg compitiendo por la CPU justo cuando
+    //  acabas de abrir la pantalla y quieres verla. En fila, y el que ya existe
+    //  ni se toca.
+    K4.Process {
+        id: cocinaPosters
+        onTerminado: self.posterSello += 1
+    }
+
+    function prepararPosters() {
+        const ordenes = []
+        for (let i = 0; i < wallpapers.length; ++i) {
+            const r = wallpapers[i]
+            if (esQuieto(r))
+                continue
+            const d = posterDe(r)
+            ordenes.push("[ -f " + JSON.stringify(d) + " ] || ffmpeg -v error -y"
+                         + " -ss 1 -i " + JSON.stringify(r)
+                         + " -frames:v 1 -vf scale=480:-1 " + JSON.stringify(d)
+                         + " >/dev/null 2>&1")
+        }
+        if (ordenes.length === 0)
+            return
+        cocinaPosters.running = false
+        cocinaPosters.command = ["sh", "-c",
+            "mkdir -p " + JSON.stringify(cachePosters) + "; " + ordenes.join("; ")]
+        cocinaPosters.running = true
+    }
+
+    //  En qué pantalla se está trabajando en la pantalla de Ajustes. Vacío es
+    //  «todas»: se pone el fondo común y se olvidan las elecciones sueltas.
+    property string pantallaElegida: ""
+
+    function ponerEnElegida(ruta) {
+        if (pantallaElegida.length > 0) {
+            ponerFondoEn(pantallaElegida, ruta)
+            return
+        }
+        //  Todas: el fondo común manda y las elecciones por pantalla estorban,
+        //  porque `fondoDe` las prefiere y el cambio no se vería en los
+        //  monitores que tuvieran una.
+        wallpaper = ruta
+        fondos = ({})
+        saveState()
+        ponerSuelo()
+    }
 
     //  ── el suelo ─────────────────────────────────────────────────
     //
@@ -444,11 +523,32 @@ K4Plugin {
         const args = ["find"]
         for (let i = 0; i < wallDirs.length; ++i)
             args.push(wallDirs[i])
-        wallScan.command = args.concat([
-            "-maxdepth", "3", "-type", "f",
-            "(", "-iname", "*.jpg", "-o", "-iname", "*.jpeg", "-o",
-            "-iname", "*.png", "-o", "-iname", "*.webp", ")"
-        ])
+        args.push("-maxdepth")
+        args.push("3")
+        //  Las carpetas excluidas se podan ANTES de mirar ficheros: con un
+        //  `-not -path` cada fichero de dentro se examina igualmente, y en una
+        //  carpeta de capturas con cientos eso es recorrer para descartar.
+        for (let i = 0; i < carpetasFuera.length; ++i) {
+            args.push("(")
+            args.push("-type"); args.push("d")
+            args.push("-name"); args.push(carpetasFuera[i])
+            args.push("-prune")
+            args.push(")")
+            args.push("-o")
+        }
+        args.push("(")
+        args.push("-type"); args.push("f")
+        args.push("(")
+        for (let j = 0; j < extensionesFondo.length; ++j) {
+            if (j > 0)
+                args.push("-o")
+            args.push("-iname")
+            args.push("*." + extensionesFondo[j])
+        }
+        args.push(")")
+        args.push("-print")
+        args.push(")")
+        wallScan.command = args
         wallScan.running = true
     }
 
@@ -506,7 +606,8 @@ K4Plugin {
         onSalida: function (texto) {
             const found = texto.trim().split("\n").filter(function (p) { return p.length > 0 })
             found.sort()
-            self.wallpapers = found.slice(0, 120)
+            self.wallpapers = found.slice(0, 200)
+            self.prepararPosters()
         }
     }
 

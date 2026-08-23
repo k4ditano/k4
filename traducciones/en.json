@@ -18,7 +18,6 @@
   " días": " days",
   " hilos": " threads",
   " héroes": " heroes",
-  " imágenes · usando ": " images · using ",
   " logros": " achievements",
   " logros y ": " achievements and ",
   " líneas": " lines",
@@ -340,7 +339,6 @@
   "Ninguna ciudad coincide": "No city matches",
   "Ningún atajo coincide": "No shortcut matches",
   "Ningún paquete coincide": "No package matches",
-  "No hay imágenes en Imágenes, Descargas ni en las carpetas del sistema": "No images in Pictures, Downloads or the system folders",
   "Notificaciones": "Notifications",
   "Notificaciones al pasar el ratón": "Notifications on hover",
   "Notificación": "Notification",
@@ -423,7 +421,6 @@
   "Sin notificaciones": "No notifications",
   "Sin previsión": "No forecast",
   "Sin previsión horaria": "No hourly forecast",
-  "Sin programa de fondo instalado": "No wallpaper backend installed",
   "Sin reproducción": "Nothing playing",
   "Sin resultados": "No results",
   "Sin ubicación": "No location",
@@ -488,7 +485,6 @@
   "escribe al menos dos letras": "type at least two letters",
   "gasta tokens en Claude o Codex y seguirán peleando": "spend tokens on Claude or Codex and they will fight on",
   "hoy ": "today ",
-  "instala awww para tener transiciones": "install awww to get transitions",
   "instalar ↵": "install ↵",
   "intro abre · ctrl+intro la carpeta · ctrl+c copia la ruta · tab cambia el ámbito": "enter opens · ctrl+enter the folder · ctrl+c copies the path · tab switches scope",
   "intro copia · supr borra · ctrl+p fija · esc cierra": "enter copies · del removes · ctrl+p pins · esc closes",
@@ -1317,5 +1313,10 @@
   "Barra y dock a la vez": "Bar and dock at once",
   "La barra se queda arriba en vez de convertirse en el dock": "The bar stays up top instead of turning into the dock",
   "%1 nuevos · Actualizar": "%1 new · Update",
-  "%1 nuevos · guarda tus cambios": "%1 new · save your changes first"
+  "%1 nuevos · guarda tus cambios": "%1 new · save your changes first",
+  " fondos": " backgrounds",
+  "GIF": "GIF",
+  "No hay fondos en tus carpetas de imágenes ni en las del sistema": "No backgrounds in your picture folders or the system ones",
+  "Transición": "Transition",
+  "vídeo": "video"
 }
