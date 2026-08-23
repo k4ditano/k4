@@ -16,7 +16,7 @@ curl -fsSL https://raw.githubusercontent.com/k4ditano/k4/main/instalar | sh
 
 Arch Linux and Hyprland. Installs what is missing, writes the Hyprland
 integration, starts the bar, and keeps a checkout at
-`~/.config/quickshell/k4`. Run `./instalar --seco` first if you would rather
+`~/.config/quickshell/k4`. Run `./instalar --dry-run` first if you would rather
 see what it would do.
 
 > ### Want your own widget? Ask your agent.
@@ -303,13 +303,19 @@ Codex integration.
 
 | Option | Effect |
 |---|---|
-| `--seco` | Diagnose without changing anything |
+| `--dry-run` | Diagnose without changing anything |
 | `--yes` | Do not ask for confirmation |
-| `--opcionales` | Install optional packages too |
-| `--sin-paquetes` | Skip package management |
-| `--sin-reiniciar` | Do not restart the running bar |
+| `--optional` | Install optional packages too |
+| `--no-packages` | Skip package management |
+| `--no-restart` | Do not restart the running bar |
 
-Update with `~/.config/quickshell/k4/instalar`. Start it by hand with
+The Spanish flags this started with — `--seco`, `--si`, `--opcionales`,
+`--sin-paquetes`, `--sin-reiniciar` — still work and are not going away.
+
+**Update with the same script**: `~/.config/quickshell/k4/instalar`. It pulls
+with `--ff-only`, refreshes packages and shortcuts and offers to restart the
+bar. With uncommitted changes in the checkout it leaves the code alone and
+tells you so — nobody loses work to an update. Start it by hand with
 `~/.config/quickshell/k4/arrancar` — use the wrapper, so the `K4` QML module
 resolves.
 

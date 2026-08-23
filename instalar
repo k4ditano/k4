@@ -1,16 +1,27 @@
 #!/bin/sh
-#  Instala y actualiza k4.
+#  Install and update k4. Same script for both: it pulls, brings the packages
+#  and the shortcuts up to date, and offers to restart the bar.
+#
+#      ./instalar                 everything: packages, shortcuts, autostart, restart
+#      ./instalar --dry-run       look and report; change nothing
+#      ./instalar --yes           don't ask (for scripts)
+#      ./instalar --optional      install the optional packages too
+#      ./instalar --no-packages   skip the package manager
+#      ./instalar --no-restart    leave the running bar alone
+#
+#  The Spanish flags this started with —--seco, --si, --opcionales,
+#  --sin-paquetes, --sin-reiniciar— still work and are not going away. The code
+#  speaks Spanish; the door doesn't have to.
+
+#  ── y de aquí abajo ya no sale por pantalla ─────────────────────────────────
+#
+#  `ayuda()` imprime la cabecera hasta la primera línea que no empiece por `#`,
+#  y ese hueco de arriba es justo eso: la puerta se lee, y lo que viene después
+#  es comentario del código, que en este proyecto va en español.
 #
 #  Está en `sh` pelado y no en python por un motivo que no es de gusto: este
 #  guión corre ANTES de que existan las dependencias, así que no puede depender
 #  de ninguna. Ni bash, ni python, ni jq. Solo lo que trae cualquier sistema.
-#
-#      ./instalar             todo: paquetes, atajos, arranque y reinicio
-#      ./instalar --seco      solo mira e informa; no toca nada
-#      ./instalar --si        no pregunta (para guiones)
-#      ./instalar --opcionales  instala también lo opcional
-#      ./instalar --sin-paquetes    salta la parte del gestor de paquetes
-#      ./instalar --sin-reiniciar   no toca la barra que esté corriendo
 #
 #  Lo que necesita k4 no se escribe aquí: está en `dependencias.tsv`, que es la
 #  fuente única y la lee también el README.
@@ -38,21 +49,35 @@ morir()  { printf '\n%s✗ %s%s\n\n' "$ROJO" "$1" "$FIN" >&2; exit 1; }
 # ─── Opciones ────────────────────────────────────────────────────────────────
 SECO=0; SIN_PREGUNTAR=0; OPCIONALES=0; SIN_PAQUETES=0; SIN_REINICIAR=0
 
-# La ayuda es la cabecera de este mismo fichero, para que no puedan discrepar.
+# La ayuda es la cabecera de este mismo fichero, para que no puedan discrepar:
+# desde la línea 2 hasta el primer hueco. Lo de después de ese hueco es el
+# porqué de las cosas, y eso no se le enseña a quien solo pregunta cómo se usa.
 ayuda() {
     awk 'NR > 1 { if ($0 !~ /^#/) exit; sub(/^#[ ]?/, ""); print }' "$0"
     exit 0
 }
 
+# Las de fuera valen igual que las de casa, y por el mismo motivo que en
+# `tools/plugins.py`: el código de este proyecto habla español y va a seguir
+# hablándolo, pero una bandera de línea de mandato no es código, es LA PUERTA.
+# Quien llega a instalar la barra puede no saber qué es «seco», y un proyecto
+# al que solo entra quien sepa español no es un proyecto, es un club.
+#
+# Y las españolas no se retiran ni se avisan de viejas: están en el README, en
+# guiones de gente y en los dedos de quien lleva meses usándolas. Cuestan una
+# barra vertical cada una.
+#
+# `--yes` llevaba meses en la tabla del README y no en este `case`: quien la
+# copiaba de ahí se comía un «No conozco la opción». De ahí viene todo esto.
 for arg in "$@"; do
     case "$arg" in
-        --seco|-n)        SECO=1 ;;
-        --si|-s)          SIN_PREGUNTAR=1 ;;
-        --opcionales|-o)  OPCIONALES=1 ;;
-        --sin-paquetes)   SIN_PAQUETES=1 ;;
-        --sin-reiniciar)  SIN_REINICIAR=1 ;;
-        --ayuda|-h|--help) ayuda ;;
-        *) morir "No conozco la opción «$arg». Prueba con --ayuda." ;;
+        --seco|--dry-run|-n)          SECO=1 ;;
+        --si|--yes|-s|-y)             SIN_PREGUNTAR=1 ;;
+        --opcionales|--optional|-o)   OPCIONALES=1 ;;
+        --sin-paquetes|--no-packages) SIN_PAQUETES=1 ;;
+        --sin-reiniciar|--no-restart) SIN_REINICIAR=1 ;;
+        --ayuda|--help|-h)            ayuda ;;
+        *) morir "No conozco la opción «$arg». Prueba con --ayuda / --help." ;;
     esac
 done
 
