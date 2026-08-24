@@ -26,6 +26,29 @@ Item {
     property int anchoPantalla: 1920
     property int altoPantalla: 1080
 
+    //  Quien sabe si hay una copia del vídeo a la medida de esta pantalla. Lo
+    //  pone el lienzo; sin él se reproduce el original y ya, que esta capa
+    //  tiene que seguir valiendo suelta.
+    property var plugin: null
+
+    //  Y la ruta que se REPRODUCE, que no siempre es la que se pidió: para un
+    //  vídeo más grande que la pantalla, su copia cacheada. Es la misma idea
+    //  que el `sourceSize` de la foto de aquí abajo, y por las mismas razones
+    //  —ver `videoAMedida` en HyprThemePlugin.qml, con los números medidos—.
+    readonly property string rutaVideo: capa.tipo !== "video" ? ""
+        : (capa.plugin ? capa.plugin.videoAMedida(capa.ruta, capa.anchoPantalla)
+                       : capa.ruta)
+
+    //  Pedirla SÍ tiene efecto, así que se hace desde manejadores y nunca
+    //  desde un binding.
+    function pedirAMedida() {
+        if (capa.plugin && capa.tipo === "video" && capa.ruta.length > 0)
+            capa.plugin.pedirEscalado(capa.ruta, capa.anchoPantalla)
+    }
+
+    onAnchoPantallaChanged: capa.pedirAMedida()
+    Component.onCompleted: capa.pedirAMedida()
+
     //  Negro debajo: si la imagen no llena —una foto vertical en un monitor
     //  apaisado— lo que asoma es esto y no el escritorio de detrás.
     Rectangle {
@@ -71,7 +94,10 @@ Item {
         id: reproductor
         videoOutput: salida
         loops: MediaPlayer.Infinite
-        source: capa.tipo === "video" ? "file://" + capa.ruta : ""
+        //  La copia si ya está, y si no el original. Al terminar la copia esto
+        //  cambia y el reproductor vuelve a empezar: un salto, una vez, en un
+        //  fondo. Barato comparado con lo que se ahorra a partir de entonces.
+        source: capa.rutaVideo.length > 0 ? "file://" + capa.rutaVideo : ""
         //  Sin AudioOutput a propósito, y no es un olvido: un fondo no suena.
         //  Sin salida de audio el descodificador ni abre la pista.
         onSourceChanged: if (source != "") capa.acompasar()
@@ -90,7 +116,15 @@ Item {
     }
 
     onAnimandoChanged: capa.acompasar()
-    onTipoChanged: capa.acompasar()
+
+    //  Los dos, y en un solo manejador: en QML no se puede declarar
+    //  `onTipoChanged` dos veces.
+    onTipoChanged: {
+        capa.acompasar()
+        capa.pedirAMedida()
+    }
+
+    onRutaChanged: capa.pedirAMedida()
 
     readonly property bool reproduciendo:
         reproductor.playbackState === MediaPlayer.PlayingState

@@ -318,6 +318,7 @@ K4.PorPantalla {
             anchors.fill: parent
             z: tela.viva === 0 ? 0 : 1
             animando: tela.aLaVista
+            plugin: lienzo.plugin
             anchoPantalla: tela.screen ? tela.screen.width : 1920
             altoPantalla: tela.screen ? tela.screen.height : 1080
         }
@@ -327,6 +328,7 @@ K4.PorPantalla {
             anchors.fill: parent
             z: tela.viva === 1 ? 0 : 1
             animando: tela.aLaVista
+            plugin: lienzo.plugin
             anchoPantalla: tela.screen ? tela.screen.width : 1920
             altoPantalla: tela.screen ? tela.screen.height : 1080
         }
@@ -425,6 +427,15 @@ K4.PorPantalla {
                 antialiasing: true
 
                 ShapePath {
+                    //  Con id, y NO por `parent`, que es de lo que se quejaba
+                    //  el log en cada transición: un `PathQuad` no es un Item
+                    //  —es un elemento de trazado— así que no tiene `parent`, y
+                    //  `parent.frente` valía `undefined`. Los puntos de control
+                    //  salían indefinidos y la onda del frente no se dibujaba:
+                    //  la marea subía RECTA, que es justo la cortina de la que
+                    //  el comentario de arriba dice que quiere distinguirse.
+                    id: marea
+
                     fillColor: "white"
                     strokeWidth: 0
                     strokeColor: "transparent"
@@ -437,14 +448,14 @@ K4.PorPantalla {
                     startY: frente
 
                     PathQuad {
-                        x: tela.width * 0.5; y: parent.frente
+                        x: tela.width * 0.5; y: marea.frente
                         controlX: tela.width * 0.25
-                        controlY: parent.frente - parent.onda * 2
+                        controlY: marea.frente - marea.onda * 2
                     }
                     PathQuad {
-                        x: tela.width; y: parent.frente
+                        x: tela.width; y: marea.frente
                         controlX: tela.width * 0.75
-                        controlY: parent.frente + parent.onda * 2
+                        controlY: marea.frente + marea.onda * 2
                     }
                     PathLine { x: tela.width; y: tela.height }
                     PathLine { x: 0; y: tela.height }
