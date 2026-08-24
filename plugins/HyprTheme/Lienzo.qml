@@ -289,7 +289,37 @@ K4.PorPantalla {
         //  Solo existe si hay algo que pintar. Sin fondo asignado no se crea la
         //  superficie: entonces se ve el suelo de swaybg, que es exactamente lo
         //  que había antes de todo esto.
-        visible: lienzo.tipoDe(ruta) !== "nada"
+        //
+        //  ── y una FOTO la pinta swaybg, no esto ──────────────────
+        //
+        //  Con un fondo quieto esta capa dibuja exactamente lo que el suelo ya
+        //  está dibujando debajo. Medido sobre el proceso: **80 MiB de VRAM** y
+        //  unos 18 MB de RSS por no aportar nada —la barra era el mayor
+        //  consumidor de vídeo de la máquina, por delante del navegador—. Así
+        //  que con una foto la barra se aparta y se ve el suelo; se queda solo
+        //  con lo que swaybg no sabe hacer, que es el vídeo, el GIF y las
+        //  transiciones.
+        //
+        //  La GRACIA de después no es un adorno. Al acabar el fundido hay que
+        //  esperar a que swaybg tenga la imagen NUEVA, y ponerlo no es
+        //  instantáneo: `ponerSuelo` amortigua 300 ms, mata al viejo, espera
+        //  200 más y levanta el nuevo. Soltando la capa al terminar la
+        //  transición se ve un parpadeo del fondo viejo, o del vacío.
+        //
+        //  Y se arma también al arrancar, por lo mismo: entre que entras a la
+        //  sesión y swaybg está puesto hay un hueco, y taparlo es justo para lo
+        //  que el suelo existe.
+        readonly property bool loPintaElSuelo: lienzo.tipoDe(ruta) === "quieto"
+            && !tela.cambiando && !gracia.running
+
+        visible: lienzo.tipoDe(ruta) !== "nada" && !tela.loPintaElSuelo
+
+        Timer {
+            id: gracia
+            interval: 2500
+        }
+
+        onCambiandoChanged: if (!tela.cambiando) gracia.restart()
 
         // ── las dos capas y el relevo ───────────────────────────
         //
@@ -334,7 +364,11 @@ K4.PorPantalla {
         }
 
         onRutaChanged: tela.relevar()
-        Component.onCompleted: tela.relevar()
+
+        Component.onCompleted: {
+            tela.relevar()
+            gracia.restart()
+        }
 
         function relevar() {
             const nueva = tela.ruta
