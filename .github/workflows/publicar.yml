@@ -157,3 +157,40 @@ jobs:
           gh issue comment "$NUMERO" --body \
             'Publicado. Ya sale en `tools/plugins.py --search` y en la tienda de la barra.'
           gh issue close "$NUMERO"
+
+  #  ── firmar algo que ya no se puede publicar ──────────────────────────────
+  #
+  #  `publicar` pide las DOS etiquetas, y hace bien: sin `envio` esto no es un
+  #  envío. Lo que estaba mal era saltarse el trabajo EN SILENCIO.
+  #
+  #  Pasó de verdad: un mantenedor puso `publicado` desde el desplegable de la
+  #  web, que REEMPLAZA las etiquetas marcadas en vez de añadir una, y se llevó
+  #  `envio` por delante. El trabajo se saltó, no comentó nadie, y la incidencia
+  #  se quedó con `publicado` puesta y el registro sin tocar — o sea, con toda
+  #  la pinta de estar publicado sin estarlo. De las dos maneras de fallar, esa
+  #  es la peor.
+  #
+  #  Así que se quita la etiqueta que miente y se dice por qué. Quitarla emite
+  #  `unlabeled`, que no dispara nada: no hay bucle.
+  sin-envio:
+    if: >
+      github.event.action == 'labeled'
+      && github.event.label.name == 'publicado'
+      && !contains(github.event.issue.labels.*.name, 'envio')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deshacer la firma y explicarla
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMERO: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh issue edit "$NUMERO" --repo "$REPO" --remove-label publicado || true
+          cat > /tmp/aviso.md <<'FIN'
+          Esta incidencia ya no lleva la etiqueta `envio`, así que **no se ha publicado nada**: el registro está como estaba.
+
+          Suele pasar por el desplegable de etiquetas de la web, que **reemplaza** lo que hubiera marcado en vez de añadir. He quitado `publicado` para que la incidencia no aparente lo contrario.
+
+          Para publicarlo: vuelve a poner `envio` y después `publicado`, sin desmarcar las demás.
+          FIN
+          gh issue comment "$NUMERO" --repo "$REPO" --body-file /tmp/aviso.md
