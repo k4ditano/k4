@@ -14,6 +14,22 @@ QtObject {
     readonly property var _i: Puente.isla
 
     readonly property bool abierta: _i ? _i.abierta : false
+
+    //  ¿La ve alguien AHORA MISMO?
+    //
+    //  No es lo mismo que `abierta`: la píldora plegada también se ve. Esto es
+    //  falso cuando la island está retirada —el modo «escondida» de Ajustes—,
+    //  cuando una captura o un diálogo del sistema la aparta, y en el monitor
+    //  cuya barra no está enseñándose.
+    //
+    //  Existe para una cosa concreta: en Qt Quick una animación NO se para
+    //  porque su item deje de verse, así que una que no acaba nunca tiene que
+    //  preguntar. Ver docs/PLUGINS.md.
+    //
+    //  Sin barra detrás —una prueba con `--test`— contesta que sí, que es el
+    //  defecto prudente: una animación de más se nota menos que una que no
+    //  arranca.
+    readonly property bool aLaVista: _i ? _i.aLaVista : true
     //  El ratón encima de la píldora: la barra se abre sola al pasar.
     readonly property bool raton: _i ? _i.hovered : false
     //  El `name` del plugin que la tiene ahora, "" si no la tiene nadie.

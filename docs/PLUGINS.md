@@ -271,6 +271,54 @@ always opening instead of toggling.
 - Processes, timers and IPC go as children of the `K4.Plugin`, not of the
   view: the view is destroyed every time you lose the island.
 
+### An animation nobody sees still runs
+
+**In Qt Quick an animation does not stop because its item stopped being
+visible.** It keeps running, and while it runs the whole scene keeps
+repainting — at the refresh rate, on every monitor, for as long as its
+condition holds.
+
+That is not a warning from the manual. k4's own pill had a five-pixel dot
+pulsing whenever the dungeon had unopened chests:
+
+```qml
+SequentialAnimation on opacity {
+    running: Game.cofres > 0        // ← data, not visibility
+    loops: Animation.Infinite
+    NumberAnimation { to: 0.3; duration: 900 }
+    NumberAnimation { to: 1;   duration: 900 }
+}
+```
+
+The condition asks about *data*, never about being seen. With 61 chests
+sitting there it had been true for weeks, so the bar rendered **122 frames per
+second while collapsed with nothing open** — around 6% of a core, day and
+night, for a dot nobody was looking at. Fixing that one line took the bar to
+**0 fps and 0.0% at rest**.
+
+So an animation with `loops: Animation.Infinite` asks whether anyone can see
+it:
+
+```qml
+running: hayAlgoQueContar && K4.Isla.aLaVista
+```
+
+`K4.Isla.aLaVista` is false while the island is retracted (the *Hidden* mode
+in Settings), while a capture or a system dialog has it out of the way, and on
+a monitor whose bar is not showing. It is published per screen, so with two
+monitors the answer is "yes" when any of them shows it. With no bar behind it
+— a `--test` run — it answers "yes", because an animation too many is easier
+to notice than one that never starts.
+
+Your view is destroyed when you lose the island, so an animation that lives
+inside it goes away with it and costs nothing. The trap is everything drawn
+where the view survives: what you contribute to the pill, your own
+`K4.Ventana`, anything you hang in a place that is not yours.
+
+The same reasoning covers anything that repeats without an end: a `Timer` with
+`repeat: true`, a `Canvas` that repaints itself, an `AnimatedImage`. If it
+runs forever, it needs a reason to be running *now*.
+
 ### Your own files
 
 Your plugin knows where it lives. `carpeta` is its directory on disk, filled in

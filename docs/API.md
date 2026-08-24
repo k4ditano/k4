@@ -327,6 +327,12 @@ K4.Lanzador {
 - `K4.Isla.rect` is the island's real screen geometry (`{ x, y, ancho,
   alto }`); with a transparent `K4.Ventana` above everything you can draw
   outside the island — a waving hand, a pet peeking over the edge.
+- `K4.Isla.aLaVista` says whether anyone can see the island right now —
+  false while it is retracted in *Hidden* space mode, while a capture or a
+  system dialog has it out of the way, and on a monitor whose bar is not
+  showing. **An animation that never ends must ask this**, because in Qt
+  Quick an animation does not stop when its item stops being visible; see
+  [PLUGINS.md](PLUGINS.md#an-animation-nobody-sees-still-runs).
 - The bar's edge and alignment belong to the user (Settings: top/bottom,
   left/center/right). `K4.Isla.posicion` tells you the edge; and
   `K4.Isla.colocar(id, fraction, durationMs)` slides the island along it
