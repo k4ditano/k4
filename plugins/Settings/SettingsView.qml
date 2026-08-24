@@ -225,8 +225,16 @@ FadeIn {
                                 // Algunas opciones no pintan nada si su interruptor
                                 // maestro está apagado: se atenúan y dejan de
                                 // responder, en vez de mentir sobre lo que hacen.
-                                readonly property bool disponible: !modelData.requiere
-                                    || Settings.valor(modelData.requiere)
+                                //  Y `disponible: false` a secas, para lo que
+                                //  no depende de otro ajuste sino del mundo:
+                                //  un programa que no está instalado. Sin
+                                //  esto, la única forma de decir «esto no
+                                //  puede funcionar aquí» era no ofrecerlo, y
+                                //  entonces nadie se entera de que existe.
+                                readonly property bool disponible:
+                                    (!modelData.requiere
+                                     || Settings.valor(modelData.requiere))
+                                    && modelData.disponible !== false
 
                                 //  Las acciones con red van en dos tiempos: el
                                 //  primer toque arma y el segundo ejecuta, y si
