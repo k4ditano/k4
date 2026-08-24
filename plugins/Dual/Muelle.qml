@@ -1396,8 +1396,22 @@ K4.Ventana {
                 readonly property int anchoCelda: Math.floor(
                     (width - spacing * (columnas - 1)) / columnas)
 
+                //  Vacío mientras el cajón está cerrado, y esto no es un
+                //  detalle: un `Repeater` INSTANCIA todos sus delegates aunque
+                //  su contenedor esté invisible, así que la rejilla entera
+                //  —una celda y un icono por aplicación instalada— se
+                //  construía al arrancar la barra y se quedaba ahí para
+                //  siempre, en modo barra, con el dock sin desplegar jamás.
+                //
+                //  Medido en una capa invisible con los iconos de las 68
+                //  aplicaciones de esta máquina: 54 MB. El plugin dual entero
+                //  costaba 60.
+                //
+                //  Atado a `cajon` —la intención— y no a `cajonAbierto` —la
+                //  animación—: así la rejilla se construye en cuanto pulsas,
+                //  mientras el cajón crece, y no después de que haya crecido.
                 Repeater {
-                    model: muelle.listaCajon
+                    model: muelle.cajon ? muelle.listaCajon : []
 
                     delegate: Item {
                         id: celda
