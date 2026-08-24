@@ -80,6 +80,44 @@ Singleton {
             rect = r
     }
 
+    // ── ¿la ve alguien? ───────────────────────────────────────────
+    //
+    //  Existe por una razón concreta: **en Qt Quick una animación NO se para
+    //  porque su item deje de verse.** Sigue corriendo, y con ella el repintado
+    //  de la escena entera a la tasa del monitor. Las que no acaban nunca —las
+    //  barritas del audio, el pulso de los cofres— tienen que preguntar antes,
+    //  y esto es lo que preguntan.
+    //
+    //  Por pantalla y publicado por cada barra, igual que `rects`: con la
+    //  island retirada en un monitor y puesta en el otro, la respuesta correcta
+    //  es que sí la ve alguien.
+    property var vistas: ({})
+
+    function publicarVista(pantalla, seVe) {
+        if (vistas[pantalla] === !!seVe)
+            return
+        const d = Object.assign({}, vistas)
+        d[pantalla] = !!seVe
+        vistas = d
+    }
+
+    //  `apartada` manda sobre todo lo demás: durante una captura o un diálogo
+    //  del sistema no la ve nadie, la publique quien la publique.
+    //
+    //  Y sin nadie publicando se contesta que SÍ. Es el defecto prudente: una
+    //  animación de más se nota menos que una que no arranca nunca, y así esto
+    //  no rompe nada si algún día se monta la island sin pasar por shell.qml
+    //  —una prueba de plugin con `--test`, sin ir más lejos—.
+    readonly property bool aLaVista: {
+        if (apartada)
+            return false
+        const nombres = Object.keys(vistas)
+        for (let i = 0; i < nombres.length; ++i)
+            if (vistas[nombres[i]])
+                return true
+        return nombres.length === 0
+    }
+
     // ── colocación ────────────────────────────────────────────────
     //
     //  Dónde está la island a lo largo de su borde, como fracción del ancho

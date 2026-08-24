@@ -416,7 +416,20 @@ Scope {
             onHayQueEnsenarChanged: repensarRetirada()
             onSeEscondeChanged: repensarRetirada()
             onSinBarraChanged: repensarRetirada()
-            Component.onCompleted: repensarRetirada()
+
+            //  Y se cuenta, que hay animaciones que no se paran solas: ver
+            //  `aLaVista` en services/Island.qml.
+            onRetiradaChanged: Island.publicarVista(screen.name, !retirada)
+
+            Component.onCompleted: {
+                repensarRetirada()
+                Island.publicarVista(screen.name, !retirada)
+            }
+
+            //  Un monitor que se va deja de contar. Si no, su «sí la veo» se
+            //  quedaría puesto para siempre y las animaciones seguirían
+            //  corriendo por una pantalla que ya no está.
+            Component.onDestruction: Island.publicarVista(screen.name, false)
 
             Timer {
                 id: retiroTimer

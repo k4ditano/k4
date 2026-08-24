@@ -59,8 +59,10 @@ Item {
             radius: 2.5
             color: "#c78fff"
 
+            //  `aLaVista` por lo mismo que el visualizador: un pulso infinito
+            //  que nadie ve sigue costando fotogramas. Ver services/Island.qml.
             SequentialAnimation on opacity {
-                running: Game.cofres > 0
+                running: Game.cofres > 0 && Island.aLaVista
                 loops: Animation.Infinite
                 NumberAnimation { to: 0.3; duration: 900; easing.type: Easing.InOutSine }
                 NumberAnimation { to: 1; duration: 900; easing.type: Easing.InOutSine }
