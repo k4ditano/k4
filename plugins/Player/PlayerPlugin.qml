@@ -120,7 +120,10 @@ K4Plugin {
     //  campana de agente empujaba el grupo de la derecha sobre el título de la
     //  canción. Mismo problema que tenía el reloj, y misma explicación larga
     //  está allí.
-    islandWidth: 340 + (Tray.count > 0 ? Math.min(Tray.count, 4) * 24 + 8 : 0)
+    //  Asomándose, lo justo para un título: alto de píldora y algo más ancho
+    //  que ella. Lo demás no se pinta, así que pedirlo sería dejar un hueco.
+    islandWidth: asomando ? 300
+        : 340 + (Tray.count > 0 ? Math.min(Tray.count, 4) * 24 + 8 : 0)
         + (Game.cargado ? 46 : 0)
         + Indicadores.anchoAproximado
     // crece para dejar sitio a las notificaciones recientes
@@ -128,10 +131,33 @@ K4Plugin {
     //  mide más el espaciado de 13 del reparto y los 2 de su propio topMargin.
     readonly property int alturaTira: Settings.notificacionesAlPasar
         ? Notifs.stripHeight(3) : 0
-    islandHeight: (Media.hasTimeline ? 140 : 115)
-        + (alturaTira > 0 ? alturaTira + 15 : 0)
+    //  Asomándose, solo la fila de la pista: 44 px de carátula más sus dos
+    //  márgenes de 14. El resto —línea de tiempo, transporte, notificaciones—
+    //  lo esconde la vista, así que pedir más sería dejar un hueco negro.
+    //
+    //  Existe porque el asomo con el alto entero era insufrible: un vídeo
+    //  tonto de treinta segundos abría media island, y cada vez que cambiaba
+    //  de pista otra vez. Enterarse de qué suena no necesita el mando entero.
+    islandHeight: asomando ? Theme.baseHeight
+        : (Media.hasTimeline ? 140 : 115)
+          + (alturaTira > 0 ? alturaTira + 15 : 0)
 
     view: Component {
-        PlayerView { panel: self.panel; tray: self.tray; juego: self.juego }
+        PlayerView {
+            panel: self.panel; tray: self.tray; juego: self.juego
+            //  Sin esto la vista no sabe si es un asomo y sale entera.
+            plugin: self
+        }
+    }
+
+    //  Y si te acercas, deja de ser un asomo: se despliega entero y se queda
+    //  mientras tengas el ratón encima, que es lo que ya hacía al pasar por la
+    //  píldora. Acercarse es pedirlo.
+    Connections {
+        target: Island
+        function onHoveredChanged() {
+            if (Island.hovered && self.asomando)
+                self.asomando = false
+        }
     }
 }

@@ -11,6 +11,17 @@ FadeIn {
     property var tray: null
     property var juego: null
 
+    //  Quién la ha abierto y en qué modo. Se lo pasa el plugin —el host no
+    //  inyecta nada— y de aquí sale la única pregunta que esta vista le hace:
+    //  si esto es un ASOMO, que se enseña y se va, o el reproductor entero.
+    property var plugin: null
+
+    //  Asomándose: carátula, título y artista, y nada más. Lo de abajo —la
+    //  línea de tiempo, el transporte, las notificaciones recientes— es para
+    //  cuando vienes a usarlo, no para enterarte de que ha cambiado la
+    //  canción. Un vídeo de treinta segundos no merece media island.
+    readonly property bool asomo: !!(view.plugin && view.plugin.asomando)
+
     readonly property var player: Media.activePlayer
     readonly property real progress: player && player.length > 0
         ? Math.max(0, Math.min(1, player.position / player.length))
@@ -20,7 +31,56 @@ FadeIn {
     Component.onCompleted: Media.watchPosition()
     Component.onDestruction: Media.unwatchPosition()
 
+    // ── el asomo: la píldora, contando qué suena ──────────────────
+    //
+    //  Alto de píldora y una sola línea. El reproductor entero es para cuando
+    //  vienes a usarlo; enterarse de que ha cambiado la canción no merece
+    //  media island, y menos cada treinta segundos con un vídeo cualquiera.
+    RowLayout {
+        anchors.fill: parent
+        anchors.leftMargin: 12
+        anchors.rightMargin: 14
+        spacing: 8
+        visible: view.asomo
+
+        Artwork {
+            Layout.preferredWidth: 20
+            Layout.preferredHeight: 20
+            Layout.alignment: Qt.AlignVCenter
+        }
+
+        IslandLabel {
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignVCenter
+            text: view.player && view.player.trackTitle.length > 0
+                ? view.player.trackTitle : Idioma.t("Sin reproducción")
+            font.pixelSize: 12
+            font.weight: Font.DemiBold
+            elide: Text.ElideRight
+            maximumLineCount: 1
+        }
+
+        //  El artista solo si cabe holgado: en una línea, un título largo y un
+        //  artista largo acaban siendo dos recortes y ninguno se lee.
+        IslandLabel {
+            Layout.alignment: Qt.AlignVCenter
+            Layout.maximumWidth: 96
+            visible: text.length > 0
+            text: view.player && view.player.trackArtist.length > 0
+                ? view.player.trackArtist : ""
+            color: Theme.muted
+            font.pixelSize: 11
+            elide: Text.ElideRight
+            maximumLineCount: 1
+        }
+
+        Visualizer {
+            Layout.alignment: Qt.AlignVCenter
+        }
+    }
+
     ColumnLayout {
+        visible: !view.asomo
         anchors.fill: parent
         anchors.leftMargin: 16
         anchors.rightMargin: 16
@@ -122,6 +182,9 @@ FadeIn {
             Layout.fillHeight: false
             Layout.preferredHeight: 12
             spacing: 8
+            //  Las dos condiciones en UNA: ya traía la suya, y QML no admite
+            //  `visible` dos veces —«Property value set multiple times», y el
+            //  plugin entero se queda sin cargar—.
             visible: Media.hasTimeline
 
             IslandLabel {
