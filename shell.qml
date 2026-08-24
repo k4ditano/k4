@@ -838,7 +838,19 @@ Scope {
                             //  Escondida, el reloj de la espera no lo lleva
                             //  esto: lo lleva `ratonEncima` en panelWindow, que
                             //  cuenta también el filo. Ver por qué allí.
-                            if (!panelWindow.seEsconde)
+                            //
+                            //  Salvo que ya haya algo puesto. La espera existe
+                            //  para que rozar un borde VACÍO no despliegue el
+                            //  reloj; si la island ya está fuera enseñando algo
+                            //  —un aviso, el asomo del reproductor—, ir hacia
+                            //  ella es ir a por eso, y hacerte esperar medio
+                            //  segundo es perder el tiempo justo cuando lo que
+                            //  quieres se está yendo. Con asomos de tres
+                            //  segundos, ese medio segundo era la diferencia
+                            //  entre alcanzarlo y verlo desaparecer.
+                            const enReposo = !panelWindow.pluginVisible
+                                || panelWindow.pluginVisible.name === "idle"
+                            if (!panelWindow.seEsconde || !enReposo)
                                 island.abrirPorRaton()
                         } else {
                             hoverExitTimer.restart()
