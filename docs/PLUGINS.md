@@ -239,6 +239,35 @@ Item {
 }
 ```
 
+### Pick a priority above 50, or the clock eats your panel
+
+`priority` decides who gets the island when more than one plugin wants it,
+and the number is not decoration. The bar's **resting views sit at 50 and
+55** — the clock and the player — and they activate on `Island.hovered`.
+
+So a panel below 50 cannot be closed. To reach your close button the user
+puts the pointer on the island; that turns the clock on; the clock outranks
+you; and your panel becomes the clock **exactly as they were reaching for
+it**. It is not a rare case: it is what happens every single time, and with
+the bar in *Hidden* space mode it happens sooner, because entering with the
+pointer is the first thing anyone does.
+
+The map, so you can place yourself:
+
+| | |
+|---|---|
+| 0 | the pill at rest |
+| 40 | volume |
+| 50 · 55 | **clock · player** — the hover views. Be above these. |
+| 59 | notification toast |
+| 60 · 64 · 66 | control center · dungeon · settings |
+| 80 · 83 | launcher · window switcher |
+
+Above the resting views so you survive being touched; below the things the
+user opens on purpose if yours can open **itself**. A module that appears
+over what someone was already doing is rude, and a plugin that announces
+something is announcing it, not demanding the screen.
+
 ### The size is yours
 
 You ask for `islandWidth` and `islandHeight`, and **you can change them

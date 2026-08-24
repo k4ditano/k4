@@ -76,7 +76,7 @@ K4.Plugin {
 }
 ```
 
-Six things that are easy to get wrong and cost an hour each:
+Nine things that are easy to get wrong and cost an hour each:
 
 - **The plugin object is created once and stays alive; the *view* comes and goes.** Keep state on the plugin, not in the view, or it resets every time the user closes it.
 - **`close()` is not optional.** The host closes a plugin by calling it. Without it, ESC does nothing and the user has to click away.
@@ -85,6 +85,43 @@ Six things that are easy to get wrong and cost an hour each:
 - **Declare `K4.Ipc`, `K4.Process` and timers as plain children, never as named properties.** `services` is `K4.Plugin`'s default property, and it is where the manager looks for IpcHandlers to switch off when it tears a plugin down. Tucked inside `property K4.Ipc ordenes: ...` it never finds them, so hot-reloading leaves the target held by the corpse: the new instance registers in vain ("another handler is registered") and IPC answers "Function not found" from the dead one. Restarting the bar hides it, which is what makes it hard to see.
 
 - **A panel that opens, gets read and gets closed needs `grabKeyboard`.** Without it the layer only receives keys if the user *clicks* it, and nobody clicks a panel opened from the app centre, the launcher or a shortcut — so ESC never arrives. The cruel part: it appears to work if you happened to hover it first, so testing by hand says it is fine. `api/K4/Plugin.qml` documents this at length under `tecladoOpcional`; read it before choosing.
+
+- **And `grabKeyboard` only while the *user* has it open.** It leaves the
+  desktop without a keyboard for as long as your panel is up. If your plugin
+  ever opens *itself* — an alarm, a timer finishing, an alert — keeping
+  someone's keystrokes because a countdown ended is theft. Bind it to who
+  opened it: `grabKeyboard: abierto && !meAbriYo`.
+
+- **`handlesBackgroundTap: true`, or a tap on your panel opens the control
+  center on top of it.** That is the host's default for a tap nobody claimed,
+  and it is the worst of both worlds: your panel stays and something else
+  covers it. Claim the tap and close on it. Between Esc, the background and a
+  visible ✕, ship all three — the first two have to be known, and a cross does
+  not.
+
+- **Choose `priority` above 50, or the clock eats your panel.** The bar's
+  resting views — clock at 50, player at 55 — activate on `Island.hovered`, so
+  a panel below them turns into the clock the moment the user puts the pointer
+  on the island *to reach your close button*. Measured map: 40 volume, 50
+  clock, 55 player, 59 toast, 60 control center, 64 dungeon, 66 settings, 80
+  launcher. Above the resting views so you survive being touched; below what
+  the user opens on purpose if yours can open itself.
+
+- **`"aplicacion": true` in the manifest, or nobody finds you.** The app centre
+  filters on exactly that key, so without it your plugin is installed, enabled,
+  working — and absent from the grid where people look for what the bar can
+  open. Give it an `"icono"` too (a `0x…` codepoint or a file): without one the
+  grid paints the generic icon and a good plugin looks like filler.
+
+**An animation that nobody sees still runs.** In Qt Quick an animation does
+not stop because its item stopped being visible: it keeps running, and the
+whole scene keeps repainting at the monitor's rate while it does. A bar that
+should be idle was rendering **122 frames per second** because of a five-pixel
+dot pulsing in the pill whenever the dungeon had unopened chests — the
+condition asked about *data*, never about being seen. Anything with `loops:
+Animation.Infinite`, a repeating `Timer` or a self-repainting `Canvas` asks
+`K4.Isla.aLaVista` first. What lives inside your view is free: the view is
+destroyed when you lose the island.
 
 And one that is worse than an hour: **never run a probe that can block.** A `Process` a plugin fires on a timer will pile up if the command hangs — in testing, a probe that talked to another app over IPC left ten stuck processes, one every five seconds, in a live bar. Give any probe a watchdog timer that stops it, and prefer a command that cannot wait on anything.
 
@@ -136,7 +173,7 @@ turning it on.
 
 ## While you are writing it
 
-- **Reload without restarting**: `quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4 pluginReload mi-plugin`. It swaps the running code for what is on disk.
+- **Reload without restarting**: `quickshell ipc -p ~/.config/quickshell/k4/shell.qml call k4 pluginReload mi-plugin`. It swaps the running code for what is on disk. If you **added or renamed an IPC function**, the first reload may still answer "Function not found": call it twice before suspecting your code.
 - **After adding or removing a plugin folder**: `... call k4 pluginRefresh` makes the bar re-read the catalog.
 - **When it does not appear**: `... call k4 pluginStatus` returns JSON with every plugin's enabled state and error. That is faster than reading the log, and the error is usually a missing import or an undeclared permission.
 - **Its own files**: `K4.Plugin.carpeta` is the plugin's real directory and `fichero("x.py")` resolves a path inside it. Use those to run your own scripts — `Qt.resolvedUrl` returns a `qs:@/qs/...` URL that a process cannot open.
