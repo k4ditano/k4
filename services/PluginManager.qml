@@ -529,7 +529,8 @@ Singleton {
                 desc = error
             return { id: "plugin_" + m.id,
                      pluginId: m.id,
-                     nombre: m.title + (m.externo ? "  ·  " + (m.version || "") : ""),
+                     nombre: Idioma.t(m.title || m.id)
+                         + (m.externo ? "  ·  " + (m.version || "") : ""),
                      desc: desc,
                      error: (m.cargable === false || sinRequisito) ? "fijo"
                           : (error.length > 0 ? "recargable" : ""),
@@ -552,7 +553,11 @@ Singleton {
         .filter(function (m) { return m.aplicacion === true })
         .map(function (m) {
             return { id: m.id,
-                     nombre: m.title || m.id,
+                     //  Los títulos del catálogo están escritos en el
+                     //  idioma de origen. Esta lista alimenta tanto la portada
+                     //  como sus accesos directos, así que se traducen antes
+                     //  de publicarla y reaccionan al cambio de idioma.
+                     nombre: Idioma.t(m.title || m.id),
                      imagen: m.iconoFichero ? "file://" + m.iconoFichero : "",
                      glifo: m.icono ? parseInt(m.icono, 16) : 0xF0431,
                      externo: m.externo === true,

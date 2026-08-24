@@ -79,9 +79,10 @@ steps aside.
 
 <img src="screenshots/dual.gif" width="100%" alt="The bar splits in two, the halves run down the side edges of the screen and join at the bottom into a dock">
 
-One shortcut and the bar splits in two. The halves run down the side edges of
+Press **SUPER + SHIFT + D** and the bar splits in two. The halves run down the side edges of
 the screen like drops, meet at the bottom and close back into a dock — the
-same silhouette, mirrored.
+same silhouette, mirrored. Press **SUPER + K** whenever you want to see every
+k4 shortcut and key binding in one place.
 
 The top bar does not linger: it hands back the space it was reserving, and the
 dock takes its own, so the desktop reflows once and then follows the movement.
@@ -95,9 +96,10 @@ stretching, until it hits the bottom of the screen and spreads out into the
 dock — or **instant**, no animation at all. The drop takes a second where the
 trip takes three.
 
-And *Bar and dock at once* keeps the top bar where it is instead of turning it
-into the dock, so you get both. The drop was made for this: it does not tell a
-move, it tells something coming loose, so nothing is missing up top.
+*Keep the bar when opening the dock* only changes what happens after that
+shortcut: it keeps the top bar where it is instead of turning it into the dock,
+so you get both. The drop was made for this: it does not tell a move, it tells
+something coming loose, so nothing is missing up top.
 
 <table>
 <tr>

@@ -13,14 +13,24 @@ pragma Singleton
 import QtQuick
 
 QtObject {
+    //  `t()` y `f()` se llaman desde bindings de plugins cargados a través
+    //  del puente. La llamada al método del servicio no deja por sí sola una
+    //  dependencia que QML pueda invalidar al cambiar de idioma: el menú del
+    //  dock conservaba el texto con el que se había construido.
+    //
+    //  Estas dos propiedades son la señal reactiva del puente: `codigo`
+    //  cambia al elegir otro idioma y `_tabla` vuelve a cambiar cuando termina
+    //  de cargarse su JSON. Tocar ambas dentro de `t()` cubre los dos pasos.
+    readonly property var _tabla: Puente.idioma ? Puente.idioma.tabla : null
+
     function t(texto) {
+        void codigo
+        void _tabla
         return Puente.idioma ? Puente.idioma.t(texto) : texto
     }
 
     function f(texto, a, b) {
-        if (Puente.idioma)
-            return Puente.idioma.f(texto, a, b)
-        let s = String(texto)
+        let s = t(texto)
         if (a !== undefined) s = s.replace("%1", a)
         if (b !== undefined) s = s.replace("%2", b)
         return s

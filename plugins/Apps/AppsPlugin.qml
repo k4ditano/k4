@@ -21,7 +21,7 @@ K4.Plugin {
     id: self
 
     name: "apps"
-    title: "Aplicaciones"
+    title: Idioma.t("Aplicaciones")
     priority: 72
     active: abierto
     grabKeyboard: abierto

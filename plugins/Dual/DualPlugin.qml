@@ -345,8 +345,11 @@ K4.Plugin {
             ]
         }, {
             id: "ambas",
-            nombre: K4.Idioma.t("Barra y dock a la vez"),
-            desc: K4.Idioma.t("La barra se queda arriba en vez de convertirse en el dock"),
+            //  Esto modifica QUÉ ocurre al abrir el dock; no es el botón
+            //  que lo abre. La redacción anterior parecía una orden y la
+            //  gente la activaba esperando que el dock apareciese al instante.
+            nombre: K4.Idioma.t("Mantener la barra al abrir el dock"),
+            desc: K4.Idioma.t("Abre y cierra el dock con SUPER+SHIFT+D"),
             glifo: 0xF0BCB   // md-view_split_horizontal
         }]
         valores: ({ efecto: self.efecto, ambas: self.ambas })
