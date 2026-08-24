@@ -1,10 +1,5 @@
 {
-  "_meta": {
-    "idioma": "English",
-    "codigo": "en",
-    "traducido por": "k4",
-    "cómo": "Empty values fall back to the original Spanish text."
-  },
+  "_meta": {"idioma": "English", "codigo": "en", "traducido por": "k4", "cómo": "Empty values fall back to the original Spanish text."},
   " GB": " GB",
   " MB": " MB",
   " aplicaciones": " applications",
@@ -1324,5 +1319,15 @@
   "Apagado al elegir un preset o un color a mano": "Turned off when you pick a preset or a colour by hand",
   "Añadir…": "Add…",
   "Elegir fondo": "Choose a background",
-  "Fondos": "Backgrounds"
+  "Fondos": "Backgrounds",
+  "Cómo ocupa el sitio": "How it takes up space",
+  "Aparta las ventanas, flota sobre ellas o se esconde": "Pushes windows aside, floats over them, or hides",
+  "Reservar sitio": "Reserve space",
+  "Encima": "On top",
+  "Escondida": "Hidden",
+  "Fuera a pantalla completa": "Away when fullscreen",
+  "Cómo ocupa el sitio el dock": "How the dock takes up space",
+  "Solo el dock; el de la barra está en Island": "The dock only — the bar's lives under Island",
+  "Asomarse al cambiar de canción": "Peek when the track changes",
+  "Unos segundos con la pista nueva, y se va sola": "A few seconds with the new track, then it leaves on its own"
 }

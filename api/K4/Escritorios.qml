@@ -15,4 +15,9 @@ QtObject {
     //  Cada uno tal cual lo da Hyprland: `{ id, name, … }`.
     readonly property var lista: _e ? _e.list : []
     readonly property int activo: _e ? _e.activo : 0
+
+    //  ¿Lo que se ve en esa pantalla ocupa todo? Por nombre de monitor —el
+    //  mismo que trae `K4.Isla.rects` o el que le toca a una `K4.Ventana`—,
+    //  para que un plugin pueda quitarse de en medio cuando estorbe.
+    function lleno(pantalla) { return _e ? _e.lleno(pantalla) : false }
 }

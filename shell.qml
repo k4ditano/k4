@@ -330,6 +330,104 @@ Scope {
             readonly property int altoIsla: sinBarra ? 0
                 : (pluginVisible ? pluginVisible.islandHeight : Theme.baseHeight)
 
+            //  ── qué hace la barra con el sitio del escritorio ─────────
+            //
+            //  Tres maneras, y las elige el usuario en Ajustes. «reserva» es
+            //  lo de siempre: la franja plegada se le quita al escritorio y
+            //  ninguna ventana se mete debajo. «encima» no le quita nada —la
+            //  píldora flota sobre las ventanas— y «escondida» además la
+            //  retira por el borde hasta que hay algo que enseñar.
+            //
+            //  Y una cuarta que no es un modo sino una REGLA, y por eso se
+            //  resuelve a uno de los tres: «completa» reserva como siempre y se
+            //  esconde solo mientras una ventana llena esta pantalla. Que es la
+            //  queja de verdad —que la barra estorbe cuando estás usando la
+            //  pantalla entera— sin perderla el resto del día.
+            //
+            //  Por pantalla y no global: con dos monitores, el vídeo a pantalla
+            //  completa está en uno, y en el otro la barra no molesta a nadie.
+            readonly property string modoSitio: Settings.reservaIsla === "completa"
+                ? (Workspaces.lleno(panelWindow.screen.name) ? "escondida" : "reserva")
+                : Settings.reservaIsla
+            readonly property bool flotante: modoSitio !== "reserva"
+            readonly property bool seEsconde: modoSitio === "escondida"
+
+            //  Qué cuenta como «está pasando algo»: que la island la tenga
+            //  alguien que no sea el reposo. No hay que inventarse un aviso
+            //  nuevo — un módulo se activa EXACTAMENTE cuando tiene algo que
+            //  enseñar.
+            //
+            //  Cuáles salen solos, mirado uno a uno y no de memoria: el aviso
+            //  de notificación (`Notifs.toastOpen`), el volumen
+            //  (`Audio.overlayOpen`), la confirmación de una captura, y
+            //  cualquier módulo que abras con su atajo. El reproductor y el
+            //  reloj NO: los dos piden `Island.hovered`, así que una canción
+            //  que cambia sola no saca la barra — se ve al asomarse, como
+            //  siempre.
+            //
+            //  Y el ratón en el borde cuenta igual: ir a buscarla es pedirla.
+            readonly property bool ratonEncima: sobreIsla.hovered || sobreFilo.hovered
+            readonly property bool hayQueEnsenar: ratonEncima
+                || (!!pluginVisible && pluginVisible.name !== "idle")
+
+            //  Vuelve al instante y se va con retraso. Al revés —irse en cuanto
+            //  se cierra lo que había— la barra parpadea cada vez que cruzas el
+            //  borde, y quedarse un segundo de más no le estorba a nadie.
+            property bool retirada: false
+
+            function repensarRetirada() {
+                //  Sin modo escondite no hay nada que retirar, y con la barra
+                //  apartada tampoco: ahí manda quien se la llevó.
+                if (!seEsconde || sinBarra) {
+                    retiroTimer.stop()
+                    retirada = false
+                } else if (hayQueEnsenar) {
+                    retiroTimer.stop()
+                    retirada = false
+                } else {
+                    retiroTimer.restart()
+                }
+            }
+
+            //  ── asomarse no es abrir, y quién cuenta el tiempo ────────
+            //
+            //  Rozar el filo trae la barra de vuelta y el ratón queda encima de
+            //  la píldora, así que con la regla de siempre —el reloj se activa
+            //  al pasar— el roce la abría del todo. Rozar un borde sin querer
+            //  no es pedir nada: la píldora asoma, y para que se ABRA hay que
+            //  quedarse.
+            //
+            //  Y quien cuenta ese medio segundo es `ratonEncima`, que incluye
+            //  el filo, y NO el hover de la island. Atado solo a la island no
+            //  se abría NUNCA dejando el ratón quieto: la barra vuelve y se
+            //  mete bajo un puntero que no se ha movido, y sin movimiento Qt no
+            //  tiene por qué entregarle un `hovered` nuevo a nadie. El filo, en
+            //  cambio, ya estaba debajo del ratón antes de que la barra
+            //  volviera, así que su `hovered` es de fiar.
+            onRatonEncimaChanged: {
+                if (!seEsconde)
+                    return
+                if (ratonEncima)
+                    quedarseTimer.restart()
+                else
+                    quedarseTimer.stop()
+            }
+
+            onHayQueEnsenarChanged: repensarRetirada()
+            onSeEscondeChanged: repensarRetirada()
+            onSinBarraChanged: repensarRetirada()
+            Component.onCompleted: repensarRetirada()
+
+            Timer {
+                id: retiroTimer
+                interval: 1600
+                //  Se vuelve a preguntar al vencer, y no se da por hecho lo que
+                //  era verdad al armarlo: entre medias ha podido volver el
+                //  ratón, o el dual llevarse la barra abajo.
+                onTriggered: panelWindow.retirada = panelWindow.seEsconde
+                    && !panelWindow.sinBarra && !panelWindow.hayQueEnsenar
+            }
+
             anchors.top: !abajo
             anchors.bottom: abajo
             anchors.left: true
@@ -388,11 +486,18 @@ Scope {
             //  comportamiento de siempre para los otros veintisiete—.
             //  En PÍXELES, para que quien la mande pueda soltarla poco a poco
             //  y el escritorio acompañe en vez de pegar un salto.
-            exclusiveZone: panelWindow.sinBarra
-                ? (panelWindow.apartada.reserva || 0)
-                : (panelWindow.pluginVisible
-                   && typeof panelWindow.pluginVisible.reservaBarra === "number"
-                   ? panelWindow.pluginVisible.reservaBarra : Theme.baseHeight)
+            //  Y por encima de todo eso manda Ajustes: quien ha dicho que la
+            //  barra no le quite sitio no lo ha dicho a medias, así que
+            //  «encima» y «escondida» le ganan también a lo que pida un módulo.
+            //  Incluida la franja que el dual guarda para el viaje al dock: si
+            //  nunca se reservó nada, empezar a reservarlo justo al bajar la
+            //  barra sería un salto del escritorio salido de la nada.
+            exclusiveZone: panelWindow.flotante ? 0
+                : (panelWindow.sinBarra
+                   ? (panelWindow.apartada.reserva || 0)
+                   : (panelWindow.pluginVisible
+                      && typeof panelWindow.pluginVisible.reservaBarra === "number"
+                      ? panelWindow.pluginVisible.reservaBarra : Theme.baseHeight))
 
             // Redimensionar una layer surface cuesta un ciclo configure/ack, así
             // que hacerlo por frame es lo que hacía parpadear el panel. La
@@ -426,7 +531,58 @@ Scope {
             //  siendo la suya, así que un selector de ficheros que le quedara
             //  debajo perdía todos los clics de esa franja sin que se viera por
             //  qué. Con la región vacía, el ratón pasa de largo.
-            mask: Region { item: Island.apartada ? null : island }
+            //  Y escondida, lo que recibe el ratón es el filo y no la island.
+            //  La island NO se ha movido —lo que se desplaza es su dibujo—, así
+            //  que dejarla de región de entrada sería seguir tragándose los
+            //  clics de una barra que no se ve.
+            //
+            //  Pero el filo entra SIEMPRE que la barra se esconda, no solo
+            //  mientras está fuera, y eso es lo que arregla el agujero de los
+            //  360 ms del regreso: la región de una `Region { item }` sigue a
+            //  la TRANSFORMADA del item, así que mientras la island vuelve su
+            //  región todavía está fuera de la pantalla. En ese rato la
+            //  superficie no recibía nada: el puntero se lo quedaba la ventana
+            //  de debajo —salía su cursor de redimensionar, pegado al borde— y
+            //  la barra que acababa de volver no se enteraba de tener el ratón
+            //  encima. Con el filo dentro, el puntero no se va nunca.
+            mask: Region {
+                item: Island.apartada ? null : island
+
+                Region {
+                    item: (Island.apartada || panelWindow.sinBarra
+                           || !panelWindow.seEsconde) ? null : filo
+                    intersection: Intersection.Combine
+                }
+            }
+
+            //  ── el filo: por dónde se la llama cuando no está ─────────
+            //
+            //  Retirada, no hay pastilla que rozar para traerla de vuelta. Esta
+            //  tira invisible del borde es lo que se roza.
+            //
+            //  Del ANCHO DE LA PÍLDORA y no de la pantalla entera, que es la
+            //  diferencia entre un escondite y una barra que estorba sin verse:
+            //  una tira de punta a punta se traga los clics de todo el borde
+            //  —las pestañas del navegador, la cruz de una ventana maximizada—
+            //  y eso no lo ha pedido nadie.
+            Item {
+                id: filo
+                x: island.x
+                width: island.width
+                height: 4
+                anchors.top: panelWindow.abajo ? undefined : parent.top
+                anchors.bottom: panelWindow.abajo ? parent.bottom : undefined
+                //  Invisible, pero NO `visible: false`: un item oculto no
+                //  recibe ratón, y recibirlo es para lo único que existe.
+                opacity: 0
+
+                //  Sigue contando con la barra ya fuera, a propósito. Al
+                //  volver, la island tapa el filo sin que el ratón se haya
+                //  movido —y sin movimiento nadie garantiza que le llegue un
+                //  `hovered` nuevo—, así que si el filo dejase de contar en ese
+                //  instante la barra se iría otra vez con el ratón encima.
+                HoverHandler { id: sobreFilo }
+            }
 
             Item {
                 id: island
@@ -557,7 +713,43 @@ Scope {
                 //
                 //  Un desplazamiento del contenido, nunca de la ventana: mover
                 //  una layer surface reajustaría el escritorio entero.
-                transform: Translate { id: gestoTr }
+                transform: [
+                    Translate { id: gestoTr },
+                    //  ── y el escondite, por el mismo camino ──────────
+                    //
+                    //  La que se retira se va POR EL BORDE, y también
+                    //  desplazando su dibujo: encoger la superficie o soltar el
+                    //  ancla movería el escritorio entero cada vez, que es
+                    //  justo lo que este modo viene a no hacer.
+                    Translate {
+                        id: retiroTr
+                        y: panelWindow.retirada
+                            ? (panelWindow.abajo ? island.height + 6
+                                                 : -(island.height + 6))
+                            : 0
+
+                        //  La misma curva en los dos sentidos, y no una por
+                        //  sentido atada a `retirada`: la `y` se recalcula
+                        //  ANTES que la duración y la curva —el binding es más
+                        //  viejo, se conecta primero— así que cada tránsito
+                        //  habría salido con los valores del anterior.
+                        //
+                        //  Y SIN rebote, que aquí el rebote de la casa está
+                        //  mal. `OutBack` se pasa del destino y vuelve, y el
+                        //  destino es cero: pasarse de cero es separarse del
+                        //  borde. La silueta lleva esquinas invertidas para
+                        //  FUNDIRSE con el canto de la pantalla, así que ese
+                        //  píxel de aire al llegar no se lee como un rebote
+                        //  sino como un salto y una raya. Comprobado a ojo: se
+                        //  veía. Lo que se quiere es que frene, no que bote.
+                        Behavior on y {
+                            NumberAnimation {
+                                duration: 360
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+                    }
+                ]
 
                 readonly property bool gestoEnCurso: aniSacudida.running
                     || aniEmpujon.running || aniTiron.running
@@ -605,24 +797,49 @@ Scope {
                     }
                 }
 
+                //  ── asomarse no es abrir ──────────────────────────
+                //
+                //  Lo que hace que pasar el ratón despliegue la island: el
+                //  reloj se activa con `Island.hovered`. Se separa del gesto
+                //  para poder retrasarlo, que es lo único que cambia aquí.
+                function abrirPorRaton() {
+                    if (!root.activePlugin || root.activePlugin.name === "idle")
+                        Island.pedirPantalla(panelWindow.screen.name)
+                    else if (root.activePlugin.name === "clock"
+                             || root.activePlugin.name === "player")
+                        Island.usarPantalla(panelWindow.screen.name)
+                    Island.hovered = true
+                }
+
                 HoverHandler {
+                    id: sobreIsla
                     onHoveredChanged: {
                         if (hovered) {
+                            //  Esto va SIEMPRE al instante: no abre nada, solo
+                            //  impide que se cierre lo que ya estaba. Retrasarlo
+                            //  dejaría irse un aviso mientras vas hacia él.
                             hoverExitTimer.stop()
                             root.holdHoverExit()
-                            if (!root.activePlugin || root.activePlugin.name === "idle")
-                                Island.pedirPantalla(panelWindow.screen.name)
-                            else if (root.activePlugin.name === "clock"
-                                     || root.activePlugin.name === "player")
-                                Island.usarPantalla(panelWindow.screen.name)
-                            Island.hovered = true
                             Notifs.holdToast()
+
+                            //  Escondida, el reloj de la espera no lo lleva
+                            //  esto: lo lleva `ratonEncima` en panelWindow, que
+                            //  cuenta también el filo. Ver por qué allí.
+                            if (!panelWindow.seEsconde)
+                                island.abrirPorRaton()
                         } else {
                             hoverExitTimer.restart()
                             root.armHoverExit()
                             Notifs.resumeToast()
                         }
                     }
+                }
+
+                //  Medio segundo: más que un roce, menos que una espera.
+                Timer {
+                    id: quedarseTimer
+                    interval: 500
+                    onTriggered: island.abrirPorRaton()
                 }
 
                 // clic derecho en cualquier parte → centro de control

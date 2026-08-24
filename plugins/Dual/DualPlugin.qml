@@ -267,6 +267,8 @@ K4.Plugin {
                 self.efecto = d.efecto
             if (d && d.ambas !== undefined)
                 self.ambas = !!d.ambas
+            if (d && self.reservas.indexOf(d.reservaDock) >= 0)
+                self.reservaDock = d.reservaDock
             self.cargado = true
         }
     }
@@ -274,7 +276,8 @@ K4.Plugin {
     function guardarDock() {
         if (!cargado)
             return
-        guardado.guardar({ apps: idsDock, efecto: efecto, ambas: ambas })
+        guardado.guardar({ apps: idsDock, efecto: efecto, ambas: ambas,
+                           reservaDock: reservaDock })
     }
 
     //  ── el efecto del cambio ─────────────────────────────────────
@@ -305,6 +308,26 @@ K4.Plugin {
     //  bien de las dos maneras, y por eso nació así: la pidieron con la barra
     //  quieta.
     property bool ambas: false
+
+    //  ── qué hace el DOCK con el sitio del escritorio ─────────────
+    //
+    //  Las mismas cuatro que la barra, y por su cuenta a propósito: son dos
+    //  bordes distintos y quien no quiere perder sitio arriba no tiene por qué
+    //  no quererlo abajo, ni al revés. Un dock que se esconde y asoma al bajar
+    //  el ratón es, además, lo que hace media pantalla del mundo.
+    //
+    //  Comprobada contra la lista al cargar, como el efecto: un fichero a mano
+    //  con cualquier otra cosa dejaría un dock que no obedece a nadie.
+    readonly property var reservas: ["reserva", "completa", "encima", "escondida"]
+    property string reservaDock: "reserva"
+
+    //  Y «completa» no es un cuarto estado sino una REGLA, igual que arriba:
+    //  se resuelve a uno de los otros según si algo llena esta pantalla.
+    readonly property string modoDock: reservaDock === "completa"
+        ? (K4.Escritorios.lleno(pantalla) ? "escondida" : "reserva")
+        : reservaDock
+    readonly property bool dockReserva: modoDock === "reserva"
+    readonly property bool dockSeEsconde: modoDock === "escondida"
 
     //  Los dos, CONGELADOS mientras dura el cambio y hasta volver arriba.
     //
@@ -351,13 +374,32 @@ K4.Plugin {
             nombre: K4.Idioma.t("Mantener la barra al abrir el dock"),
             desc: K4.Idioma.t("Abre y cierra el dock con SUPER+SHIFT+D"),
             glifo: 0xF0BCB   // md-view_split_horizontal
+        }, {
+            id: "reservaDock",
+            tipo: "eleccion",
+            //  El nombre dice DOCK y la descripción dice dónde está el otro.
+            //  Sin eso, esta fila y la de la barra se llaman casi igual, están
+            //  en pantallas distintas de la misma lista, y el usuario cambió
+            //  esta esperando que se escondiera la barra. Con razón.
+            nombre: K4.Idioma.t("Cómo ocupa el sitio el dock"),
+            desc: K4.Idioma.t("Solo el dock; el de la barra está en Island"),
+            glifo: 0xF003E,   // md-arrange_bring_to_front
+            alternativas: [
+                { codigo: "reserva",   nombre: K4.Idioma.t("Reservar sitio") },
+                { codigo: "completa",  nombre: K4.Idioma.t("Fuera a pantalla completa") },
+                { codigo: "encima",    nombre: K4.Idioma.t("Encima") },
+                { codigo: "escondida", nombre: K4.Idioma.t("Escondida") }
+            ]
         }]
-        valores: ({ efecto: self.efecto, ambas: self.ambas })
+        valores: ({ efecto: self.efecto, ambas: self.ambas,
+                    reservaDock: self.reservaDock })
         onCambiado: function (id, valor) {
             if (id === "efecto")
                 self.efecto = String(valor)
             else if (id === "ambas")
                 self.ambas = !!valor
+            else if (id === "reservaDock")
+                self.reservaDock = String(valor)
             else
                 return
             self.guardarDock()
@@ -945,7 +987,11 @@ K4.Plugin {
         encima: false
         pegadaArriba: false
         implicitHeight: Math.round(muelle.altoDock)
-        reserva: muelle.mostrando ? Math.round(muelle.altoDock) : 0
+        //  Y solo si el dock reserva. En «encima» y en «escondida» esta franja
+        //  sigue existiendo —no cuesta nada, no pinta y no recoge un clic— pero
+        //  no pide sitio: el escritorio llega hasta abajo del todo.
+        reserva: (muelle.mostrando && self.dockReserva)
+            ? Math.round(muelle.altoDock) : 0
 
         //  Sin zona activa se tragaría los clics del dock, que está justo
         //  encima de ella.
@@ -957,6 +1003,10 @@ K4.Plugin {
     Muelle {
         id: muelle
         plugin: self
+
+        //  Que se retire cuando no haga falta. Lo decide el ajuste; cuándo
+        //  vuelve, el propio muelle.
+        seEsconde: self.dockSeEsconde
 
         //  Se va cuando ha terminado de RECOGERSE, no cuando empieza la
         //  subida. Atado solo al modo, al pulsar para subir el dock se quedaba
@@ -1019,6 +1069,14 @@ K4.Plugin {
                 dockDentro: muelle.dentro,
                 dockRaton: Math.round(muelle.ratonX),
                 dockMuestra: muelle.mostrando,
+                //  El escondite, entero: si el dock se queda puesto cuando no
+                //  debería, aquí se ve CUÁL de las condiciones lo retiene sin
+                //  tener que perseguirlo con capturas.
+                dockSeEsconde: muelle.seEsconde,
+                dockRetirado: muelle.retirado,
+                dockHazteVer: muelle.hazteVer,
+                dockDespliegue: Math.round(muelle.despliegue * 1000) / 1000,
+                dockArrastre: muelle.arrastreDesde,
                 ocupante: K4.Isla.ocupadaPor,
                 islaPedida: self.islaPedida,
                 selectorDe: muelle.selectorDe,

@@ -1,10 +1,5 @@
 {
-  "_meta": {
-    "idioma": "Russian",
-    "codigo": "ru",
-    "traducido por": "k4",
-    "cómo": "Пустые значения заменяются исходным текстом на испанском."
-  },
+  "_meta": {"idioma": "Russian", "codigo": "ru", "traducido por": "k4", "cómo": "Пустые значения заменяются исходным текстом на испанском."},
   " GB": " ГБ",
   " MB": " МБ",
   " aplicaciones": " приложений",
@@ -1324,5 +1319,15 @@
   "Apagado al elegir un preset o un color a mano": "Выключается, когда выбираете пресет или цвет вручную",
   "Añadir…": "Добавить…",
   "Elegir fondo": "Выбрать фон",
-  "Fondos": "Фоны"
+  "Fondos": "Фоны",
+  "Cómo ocupa el sitio": "Как занимает место",
+  "Aparta las ventanas, flota sobre ellas o se esconde": "Отодвигает окна, парит над ними или прячется",
+  "Reservar sitio": "Резервировать место",
+  "Encima": "Поверх",
+  "Escondida": "Скрытая",
+  "Fuera a pantalla completa": "Прячется в полноэкранном режиме",
+  "Cómo ocupa el sitio el dock": "Как занимает место док",
+  "Solo el dock; el de la barra está en Island": "Только док — панель настраивается в разделе Island",
+  "Asomarse al cambiar de canción": "Выглядывать при смене трека",
+  "Unos segundos con la pista nueva, y se va sola": "Несколько секунд с новым треком, потом уходит сама"
 }

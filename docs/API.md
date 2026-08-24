@@ -200,7 +200,7 @@ operations are permission-gated (see the manifest permissions below):
 | `K4.Audio` | volume, mute | `ponerVolumen`, `alternarSilencio` → `audio` |
 | `K4.Medios` | player, track, artwork | `alternarPausa`, `siguiente`… → `medios` |
 | `K4.Red` | Wi-Fi and Bluetooth state | none — read-only, no exceptions |
-| `K4.Escritorios` | Hyprland workspaces | — |
+| `K4.Escritorios` | Hyprland workspaces, and `lleno(screen)` — is something filling that screen? | — |
 | `K4.Notificaciones` | notification count and recents | `limpiar` → `notificaciones` |
 | `K4.Portapapeles` | clipboard history | reading is itself gated → `portapapeles` |
 | `K4.Reloj` | the bar's clock | — |

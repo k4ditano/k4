@@ -88,6 +88,15 @@ Singleton {
     //  ancho libre: 50 es el centro de siempre. Un plugin puede desplazarla
     //  TEMPORALMENTE con K4.Isla.colocar; esto es la base a la que vuelve.
     property int alineacionBarra: 50            // 15 · 50 · 85
+    //  Qué hace la barra con el sitio del escritorio.
+    //
+    //  «reserva» es lo de siempre: la franja plegada se le quita al escritorio
+    //  y ninguna ventana se mete debajo. «encima» no le quita nada —la píldora
+    //  flota sobre las ventanas— y «escondida» además la retira por el borde
+    //  hasta que hay algo que enseñar. Y «completa» no es un cuarto estado
+    //  sino una regla: reserva como siempre, y se esconde SOLO mientras una
+    //  ventana llena la pantalla. shell.qml es quien las obedece.
+    property string reservaIsla: "reserva"   // reserva · completa · encima · escondida
     // widgets/TrayRow.qml: iconos de bandeja en la píldora
     // Apagada de fábrica: en la píldora los iconos de bandeja son ruido casi
     // siempre, y al acercar el ratón la island ya se abre y ahí sí se ven —y
@@ -261,6 +270,10 @@ Singleton {
                   nombre: Idioma.t("Alineación de la island"),
                   desc: Idioma.t("En qué punto del borde se coloca"),
                   glifo: 0xF11C3 },
+                { id: "reservaIsla", tipo: "eleccion", de: "reservas",
+                  nombre: Idioma.t("Cómo ocupa el sitio"),
+                  desc: Idioma.t("Aparta las ventanas, flota sobre ellas o se esconde"),
+                  glifo: 0xF003E },   // md-arrange_bring_to_front
                 { id: "bandejaEnPildora", nombre: Idioma.t("Bandeja en la píldora"),
                   desc: Idioma.t("Iconos de las aplicaciones en segundo plano"), glifo: 0xF0FB0 },
                 { id: "notificacionesAlPasar", nombre: Idioma.t("Notificaciones al pasar el ratón"),
@@ -331,6 +344,13 @@ Singleton {
         if (de === "posiciones")
             return [{ codigo: "arriba", nombre: Idioma.t("Arriba") },
                     { codigo: "abajo",  nombre: Idioma.t("Abajo") }]
+        //  De menos a más, que es como se lee una escala: quitar sitio
+        //  siempre, quitarlo salvo cuando estorba, no quitarlo, y no estar.
+        if (de === "reservas")
+            return [{ codigo: "reserva",   nombre: Idioma.t("Reservar sitio") },
+                    { codigo: "completa",  nombre: Idioma.t("Fuera a pantalla completa") },
+                    { codigo: "encima",    nombre: Idioma.t("Encima") },
+                    { codigo: "escondida", nombre: Idioma.t("Escondida") }]
         if (de === "alineaciones")
             return [{ codigo: 15, nombre: Idioma.t("Izquierda") },
                     { codigo: 50, nombre: Idioma.t("Centro") },
@@ -393,7 +413,7 @@ Singleton {
         "grabarAudio", "grabarMicro", "grabarSalida", "grabarCodec", "grabarFps",
         "grabarCamara", "camaraDispositivo",
         "zoomAuto", "zoomNivel", "editorCodec", "editorSonoridad",
-        "posicionBarra", "alineacionBarra",
+        "posicionBarra", "alineacionBarra", "reservaIsla",
         "huellaActiva", "huellaSteam", "huellaPaquetes",
         "bandejaEnPildora", "notificacionesAlPasar", "notificacionesAlEnfocar",
         "accesosDirectos"

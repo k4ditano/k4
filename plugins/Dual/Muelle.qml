@@ -274,13 +274,87 @@ K4.Ventana {
     readonly property bool hayDesplegable:
         menuDe.length > 0 || selectorDe.length > 0 || cajon
 
+    //  ── el dock que se quita de en medio ─────────────────────────
+    //
+    //  Lo elige el usuario en Ajustes → Modo dual y lo resuelve el plugin; aquí
+    //  solo se obedece. Retirado, el dock se va POR DEBAJO del borde y lo único
+    //  que queda de él es la tira de cuatro píxeles por donde se le llama.
+    property bool seEsconde: false
+    property bool retirado: false
+
+    //  Cuánto baja. Con `altoAhora` y no `altoDock` para que el cajón abierto
+    //  saliera también entero; no llega a darse —con el cajón abierto el dock
+    //  no se retira— pero sale gratis y así no hay que acordarse.
+    //
+    //  Y sin `readonly`, que un `Behavior` escribe en la propiedad que anima:
+    //  en todo el repo no hay una sola animada que lo sea.
+    property real retiro: retirado ? altoAhora + 8 : 0
+
+    //  Una sola curva para ir y volver, y SIN rebote. `OutBack` se pasa del
+    //  destino, y el destino es cero: pasarse de cero es despegarse del borde
+    //  de abajo. Esta pieza lleva esquinas invertidas justamente para fundirse
+    //  con ese canto, así que el píxel de aire del rebote no se lee como un
+    //  rebote sino como un salto. Que frene, no que bote.
+    Behavior on retiro {
+        NumberAnimation {
+            duration: 360
+            easing.type: Easing.OutCubic
+        }
+    }
+
+    //  Qué cuenta como «hace falta».
+    //
+    //  `dentro` lo pone el sensor del ratón del final del fichero, que está
+    //  anclado al borde de abajo y NO se retira con el dock: es lo que hace que
+    //  la misma área valga para las dos cosas —la lupa cuando el dock está, y
+    //  la llamada cuando no—. Sin movimiento del ratón nadie garantiza un
+    //  `hovered` nuevo al volver el dock, y con dos sensores relevándose el
+    //  dock se iba otra vez con el puntero encima.
+    //
+    //  Y `despliegue < 0.999` porque retirarse a mitad del viaje es enseñar un
+    //  dock que se va sin haber acabado de venir.
+    readonly property bool hazteVer: dentro || hayDesplegable
+        || arrastreDesde >= 0 || despliegue < 0.999
+
+    function repensarRetiro() {
+        if (!seEsconde || !mostrando) {
+            retiroTimer.stop()
+            retirado = false
+        } else if (hazteVer) {
+            retiroTimer.stop()
+            retirado = false
+        } else {
+            retiroTimer.restart()
+        }
+    }
+
+    onSeEscondeChanged: repensarRetiro()
+    onHazteVerChanged: repensarRetiro()
+    onMostrandoChanged: repensarRetiro()
+    Component.onCompleted: repensarRetiro()
+
+    Timer {
+        id: retiroTimer
+        interval: 1600
+        //  Se vuelve a preguntar al vencer y no se da por hecho lo que era
+        //  verdad al armarlo: entre medias ha podido volver el ratón.
+        onTriggered: muelle.retirado = muelle.seEsconde && muelle.mostrando
+            && !muelle.hazteVer
+    }
+
     Item {
         id: zona
         width: muelle.hayDesplegable ? muelle.width
             : Math.max(muelle.anchoAhora, muelle.cajon ? muelle.anchoLleno : 0)
         //  `altoAhora` ya lleva dentro lo que crece el cajón; sumarlo otra vez
         //  era pedir región de entrada de más.
-        height: muelle.hayDesplegable ? muelle.height : muelle.altoAhora
+        //
+        //  Y retirado, cuatro píxeles pegados al borde: el dock ya no está
+        //  —lo que se ha movido es su dibujo— así que la zona entera seguiría
+        //  tragándose los clics de algo que no se ve. Esa misma tira es por
+        //  donde se le llama, porque el sensor del ratón se queda aquí abajo.
+        height: muelle.retirado ? 4
+            : (muelle.hayDesplegable ? muelle.height : muelle.altoAhora)
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         visible: muelle.mostrando
@@ -343,6 +417,11 @@ K4.Ventana {
         height: muelle.alto + muelle.altoCajon
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
+        //  El escondite, por el ancla y no por una transformada: esta pieza ya
+        //  lleva el espejo de aquí abajo, y en una lista de transformadas quién
+        //  se aplica antes decide si esto baja o SUBE. Con el margen no hay
+        //  nada que comprobar.
+        anchors.bottomMargin: -muelle.retiro
 
         //  El espejo: la barra de arriba hace exactamente esto cuando el
         //  usuario la manda abajo.
@@ -412,6 +491,11 @@ K4.Ventana {
     Item {
         id: capa
         anchors.fill: parent
+        //  Aquí sí una transformada: esta capa ocupa la ventana entera —lo
+        //  necesita para que un icono crecido y un menú desplegado quepan— así
+        //  que moverla con el ancla la redimensionaría, y la fila y los menús
+        //  se colocan contando desde su alto.
+        transform: Translate { y: muelle.retiro }
         //  Sin recorte: un icono crecido tiene que poder asomar por encima
         //  del dock. Recortando, lo que sobraba se cortaba a ras del borde y
         //  quedaba raro — se veía media aplicación asomando por debajo.
@@ -1211,7 +1295,7 @@ K4.Ventana {
         height: muelle.altoCajon * muelle.cajonAbierto
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: muelle.altoDock
+        anchors.bottomMargin: muelle.altoDock - muelle.retiro
 
         //  Sin fondo ni borde: lo pinta la silueta del dock, del que esto es
         //  la parte de arriba. Con caja propia se veía como un panel flotando
