@@ -248,6 +248,10 @@ typing roguelike, an autobattler, and
 advances on how you actually use the computer, reading nothing but *that* a
 window changed.
 
+**They arrive turned off.** A bar is not the place to be running a game nobody
+asked for — and a plugin that is never enabled is never created, so it costs
+exactly nothing. Turn one on in Settings when you want it.
+
 ---
 
 <details>

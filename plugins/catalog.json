@@ -111,7 +111,7 @@
    "entry": "Game/GamePlugin.qml",
    "version": "1.0.0",
    "title": "Mazmorra",
-   "enabledByDefault": true,
+   "enabledByDefault": false,
    "icono": "0xF011A",
    "aplicacion": true
   },
