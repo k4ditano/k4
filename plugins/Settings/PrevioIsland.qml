@@ -55,6 +55,57 @@ ColumnLayout {
     //  tuya y no una inventada.
     readonly property real altoPantalla: Island.altoPantalla
 
+    // ── tu fondo de escritorio, de verdad ─────────────────────────
+    //
+    //  El croquis con un gris inventado enseña la forma pero no cómo QUEDA.
+    //  Con el fondo real deja de ser un diagrama.
+    //
+    //  Cuál es lo sabe el plugin de temas, que lo guarda en su estado; y si es
+    //  un vídeo, el fotograma ya está cacheado en `~/.cache/k4/fondos/` con el
+    //  md5 de la ruta por nombre —lo escribe ese mismo plugin al preparar el
+    //  fondo—. Todo eso se resuelve en UNA orden de shell en vez de en un
+    //  servicio nuevo: un singleton nuevo en `services/` obliga a reiniciar la
+    //  barra entera, y esto no lo merece.
+    property string poster: ""
+
+    //  Los huecos de Hyprland. La ventana de mentira los respeta, y no es un
+    //  adorno: tu escritorio tiene huecos, así que una ventana que llegara a
+    //  los bordes estaría enseñando algo que no pasa — y de paso taparía el
+    //  fondo entero, que es justo lo que se ha venido a ver.
+    property int huecos: 8
+
+    K4.Process {
+        id: buscaFondo
+        running: true
+        command: ["sh", "-c",
+              "e=\"$HOME/.local/state/k4/hyprtheme.json\"\n"
+            + "[ -f \"$e\" ] || exit 0\n"
+            + "d=$(python3 -c \"import json,sys\n"
+            + "d=json.load(open(sys.argv[1]))\n"
+            + "f=d.get('fondos') or {}\n"
+            + "print(next(iter(f.values()),'') or d.get('wallpaper',''))\n"
+            + "print(d.get('gapsOut',8))\" \"$e\") || exit 0\n"
+            + "p=$(printf '%s' \"$d\" | head -1)\n"
+            + "g=$(printf '%s' \"$d\" | tail -1)\n"
+            + "[ -n \"$p\" ] || exit 0\n"
+            + "case \"$p\" in\n"
+            + "  *.png|*.jpg|*.jpeg|*.webp|*.PNG|*.JPG) f=\"$p\" ;;\n"
+            + "  *) f=\"$HOME/.cache/k4/fondos/$(printf %s \"$p\" | md5sum | cut -d' ' -f1).png\" ;;\n"
+            + "esac\n"
+            + "printf '%s|%s' \"$f\" \"$g\"\n"]
+
+        onSalida: function (texto) {
+            //  «ruta|huecos», que es una orden en vez de dos.
+            const partes = String(texto).trim().split("|")
+            const r = String(partes[0] || "").trim()
+            if (r.length > 0)
+                previo.poster = "file://" + r
+            const g = parseInt(partes[1], 10)
+            if (!isNaN(g))
+                previo.huecos = g
+        }
+    }
+
     readonly property bool hayDock: !!Settings.valor("plugin_dual")
     readonly property bool dockAparta: {
         const v = Settings.valor("ext_dual_reservaDock")
@@ -88,6 +139,21 @@ ColumnLayout {
             }
         }
 
+        //  Y encima, tu fondo, si se ha podido resolver. El degradado de arriba
+        //  se queda debajo como red: si el fichero no está —fondo recién
+        //  cambiado, caché aún sin hacer— esto no carga y no se ve un hueco
+        //  negro, se ve el degradado.
+        Image {
+            anchors.fill: parent
+            visible: status === Image.Ready
+            source: previo.poster
+            fillMode: Image.PreserveAspectCrop
+            asynchronous: true
+            //  Se pinta pequeño; pedirle a Qt que lo baje al vuelo ahorra
+            //  tener una textura de 1920 de ancho para ocupar 700.
+            sourceSize.width: 900
+        }
+
         //  La ventana de mentira. Es la que enseña de verdad la diferencia
         //  entre reservar sitio y ponerse encima: aquí se aparta o no.
         Rectangle {
@@ -98,11 +164,13 @@ ColumnLayout {
             readonly property int hueco: previo.aparta && !previo.escondida
                 ? Math.round(Theme.baseHeight * barrita.escala) : 0
 
-            x: 0
-            width: parent.width
-            y: previo.donde === "arriba" ? hueco : 0
-            height: parent.height - hueco
-            radius: 0
+            readonly property real margen: Math.max(1, previo.huecos * barrita.escala)
+
+            x: margen
+            width: parent.width - margen * 2
+            y: (previo.donde === "arriba" ? hueco : 0) + margen
+            height: parent.height - hueco - margen * 2
+            radius: Math.max(2, 8 * barrita.escala)
             color: Qt.rgba(0.09, 0.11, 0.14, 0.88)
             border.width: 1
             border.color: Qt.rgba(1, 1, 1, 0.10)
@@ -166,16 +234,44 @@ ColumnLayout {
         }
 
         //  Y el dock, al lado contrario de la barra: es donde vive.
+        //
+        //  A su alto de verdad —el mismo que la island, `Theme.baseHeight`— y
+        //  con su forma. Los iconos son puntos: el dock real son mil quinientas
+        //  líneas atadas a tus aplicaciones abiertas y a sus ventanas, y montar
+        //  un segundo dock funcionando para mirarlo de reojo no sale a cuenta.
+        //  Lo que aquí importa es cuánto ocupa y dónde se pone.
         Rectangle {
+            id: muellecito
+
             visible: previo.hayDock
-            width: 78
-            height: 9
-            radius: 4.5
-            color: Qt.rgba(1, 1, 1, 0.35)
+            height: Math.max(4, Theme.baseHeight * barrita.escala)
+            width: Math.max(40, height * 7)
+            radius: height / 2.6
+            color: Qt.rgba(0, 0, 0, 0.55)
+            border.width: 1
+            border.color: Qt.rgba(1, 1, 1, 0.12)
+
             x: Math.round((parent.width - width) / 2)
-            y: previo.donde === "arriba" ? parent.height - height - 7 : 7
+            y: previo.donde === "arriba"
+                ? parent.height - height - Math.round(4 * barrita.escala * 4)
+                : Math.round(4 * barrita.escala * 4)
 
             Behavior on y { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+
+            Row {
+                anchors.centerIn: parent
+                spacing: Math.max(2, muellecito.height * 0.22)
+
+                Repeater {
+                    model: 5
+                    delegate: Rectangle {
+                        width: Math.max(2, muellecito.height * 0.5)
+                        height: width
+                        radius: width / 4
+                        color: Qt.rgba(1, 1, 1, 0.55)
+                    }
+                }
+            }
         }
     }
 
