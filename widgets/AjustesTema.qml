@@ -200,7 +200,7 @@ ColumnLayout {
 
     IslandSlider {
         Layout.fillWidth: true
-        label: "Ángulo del degradado del borde"
+        label: Idioma.t("Ángulo del degradado del borde")
         suffix: "°"
         from: 0
         to: 360

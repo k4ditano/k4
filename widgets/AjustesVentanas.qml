@@ -38,7 +38,7 @@ ColumnLayout {
 
     IslandSlider {
         Layout.fillWidth: true
-        label: "Separación interior entre ventanas"
+        label: Idioma.t("Separación interior entre ventanas")
         suffix: " px"
         from: 0; to: 30; step: 1
         value: raiz.motor.gapsIn
@@ -47,7 +47,7 @@ ColumnLayout {
 
     IslandSlider {
         Layout.fillWidth: true
-        label: "Separación con el borde de la pantalla"
+        label: Idioma.t("Separación con el borde de la pantalla")
         suffix: " px"
         from: 0; to: 60; step: 1
         value: raiz.motor.gapsOut
@@ -56,7 +56,7 @@ ColumnLayout {
 
     IslandSlider {
         Layout.fillWidth: true
-        label: "Grosor del borde"
+        label: Idioma.t("Grosor del borde")
         suffix: " px"
         from: 0; to: 10; step: 1
         value: raiz.motor.borderSize
@@ -65,7 +65,7 @@ ColumnLayout {
 
     IslandSlider {
         Layout.fillWidth: true
-        label: "Redondeo de esquinas"
+        label: Idioma.t("Redondeo de esquinas")
         suffix: " px"
         from: 0; to: 30; step: 1
         value: raiz.motor.rounding

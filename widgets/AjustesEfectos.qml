@@ -56,7 +56,7 @@ RowLayout {
             Layout.fillWidth: true
             enabled: raiz.motor.blur
             opacity: raiz.motor.blur ? 1 : 0.35
-            label: "Radio"
+            label: Idioma.t("Radio")
             from: 1; to: 20; step: 1
             value: raiz.motor.blurSize
             onMoved: function (v) { raiz.motor.blurSize = v; raiz.tocado() }
@@ -66,7 +66,7 @@ RowLayout {
             Layout.fillWidth: true
             enabled: raiz.motor.blur
             opacity: raiz.motor.blur ? 1 : 0.35
-            label: "Pasadas"
+            label: Idioma.t("Pasadas")
             from: 1; to: 6; step: 1
             value: raiz.motor.blurPasses
             onMoved: function (v) { raiz.motor.blurPasses = v; raiz.tocado() }
@@ -97,7 +97,7 @@ RowLayout {
 
         IslandSlider {
             Layout.fillWidth: true
-            label: "Opacidad de la ventana activa"
+            label: Idioma.t("Opacidad de la ventana activa")
             from: 0.4; to: 1; step: 0.05
             value: raiz.motor.activeOpacity
             onMoved: function (v) { raiz.motor.activeOpacity = v; raiz.tocado() }
@@ -105,7 +105,7 @@ RowLayout {
 
         IslandSlider {
             Layout.fillWidth: true
-            label: "Opacidad de las inactivas"
+            label: Idioma.t("Opacidad de las inactivas")
             from: 0.4; to: 1; step: 0.05
             value: raiz.motor.inactiveOpacity
             onMoved: function (v) { raiz.motor.inactiveOpacity = v; raiz.tocado() }
@@ -128,7 +128,7 @@ RowLayout {
             Layout.fillWidth: true
             enabled: raiz.motor.animEnabled
             opacity: raiz.motor.animEnabled ? 1 : 0.35
-            label: "Velocidad (más alto = más rápido)"
+            label: Idioma.t("Velocidad (más alto = más rápido)")
             from: 1; to: 10; step: 1
             value: raiz.motor.animSpeed
             onMoved: function (v) { raiz.motor.animSpeed = v; raiz.tocado() }

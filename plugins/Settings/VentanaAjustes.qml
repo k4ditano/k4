@@ -574,6 +574,7 @@ K4.Ventana {
                                 //  carpeta: si el plugin está apagado esto se
                                 //  queda mirando, sin romperse.
                                 Loader {
+                                    visible: active
                                     Layout.fillWidth: true
                                     //  Lo que quepa, que aquí lo que se hace
                                     //  es mirar miniaturas: cuanto más entre en
@@ -680,6 +681,7 @@ K4.Ventana {
                                 //  secciones fuera de la vista sin dar un solo
                                 //  error.
                                 Loader {
+                                    visible: active
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: active && item
                                         ? item.implicitHeight : 0
@@ -693,6 +695,7 @@ K4.Ventana {
                                 }
 
                                 Loader {
+                                    visible: active
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: active && item
                                         ? item.implicitHeight : 0
@@ -706,6 +709,7 @@ K4.Ventana {
                                 }
 
                                 Loader {
+                                    visible: active
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: active && item
                                         ? item.implicitHeight : 0
@@ -722,6 +726,7 @@ K4.Ventana {
                                 //  de Hyprland. Los fondos no lo llevan: esos se
                                 //  guardan solos al elegirlos.
                                 Loader {
+                                    visible: active
                                     Layout.fillWidth: true
                                     Layout.topMargin: active ? 12 : 0
                                     Layout.preferredHeight: active && item
@@ -743,10 +748,17 @@ K4.Ventana {
                                 //  palabras parecidas en una diferencia que se
                                 //  ve.
                                 Loader {
+                                    visible: active
                                     Layout.fillWidth: true
                                     Layout.bottomMargin: active ? 6 : 0
+                                    //  Y no buscando: un croquis de media
+                                    //  pantalla delante de dos coincidencias
+                                    //  no es un resultado, es un estorbo. Los
+                                    //  resultados son punteros; para ver la
+                                    //  sección, se entra.
                                     active: bloque.modelData.vista === "island"
                                             && bloque.modelData.atajo === undefined
+                                            && ventana.busqueda.length === 0
                                     sourceComponent: Component { PrevioIsland {} }
                                 }
 
