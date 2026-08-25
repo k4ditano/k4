@@ -25,6 +25,7 @@ import QtQuick.Controls
 import K4 as K4
 import "../../core"
 import "../../services"
+import "../../widgets"
 
 K4.Ventana {
     id: ventana
@@ -540,6 +541,37 @@ K4.Ventana {
                                     Layout.leftMargin: 2
                                 }
 
+                                //  Apariencia no tiene opciones: trae la
+                                //  rejilla de fondos entera, la misma que
+                                //  enseña la pantalla del tema. El motor se
+                                //  pide al gestor por id y no se importa su
+                                //  carpeta: si el plugin está apagado esto se
+                                //  queda mirando, sin romperse.
+                                Loader {
+                                    Layout.fillWidth: true
+                                    //  Lo que quepa, que aquí lo que se hace
+                                    //  es mirar miniaturas: cuanto más entre en
+                                    //  pantalla, menos hay que recorrer.
+                                    Layout.preferredHeight: Math.max(
+                                        360, ventana.height - 320)
+                                    active: bloque.modelData.vista === "fondos"
+                                    sourceComponent: Component {
+                                        RejillaFondos {
+                                            motor: PluginManager.instancia("hyprtheme")
+                                        }
+                                    }
+                                }
+
+                                IslandLabel {
+                                    Layout.fillWidth: true
+                                    visible: bloque.modelData.vista === "fondos"
+                                             && !PluginManager.instancia("hyprtheme")
+                                    text: Idioma.t("El plugin del tema está apagado: puedes ver los fondos, pero no aplicarlos.")
+                                    color: Theme.dim
+                                    font.pixelSize: 10
+                                    wrapMode: Text.WordWrap
+                                }
+
                                 //  Y una sección puede traer algo suyo encima
                                 //  de sus opciones. La Island trae un croquis
                                 //  de la pantalla: es lo que convierte tres
@@ -625,9 +657,12 @@ K4.Ventana {
                     //
                     //  Abren en vez de taparse con ellas: se cierra esto antes.
                     Repeater {
+                        //  Solo la tienda. «Apariencia» tuvo aquí su chip
+                        //  mientras los fondos vivían fuera; ahora son una
+                        //  sección de la lateral y dos puertas a lo mismo, una
+                        //  al lado de la otra, es una de más.
                         model: [
-                            { nombre: Idioma.t("Plugins"), id: "tienda" },
-                            { nombre: Idioma.t("Apariencia"), id: "hyprtheme" }
+                            { nombre: Idioma.t("Plugins"), id: "tienda" }
                         ]
 
                         delegate: K4.Baldosa {

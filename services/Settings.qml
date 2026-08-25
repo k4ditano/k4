@@ -302,6 +302,16 @@ Singleton {
             ]
         },
         {
+            grupo: Idioma.t("Apariencia"),
+            glifo: 0xF03D8,
+            desc: Idioma.t("El fondo de escritorio, y de dónde salen los colores de la barra."),
+            //  La rejilla de fondos, la misma que enseña la pantalla del tema.
+            //  No se declara ninguna opción: lo que hay que elegir es una
+            //  imagen, y eso no cabe en una fila con un interruptor.
+            vista: "fondos",
+            opciones: []
+        },
+        {
             grupo: Idioma.t("Plugins"),
             glifo: 0xF0431,
             desc: Idioma.t("Lo que tienes instalado: encender, apagar y de dónde vino."),
