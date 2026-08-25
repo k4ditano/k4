@@ -77,6 +77,13 @@
    "description": "What is listening on this machine, and which of it is open to the network",
    "repo": "https://github.com/k4ditano/k4-puertos",
    "commit": "e13350d0deaa17f3fc845934c3f7f34721cf2e46"
+  },
+  {
+   "id": "sala",
+   "title": "Sala de máquinas",
+   "description": "What is running here — containers and user services — with the buttons to stop, pause and restart them",
+   "repo": "https://github.com/k4ditano/k4-sala",
+   "commit": "6ae78360ca9dba5c34380ec43a7b5875f11df4a1"
   }
  ]
 }
