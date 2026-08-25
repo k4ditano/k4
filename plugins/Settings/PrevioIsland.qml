@@ -60,51 +60,23 @@ ColumnLayout {
     //  El croquis con un gris inventado enseña la forma pero no cómo QUEDA.
     //  Con el fondo real deja de ser un diagrama.
     //
-    //  Cuál es lo sabe el plugin de temas, que lo guarda en su estado; y si es
-    //  un vídeo, el fotograma ya está cacheado en `~/.cache/k4/fondos/` con el
-    //  md5 de la ruta por nombre —lo escribe ese mismo plugin al preparar el
-    //  fondo—. Todo eso se resuelve en UNA orden de shell en vez de en un
-    //  servicio nuevo: un singleton nuevo en `services/` obliga a reiniciar la
-    //  barra entera, y esto no lo merece.
-    property string poster: ""
+    //  Lo sabe `Fondos`, el servicio: cuál está puesto, dónde vive su fotograma
+    //  si es un vídeo, y cuántos huecos tiene Hyprland. Antes esto era una orden
+    //  de shell con `md5sum` porque esa información vivía dentro del plugin del
+    //  tema y no había forma de preguntársela. Ahora es una property: cero
+    //  procesos, y se entera sola cuando cambias de fondo.
+    readonly property string poster: {
+        const r = Fondos.actualDe("")
+        if (r.length === 0)
+            return ""
+        return "file://" + (Fondos.esQuieto(r) ? r : Fondos.posterDe(r))
+    }
 
     //  Los huecos de Hyprland. La ventana de mentira los respeta, y no es un
-    //  adorno: tu escritorio tiene huecos, así que una ventana que llegara a
-    //  los bordes estaría enseñando algo que no pasa — y de paso taparía el
-    //  fondo entero, que es justo lo que se ha venido a ver.
-    property int huecos: 8
-
-    K4.Process {
-        id: buscaFondo
-        running: true
-        command: ["sh", "-c",
-              "e=\"$HOME/.local/state/k4/hyprtheme.json\"\n"
-            + "[ -f \"$e\" ] || exit 0\n"
-            + "d=$(python3 -c \"import json,sys\n"
-            + "d=json.load(open(sys.argv[1]))\n"
-            + "f=d.get('fondos') or {}\n"
-            + "print(next(iter(f.values()),'') or d.get('wallpaper',''))\n"
-            + "print(d.get('gapsOut',8))\" \"$e\") || exit 0\n"
-            + "p=$(printf '%s' \"$d\" | head -1)\n"
-            + "g=$(printf '%s' \"$d\" | tail -1)\n"
-            + "[ -n \"$p\" ] || exit 0\n"
-            + "case \"$p\" in\n"
-            + "  *.png|*.jpg|*.jpeg|*.webp|*.PNG|*.JPG) f=\"$p\" ;;\n"
-            + "  *) f=\"$HOME/.cache/k4/fondos/$(printf %s \"$p\" | md5sum | cut -d' ' -f1).png\" ;;\n"
-            + "esac\n"
-            + "printf '%s|%s' \"$f\" \"$g\"\n"]
-
-        onSalida: function (texto) {
-            //  «ruta|huecos», que es una orden en vez de dos.
-            const partes = String(texto).trim().split("|")
-            const r = String(partes[0] || "").trim()
-            if (r.length > 0)
-                previo.poster = "file://" + r
-            const g = parseInt(partes[1], 10)
-            if (!isNaN(g))
-                previo.huecos = g
-        }
-    }
+    //  adorno: tu escritorio tiene huecos, así que una ventana que llegara a los
+    //  bordes estaría enseñando algo que no pasa — y de paso taparía el fondo
+    //  entero, que es justo lo que se ha venido a ver.
+    readonly property int huecos: Fondos.huecos
 
     readonly property bool hayDock: !!Settings.valor("plugin_dual")
     readonly property bool dockAparta: {

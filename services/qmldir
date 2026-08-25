@@ -18,6 +18,7 @@ singleton Clipboard 1.0 Clipboard.qml
 singleton Sistema 1.0 Sistema.qml
 singleton Archivos 1.0 Archivos.qml
 singleton Atajos 1.0 Atajos.qml
+singleton Fondos 1.0 Fondos.qml
 singleton Idioma 1.0 Idioma.qml
 singleton Ventanas 1.0 Ventanas.qml
 singleton Sesion 1.0 Sesion.qml
