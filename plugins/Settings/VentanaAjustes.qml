@@ -616,26 +616,41 @@ K4.Ventana {
                         Layout.alignment: Qt.AlignVCenter
                     }
 
-                    //  Abre la tienda en vez de taparse con ella. Los
-                    //  interruptores de cada plugin siguen en su sección, que
-                    //  sí son ajustes; traer, actualizar y quitar son otra
-                    //  cosa y viven en lo suyo.
-                    K4.Baldosa {
-                        Layout.preferredWidth: 78
-                        Layout.preferredHeight: 26
-                        Layout.alignment: Qt.AlignVCenter
-                        radius: 13
-                        onPulsada: {
-                            ventana.plugin.cerrarVentana()
-                            PluginManager.abrirAplicacion("tienda")
-                        }
+                    //  Dos accesos a lo que NO es un ajuste pero se busca
+                    //  desde aquí: la tienda —traer, actualizar y quitar— y el
+                    //  tema de Hyprland —fondos, colores, efectos—. Los dos son
+                    //  aplicaciones con su propia pantalla, y esas pantallas
+                    //  están bien como están: lo que faltaba era llegar a ellas
+                    //  desde el sitio donde uno va a configurar cosas.
+                    //
+                    //  Abren en vez de taparse con ellas: se cierra esto antes.
+                    Repeater {
+                        model: [
+                            { nombre: Idioma.t("Plugins"), id: "tienda" },
+                            { nombre: Idioma.t("Apariencia"), id: "hyprtheme" }
+                        ]
 
-                        IslandLabel {
-                            anchors.centerIn: parent
-                            text: Idioma.t("Plugins")
-                            textFormat: Text.PlainText
-                            color: Theme.muted
-                            font.pixelSize: 10
+                        delegate: K4.Baldosa {
+                            id: acceso
+                            required property var modelData
+
+                            Layout.preferredWidth: etiquetaAcceso.implicitWidth + 24
+                            Layout.preferredHeight: 26
+                            Layout.alignment: Qt.AlignVCenter
+                            radius: 13
+                            onPulsada: {
+                                ventana.plugin.cerrarVentana()
+                                PluginManager.abrirAplicacion(acceso.modelData.id)
+                            }
+
+                            IslandLabel {
+                                id: etiquetaAcceso
+                                anchors.centerIn: parent
+                                text: acceso.modelData.nombre
+                                textFormat: Text.PlainText
+                                color: Theme.muted
+                                font.pixelSize: 10
+                            }
                         }
                     }
 

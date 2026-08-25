@@ -30,8 +30,45 @@ K4Plugin {
     property bool open: false
     property string tab: "tema"        // "tema" | "ventanas" | "efectos" | "fondo"
 
-    islandWidth: 880
-    islandHeight: 470
+    //  Grande a propósito, y sobre todo ALTO.
+    //
+    //  Con 470 la rejilla de fondos enseñaba dos filas y media de cincuenta:
+    //  para encontrar uno había que recorrerla a ciegas, que es justo lo que
+    //  una rejilla de miniaturas viene a evitar. Con 780 caben cuatro filas
+    //  largas y se elige mirando, que es como se elige un fondo.
+    //
+    //  780 y no más: el techo de la superficie son 880 (`Theme.maxIslandHeight`)
+    //  y conviene dejar aire, que por debajo de la island todavía tiene que
+    //  caber algo de escritorio para no parecer una ventana a pantalla completa
+    //  que no lo es.
+    //  El tamaño depende de la pestaña, y no es un capricho.
+    //
+    //  «Fondo» es una rejilla de cincuenta miniaturas: con 470 de alto se veían
+    //  dos filas y media y había que recorrerla a ciegas, que es justo lo que
+    //  una rejilla viene a evitar. Con 780 caben cuatro filas largas y se elige
+    //  mirando.
+    //
+    //  Las otras tres son cuatro interruptores y tres deslizadores. Con ese
+    //  mismo alto se quedaban en media pantalla de hueco, y una pantalla medio
+    //  vacía se lee como que falta algo. Así que cada una pide lo suyo.
+    //
+    //  780 y no más: el techo de la superficie son 880 y conviene dejar aire
+    //  para que se siga viendo escritorio por debajo.
+    //  El tamaño depende de la pestaña, y no es un capricho.
+    //
+    //  «Fondo» es una rejilla de cincuenta miniaturas: con 470 de alto se veían
+    //  dos filas y media y había que recorrerla a ciegas, que es justo lo que
+    //  una rejilla viene a evitar. Con 780 caben cuatro filas y se elige
+    //  mirando, que es como se elige un fondo.
+    //
+    //  Las otras tres son cuatro interruptores y tres deslizadores: con ese
+    //  alto se quedaban con media pantalla de hueco, y una pantalla medio vacía
+    //  se lee como que falta algo. Cada una pide lo suyo.
+    //
+    //  780 y no más: el techo de la superficie son 880 (`maxIslandHeight`) y
+    //  conviene dejar aire para que se siga viendo escritorio por debajo.
+    islandWidth: self.tab === "fondo" ? 1000 : 880
+    islandHeight: self.tab === "fondo" ? 780 : 470
 
     handlesBackgroundTap: true
     onBackgroundTapped: {}   // se traga el clic: cerrar es cosa del botón
