@@ -85,23 +85,49 @@ K4.Ventana {
         for (let i = 0; i < ventana.todas.length; ++i) {
             const g = ventana.todas[i]
             const casaGrupo = String(g.grupo).toLowerCase().indexOf(q) >= 0
+                || (g.claves || []).some(function (c) {
+                    return String(c).toLowerCase().indexOf(q) >= 0
+                })
             const ops = (g.opciones || []).filter(function (o) {
                 return casaGrupo
                     || String(o.nombre || "").toLowerCase().indexOf(q) >= 0
                     || String(o.desc || "").toLowerCase().indexOf(q) >= 0
             })
-            if (ops.length > 0)
+            if (ops.length > 0) {
                 fuera.push({ grupo: g.grupo, glifo: g.glifo, desc: g.desc,
                              vista: g.vista, opciones: ops })
+            } else if (casaGrupo) {
+                //  Una sección que casa pero no tiene opciones que enseñar:
+                //  sus controles viven dentro de un widget. Se ofrece como
+                //  destino en vez de desaparecer, que es lo que hacía antes —
+                //  «blur» no encontraba NADA aunque el interruptor esté ahí.
+                fuera.push({ grupo: g.grupo, glifo: g.glifo, desc: g.desc,
+                             vista: g.vista, opciones: [], atajo: i })
+            }
         }
         return fuera
     }
 
     readonly property int cuantasCasan: {
         let n = 0
-        for (let i = 0; i < ventana.contenido.length; ++i)
-            n += ventana.contenido[i].opciones.length
+        for (let i = 0; i < ventana.contenido.length; ++i) {
+            const g = ventana.contenido[i]
+            //  Una sección ofrecida cuenta como UNA: es un resultado aunque no
+            //  traiga opciones sueltas. Sin esto la cabecera decía «0 match»
+            //  con un resultado debajo, que es peor que no decir nada.
+            n += g.atajo !== undefined ? 1 : g.opciones.length
+        }
         return n
+    }
+
+    //  Ir a una sección por su nombre: lo usa el resultado de búsqueda que
+    //  ofrece una sección entera.
+    function irASeccion(nombre) {
+        for (let i = 0; i < ventana.lateral.length; ++i)
+            if (ventana.lateral[i].grupo === nombre) {
+                ventana.elegir(i)
+                return
+            }
     }
 
     function elegir(i) {
@@ -564,6 +590,7 @@ K4.Ventana {
                                     Layout.preferredHeight: active
                                         ? Math.max(360, ventana.height - 320) : 0
                                     active: bloque.modelData.vista === "fondos"
+                                            && bloque.modelData.atajo === undefined
                                     sourceComponent: Component {
                                         RejillaFondos {
                                             motor: PluginManager.instancia("hyprtheme")
@@ -581,6 +608,68 @@ K4.Ventana {
                                     wrapMode: Text.WordWrap
                                 }
 
+                                //  Una sección ofrecida por el buscador: se
+                                //  pulsa y te lleva. Sin esto la coincidencia
+                                //  se veía y no se podía seguir.
+                                K4.Baldosa {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: visible ? 46 : 0
+                                    visible: bloque.modelData.atajo !== undefined
+                                    radius: 10
+
+                                    onPulsada: ventana.irASeccion(
+                                        bloque.modelData.grupo)
+
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 14
+                                        anchors.rightMargin: 14
+                                        spacing: 12
+
+                                        IconGlyph {
+                                            Layout.alignment: Qt.AlignVCenter
+                                            text: String.fromCodePoint(
+                                                bloque.modelData.glifo
+                                                    ? bloque.modelData.glifo : 0xF0431)
+                                            color: Theme.blue
+                                            font.pixelSize: 15
+                                            renderType: Text.NativeRendering
+                                        }
+
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            Layout.alignment: Qt.AlignVCenter
+                                            spacing: 1
+
+                                            IslandLabel {
+                                                Layout.fillWidth: true
+                                                text: bloque.modelData.grupo
+                                                textFormat: Text.PlainText
+                                                font.pixelSize: 12
+                                                font.weight: Font.DemiBold
+                                            }
+
+                                            IslandLabel {
+                                                Layout.fillWidth: true
+                                                text: bloque.modelData.desc || ""
+                                                textFormat: Text.PlainText
+                                                color: Theme.dim
+                                                font.pixelSize: 10
+                                                elide: Text.ElideRight
+                                                maximumLineCount: 1
+                                            }
+                                        }
+
+                                        IconGlyph {
+                                            Layout.alignment: Qt.AlignVCenter
+                                            text: String.fromCodePoint(0xF0142)
+                                            color: Theme.dim
+                                            font.pixelSize: 14
+                                            renderType: Text.NativeRendering
+                                        }
+                                    }
+                                }
+
                                 //  El color, en su propia sección.
                                 //
                                 //  Los tres cargadores de aquí abajo llevan el
@@ -595,6 +684,7 @@ K4.Ventana {
                                     Layout.preferredHeight: active && item
                                         ? item.implicitHeight : 0
                                     active: bloque.modelData.vista === "color"
+                                            && bloque.modelData.atajo === undefined
                                     sourceComponent: Component {
                                         AjustesTema {
                                             motor: PluginManager.instancia("hyprtheme")
@@ -607,6 +697,7 @@ K4.Ventana {
                                     Layout.preferredHeight: active && item
                                         ? item.implicitHeight : 0
                                     active: bloque.modelData.vista === "ventanas"
+                                            && bloque.modelData.atajo === undefined
                                     sourceComponent: Component {
                                         AjustesVentanas {
                                             motor: PluginManager.instancia("hyprtheme")
@@ -619,6 +710,7 @@ K4.Ventana {
                                     Layout.preferredHeight: active && item
                                         ? item.implicitHeight : 0
                                     active: bloque.modelData.vista === "efectos"
+                                            && bloque.modelData.atajo === undefined
                                     sourceComponent: Component {
                                         AjustesEfectos {
                                             motor: PluginManager.instancia("hyprtheme")
@@ -634,9 +726,10 @@ K4.Ventana {
                                     Layout.topMargin: active ? 12 : 0
                                     Layout.preferredHeight: active && item
                                         ? item.implicitHeight : 0
-                                    active: bloque.modelData.vista === "color"
+                                    active: bloque.modelData.atajo === undefined
+                                        && (bloque.modelData.vista === "color"
                                             || bloque.modelData.vista === "ventanas"
-                                            || bloque.modelData.vista === "efectos"
+                                            || bloque.modelData.vista === "efectos")
                                     sourceComponent: Component {
                                         GuardarTema {
                                             motor: PluginManager.instancia("hyprtheme")
@@ -653,6 +746,7 @@ K4.Ventana {
                                     Layout.fillWidth: true
                                     Layout.bottomMargin: active ? 6 : 0
                                     active: bloque.modelData.vista === "island"
+                                            && bloque.modelData.atajo === undefined
                                     sourceComponent: Component { PrevioIsland {} }
                                 }
 

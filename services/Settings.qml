@@ -303,6 +303,15 @@ Singleton {
         },
         {
             grupo: Idioma.t("Apariencia"),
+            //  Palabras por las que el buscador debe encontrar esta sección.
+            //  Hacen falta porque sus controles viven dentro de un widget y no
+            //  como `opciones`: sin esto, escribir «blur» no daba NADA aunque
+            //  el interruptor esté ahí dentro.
+            //
+            //  En los dos idiomas y sin `Idioma.t`: no se enseñan, solo se
+            //  buscan, y quien teclea «gaps» en una barra en español merece
+            //  encontrarlo igual.
+            claves: ["fondo", "fondos", "wallpaper", "escritorio", "desktop", "imagen", "video", "monitor", "pantalla"],
             glifo: 0xF03D8,
             desc: Idioma.t("El fondo de escritorio, y de dónde salen los colores de la barra."),
             //  El fondo y el color, juntos y en este orden: el color SALE del
@@ -315,6 +324,15 @@ Singleton {
         },
         {
             grupo: Idioma.t("Color"),
+            //  Palabras por las que el buscador debe encontrar esta sección.
+            //  Hacen falta porque sus controles viven dentro de un widget y no
+            //  como `opciones`: sin esto, escribir «blur» no daba NADA aunque
+            //  el interruptor esté ahí dentro.
+            //
+            //  En los dos idiomas y sin `Idioma.t`: no se enseñan, solo se
+            //  buscan, y quien teclea «gaps» en una barra en español merece
+            //  encontrarlo igual.
+            claves: ["color", "colour", "colores", "preset", "acento", "accent", "paleta", "palette", "tema", "theme", "degradado"],
             glifo: 0xF03D9,
             desc: Idioma.t("De dónde salen los colores: del fondo, o de un preset que elijas."),
             //  Sección aparte y no debajo de los fondos, aunque estén
@@ -326,6 +344,15 @@ Singleton {
         },
         {
             grupo: Idioma.t("Ventanas"),
+            //  Palabras por las que el buscador debe encontrar esta sección.
+            //  Hacen falta porque sus controles viven dentro de un widget y no
+            //  como `opciones`: sin esto, escribir «blur» no daba NADA aunque
+            //  el interruptor esté ahí dentro.
+            //
+            //  En los dos idiomas y sin `Idioma.t`: no se enseñan, solo se
+            //  buscan, y quien teclea «gaps» en una barra en español merece
+            //  encontrarlo igual.
+            claves: ["ventanas", "windows", "borde", "border", "hueco", "huecos", "gap", "gaps", "redondeo", "rounding", "esquina", "esquinas"],
             glifo: 0xF10AC,
             desc: Idioma.t("Bordes, huecos y esquinas de las ventanas de Hyprland."),
             vista: "ventanas",
@@ -333,6 +360,15 @@ Singleton {
         },
         {
             grupo: Idioma.t("Efectos"),
+            //  Palabras por las que el buscador debe encontrar esta sección.
+            //  Hacen falta porque sus controles viven dentro de un widget y no
+            //  como `opciones`: sin esto, escribir «blur» no daba NADA aunque
+            //  el interruptor esté ahí dentro.
+            //
+            //  En los dos idiomas y sin `Idioma.t`: no se enseñan, solo se
+            //  buscan, y quien teclea «gaps» en una barra en español merece
+            //  encontrarlo igual.
+            claves: ["efectos", "effects", "blur", "desenfoque", "opacidad", "opacity", "sombra", "sombras", "shadow", "animacion", "animaciones", "animation"],
             glifo: 0xF00B5,
             desc: Idioma.t("Desenfoque, opacidad, sombras y animaciones."),
             vista: "efectos",
