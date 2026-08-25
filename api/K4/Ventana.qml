@@ -46,7 +46,42 @@ PanelWindow {
     //  Si se queda el teclado en exclusiva. Solo para lo que de verdad lo
     //  necesita mientras está delante: mientras lo tenga, ninguna otra ventana
     //  recibe una tecla.
+    //
+    //  Y ojo con esto en varios monitores: un agarre exclusivo NO es por
+    //  pantalla. El foco de teclado en Wayland es uno para toda la sesión, y
+    //  Hyprland trata una capa exclusiva como un agarre modal — deja de
+    //  repartir eventos al resto, teclado Y puntero. Comprobado: con una
+    //  ventana así abierta en el segundo monitor, la island del primero ya no
+    //  se abre al pasarle el ratón, y lo que escribas se lo lleva ella aunque
+    //  tengas otra ventana enfocada. Para eso está `tecladoAlPasar`.
     property bool conTeclado: false
+
+    //  El teclado SOLO mientras el ratón esté encima de esta ventana.
+    //
+    //  Es la respuesta a lo de arriba: mientras la usas, manda ella; en cuanto
+    //  te vas a otra pantalla lo suelta y el escritorio vuelve a funcionar.
+    //  Gana a `conTeclado` si se ponen las dos.
+    //
+    //  Al soltarlo se queda en OnDemand y no en None a propósito: OnDemand
+    //  sigue recibiendo el ratón, que es lo que permite volver a entrar.
+    property bool tecladoAlPasar: false
+
+    //  ¿Está el ratón dentro? Lo dice QUIEN PINTA la ventana, no la ventana.
+    //
+    //  Suena al revés y no lo es. La ventana no sabe qué hay dentro, y el roce
+    //  solo lo ve quien está encima del todo: una zona de escucha puesta aquí
+    //  la tapa el contenido del que la usa, porque sus hijos se crean después.
+    //  Quien monta la vista sí controla su propia pila, así que enlaza esto a
+    //  lo que sea que tenga —el fondo, la tarjeta, los dos con un OR—.
+    //
+    //  Se intentó de las dos formas automáticas y ninguna vale: un `Item` con
+    //  `HoverHandler` detrás de todo no se entera de nada porque lo tapan, y
+    //  un `HoverHandler` suelto dentro del PanelWindow no se engancha a ningún
+    //  item y su `hovered` sale `undefined`. Y asignarle `parent` a mano
+    //  —`HoverHandler { parent: ventana.contentItem }`— no da un error de QML:
+    //  ESTRELLA Quickshell entero al construir la ventana. Aprendido por las
+    //  malas y comprobado después en el banco.
+    property bool ratonDentro: false
 
 
     // Por encima de todo, la island incluida.
@@ -138,6 +173,11 @@ PanelWindow {
     WlrLayershell.namespace: ventana.nombre
     WlrLayershell.layer: ventana.capa === "fondo" ? WlrLayer.Bottom
         : (ventana.capa === "encima" ? WlrLayer.Overlay : WlrLayer.Top)
-    WlrLayershell.keyboardFocus: ventana.conTeclado
-        ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: {
+        if (ventana.tecladoAlPasar)
+            return ventana.ratonDentro ? WlrKeyboardFocus.Exclusive
+                                       : WlrKeyboardFocus.OnDemand
+        return ventana.conTeclado ? WlrKeyboardFocus.Exclusive
+                                  : WlrKeyboardFocus.None
+    }
 }

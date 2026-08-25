@@ -32,7 +32,26 @@ K4.Ventana {
     required property var plugin
 
     nombre: "k4-ajustes"
-    conTeclado: true
+
+    //  El teclado solo mientras el ratón esté aquí, y no en exclusiva para
+    //  toda la sesión. Con `conTeclado` esta ventana abierta en un monitor
+    //  dejaba el OTRO sin ratón ni teclado —un agarre exclusivo de Wayland no
+    //  es por pantalla, y Hyprland lo trata como modal—. Así se puede tener
+    //  Ajustes en la segunda pantalla y seguir trabajando en la primera.
+    tecladoAlPasar: true
+
+    //  Quién dice que el ratón está dentro: el fondo y la tarjeta, cada uno
+    //  con su `HoverHandler`.
+    //
+    //  Handlers y no `MouseArea`: un MouseArea con `hoverEnabled` se come el
+    //  roce y no lo deja bajar, así que al pasar por CUALQUIER botón de dentro
+    //  —y esta ventana es toda botones— el de debajo se apagaría y soltaríamos
+    //  el teclado a media escritura. Un `HoverHandler` es pasivo: se entera
+    //  aunque el puntero esté sobre un hijo suyo.
+    //
+    //  Dos y no uno porque la tarjeta es HERMANA del fondo, no hija: el
+    //  handler del fondo no ve lo que pasa sobre ella.
+    ratonDentro: roceFondo.hovered || roceTarjeta.hovered
 
     //  Qué sección se está mirando, y qué se ha escrito en el buscador. Vive
     //  aquí y no en el plugin: al cerrar y volver a abrir se quiere empezar
@@ -98,6 +117,8 @@ K4.Ventana {
         anchors.fill: parent
         color: Qt.rgba(0, 0, 0, 0.55)
 
+        HoverHandler { id: roceFondo }
+
         MouseArea {
             anchors.fill: parent
             onClicked: ventana.plugin.cerrarVentana()
@@ -113,6 +134,11 @@ K4.Ventana {
         campo.forceActiveFocus()
         foco.start()
     }
+
+    //  Al volver el ratón, el campo recupera el foco. Al soltar el teclado se
+    //  pierde, y sin esto habría que pinchar el buscador cada vez que vuelves
+    //  de la otra pantalla: cambiar una molestia por otra.
+    onRatonDentroChanged: if (ratonDentro) campo.forceActiveFocus()
 
     Timer {
         id: foco
@@ -137,6 +163,8 @@ K4.Ventana {
         color: Theme.islandBg
         border.width: 1
         border.color: Qt.rgba(1, 1, 1, 0.08)
+
+        HoverHandler { id: roceTarjeta }
 
         //  Que el clic dentro NO llegue al fondo, o cerrar sería imposible sin
         //  acertar en el hueco entre controles.
