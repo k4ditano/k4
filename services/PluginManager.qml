@@ -17,6 +17,26 @@ Singleton {
 
     readonly property string rutaEstado:
         (Quickshell.env("HOME") || "") + "/.local/state/k4/plugins.json"
+
+    //  Dos redes de seguridad, y las dos existen por lo mismo: actualizar la
+    //  barra no puede costarte los plugins que tenías puestos.
+    //
+    //   · `rutaCopia` es un duplicado del último estado que se pudo leer. Si
+    //     `plugins.json` aparece truncado —un corte a media escritura, el
+    //     disco lleno— sin esto se cae a los valores de fábrica, y los plugins
+    //     de usuario vienen de fábrica APAGADOS: se encuentra uno la barra sin
+    //     nada y encima el siguiente guardado deja esa pérdida escrita.
+    //
+    //   · `rutaCache` es la última lista buena de `tools/plugins.py --list`.
+    //     El catálogo lo emite ese guión, y un `git pull` lo reemplaza en
+    //     caliente: si la llamada falla una sola vez —fichero a medio escribir,
+    //     una dependencia nueva— antes se arrancaba con el catálogo de
+    //     emergencia embebido, que solo trae los de casa. Los tuyos
+    //     desaparecían de la lista y se descargaban de memoria.
+    readonly property string rutaCopia:
+        (Quickshell.env("HOME") || "") + "/.local/state/k4/plugins.json.bak"
+    readonly property string rutaCache:
+        (Quickshell.env("HOME") || "") + "/.local/state/k4/catalogo.json"
     readonly property string rutaCatalogo:
         Quickshell.shellPath("plugins/catalog.json")
 
@@ -584,17 +604,58 @@ Singleton {
         alternar(String(id).replace(/^plugin_/, ""))
     }
 
+    //  ¿Trae este texto un estado que se pueda usar? Devuelve el mapa o null,
+    //  que no es lo mismo que un mapa vacío: vacío es «no tienes nada puesto»
+    //  y null es «no me he enterado», y confundirlos es justo lo que apagaba
+    //  los plugins de todo el mundo.
+    function _leerEstado(bruto) {
+        if (!bruto || bruto.length === 0)
+            return null
+        try {
+            const d = JSON.parse(bruto)
+            if (d.habilitados && typeof d.habilitados === "object")
+                return d.habilitados
+        } catch (e) {
+            //  Cae fuera: lo dirá quien llame.
+        }
+        return null
+    }
+
+    //  Se leyó de la copia porque el principal no servía. Se guarda para
+    //  poder decirlo: recuperarse en silencio de una pérdida de datos es
+    //  cómodo hoy y caro el día que la copia tampoco esté.
+    property bool estadoRepuesto: false
+
     function cargar() {
         const bruto = estado.text()
-        if (bruto.length > 0) {
-            try {
-                const d = JSON.parse(bruto)
-                if (d.habilitados && typeof d.habilitados === "object")
-                    habilitados = d.habilitados
-            } catch (e) {
-                // Un estado roto no impide arrancar: se usan los defaults.
+        let mapa = _leerEstado(bruto)
+
+        if (mapa === null) {
+            //  El principal no sirve. Antes de dar por hecho que no había
+            //  nada, mirar la copia — que es lo que distingue «primer
+            //  arranque» de «se ha roto el fichero».
+            const deCopia = _leerEstado(copiaEstado.text())
+            if (deCopia !== null) {
+                mapa = deCopia
+                estadoRepuesto = true
+                console.warn("k4: plugins.json no se pudo leer; repuesto de "
+                             + manager.rutaCopia)
             }
         }
+
+        if (mapa !== null) {
+            habilitados = mapa
+            //  Que la copia exista desde el primer arranque y no desde el
+            //  primer interruptor que se toque: si solo se escribiera al
+            //  guardar, la red no estaría puesta justo el día que hace falta.
+            //  Y si se ha leído DE la copia, se repara el principal con ella.
+            const bueno = JSON.stringify({ habilitados: mapa }, null, 1)
+            if (estadoRepuesto)
+                estado.setText(bueno)
+            else if (copiaEstado.text() !== bueno)
+                copiaEstado.setText(bueno)
+        }
+
         cargado = true
         //  Y con el estado en la mano, los plugins — si el catálogo ya llegó.
         //  Arrancar desde aquí y no desde shell.qml evita la carrera: el
@@ -611,17 +672,47 @@ Singleton {
     //  arranca.
     property bool catalogoListo: false
 
-    function recibirCatalogo(bruto) {
+    //  De dónde salió lo que se está enseñando. Vacío es «del guión, como
+    //  siempre»; con algo dentro, la tienda lo dice — una lista que puede
+    //  estar vieja tiene que ir con la etiqueta puesta.
+    property string catalogoDe: ""
+
+    function _aplicarCatalogo(bruto) {
         try {
             const d = JSON.parse(bruto)
-            if (d.plugins && Array.isArray(d.plugins) && d.plugins.length > 0)
+            if (d.plugins && Array.isArray(d.plugins) && d.plugins.length > 0) {
                 catalogo = d.plugins.map(function (m) {
                     return Object.assign({}, m, {
                         enabled: m.enabledByDefault !== false
                     })
                 })
+                return true
+            }
         } catch (e) {
-            // Se conserva el catálogo de emergencia embebido.
+            //  Lo resuelve quien llama.
+        }
+        return false
+    }
+
+    function recibirCatalogo(bruto) {
+        if (_aplicarCatalogo(bruto)) {
+            catalogoDe = ""
+            _intentosLista = 0
+            //  Guardar la última lista buena. Es la que se usará el día que
+            //  el guión no conteste, y sin ella ese día la barra arranca sin
+            //  los plugins de usuario.
+            if (cacheCatalogo.text() !== bruto)
+                cacheCatalogo.setText(bruto)
+        } else if (catalogo.length === 0 || !catalogoListo) {
+            //  No se ha entendido. Antes de caer al catálogo de emergencia
+            //  —que solo trae los de casa— probar con la última lista buena:
+            //  los plugins siguen en el disco, lo que ha fallado es quien los
+            //  cuenta.
+            if (_aplicarCatalogo(cacheCatalogo.text())) {
+                catalogoDe = "cache"
+                console.warn("k4: no se ha podido listar los plugins; se usa "
+                             + manager.rutaCache)
+            }
         }
         catalogoListo = true
         if (listo)
@@ -633,6 +724,10 @@ Singleton {
     //  Releer el catálogo con la barra en marcha: lo que hace que instalar o
     //  quitar un plugin desde el terminal se note sin reiniciar.
     function releerCatalogo() {
+        //  Un repaso a mano vuelve a dar oportunidades: si no, tras dos
+        //  fallos el reintento no se arma nunca más y pulsar «refrescar» no
+        //  haría nada.
+        _intentosLista = 0
         listador.running = false
         listador.running = true
     }
@@ -698,13 +793,30 @@ Singleton {
     function guardar() {
         if (!cargado)
             return
-        estado.setText(JSON.stringify({ habilitados: habilitados }, null, 1))
+        const texto = JSON.stringify({ habilitados: habilitados }, null, 1)
+        estado.setText(texto)
+        //  Y el duplicado. Cuesta un fichero de dos líneas y es lo que
+        //  convierte «se me han apagado todos los plugins» en un aviso en el
+        //  log. Si el principal se rompe, esto es lo que queda.
+        copiaEstado.setText(texto)
+        estadoRepuesto = false
     }
 
     FileView {
         id: estado
         path: manager.rutaEstado
         blockLoading: true
+        //  Escribir a un temporal y renombrar. Sin esto, un corte a mitad de
+        //  `setText` deja el JSON cortado por la mitad, que es exactamente el
+        //  fichero ilegible del que hay que defenderse arriba.
+        atomicWrites: true
+    }
+
+    FileView {
+        id: copiaEstado
+        path: manager.rutaCopia
+        blockLoading: true
+        atomicWrites: true
     }
 
     Process {
@@ -715,12 +827,39 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: manager.recibirCatalogo(String(this.text))
         }
-        //  Si python falla, el catálogo de emergencia embebido sigue ahí: la
-        //  barra arranca con los de casa y sin los de usuario.
+        //  Si python falla se vuelve a intentar, y solo después se tira de la
+        //  última lista buena. El caso que se está cubriendo es actualizar la
+        //  barra: `git pull` reemplaza `tools/plugins.py` mientras la barra
+        //  corre, así que un fallo aquí es muchas veces cosa de un segundo.
         onExited: function (codigo) {
-            if (codigo !== 0 && !manager.catalogoListo)
+            if (codigo === 0)
+                return
+            if (manager._intentosLista < 2) {
+                manager._intentosLista += 1
+                reintentoLista.interval = 3000 * manager._intentosLista
+                reintentoLista.restart()
+                return
+            }
+            if (!manager.catalogoListo)
                 manager.recibirCatalogo("")
         }
+    }
+
+    property int _intentosLista: 0
+
+    Timer {
+        id: reintentoLista
+        onTriggered: {
+            listador.running = false
+            listador.running = true
+        }
+    }
+
+    FileView {
+        id: cacheCatalogo
+        path: manager.rutaCache
+        blockLoading: true
+        atomicWrites: true
     }
 
     //  ── la tienda ────────────────────────────────────────────────────

@@ -365,6 +365,23 @@ FadeIn {
             wrapMode: Text.WordWrap
         }
 
+        //  Cuando la barra ha tenido que tirar de sus copias. No es un error
+        //  —tus plugins están y funcionan— pero enterarse importa: significa
+        //  que algo de debajo se rompió y se salvó por la red, y la red no
+        //  conviene gastarla dos veces sin mirar.
+        IslandLabel {
+            Layout.fillWidth: true
+            visible: PluginManager.catalogoDe === "cache"
+                     || PluginManager.estadoRepuesto
+            text: PluginManager.catalogoDe === "cache"
+                ? Idioma.t("No se ha podido leer la lista de plugins: esto es la última buena. Pulsa refrescar.")
+                : Idioma.t("El fichero de plugins encendidos estaba ilegible: repuesto de la copia.")
+            textFormat: Text.PlainText
+            color: Theme.yellow
+            font.pixelSize: 10
+            wrapMode: Text.WordWrap
+        }
+
         //  ── cuando la búsqueda no casa con nada ──────────────────────
         //
         //  Sólo para el filtro. Que la lista salga vacía por otros motivos
