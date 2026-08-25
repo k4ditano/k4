@@ -115,7 +115,7 @@ Singleton {
     //  Ids y no una copia de nombres e iconos: así al renombrar un plugin o
     //  cambiarle el icono el acceso directo se entera solo, y uno que apunte a
     //  un plugin desinstalado simplemente no se pinta.
-    property var accesosDirectos: ["game", "hyprtheme", "system", "clipboard"]
+    property var accesosDirectos: ["game", "settings", "system", "clipboard"]
 
     function esAccesoDirecto(id) {
         return (accesosDirectos || []).indexOf(id) >= 0
@@ -305,10 +305,37 @@ Singleton {
             grupo: Idioma.t("Apariencia"),
             glifo: 0xF03D8,
             desc: Idioma.t("El fondo de escritorio, y de dónde salen los colores de la barra."),
-            //  La rejilla de fondos, la misma que enseña la pantalla del tema.
-            //  No se declara ninguna opción: lo que hay que elegir es una
-            //  imagen, y eso no cabe en una fila con un interruptor.
+            //  El fondo y el color, juntos y en este orden: el color SALE del
+            //  fondo mientras no lo toques a mano, así que separarlos en dos
+            //  cajones obligaba a cruzar la ventana para entender una cosa.
+            //  Ninguna opción declarada: lo que se elige aquí es una imagen y
+            //  un color, y eso no cabe en una fila con un interruptor.
             vista: "fondos",
+            opciones: []
+        },
+        {
+            grupo: Idioma.t("Color"),
+            glifo: 0xF03D9,
+            desc: Idioma.t("De dónde salen los colores: del fondo, o de un preset que elijas."),
+            //  Sección aparte y no debajo de los fondos, aunque estén
+            //  emparentados: la rejilla se desplaza por dentro, así que lo que
+            //  fuera detrás quedaba inalcanzable con la rueda. Un scroll dentro
+            //  de otro scroll siempre acaba así.
+            vista: "color",
+            opciones: []
+        },
+        {
+            grupo: Idioma.t("Ventanas"),
+            glifo: 0xF10AC,
+            desc: Idioma.t("Bordes, huecos y esquinas de las ventanas de Hyprland."),
+            vista: "ventanas",
+            opciones: []
+        },
+        {
+            grupo: Idioma.t("Efectos"),
+            glifo: 0xF00B5,
+            desc: Idioma.t("Desenfoque, opacidad, sombras y animaciones."),
+            vista: "efectos",
             opciones: []
         },
         {

@@ -19,16 +19,17 @@ K4Plugin {
 
     name: "hyprtheme"
     title: Idioma.t("Tema de Hyprland")
-    priority: 65
-    active: habilitado && open
-    //  El teclado entero mientras está abierto: «opcional» es OnDemand y
-    //  el compositor solo lo da si PINCHAS la superficie, así que abierto
-    //  desde el centro de aplicaciones o por atajo no llegaba ni el ESC.
-    //  Ver `tecladoOpcional` en api/K4/Plugin.qml.
-    grabKeyboard: open
-
-    property bool open: false
-    property string tab: "tema"        // "tema" | "ventanas" | "efectos" | "fondo"
+    //  Sin `active`, sin `view` y sin teclado: este plugin ya NO se dibuja.
+    //
+    //  Tenía su propia pantalla con cuatro pestañas —color, ventanas, efectos y
+    //  fondo— y era un sitio más donde configurar cosas. Todo eso vive ahora en
+    //  la ventana de Ajustes, en sus secciones, con los mismos widgets. Aquí se
+    //  queda lo que nadie más sabe hacer: escribir el Lua de Hyprland, hablar
+    //  con awww/swww/swaybg y pintar el suelo.
+    //
+    //  Es el mismo camino que hicieron la tienda de plugins y los propios
+    //  ajustes: lo que se abre y se usa es una aplicación, y lo que sabe hacer
+    //  algo es un motor. Aquí solo queda el motor.
 
     //  Grande a propósito, y sobre todo ALTO.
     //
@@ -41,37 +42,6 @@ K4Plugin {
     //  y conviene dejar aire, que por debajo de la island todavía tiene que
     //  caber algo de escritorio para no parecer una ventana a pantalla completa
     //  que no lo es.
-    //  El tamaño depende de la pestaña, y no es un capricho.
-    //
-    //  «Fondo» es una rejilla de cincuenta miniaturas: con 470 de alto se veían
-    //  dos filas y media y había que recorrerla a ciegas, que es justo lo que
-    //  una rejilla viene a evitar. Con 780 caben cuatro filas largas y se elige
-    //  mirando.
-    //
-    //  Las otras tres son cuatro interruptores y tres deslizadores. Con ese
-    //  mismo alto se quedaban en media pantalla de hueco, y una pantalla medio
-    //  vacía se lee como que falta algo. Así que cada una pide lo suyo.
-    //
-    //  780 y no más: el techo de la superficie son 880 y conviene dejar aire
-    //  para que se siga viendo escritorio por debajo.
-    //  El tamaño depende de la pestaña, y no es un capricho.
-    //
-    //  «Fondo» es una rejilla de cincuenta miniaturas: con 470 de alto se veían
-    //  dos filas y media y había que recorrerla a ciegas, que es justo lo que
-    //  una rejilla viene a evitar. Con 780 caben cuatro filas y se elige
-    //  mirando, que es como se elige un fondo.
-    //
-    //  Las otras tres son cuatro interruptores y tres deslizadores: con ese
-    //  alto se quedaban con media pantalla de hueco, y una pantalla medio vacía
-    //  se lee como que falta algo. Cada una pide lo suyo.
-    //
-    //  780 y no más: el techo de la superficie son 880 (`maxIslandHeight`) y
-    //  conviene dejar aire para que se siga viendo escritorio por debajo.
-    islandWidth: self.tab === "fondo" ? 1000 : 880
-    islandHeight: self.tab === "fondo" ? 780 : 470
-
-    handlesBackgroundTap: true
-    onBackgroundTapped: {}   // se traga el clic: cerrar es cosa del botón
 
     // Se abre con el ratón, así que se va al sacarlo. Con más margen que el
     // panel: aquí se arrastran deslizadores y es fácil pasarse del borde.
@@ -954,25 +924,12 @@ K4Plugin {
         wallScan.running = true
     }
 
-    function toggle() {
-        open = !open
-        if (open) {
-            if (panel) panel.close()
-            Notifs.dismissToast()
-        }
-    }
-
-    // El escaneo va atado al estado, no a una función de entrada: así vale
-    // igual abriendo desde el panel, por IPC o saltando directo a la pestaña.
-    onOpenChanged: if (open) refreshWallpapers()
-    onTabChanged: if (tab === "fondo") refreshWallpapers()
+    //  El rastreo de fondos lo pide quien los enseña —la rejilla, al hacerse
+    //  visible— y no un cambio de pestaña, que ya no existe. Aquí solo queda
+    //  reaplicar si aparece la herramienta después del fondo.
     onWallToolChanged: if (wallTool.length > 0 && wallpaper.length > 0)
         applyWallpaper(wallpaper)
 
-    function close() { open = false }
-
-    // lo aparta al abrirse; lo inyecta el host
-    property var panel: null
 
     // ── archivos ──────────────────────────────────────────────────
     K4.Fichero { id: themeView; path: self.themeFile }
@@ -1020,15 +977,12 @@ K4Plugin {
 
     K4.Ipc {
         target: "k4.theme"
-        function toggle(): void { self.toggle() }
-        function close(): void { self.close() }
+        //  Se conserva el verbo porque puede estar atado en Hyprland: abre
+        //  Ajustes, que es donde vive ahora lo que esto configuraba.
+        function toggle(): void { PluginManager.abrirAplicacion("settings") }
         function apply(): void { self.apply() }
         function save(): void { self.persist() }
         function preset(id: string): void { self.applyPreset(id) }
-        function tab(name: string): void {
-            self.open = true
-            self.tab = name
-        }
         function wallpaper(path: string): void { self.setWallpaper(path) }
 
         //  ── el lienzo, mientras no tiene pantalla propia ──────────
@@ -1096,7 +1050,4 @@ K4Plugin {
                                 global: self.wallpaper })
     }
 
-    view: Component {
-        HyprThemeView { plugin: self }
-    }
 }

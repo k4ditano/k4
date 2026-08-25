@@ -581,6 +581,69 @@ K4.Ventana {
                                     wrapMode: Text.WordWrap
                                 }
 
+                                //  El color, en su propia sección.
+                                //
+                                //  Los tres cargadores de aquí abajo llevan el
+                                //  alto condicionado a `active`. Es la lección
+                                //  del commit anterior: uno apagado no carga
+                                //  nada pero SIGUE midiendo lo que le pidas, y
+                                //  eso empuja el contenido de las demás
+                                //  secciones fuera de la vista sin dar un solo
+                                //  error.
+                                Loader {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: active && item
+                                        ? item.implicitHeight : 0
+                                    active: bloque.modelData.vista === "color"
+                                    sourceComponent: Component {
+                                        AjustesTema {
+                                            motor: PluginManager.instancia("hyprtheme")
+                                        }
+                                    }
+                                }
+
+                                Loader {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: active && item
+                                        ? item.implicitHeight : 0
+                                    active: bloque.modelData.vista === "ventanas"
+                                    sourceComponent: Component {
+                                        AjustesVentanas {
+                                            motor: PluginManager.instancia("hyprtheme")
+                                        }
+                                    }
+                                }
+
+                                Loader {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: active && item
+                                        ? item.implicitHeight : 0
+                                    active: bloque.modelData.vista === "efectos"
+                                    sourceComponent: Component {
+                                        AjustesEfectos {
+                                            motor: PluginManager.instancia("hyprtheme")
+                                        }
+                                    }
+                                }
+
+                                //  El «Guardar» acompaña a lo que escribe el Lua
+                                //  de Hyprland. Los fondos no lo llevan: esos se
+                                //  guardan solos al elegirlos.
+                                Loader {
+                                    Layout.fillWidth: true
+                                    Layout.topMargin: active ? 12 : 0
+                                    Layout.preferredHeight: active && item
+                                        ? item.implicitHeight : 0
+                                    active: bloque.modelData.vista === "color"
+                                            || bloque.modelData.vista === "ventanas"
+                                            || bloque.modelData.vista === "efectos"
+                                    sourceComponent: Component {
+                                        GuardarTema {
+                                            motor: PluginManager.instancia("hyprtheme")
+                                        }
+                                    }
+                                }
+
                                 //  Y una sección puede traer algo suyo encima
                                 //  de sus opciones. La Island trae un croquis
                                 //  de la pantalla: es lo que convierte tres

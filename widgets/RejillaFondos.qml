@@ -57,8 +57,10 @@ ColumnLayout {
             : rejilla.motor.wallpaper
     }
 
-    anchors.fill: parent
-    anchors.margins: 16
+    //  Sin `anchors.fill`: eso era de cuando esto vivía dentro de una pantalla
+    //  propia. Aquí lo coloca la columna de la sección, y mezclar anchors con
+    //  Layout deja el widget del tamaño equivocado.
+    Layout.fillWidth: true
     spacing: 10
 
     //  ── en qué pantalla estamos trabajando ──────────
@@ -367,5 +369,39 @@ ColumnLayout {
             font.pixelSize: 12
         }
 
+    }
+
+    //  El estado, que viajó con la pantalla borrada y hace falta: sin
+    //  herramienta instalada la rejilla se ve igual y no aplica nada, y sin
+    //  esto eso parecía un fallo.
+    RowLayout {
+        Layout.fillWidth: true
+        Layout.topMargin: 4
+        spacing: 8
+
+        readonly property bool hay: !!rejilla.motor
+            && String(rejilla.motor.wallTool || "").length > 0
+        readonly property bool puesto: !!rejilla.motor
+            && String(rejilla.motor.wallpaper || "").length > 0
+
+        IconGlyph {
+            text: parent.hay && parent.puesto ? Theme.ico.check : Theme.ico.alert
+            color: parent.hay && parent.puesto ? Theme.green : Theme.muted
+            font.pixelSize: 12
+            renderType: Text.NativeRendering
+            Layout.alignment: Qt.AlignVCenter
+        }
+
+        IslandLabel {
+            Layout.fillWidth: true
+            text: !parent.hay
+                ? Idioma.t("Instala awww, swww o swaybg para aplicar fondos")
+                : (parent.puesto
+                   ? Idioma.t("Fondo aplicado y guardado automáticamente")
+                   : Idioma.t("Selecciona una imagen para cambiar el fondo"))
+            color: Theme.muted
+            font.pixelSize: 10
+            wrapMode: Text.WordWrap
+        }
     }
 }

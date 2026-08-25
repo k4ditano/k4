@@ -73,8 +73,7 @@
    "version": "1.0.0",
    "title": "Tema de Hyprland",
    "enabledByDefault": true,
-   "icono": "0xF03D8",
-   "aplicacion": true
+   "icono": "0xF03D8"
   },
   {
    "id": "pantallas",

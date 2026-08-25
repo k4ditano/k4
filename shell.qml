@@ -252,7 +252,11 @@ Scope {
         function togglePlay(): void { Media.togglePlaying() }
         function nextTrack(): void { Media.siguiente() }
         function prevTrack(): void { Media.anterior() }
-        function theme(): void { _p("hyprtheme")?.toggle() }
+        //  El tema ya no tiene pantalla propia: todo lo que se configura vive
+        //  en Ajustes. Se conserva el verbo porque está atado en Hyprland y en
+        //  el centro de control, y romper un atajo de alguien por mudar una
+        //  pantalla de sitio es de mala educación.
+        function theme(): void { _p("settings")?.abrir() }
         function weather(): void { _p("weather")?.toggle() }
         function tray(): void { _p("tray")?.toggle() }
         function game(): void { _p("game")?.toggle() }

@@ -4,6 +4,5 @@
 #  `python3 tools/plugins.py` comprueba que esté completo.
 
 HyprThemePlugin 1.0 HyprThemePlugin.qml
-HyprThemeView 1.0 HyprThemeView.qml
 Capa 1.0 Capa.qml
 Lienzo 1.0 Lienzo.qml
