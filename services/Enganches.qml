@@ -87,6 +87,14 @@ Singleton {
                 continue
             salida.push({
                 grupo: a.grupo || a.plugin,
+                //  Para la barra lateral de la ventana de Ajustes: un icono y
+                //  una línea por sección. Si el plugin no dice nada, se coge
+                //  el icono que ya declara en su manifiesto — que es el que la
+                //  gente asocia con él en el centro de aplicaciones, así que
+                //  pedirle otro sería pedirle lo mismo dos veces.
+                glifo: a.fuente && a.fuente.glifo ? a.fuente.glifo : 0,
+                desc: a.fuente && a.fuente.desc ? a.fuente.desc : "",
+                dePlugin: a.plugin,
                 opciones: a.opciones.map(function (o) {
                     return Object.assign({}, o, {
                         id: registro.idExterno(a.plugin, o.id)

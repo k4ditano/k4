@@ -1393,6 +1393,7 @@ AYUDA = """k4's plugin catalog.
     tools/plugins.py --search [text]    what's published in the registry
     tools/plugins.py --examine <url>    look at a plugin without installing it (JSON)
 
+    --pantalla <m>  with --test, open it on THAT monitor (`hyprctl monitors`)
     --commit <sha>  install or update THAT commit, not the tip of the branch
     --folder <dir>  when plugin.json is not at the repo root
     --registry <url>  point at a registry other than the published one
@@ -1528,6 +1529,23 @@ ShellRoot {
 
     PanelWindow {
         visible: banco.plugin !== null
+
+        //  En qué monitor se abre. Vacío es donde el compositor quiera, que
+        //  es lo de siempre; con `--pantalla` se manda a uno concreto —para
+        //  poder probar en la segunda mientras se usa la primera, que es de
+        //  las pocas cosas que un banco de pruebas debe dejarte hacer.
+        screen: {
+            const quiere = "%(pantalla)s"
+            if (quiere.length === 0)
+                return null
+            const lista = Quickshell.screens
+            for (let i = 0; i < lista.length; ++i)
+                if (lista[i].name === quiere)
+                    return lista[i]
+            console.log("BANCO: no hay ninguna pantalla «" + quiere + "»")
+            return null
+        }
+
         anchors { top: true; bottom: true; left: true; right: true }
         color: "transparent"
         WlrLayershell.namespace: "k4-banco"
@@ -1572,7 +1590,7 @@ ShellRoot {
 """
 
 
-def probar(ident):
+def probar(ident, pantalla=""):
     """Abre UN plugin en una instancia aparte, sin tocar la barra de verdad."""
     #  `leer_catalogo` devuelve (datos, lista): la lista es lo que importa.
     catalogo = {m.get("id"): m for m in leer_catalogo()[1]}
@@ -1596,7 +1614,8 @@ def probar(ident):
 
     banco = RAIZ / ".banco.qml"
     banco.write_text(BANCO % {"entry": entry,
-                              "carpeta": str(pathlib.PurePosixPath(entry).parent)})
+                              "carpeta": str(pathlib.PurePosixPath(entry).parent),
+                              "pantalla": pantalla})
 
     entorno = dict(os.environ)
     api = str(RAIZ / "api")
@@ -1710,7 +1729,7 @@ if __name__ == "__main__":
         sys.exit(nuevo(_id) if _id else 2)
     if "--probar" in sys.argv:
         _id = _valor("--probar")
-        sys.exit(probar(_id) if _id else 2)
+        sys.exit(probar(_id, _valor("--pantalla") or "") if _id else 2)
     if "--instalados" in sys.argv:
         sys.exit(json_instalados() if _json else instalados())
     if "--recargar" in sys.argv:

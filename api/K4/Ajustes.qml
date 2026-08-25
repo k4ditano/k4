@@ -32,6 +32,16 @@ QtObject {
     //  El título de la sección en Ajustes.
     property string grupo: ""
 
+    //  Y cómo se ve esa sección en la barra lateral de la ventana de Ajustes:
+    //  un icono y una línea que diga de qué va. Las dos son opcionales — sin
+    //  `glifo` se usa el icono que el plugin declara en su manifiesto, y sin
+    //  `desc` la sección simplemente no lleva subtítulo.
+    //
+    //  `glifo` es un códice de la Nerd Font, como el del manifiesto: búscalo
+    //  con `tools/glifos.py` y compruébalo, que el nombre no es la forma.
+    property int glifo: 0
+    property string desc: ""
+
     //  `[{ id, nombre, desc, glifo }]`. `glifo` es un códice de la Nerd Font
     //  —búscalo con `tools/glifos.py`—. Un interruptor por opción, salvo que
     //  digas otro `tipo`:
@@ -67,6 +77,8 @@ QtObject {
     //  no aplica».
     onOpcionesChanged: _registrar()
     onGrupoChanged: _registrar()
+    onGlifoChanged: _registrar()
+    onDescChanged: _registrar()
 
     Component.onDestruction: {
         if (Puente.enganches)
