@@ -532,7 +532,7 @@ Singleton {
         .filter(function (m) { return m.configurable !== false })
         .map(function (m) {
             const error = errores[m.id] || ""
-            let desc = "Activar o desactivar este plugin"
+            let desc = Idioma.t("Activar o desactivar este plugin")
             if (m.externo) {
                 desc = m.description || "Plugin de usuario"
                 if (m.permisos && m.permisos.length > 0)

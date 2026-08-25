@@ -4,6 +4,7 @@
 #  `python3 tools/plugins.py` comprueba que esté completo.
 
 FilaOpcion 1.0 FilaOpcion.qml
+FilaPlugin 1.0 FilaPlugin.qml
 SettingsPlugin 1.0 SettingsPlugin.qml
 VentanaAjustes 1.0 VentanaAjustes.qml
 Version 1.0 Version.qml

@@ -300,6 +300,12 @@ Singleton {
             grupo: Idioma.t("Plugins"),
             glifo: 0xF0431,
             desc: Idioma.t("Lo que tienes instalado: encender, apagar y de dónde vino."),
+            //  Esta sección no se pinta como una pila de interruptores: son
+            //  casi cuarenta, y el ajuste de cada plugin estaba en OTRA
+            //  sección. Se despliega cada uno con lo suyo dentro. La vista lo
+            //  mira por este nombre; cualquier otro grupo se pinta como
+            //  siempre.
+            vista: "plugins",
             opciones: PluginManager.opcionesAjustes
         }
     //  Y al final, lo que aporten los plugins con K4.Ajustes. Van los

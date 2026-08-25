@@ -42,6 +42,14 @@ K4.Ventana {
 
     readonly property var todas: Settings.definicion
 
+    //  Lo que sale en la lateral. Las secciones que aportan los plugins NO:
+    //  viven dentro de la fila de su plugin, en la sección Plugins, al lado
+    //  del interruptor que las enciende. Siguen en `todas`, y eso importa —el
+    //  buscador recorre la lista entera y las encuentra igual.
+    readonly property var lateral: ventana.todas.filter(function (g) {
+        return g.enLateral !== false
+    })
+
     //  Lo que se pinta a la derecha.
     //
     //  Sin buscar, la sección elegida y ya. Buscando, las coincidencias de
@@ -50,8 +58,8 @@ K4.Ventana {
     readonly property var contenido: {
         const q = String(ventana.busqueda).trim().toLowerCase()
         if (q.length === 0)
-            return ventana.seccion < ventana.todas.length
-                ? [ventana.todas[ventana.seccion]] : []
+            return ventana.seccion < ventana.lateral.length
+                ? [ventana.lateral[ventana.seccion]] : []
 
         const fuera = []
         for (let i = 0; i < ventana.todas.length; ++i) {
@@ -64,7 +72,7 @@ K4.Ventana {
             })
             if (ops.length > 0)
                 fuera.push({ grupo: g.grupo, glifo: g.glifo, desc: g.desc,
-                             opciones: ops })
+                             vista: g.vista, opciones: ops })
         }
         return fuera
     }
@@ -237,7 +245,7 @@ K4.Ventana {
                             spacing: 2
 
                             Repeater {
-                                model: ventana.todas
+                                model: ventana.lateral
 
                                 //  Rectángulo pelado y no `K4.Baldosa`: la
                                 //  Baldosa dibuja un borde interior SIEMPRE, y
@@ -504,9 +512,24 @@ K4.Ventana {
                                     Layout.leftMargin: 2
                                 }
 
+                                //  Cada grupo elige cómo se pinta. Hoy solo
+                                //  Plugins pide algo distinto —casi cuarenta
+                                //  filas, cada una con lo suyo dentro— y el
+                                //  resto se pinta como siempre. Cuando otra
+                                //  sección quiera lo suyo, se añade aquí y no
+                                //  se toca nada más.
                                 Repeater {
                                     model: bloque.modelData.opciones
-                                    delegate: FilaOpcion {}
+                                    delegate: Loader {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: item
+                                            ? item.Layout.preferredHeight : 40
+                                        property var dato: modelData
+                                        sourceComponent:
+                                            bloque.modelData.vista === "plugins"
+                                                ? comoPlugin : comoOpcion
+                                    }
                                 }
                             }
                         }
@@ -642,5 +665,16 @@ K4.Ventana {
                 }
             }
         }
+    }
+
+    // ── las dos formas de pintar una fila ─────────────────────────
+    Component {
+        id: comoOpcion
+        FilaOpcion { modelData: parent.dato }
+    }
+
+    Component {
+        id: comoPlugin
+        FilaPlugin { modelData: parent.dato }
     }
 }
