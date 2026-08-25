@@ -552,8 +552,17 @@ K4.Ventana {
                                     //  Lo que quepa, que aquí lo que se hace
                                     //  es mirar miniaturas: cuanto más entre en
                                     //  pantalla, menos hay que recorrer.
-                                    Layout.preferredHeight: Math.max(
-                                        360, ventana.height - 320)
+                                    //
+                                    //  Condicionado a `active`, y no es un
+                                    //  detalle: un Loader apagado SIGUE
+                                    //  ocupando el alto que le pidas, así que
+                                    //  sin esto las demás secciones tenían un
+                                    //  hueco invisible de casi cuatrocientos
+                                    //  píxeles por delante y su contenido caía
+                                    //  fuera de la vista. Se veía la cabecera y
+                                    //  nada más, sin un solo error en el log.
+                                    Layout.preferredHeight: active
+                                        ? Math.max(360, ventana.height - 320) : 0
                                     active: bloque.modelData.vista === "fondos"
                                     sourceComponent: Component {
                                         RejillaFondos {
