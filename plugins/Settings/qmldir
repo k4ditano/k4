@@ -5,5 +5,5 @@
 
 FilaOpcion 1.0 FilaOpcion.qml
 SettingsPlugin 1.0 SettingsPlugin.qml
-SettingsView 1.0 SettingsView.qml
+VentanaAjustes 1.0 VentanaAjustes.qml
 Version 1.0 Version.qml

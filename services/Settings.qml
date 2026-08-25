@@ -145,6 +145,8 @@ Singleton {
     readonly property var definicion: [
         {
             grupo: Idioma.t("Idioma"),
+            glifo: 0xF05CA,
+            desc: Idioma.t("En qué idioma habla la barra."),
             opciones: [
                 { id: "idioma", tipo: "eleccion", de: "idiomas",
                   nombre: Idioma.t("Idioma de la barra"),
@@ -154,6 +156,8 @@ Singleton {
         },
         {
             grupo: Idioma.t("Mazmorra"),
+            glifo: 0xF04E5,
+            desc: Idioma.t("El juego que vive en la píldora: si corre, si guarda y cuánto se le ve."),
             opciones: [
                 { id: "juegoActivo", nombre: Idioma.t("Mazmorra activa"),
                   desc: Idioma.t("Apagada no corre, no guarda y no ocupa sitio"), glifo: 0xF04E5 },
@@ -182,6 +186,8 @@ Singleton {
         },
         {
             grupo: Idioma.t("Datos personales"),
+            glifo: 0xF0237,
+            desc: Idioma.t("Qué puede saber de ti un plugin, y qué no."),
             opciones: [
                 { id: "huellaActiva", nombre: Idioma.t("Compartir mi huella con plugins"),
                   desc: Idioma.t("Solo agregados, solo con permiso declarado, y borrable"),
@@ -198,6 +204,8 @@ Singleton {
         },
         {
             grupo: Idioma.t("Captura"),
+            glifo: 0xF0100,
+            desc: Idioma.t("Qué entra en la foto y qué hacer con ella después."),
             opciones: [
                 { id: "capturaDestino", tipo: "eleccion", de: "destinos",
                   nombre: Idioma.t("Qué hacer con la foto"),
@@ -210,6 +218,8 @@ Singleton {
         },
         {
             grupo: Idioma.t("Grabación"),
+            glifo: 0xF044A,
+            desc: Idioma.t("Audio, cámara y calidad de lo que grabas."),
             opciones: [
                 { id: "grabarAudio", tipo: "eleccion", de: "audios",
                   nombre: Idioma.t("Qué sonido se graba"),
@@ -240,6 +250,8 @@ Singleton {
         },
         {
             grupo: Idioma.t("Editor"),
+            glifo: 0xF03EB,
+            desc: Idioma.t("El editor que se abre cuando terminas de capturar."),
             opciones: [
                 { id: "zoomAuto", nombre: Idioma.t("Proponer zoom al grabar"),
                   desc: Idioma.t("Del rastro del cursor y de los clics"),
@@ -261,6 +273,8 @@ Singleton {
         },
         {
             grupo: Idioma.t("Island"),
+            glifo: 0xF1513,
+            desc: Idioma.t("Cuánto sitio se queda la barra, y cuándo se aparta."),
             opciones: [
                 { id: "posicionBarra", tipo: "eleccion", de: "posiciones",
                   nombre: Idioma.t("Dónde vive la barra"),
@@ -284,6 +298,8 @@ Singleton {
         },
         {
             grupo: Idioma.t("Plugins"),
+            glifo: 0xF0431,
+            desc: Idioma.t("Lo que tienes instalado: encender, apagar y de dónde vino."),
             opciones: PluginManager.opcionesAjustes
         }
     //  Y al final, lo que aporten los plugins con K4.Ajustes. Van los

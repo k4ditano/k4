@@ -1,9 +1,15 @@
-//  Ajustes de la barra, dentro de la island.
+//  Ajustes de la barra, en su propia ventana.
 //
 //  Antes la tarjeta "Ajustes" del centro de control lanzaba directamente
 //  nm-connection-editor: una ventana del sistema, con su propio marco y su
 //  propia tipografía, que no tenía nada que ver con la barra. Ahora los
 //  ajustes viven aquí y esa herramienta queda como un acceso más.
+//
+//  Y ya no son un panel de la island. Cabían de sobra cuando eran tres
+//  grupos; hoy son ocho propios más los que aportan los plugins —cerca de
+//  cincuenta opciones— y en una columna única la única forma de encontrar algo
+//  era bajar leyendo. Cada plugin que instalas lo empeoraba. El sitio se había
+//  quedado pequeño, así que se cambió de sitio: ver `VentanaAjustes.qml`.
 
 import QtQuick
 import K4 as K4
@@ -15,16 +21,9 @@ K4Plugin {
 
     name: "settings"
     title: Idioma.t("Ajustes")
+    //  Sin `active`, sin `view` y sin `grabKeyboard`: esto ya no se dibuja en
+    //  la island. El teclado lo pide la ventana por su cuenta.
     priority: 66
-    active: habilitado && open
-    //  El teclado entero mientras está abierto: «opcional» es OnDemand y
-    //  el compositor solo lo da si PINCHAS la superficie, así que abierto
-    //  desde el centro de aplicaciones o por atajo no llegaba ni el ESC.
-    //  Ver `tecladoOpcional` en api/K4/Plugin.qml.
-    grabKeyboard: open
-
-    property bool open: false
-    property var panel: null
 
     //  ── ¿hay k4 nuevo? ───────────────────────────────────────────
     //
@@ -35,40 +34,13 @@ K4Plugin {
     //  que lo sepa quien lo enseña.
     property Version version: Version {}
 
-    islandWidth: 600
-    //  El contenido ya no cabe en una pantalla y se recorre, así que esto no es
-    //  «lo que mide» sino «cuánto se enseña de una vez». 640 deja ver cinco filas
-    //  y media, que es bastante para no sentir que estás mirando por una rendija,
-    //  y no se acerca al techo de 880 de la superficie.
-    //
-    //  Antes eran 516 y los ajustes eran tres grupos. Al añadir captura,
-    //  grabación y editor el contenido pasó de novecientos píxeles y el reparto lo
-    //  aplastó: el grupo del editor no llegaba a verse. Lo que faltaba no era
-    //  alto, era poder desplazar.
-    islandHeight: 640
-
-    handlesBackgroundTap: true
-    onBackgroundTapped: {}
-
-    closeOnHoverExit: true
-    hoverExitDelay: 1200
-    onHoverTimedOut: close()
-
+    //  `abrir()` de la API cae en esto, así que el centro de aplicaciones y
+    //  el atajo entran por aquí sin saber que detrás hay una ventana.
     function toggle() {
-        open = !open
-        if (open) {
-            if (panel) panel.close()
-            Notifs.dismissToast()
-            //  Y de paso, volver a mirar qué hay instalado. Aquí es donde se
-            //  lee qué plugins están encendidos y por qué está apagado el que
-            //  lo esté: si has instalado —o desinstalado— k4term desde que
-            //  arrancó la barra, esta lista tiene que decir la verdad.
-            Consola.revisar()
-            //  Y de mirar si hay versión nueva. Trae su propia gracia de diez
-            //  minutos, así que abrir y cerrar los Ajustes tres veces seguidas
-            //  no son tres viajes a la red.
-            self.version.mirar(false)
-        }
+        if (ventanaAbierta)
+            cerrarVentana()
+        else
+            abrirVentana()
     }
 
     //  El vistazo de fondo, para que la novedad no dependa de que se abran los
@@ -87,12 +59,38 @@ K4Plugin {
         onTriggered: self.version.mirar(true)
     }
 
-    function close() { open = false }
+    function close() { cerrarVentana() }
+
+    // ── la ventana ────────────────────────────────────────────────
+    //
+    //  Los ajustes en una superficie propia, con barra lateral. El panel de la
+    //  island se queda pequeño: dieciséis secciones y cerca de cincuenta
+    //  opciones en una sola columna.
+    //
+    //  Va en un `Loader` y no siempre puesta: una capa a pantalla completa que
+    //  existe todo el rato es una capa que el compositor compone todo el rato.
+    property bool ventanaAbierta: false
+
+    function abrirVentana() {
+        ventanaAbierta = true
+        Consola.revisar()
+        self.version.mirar(false)
+    }
+
+    function cerrarVentana() { ventanaAbierta = false }
+
+    property Loader _ventana: Loader {
+        active: self.ventanaAbierta
+        sourceComponent: Component {
+            VentanaAjustes { plugin: self }
+        }
+    }
 
     K4.Ipc {
         target: "k4.settings"
         function toggle(): void { self.toggle() }
         function close(): void { self.close() }
+
         function alternar(id: string): void { Settings.alternar(id) }
 
         //  Para poder mirarle las tripas sin abrir nada: en qué commit está la
@@ -109,9 +107,5 @@ K4Plugin {
 
         //  Y para lanzarlo desde fuera, que es lo que hace el botón.
         function actualizar(): void { self.version.actualizar() }
-    }
-
-    view: Component {
-        SettingsView { plugin: self }
     }
 }
