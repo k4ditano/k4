@@ -33,6 +33,43 @@ FadeIn {
     //  Qué se está mirando: 0 lo instalado, 1 lo publicado.
     property int pestana: 0
 
+    //  Lo que se ha escrito en el buscador. Vive aquí y no en el plugin, como
+    //  `pestana`: si se cierra la island, que la próxima vez se abra limpia.
+    property string busqueda: ""
+
+    //  La lista de la pestaña de turno, ya filtrada. Se busca por id, por
+    //  nombre y por descripción: con treinta y siete plugins uno se acuerda de
+    //  «lo del portapapeles» antes que de cómo se llama.
+    readonly property var visibles: {
+        const base = tienda.pestana === 0 ? tienda.mios : tienda.entradas
+        const q = String(tienda.busqueda).trim().toLowerCase()
+        if (q.length === 0)
+            return base
+        return base.filter(function (m) { return tienda.casa(m, q) })
+    }
+
+    function casa(m, q) {
+        return String(m.id || "").toLowerCase().indexOf(q) >= 0
+            || String(m.title || "").toLowerCase().indexOf(q) >= 0
+            || String(m.description || "").toLowerCase().indexOf(q) >= 0
+    }
+
+    //  Cuántos casarían en LA OTRA pestaña. Buscas «pomodoro» en Instalados,
+    //  no lo tienes, y lo que quieres saber es justo eso: que está en
+    //  Descubrir. Sólo se dice si esa lista ya está cargada — si no, callar,
+    //  que prometer resultados que no se han pedido es peor que no decir nada.
+    readonly property int enLaOtra: {
+        const q = String(tienda.busqueda).trim().toLowerCase()
+        if (q.length === 0)
+            return 0
+        const otra = tienda.pestana === 0 ? tienda.entradas : tienda.mios
+        let n = 0
+        for (let i = 0; i < otra.length; ++i)
+            if (tienda.casa(otra[i], q))
+                n += 1
+        return n
+    }
+
     //  Lo que devolvió el registro, ya con `instalado` y `alDia` marcados.
     property var entradas: []
     property var descartadas: []
@@ -59,8 +96,28 @@ FadeIn {
         return !!m.deUsuario
     })
 
+    property int intentosFoco: 0
+
     Component.onCompleted: {
         PluginManager.comprobarNovedades()
+        //  Que se pueda escribir nada más abrir, sin tener que pinchar el
+        //  campo. `grabKeyboard` lleva las teclas a la superficie, pero el
+        //  foco dentro hay que pedirlo, y la capa tarda un poco en concederlo:
+        //  es el mismo reintento que hace el lanzador.
+        campo.forceActiveFocus()
+        foco.start()
+    }
+
+    Timer {
+        id: foco
+        interval: 140
+        onTriggered: {
+            campo.forceActiveFocus()
+            if (!campo.activeFocus && tienda.intentosFoco < 6) {
+                tienda.intentosFoco += 1
+                restart()
+            }
+        }
     }
 
     Connections {
@@ -173,7 +230,98 @@ FadeIn {
                 }
             }
 
-            Item { Layout.fillWidth: true }
+            //  El buscador va en el hueco que ya había entre las pestañas y
+            //  el botón de refrescar: no roba una línea a la lista, que es lo
+            //  que se ha venido a mirar.
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 30
+                radius: 15
+                color: Theme.surface
+                border.width: 1
+                border.color: campo.activeFocus ? Theme.blue : "transparent"
+
+                Behavior on border.color { ColorAnimation { duration: 140 } }
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 11
+                    anchors.rightMargin: 6
+                    spacing: 7
+
+                    IconGlyph {
+                        text: Theme.ico.search
+                        color: campo.activeFocus ? Theme.muted : Theme.dim
+                        font.pixelSize: 12
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+
+                        IslandLabel {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: campo.text.length === 0
+                            text: Idioma.t("Buscar plugins")
+                            color: Theme.dim
+                            font.pixelSize: 11
+                        }
+
+                        TextInput {
+                            id: campo
+                            anchors.fill: parent
+                            cursorDelegate: IslandCursor {}
+                            verticalAlignment: TextInput.AlignVCenter
+                            color: Theme.ink
+                            font.family: Theme.uiFont
+                            font.pixelSize: 11
+                            clip: true
+                            selectByMouse: true
+                            selectionColor: Theme.blue
+                            text: tienda.busqueda
+                            onTextEdited: tienda.busqueda = text
+
+                            //  ESC deshace primero lo de dentro y sólo cierra
+                            //  cuando ya no hay nada que deshacer. Si se dejara
+                            //  subir siempre, borrar la búsqueda costaría cerrar
+                            //  la aplicación entera.
+                            Keys.onPressed: function (ev) {
+                                if (ev.key !== Qt.Key_Escape)
+                                    return
+                                if (campo.text.length > 0) {
+                                    campo.text = ""
+                                    tienda.busqueda = ""
+                                } else {
+                                    tienda.plugin.close()
+                                }
+                                ev.accepted = true
+                            }
+                        }
+                    }
+
+                    //  Borrar lo escrito sin tener que mantener el borrado.
+                    K4.Baldosa {
+                        visible: campo.text.length > 0
+                        Layout.preferredWidth: 20
+                        Layout.preferredHeight: 20
+                        Layout.alignment: Qt.AlignVCenter
+                        radius: 10
+                        onPulsada: {
+                            campo.text = ""
+                            tienda.busqueda = ""
+                            campo.forceActiveFocus()
+                        }
+
+                        IconGlyph {
+                            anchors.centerIn: parent
+                            text: Theme.ico.close
+                            color: Theme.dim
+                            font.pixelSize: 10
+                        }
+                    }
+                }
+            }
 
             //  Refrescar. En «Descubrir» vuelve a pedir el registro; en
             //  «Instalados», a preguntar si hay algo más nuevo.
@@ -217,13 +365,44 @@ FadeIn {
             wrapMode: Text.WordWrap
         }
 
+        //  ── cuando la búsqueda no casa con nada ──────────────────────
+        //
+        //  Sólo para el filtro. Que la lista salga vacía por otros motivos
+        //  —el registro aún cargando, o no tener plugins de usuario— ya se
+        //  contaba como se contaba, y no es lo que se está tocando aquí.
+        IslandLabel {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: tienda.busqueda.trim().length > 0
+                     && tienda.visibles.length === 0
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            wrapMode: Text.WordWrap
+            textFormat: Text.PlainText
+            text: {
+                const q = tienda.busqueda.trim()
+                const aqui = tienda.pestana === 0
+                    ? Idioma.f(Idioma.t("No tienes nada que case con «%1»"), q)
+                    : Idioma.f(Idioma.t("Nada publicado casa con «%1»"), q)
+                if (tienda.enLaOtra === 0)
+                    return aqui
+                //  Y dónde sí está, que es lo que se ha venido a saber.
+                return aqui + "\n" + (tienda.pestana === 0
+                    ? Idioma.f(Idioma.t("Hay %1 en Descubrir"), tienda.enLaOtra)
+                    : Idioma.f(Idioma.t("Tienes %1 instalado(s)"), tienda.enLaOtra))
+            }
+            color: Theme.dim
+            font.pixelSize: 11
+        }
+
         //  ── la lista ─────────────────────────────────────────────────
         ListView {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
             spacing: 8
-            model: tienda.pestana === 0 ? tienda.mios : tienda.entradas
+            visible: tienda.visibles.length > 0
+            model: tienda.visibles
 
             ScrollBar.vertical: IslandScrollBar {}
 
