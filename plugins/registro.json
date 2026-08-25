@@ -84,6 +84,13 @@
    "description": "What is running here — containers and user services — with the buttons to stop, pause and restart them",
    "repo": "https://github.com/k4ditano/k4-sala",
    "commit": "6ae78360ca9dba5c34380ec43a7b5875f11df4a1"
+  },
+  {
+   "id": "dictado",
+   "title": "Dictado",
+   "description": "La isla escucha contigo: onda en vivo mientras dictas por voz con voxtype, y el estado de la transcripción.",
+   "repo": "https://github.com/k4ditano/k4-dictado",
+   "commit": "13e6377f6cc27ec8174952486b5038f0d68dd277"
   }
  ]
 }
