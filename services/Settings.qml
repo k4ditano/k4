@@ -275,6 +275,11 @@ Singleton {
             grupo: Idioma.t("Island"),
             glifo: 0xF1513,
             desc: Idioma.t("Cuánto sitio se queda la barra, y cuándo se aparta."),
+            //  Dónde vive, cómo se alinea y cómo ocupa el sitio se explican mal
+            //  con palabras: «Reservar sitio» y «Encima» suenan parecido y
+            //  hacen cosas muy distintas con tus ventanas. Encima de las
+            //  opciones va un croquis que lo enseña.
+            vista: "island",
             opciones: [
                 { id: "posicionBarra", tipo: "eleccion", de: "posiciones",
                   nombre: Idioma.t("Dónde vive la barra"),

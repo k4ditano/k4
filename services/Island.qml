@@ -70,6 +70,24 @@ Singleton {
     //  pantalla: con varios monitores la island se repite, y lo que asome
     //  con una K4.Ventana debe poder anclarse a la SUYA.
     property var rect: ({ x: 0, y: 0, ancho: 0, alto: 0 })
+
+    //  Lo que mide el monitor donde vive la barra. Lo pide la
+    //  previsualización de Ajustes para dibujar la island a escala de verdad:
+    //  sin esto tendría que suponer 1920×1080 y la proporción sería inventada
+    //  en cualquier otra pantalla.
+    //
+    //  Vive aquí y no en el plugin porque `tools/api.py` no deja importar
+    //  `Quickshell` desde un plugin —lo que la API no da, se baja a un
+    //  servicio— y este ya lo importa para saber en qué pantalla está.
+    readonly property real altoPantalla: {
+        const p = Quickshell.screens
+        return p.length > 0 && p[0].height > 0 ? p[0].height : 1080
+    }
+
+    readonly property real anchoPantalla: {
+        const p = Quickshell.screens
+        return p.length > 0 && p[0].width > 0 ? p[0].width : 1920
+    }
     property var rects: ({})
 
     function publicarRect(pantalla, r, esPrincipal) {

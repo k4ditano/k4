@@ -875,82 +875,16 @@ Scope {
                 }
 
                 // ── la silueta: cuerpo + esquinas invertidas que funden con el borde
-                Shape {
+                //  La forma vive en `core/SiluetaIsla.qml`: la dibujan la barra y
+                //  la previsualización de Ajustes, y una previsualización que
+                //  dibujara otra cosa no previsualizaría nada.
+                SiluetaIsla {
                     id: silueta
                     anchors.fill: parent
-                    // CurveRenderer suaviza mejor, pero descarta las esquinas
-                    // invertidas (las alas), así que se antialiasa con MSAA.
-                    antialiasing: true
-                    layer.enabled: true
-                    layer.samples: 8
-                    layer.smooth: true
-
-                    //  Con la barra abajo, la silueta entera se refleja: las
-                    //  alas pasan a fundirse con el borde inferior sin tocar
-                    //  ni un punto del trazado.
-                    transform: Scale {
-                        origin.y: silueta.height / 2
-                        yScale: panelWindow.abajo ? -1 : 1
-                    }
-
-                    ShapePath {
-                        id: islandPath
-                        fillColor: Theme.islandBg
-                        strokeWidth: 0
-                        strokeColor: "transparent"
-
-                        readonly property real w: island.width
-                        readonly property real h: island.height
-                        readonly property real r: island.bodyRadius
-                        readonly property real g: Math.min(Theme.wing, island.height / 2)
-
-                        startX: 0
-                        startY: 0
-
-                        // esquina invertida izquierda
-                        PathArc {
-                            x: islandPath.g
-                            y: islandPath.g
-                            radiusX: islandPath.g
-                            radiusY: islandPath.g
-                            direction: PathArc.Clockwise
-                        }
-
-                        PathLine { x: islandPath.g; y: islandPath.h - islandPath.r }
-
-                        // inferior izquierda
-                        PathArc {
-                            x: islandPath.g + islandPath.r
-                            y: islandPath.h
-                            radiusX: islandPath.r
-                            radiusY: islandPath.r
-                            direction: PathArc.Counterclockwise
-                        }
-
-                        PathLine { x: islandPath.w - islandPath.g - islandPath.r; y: islandPath.h }
-
-                        // inferior derecha
-                        PathArc {
-                            x: islandPath.w - islandPath.g
-                            y: islandPath.h - islandPath.r
-                            radiusX: islandPath.r
-                            radiusY: islandPath.r
-                            direction: PathArc.Counterclockwise
-                        }
-
-                        PathLine { x: islandPath.w - islandPath.g; y: islandPath.g }
-
-                        // esquina invertida derecha
-                        PathArc {
-                            x: islandPath.w
-                            y: 0
-                            radiusX: islandPath.g
-                            radiusY: islandPath.g
-                            direction: PathArc.Clockwise
-                        }
-
-                        PathLine { x: 0; y: 0 }
-                    }
+                    ala: Theme.wing
+                    cuerpoRadio: island.bodyRadius
+                    relleno: Theme.islandBg
+                    reflejada: panelWindow.abajo
                 }
 
                 // ── zona de contenido (dentro del cuerpo, sin las alas)

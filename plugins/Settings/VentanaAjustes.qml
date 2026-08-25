@@ -512,6 +512,18 @@ K4.Ventana {
                                     Layout.leftMargin: 2
                                 }
 
+                                //  Y una sección puede traer algo suyo encima
+                                //  de sus opciones. La Island trae un croquis
+                                //  de la pantalla: es lo que convierte tres
+                                //  palabras parecidas en una diferencia que se
+                                //  ve.
+                                Loader {
+                                    Layout.fillWidth: true
+                                    Layout.bottomMargin: active ? 6 : 0
+                                    active: bloque.modelData.vista === "island"
+                                    sourceComponent: Component { PrevioIsland {} }
+                                }
+
                                 //  Cada grupo elige cómo se pinta. Hoy solo
                                 //  Plugins pide algo distinto —casi cuarenta
                                 //  filas, cada una con lo suyo dentro— y el
