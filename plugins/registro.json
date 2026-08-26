@@ -52,10 +52,10 @@
   {
    "id": "senda",
    "title": "Senda",
-   "description": "Roguelike autobattler de criaturas: mapa ramificado, tres regiones y combate por tipos",
+   "description": "Roguelike autobattler de criaturas: eliges camino, formas equipo y peleas por las ocho medallas",
    "autor": "k4",
    "repo": "https://github.com/k4ditano/senda",
-   "commit": "f5b8ebf7f60ae905695bc0cdf806b2fe533e342b"
+   "commit": "28b29e2139e1934ebae147226413f59eab470838"
   },
   {
    "id": "pinza",
