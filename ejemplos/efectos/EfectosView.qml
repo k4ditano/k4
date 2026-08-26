@@ -15,7 +15,7 @@ Item {
 
         K4.Etiqueta {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: K4.Idioma.t("La island como escenario")
+            text: vista.plugin.tr("La island como escenario")
             font.pixelSize: 14
             font.weight: Font.DemiBold
         }
@@ -27,10 +27,10 @@ Item {
 
             Repeater {
                 model: [
-                    { texto: K4.Idioma.t("Bosque"), color: "#2e5c3a" },
-                    { texto: K4.Idioma.t("Brasa"), color: "#5c2e2e" },
-                    { texto: K4.Idioma.t("Abismo"), color: "#26324f" },
-                    { texto: K4.Idioma.t("Destintar"), color: "" }
+                    { texto: vista.plugin.tr("Bosque"), color: "#2e5c3a" },
+                    { texto: vista.plugin.tr("Brasa"), color: "#5c2e2e" },
+                    { texto: vista.plugin.tr("Abismo"), color: "#26324f" },
+                    { texto: vista.plugin.tr("Destintar"), color: "" }
                 ]
 
                 delegate: K4.Baldosa {
@@ -64,9 +64,9 @@ Item {
 
             Repeater {
                 model: [
-                    { texto: K4.Idioma.t("Sacudida"), gesto: "sacudida" },
-                    { texto: K4.Idioma.t("Empujón"), gesto: "empujon" },
-                    { texto: K4.Idioma.t("Tirón"), gesto: "tiron" }
+                    { texto: vista.plugin.tr("Sacudida"), gesto: "sacudida" },
+                    { texto: vista.plugin.tr("Empujón"), gesto: "empujon" },
+                    { texto: vista.plugin.tr("Tirón"), gesto: "tiron" }
                 ]
 
                 delegate: K4.Baldosa {
@@ -102,8 +102,8 @@ Item {
                     id: etiquetaMano
                     anchors.centerIn: parent
                     text: vista.plugin.manoFuera
-                        ? K4.Idioma.t("Esconder la mano")
-                        : K4.Idioma.t("Sacar la mano")
+                        ? vista.plugin.tr("Esconder la mano")
+                        : vista.plugin.tr("Sacar la mano")
                     font.pixelSize: 11
                 }
 
@@ -117,7 +117,7 @@ Item {
                 K4.Etiqueta {
                     id: etiquetaPaseo
                     anchors.centerIn: parent
-                    text: K4.Idioma.t("De paseo")
+                    text: vista.plugin.tr("De paseo")
                     font.pixelSize: 11
                 }
 

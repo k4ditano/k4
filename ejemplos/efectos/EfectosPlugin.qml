@@ -22,6 +22,39 @@ K4.Plugin {
     //  módulo cerrado, que es justo lo que haría una mascota.
     property bool manoFuera: false
 
+
+    //  ── idioma ───────────────────────────────────────────────────
+    //
+    //  La barra traduce con UN diccionario suyo y ahí no entra un plugin de
+    //  fuera: `K4.Idioma.t()` devuelve el original. Con la barra en inglés eso
+    //  son cadenas en español dentro de una interfaz en inglés. Así que el
+    //  plugin trae su tabla; el español se queda como fuente y lo que falte
+    //  cae al original en vez de salir roto.
+    readonly property var _en: ({
+        "La island como escenario": "The island as a stage",
+        "Bosque":                   "Forest",
+        "Brasa":                    "Ember",
+        "Abismo":                   "Abyss",
+        "Destintar":                "Untint",
+        "Sacudida":                 "Shake",
+        "Empujón":                  "Shove",
+        "Tirón":                    "Tug",
+        "Esconder la mano":         "Hide the hand",
+        "Sacar la mano":            "Show the hand",
+        "De paseo":                 "Out for a walk"
+    })
+
+    function tr(s) {
+        return K4.Idioma.codigo === "es" ? s : (_en[s] || s)
+    }
+
+    function trf(s, a, b) {
+        var r = tr(s)
+        if (a !== undefined) r = r.replace("%1", a)
+        if (b !== undefined) r = r.replace("%2", b)
+        return r
+    }
+
     view: Component { EfectosView { plugin: self } }
 
     //  La ventana de la mano solo existe mientras hace falta.
