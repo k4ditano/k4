@@ -1,5 +1,10 @@
 {
-  "_meta": {"idioma": "Russian", "codigo": "ru", "traducido por": "k4", "cómo": "Пустые значения заменяются исходным текстом на испанском."},
+  "_meta": {
+    "idioma": "Russian",
+    "codigo": "ru",
+    "traducido por": "k4",
+    "cómo": "Пустые значения заменяются исходным текстом на испанском."
+  },
   " GB": " ГБ",
   " MB": " МБ",
   " aplicaciones": " приложений",
@@ -1373,5 +1378,10 @@
   "Solo el dock; el de la barra está en Island": "Только док — панель настраивается в разделе Island",
   "Asomarse al cambiar de canción": "Выглядывать при смене трека",
   "Unos segundos con la pista nueva, y se va sola": "Несколько секунд с новым треком, потом уходит сама",
-  "Ángulo del degradado del borde": "Угол градиента границы"
+  "Ángulo del degradado del borde": "Угол градиента границы",
+  "Atalaya": "Аталайя",
+  "Hyprland no da ningún monitor": "Hyprland не сообщает ни одного монитора",
+  "No hay ninguna ventana abierta": "Нет открытых окон",
+  "No se entiende la respuesta de hyprctl": "Не удалось разобрать ответ hyprctl",
+  "No se ha podido ir a esa ventana": "Не удалось перейти к этому окну"
 }

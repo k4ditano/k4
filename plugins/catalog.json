@@ -248,6 +248,18 @@
    "permisos": [
     "procesos"
    ]
+  },
+  {
+   "id": "atalaya",
+   "entry": "Atalaya/AtalayaPlugin.qml",
+   "version": "1.0.0",
+   "title": "Atalaya",
+   "enabledByDefault": true,
+   "icono": "0xF0570",
+   "aplicacion": true,
+   "permisos": [
+    "procesos"
+   ]
   }
  ],
  "version": "1.1.0"

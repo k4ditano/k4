@@ -1,5 +1,10 @@
 {
-  "_meta": {"idioma": "English", "codigo": "en", "traducido por": "k4", "cómo": "Empty values fall back to the original Spanish text."},
+  "_meta": {
+    "idioma": "English",
+    "codigo": "en",
+    "traducido por": "k4",
+    "cómo": "Empty values fall back to the original Spanish text."
+  },
   " GB": " GB",
   " MB": " MB",
   " aplicaciones": " applications",
@@ -1373,5 +1378,10 @@
   "Solo el dock; el de la barra está en Island": "The dock only — the bar's lives under Island",
   "Asomarse al cambiar de canción": "Peek when the track changes",
   "Unos segundos con la pista nueva, y se va sola": "A few seconds with the new track, then it leaves on its own",
-  "Ángulo del degradado del borde": "Border gradient angle"
+  "Ángulo del degradado del borde": "Border gradient angle",
+  "Atalaya": "Atalaya",
+  "Hyprland no da ningún monitor": "Hyprland reports no monitors",
+  "No hay ninguna ventana abierta": "No windows are open",
+  "No se entiende la respuesta de hyprctl": "Could not make sense of hyprctl's answer",
+  "No se ha podido ir a esa ventana": "Could not switch to that window"
 }

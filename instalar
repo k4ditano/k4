@@ -486,7 +486,7 @@ patron_k4() {
     #  `k4:*`: un plugin de fuera también publica los suyos —la grieta, sin ir
     #  más lejos—, y esos los ata cada cual a mano. Barriéndolos con un patrón
     #  ancho, el instalador borraría bindings que él no puso ni sabe reponer.
-    _pat='call k4|k4:clic|k4:clicDerecho|k4:dual'
+    _pat='call k4|k4:clic|k4:clicDerecho|k4:dual|k4:atalaya'
     for _v in $_vars; do
         # El `$` de las variables de hyprland.conf hay que escaparlo para el ERE.
         _pat="$_pat|$(printf '%s' "$_v" | sed 's/\$/\\$/')"

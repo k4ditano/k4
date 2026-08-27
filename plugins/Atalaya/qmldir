@@ -1,0 +1,6 @@
+#  Los tipos de esta carpeta, para que se resuelvan también
+#  cargando el plugin por URL (esquema qs:).
+
+AtalayaPlugin 1.0 AtalayaPlugin.qml
+Lienzo 1.0 Lienzo.qml
+Tarjeta 1.0 Tarjeta.qml

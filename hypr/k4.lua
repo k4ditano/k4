@@ -46,7 +46,11 @@ hl.bind(mod .. " + X",           hl.dsp.exec_cmd(k4 .. "togglePanel"))
 hl.bind(mod .. " + N",           hl.dsp.exec_cmd(k4 .. "toggleNotifications"))
 hl.bind(mod .. " + A",           hl.dsp.exec_cmd(k4 .. "toggleNotifications"))
 hl.bind(mod .. " + Z",           hl.dsp.exec_cmd(k4 .. "settings"))
-hl.bind(mod .. " + Tab",         hl.dsp.exec_cmd(k4 .. "windows"))
+-- La atalaya releva aquí al selector `windows`, que sigue instalado y se
+-- abre desde el centro de aplicaciones. Va por `global` y no por
+-- `exec_cmd` porque es un K4.Atajo: el compositor se lo entrega a la
+-- barra sin lanzar un proceso en cada pulsación.
+hl.bind(mod .. " + Tab",         hl.dsp.global("k4:atalaya"))
 hl.bind(mod .. " + SHIFT + W",   hl.dsp.exec_cmd(k4 .. "theme"))
 hl.bind(mod .. " + V",           hl.dsp.exec_cmd(k4 .. "clipboard"))
 hl.bind(mod .. " + B",           hl.dsp.exec_cmd(k4 .. "files"))
