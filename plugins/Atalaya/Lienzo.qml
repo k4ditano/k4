@@ -582,9 +582,13 @@ K4.Ventana {
 
         onWheel: function (w) {
             capa.despertar()
-            //  Rueda arriba = alejarse, que es como se mira un mapa: apartas
-            //  la vista para ver más.
-            const paso = w.angleDelta.y > 0 ? 1 / 1.14 : 1.14
+            //  Arriba acerca, como en todo lo que hace zoom. Y al revés si el
+            //  usuario lo ha pedido en Ajustes: con el desplazamiento natural
+            //  del sistema puesto, el signo llega cambiado antes de que esto
+            //  lo vea, así que no hay una dirección que valga para todos.
+            const arriba = w.angleDelta.y > 0
+            const acercar = plugin.ruedaAlReves ? !arriba : arriba
+            const paso = acercar ? 1.14 : 1 / 1.14
             capa.zoomEn(w.x, w.y, paso)
         }
     }

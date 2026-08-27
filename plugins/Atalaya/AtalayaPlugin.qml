@@ -73,6 +73,15 @@ K4.Plugin {
     //  La vista, mientras exista. Se presenta ella al nacer.
     property var lienzo: null
 
+    //  Hacia dónde acerca la rueda.
+    //
+    //  Es un ajuste y no una decisión mía porque no hay respuesta correcta: en
+    //  un documento la rueda arriba sube el papel, en un mapa aparta la vista,
+    //  y quien tenga el desplazamiento natural del sistema al revés recibe el
+    //  signo cambiado antes de que este código lo vea. De fábrica va como en
+    //  todo lo que hace zoom: arriba acerca.
+    property bool ruedaAlReves: false
+
     // ── abrir y cerrar ────────────────────────────────────────────
     //
     //  `toggle()` y `close()` con esos nombres porque son los que llama el
@@ -151,6 +160,33 @@ K4.Plugin {
             "hyprctl dispatch \"hl.dsp.focus({ window = '" + a + "' })\""]
         salto.running = false
         salto.running = true
+    }
+
+    K4.Guardado {
+        id: guardado
+        plugin: "atalaya"
+        nombre: "ajustes"
+        onCargado: function (d) { raiz.ruedaAlReves = d.ruedaAlReves === true }
+    }
+
+    K4.Ajustes {
+        plugin: "atalaya"
+        grupo: K4.Idioma.t("Atalaya")
+        desc: K4.Idioma.t("Todas las ventanas sobre un plano")
+        glifo: 0xF0570
+        opciones: [{
+            id: "ruedaAlReves",
+            nombre: K4.Idioma.t("Rueda al revés"),
+            desc: K4.Idioma.t("Acercarse girando hacia abajo en vez de hacia arriba"),
+            glifo: 0xF1552
+        }]
+        valores: ({ ruedaAlReves: raiz.ruedaAlReves })
+        onCambiado: function (id, valor) {
+            if (id === "ruedaAlReves") {
+                raiz.ruedaAlReves = valor === true
+                guardado.guardar({ ruedaAlReves: raiz.ruedaAlReves })
+            }
+        }
     }
 
     K4.Process {
@@ -307,6 +343,11 @@ K4.Plugin {
                 cargando: raiz.cargando,
                 ventanas: raiz.ventanas.length,
                 monitor: raiz.monitor,
+                //  El zoom actual, para poder comprobar desde fuera qué hace
+                //  la rueda sin tener que adivinarlo mirando una captura.
+                escala: raiz.lienzo
+                    ? Math.round(raiz.lienzo.escala * 1000) / 1000 : 0,
+                ruedaAlReves: raiz.ruedaAlReves,
                 error: raiz.error
             })
         }

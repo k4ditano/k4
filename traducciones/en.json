@@ -1383,5 +1383,8 @@
   "Hyprland no da ningún monitor": "Hyprland reports no monitors",
   "No hay ninguna ventana abierta": "No windows are open",
   "No se entiende la respuesta de hyprctl": "Could not make sense of hyprctl's answer",
-  "No se ha podido ir a esa ventana": "Could not switch to that window"
+  "No se ha podido ir a esa ventana": "Could not switch to that window",
+  "Todas las ventanas sobre un plano": "Every window on one plane",
+  "Rueda al revés": "Invert the wheel",
+  "Acercarse girando hacia abajo en vez de hacia arriba": "Scroll down to zoom in instead of up"
 }

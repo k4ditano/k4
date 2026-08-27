@@ -1383,5 +1383,8 @@
   "Hyprland no da ningún monitor": "Hyprland не сообщает ни одного монитора",
   "No hay ninguna ventana abierta": "Нет открытых окон",
   "No se entiende la respuesta de hyprctl": "Не удалось разобрать ответ hyprctl",
-  "No se ha podido ir a esa ventana": "Не удалось перейти к этому окну"
+  "No se ha podido ir a esa ventana": "Не удалось перейти к этому окну",
+  "Todas las ventanas sobre un plano": "Все окна на одной плоскости",
+  "Rueda al revés": "Инвертировать колёсико",
+  "Acercarse girando hacia abajo en vez de hacia arriba": "Приближать колёсиком вниз, а не вверх"
 }
