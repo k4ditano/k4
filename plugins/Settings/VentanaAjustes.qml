@@ -573,12 +573,91 @@ K4.Ventana {
                                 //  pide al gestor por id y no se importa su
                                 //  carpeta: si el plugin está apagado esto se
                                 //  queda mirando, sin romperse.
+                                //  Los dos rótulos que parten la sección en
+                                //  sus dos mitades. Pequeños y en versales,
+                                //  como el resto de la pantalla: la sección es
+                                //  una sola página y un solo recorrido, pero
+                                //  «de dónde sale el color» y «qué fondo
+                                //  pongo» siguen siendo dos preguntas.
+                                //
+                                //  El COLOR va primero, aunque la sección se
+                                //  llame por el fondo. Es un bloque corto y de
+                                //  alto fijo, mientras que la rejilla crece con
+                                //  lo que tengas: con cincuenta fondos son mil
+                                //  y pico píxeles, y detrás de eso el color no
+                                //  estaría «en la misma página», estaría
+                                //  enterrado. Arriba se ve al entrar y la
+                                //  rejilla sigue empezando en el primer
+                                //  pantallazo.
+                                IslandLabel {
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 2
+                                    visible: bloque.modelData.vista === "fondos"
+                                             && bloque.modelData.atajo === undefined
+                                    text: Idioma.t("Color")
+                                    color: Theme.dim
+                                    font.pixelSize: 9
+                                    font.capitalization: Font.AllUppercase
+                                }
+
                                 Loader {
                                     visible: active
                                     Layout.fillWidth: true
-                                    //  Lo que quepa, que aquí lo que se hace
-                                    //  es mirar miniaturas: cuanto más entre en
-                                    //  pantalla, menos hay que recorrer.
+                                    Layout.preferredHeight: active && item
+                                        ? item.implicitHeight : 0
+                                    active: bloque.modelData.vista === "fondos"
+                                            && bloque.modelData.atajo === undefined
+                                    sourceComponent: Component {
+                                        AjustesTema {
+                                            motor: PluginManager.instancia("hyprtheme")
+                                        }
+                                    }
+                                }
+
+                                //  Y su «Guardar» pegado a él, no al final de
+                                //  la página: lo que escribe es el color, y
+                                //  dejarlo detrás de la rejilla sería pedir
+                                //  cincuenta fondos de scroll para confirmar un
+                                //  acento. Por eso esta página no entra en el
+                                //  «Guardar» compartido de más abajo.
+                                Loader {
+                                    visible: active
+                                    Layout.fillWidth: true
+                                    Layout.topMargin: active ? 12 : 0
+                                    Layout.bottomMargin: active ? 6 : 0
+                                    Layout.preferredHeight: active && item
+                                        ? item.implicitHeight : 0
+                                    active: bloque.modelData.vista === "fondos"
+                                            && bloque.modelData.atajo === undefined
+                                    sourceComponent: Component {
+                                        GuardarTema {
+                                            motor: PluginManager.instancia("hyprtheme")
+                                        }
+                                    }
+                                }
+
+                                IslandLabel {
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 2
+                                    visible: bloque.modelData.vista === "fondos"
+                                             && bloque.modelData.atajo === undefined
+                                    text: Idioma.t("Fondos")
+                                    color: Theme.dim
+                                    font.pixelSize: 9
+                                    font.capitalization: Font.AllUppercase
+                                }
+
+                                Loader {
+                                    visible: active
+                                    Layout.fillWidth: true
+                                    //  Al contenido, no a lo que quepa: la
+                                    //  rejilla renuncia a su rueda
+                                    //  (`fitContent`) y enseña todas sus filas,
+                                    //  para que la página baje entera hasta el
+                                    //  bloque del color. Antes se le daba el
+                                    //  hueco de la ventana y se desplazaba por
+                                    //  dentro, y por eso el color tenía que
+                                    //  vivir en otra sección.
                                     //
                                     //  Condicionado a `active`, y no es un
                                     //  detalle: un Loader apagado SIGUE
@@ -588,12 +667,13 @@ K4.Ventana {
                                     //  píxeles por delante y su contenido caía
                                     //  fuera de la vista. Se veía la cabecera y
                                     //  nada más, sin un solo error en el log.
-                                    Layout.preferredHeight: active
-                                        ? Math.max(360, ventana.height - 320) : 0
+                                    Layout.preferredHeight: active && item
+                                        ? item.implicitHeight : 0
                                     active: bloque.modelData.vista === "fondos"
                                             && bloque.modelData.atajo === undefined
                                     sourceComponent: Component {
                                         RejillaFondos {
+                                            fitContent: true
                                             motor: PluginManager.instancia("hyprtheme")
                                         }
                                     }
@@ -685,20 +765,6 @@ K4.Ventana {
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: active && item
                                         ? item.implicitHeight : 0
-                                    active: bloque.modelData.vista === "color"
-                                            && bloque.modelData.atajo === undefined
-                                    sourceComponent: Component {
-                                        AjustesTema {
-                                            motor: PluginManager.instancia("hyprtheme")
-                                        }
-                                    }
-                                }
-
-                                Loader {
-                                    visible: active
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: active && item
-                                        ? item.implicitHeight : 0
                                     active: bloque.modelData.vista === "ventanas"
                                             && bloque.modelData.atajo === undefined
                                     sourceComponent: Component {
@@ -723,8 +789,10 @@ K4.Ventana {
                                 }
 
                                 //  El «Guardar» acompaña a lo que escribe el Lua
-                                //  de Hyprland. Los fondos no lo llevan: esos se
-                                //  guardan solos al elegirlos.
+                                //  de Hyprland. La página de fondos tiene el
+                                //  suyo arriba, junto al bloque del color; la
+                                //  rejilla no necesita ninguno, que un fondo se
+                                //  guarda solo al elegirlo.
                                 Loader {
                                     visible: active
                                     Layout.fillWidth: true
@@ -732,8 +800,7 @@ K4.Ventana {
                                     Layout.preferredHeight: active && item
                                         ? item.implicitHeight : 0
                                     active: bloque.modelData.atajo === undefined
-                                        && (bloque.modelData.vista === "color"
-                                            || bloque.modelData.vista === "ventanas"
+                                        && (bloque.modelData.vista === "ventanas"
                                             || bloque.modelData.vista === "efectos")
                                     sourceComponent: Component {
                                         GuardarTema {

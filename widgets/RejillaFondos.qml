@@ -29,6 +29,20 @@ ColumnLayout {
     //  Quien sabe aplicar un fondo. Sin él la rejilla se ve pero no toca nada.
     property var motor: null
 
+    //  ── ¿se desplaza ella, o la desplaza la página? ──────────────
+    //
+    //  `true`: la rejilla renuncia a su propio desplazamiento y se dimensiona
+    //  a sus filas, para que la página que la aloja lo desplace TODO como una
+    //  sola cosa. Es lo que quiere Ajustes, donde debajo de la rejilla va el
+    //  bloque del color: un scroll dentro de otro scroll deja lo de abajo
+    //  inalcanzable con la rueda, y esa era la razón por la que el color vivía
+    //  en una sección aparte.
+    //
+    //  `false` (lo de siempre): la rejilla se desplaza por dentro, que es lo
+    //  que quiere una pantalla entera para ella — todo el hueco para
+    //  miniaturas.
+    property bool fitContent: false
+
     //  Los monitores, para el filtro de arriba. Los sabe el motor.
     readonly property var pantallas: rejilla.motor
         && typeof rejilla.motor.pantallasConocidas === "function"
@@ -222,7 +236,18 @@ ColumnLayout {
 
     GridView {
         Layout.fillWidth: true
-        Layout.fillHeight: true
+        Layout.fillHeight: !rejilla.fitContent
+        //  Dimensionada al contenido: `contentHeight` son exactamente filas ×
+        //  `cellHeight`, así que se enseñan todas y no le hace falta rueda
+        //  propia. El suelo de dos celdas deja que «no hay fondos» siga siendo
+        //  un sitio visible y no una rendija de alto cero.
+        Layout.preferredHeight: rejilla.fitContent
+            ? Math.max(contentHeight, cellHeight * 2) : 0
+        //  Y fuera de su propio arrastre: en este modo la rueda es de la
+        //  página, y un GridView no interactivo la deja pasar al Rodillo en
+        //  vez de comérsela — que es la mitad del arreglo, porque un Flickable
+        //  se queda la rueda aunque no tenga nada que recorrer.
+        interactive: !rejilla.fitContent
         clip: true
         cellWidth: Math.floor(width / 4)
         cellHeight: Math.round(cellWidth * 0.6)

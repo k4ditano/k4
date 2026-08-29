@@ -319,35 +319,16 @@ Singleton {
             //  En los dos idiomas y sin `Idioma.t`: no se enseñan, solo se
             //  buscan, y quien teclea «gaps» en una barra en español merece
             //  encontrarlo igual.
-            claves: ["fondo", "fondos", "wallpaper", "escritorio", "desktop", "imagen", "video", "monitor", "pantalla"],
+            claves: ["fondo", "fondos", "wallpaper", "escritorio", "desktop", "imagen", "video", "monitor", "pantalla",
+                     "color", "colour", "colores", "preset", "acento", "accent", "paleta", "palette", "tema", "theme", "degradado"],
             glifo: 0xF03D8,
-            desc: Idioma.t("El fondo de escritorio, y de dónde salen los colores de la barra."),
+            desc: Idioma.t("El fondo de escritorio, y los colores que salen de él."),
             //  El fondo y el color, juntos y en este orden: el color SALE del
             //  fondo mientras no lo toques a mano, así que separarlos en dos
             //  cajones obligaba a cruzar la ventana para entender una cosa.
             //  Ninguna opción declarada: lo que se elige aquí es una imagen y
             //  un color, y eso no cabe en una fila con un interruptor.
             vista: "fondos",
-            opciones: []
-        },
-        {
-            grupo: Idioma.t("Color"),
-            //  Palabras por las que el buscador debe encontrar esta sección.
-            //  Hacen falta porque sus controles viven dentro de un widget y no
-            //  como `opciones`: sin esto, escribir «blur» no daba NADA aunque
-            //  el interruptor esté ahí dentro.
-            //
-            //  En los dos idiomas y sin `Idioma.t`: no se enseñan, solo se
-            //  buscan, y quien teclea «gaps» en una barra en español merece
-            //  encontrarlo igual.
-            claves: ["color", "colour", "colores", "preset", "acento", "accent", "paleta", "palette", "tema", "theme", "degradado"],
-            glifo: 0xF03D9,
-            desc: Idioma.t("De dónde salen los colores: del fondo, o de un preset que elijas."),
-            //  Sección aparte y no debajo de los fondos, aunque estén
-            //  emparentados: la rejilla se desplaza por dentro, así que lo que
-            //  fuera detrás quedaba inalcanzable con la rueda. Un scroll dentro
-            //  de otro scroll siempre acaba así.
-            vista: "color",
             opciones: []
         },
         {
