@@ -260,6 +260,14 @@
    "permisos": [
     "procesos"
    ]
+  },
+  {
+   "id": "submap",
+   "entry": "Submap/SubmapPlugin.qml",
+   "version": "1.0.0",
+   "title": "Submapa",
+   "enabledByDefault": true,
+   "icono": "0xF030E"
   }
  ],
  "version": "1.1.0"

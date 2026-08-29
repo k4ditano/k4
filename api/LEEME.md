@@ -74,6 +74,8 @@ not be declared inside the view.
 | `K4.SuperficieBloqueo` | What is drawn while locked, one per monitor |
 | `K4.MenuBandeja` | Tray application menu |
 | `K4.Pildora` | Small indicators in the folded pill |
+| `K4.Capsula` | A flank extension: the capsule grows toward a screen edge with your text |
+| `K4.Submapas` | The Hyprland submap in force right now, read only |
 | `K4.Sonido` | Short sound effect (permission `sonido`) |
 | `K4.Tema` | Palette, fonts, island geometry — and `tintar()` to tint the bar's ambience |
 | `K4.Idioma` | Translation: `t()` and `f()` |

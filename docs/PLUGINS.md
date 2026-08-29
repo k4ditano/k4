@@ -392,6 +392,8 @@ bar's directory, not yours.
 | `K4.Sonido` | a short sound — requires the `sonido` permission |
 | `K4.Fichero` | reading and writing files — requires `ficheros` |
 | `K4.Pildora` | an indicator on the folded pill |
+| `K4.Capsula` | a flank extension: the capsule grows toward a screen edge with your text |
+| `K4.Submapas` | the Hyprland submap in force right now, read only |
 | `K4.Paths` | paths: `estadoDe(id)` is your state directory |
 | `K4.IconoPlugin` | a plugin's icon: its image if it brings one, its glyph if not |
 
@@ -547,6 +549,49 @@ stops, and the value arrives on confirm — Enter or a click outside — not
 keystroke by keystroke. With this, a plugin that talks to a service, an AI
 or a CLI configures itself in Settings like everything else, without
 inventing a screen of its own.
+
+**The pill's flank, and the capsule growing.** `K4.Pildora` gives you an
+indicator *inside* the pill — a glyph and a few characters, arbitrated with
+everyone else's. When that is too small to read at a glance, `K4.Capsula`
+grows the capsule itself toward a screen edge carrying your text: for a
+thing that is GOING ON and that the user must not have to remember — a mode
+that grabbed the keyboard, a recording running, a long job in flight.
+
+```qml
+K4.Capsula {
+    plugin: "rec"
+    extension: grabando ? ({
+        lado: "derecha",            // "izquierda" · "derecha"
+        texto: K4.Idioma.t("Grabando"),
+        glifo: 0xF037E,             // md-record_circle_outline
+        color: K4.Tema.rojo,
+        largoMaximo: 300            // px it may grow to
+    }) : null
+}
+```
+
+`extension` is a binding or it is nothing: it must produce a NEW object
+when your state changes, since mutating the old one in place tells nobody.
+Set it to `null` to fold the capsule back.
+
+The width is not yours to fight for, and that is the point: the bar hugs
+your text with the pill's own font and caps it twice — at your
+`largoMaximo` and at the room left to the screen edge, so a capsule parked
+at an aligned end never runs off the screen. The pill also stays itself:
+its art, clock and tray do not move a pixel while the capsule stretches,
+because the host anchors the island to keep the body still and grows toward
+that one side only. Two plugins asking for opposite flanks both get one.
+
+While a deployed view owns the island — the control center, the launcher —
+the extension folds away with the pill and comes back when the pill does.
+That rule is the capsule's, not yours.
+
+`K4.Submapas.actual` is the first customer and a useful one on its own: the
+Hyprland submap in force right now, `""` when there is none. A plugin may
+not reach for Hyprland's event socket itself, so the bar listens and
+publishes it. `plugins/Submap/` is the whole worked example — it imports
+`QtQuick` and `K4`, nothing else, and could be dropped into
+`~/.config/k4/plugins` as it stands.
 
 **Your results, in the launcher.** You answer when you can; if yours is
 expensive — a network query — you block nobody. Yours shows up **below**

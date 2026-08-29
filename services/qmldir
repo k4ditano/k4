@@ -1,4 +1,6 @@
 singleton Island 1.0 Island.qml
+singleton Extensiones 1.0 Extensiones.qml
+singleton Submapas 1.0 Submapas.qml
 singleton Clock 1.0 Clock.qml
 singleton Workspaces 1.0 Workspaces.qml
 singleton Audio 1.0 Audio.qml

@@ -109,6 +109,13 @@ FadeIn {
             Component.onCompleted: if (view.plugin)
                 view.plugin.ladoIzqMedido = Math.ceil(implicitWidth)
 
+            //  Las extensiones de flanco, lo PRIMERO de este flanco: es lo
+            //  más pegado al borde de la pantalla, que es hacia donde crecen.
+            ZonaExtension {
+                lado: "izquierda"
+                Layout.alignment: Qt.AlignVCenter
+            }
+
             Artwork {
                 Layout.preferredWidth: 20
                 Layout.preferredHeight: 20
@@ -218,6 +225,14 @@ FadeIn {
                 max: view.shown
                 iconSize: 14
                 interactive: false
+                Layout.alignment: Qt.AlignVCenter
+            }
+
+            //  Y las extensiones cierran la cadena: lo último de la fila,
+            //  pegado al borde de la pantalla, que es hacia donde crecen. Cada
+            //  instancia pinta solo las suyas — la otra mira al otro lado.
+            ZonaExtension {
+                lado: "derecha"
                 Layout.alignment: Qt.AlignVCenter
             }
         }

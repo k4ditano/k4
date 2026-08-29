@@ -41,6 +41,12 @@ QtObject {
     property var enganches: null
     property var isla: null
 
+    //  Las dos piezas de «la píldora también es de los plugins»: las
+    //  extensiones de flanco (K4.Capsula) y el submapa de Hyprland
+    //  (K4.Submapas). La primera es un registro; el segundo, dato vivo.
+    property var extensiones: null
+    property var submapas: null
+
     //  La huella: datos personales agregados, con doble llave.
     property var huella: null
 

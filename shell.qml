@@ -144,6 +144,8 @@ Scope {
         K4.Puente.reloj = Clock
         K4.Puente.enganches = Enganches
         K4.Puente.isla = Island
+        K4.Puente.extensiones = Extensiones
+        K4.Puente.submapas = Submapas
         K4.Puente.huella = Huella
         K4.Puente.consola = Consola
 
@@ -697,7 +699,37 @@ Scope {
                 //  propia animación, que era lo que descentraba la island al
                 //  abrir y cerrar módulos.
                 property real fraccionSuave: Island.colocacion
-                x: (parent.width - width) * fraccionSuave
+
+                //  ── crecer hacia UN solo lado ────────────────────
+                //
+                //  Mientras la píldora lleva extensiones de flanco —lo que los
+                //  plugins declaran por K4.Capsula— la island crece hacia el
+                //  borde que toque y NO hacia los dos a la vez como de
+                //  costumbre: si no, el cuerpo de la píldora se deslizaría
+                //  media extensión cada vez que una entra o sale.
+                //
+                //  La cuenta deja la PÍLDORA donde estaba —su ancho sin
+                //  extensiones, alas incluidas— y lo que crece por cada lado se
+                //  suma por ese lado solo. Sigue siendo cálculo directo, sin
+                //  animación propia, para que el cuerpo no vaya a remolque del
+                //  ancho mientras este crece con su Behavior.
+                readonly property int extDerecha: panelWindow.pluginVisible
+                    && panelWindow.pluginVisible.name === "idle"
+                    ? Extensiones.anchoDerecho : 0
+                readonly property int extIzquierda: panelWindow.pluginVisible
+                    && panelWindow.pluginVisible.name === "idle"
+                    ? Extensiones.anchoIzquierdo : 0
+
+                //  La x que dejaría la píldora clavada, y la de verdad con
+                //  tope: una extensión larga con la island muy pegada a un
+                //  borde no puede salirse de la pantalla. Si el tope actúa, la
+                //  píldora cede unos píxeles —solo pasa en los extremos de la
+                //  alineación— y el contenido viaja con la silueta, que es lo
+                //  que importa: dibujo y contenido no se separan nunca.
+                readonly property real xQuerida: (parent.width - width) * fraccionSuave
+                    + extDerecha * fraccionSuave
+                    - extIzquierda * (1 - fraccionSuave)
+                x: Math.max(0, Math.min(parent.width - width, xQuerida))
                 width: Math.min(parent.width, panelWindow.anchoIsla + Theme.wing * 2)
                 //  Acotada al padre igual que el ancho: una vista más alta que
                 //  la pantalla —hoy ninguna, el techo son los 880 de Theme— no

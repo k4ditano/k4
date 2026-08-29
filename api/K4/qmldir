@@ -34,6 +34,8 @@ Guardado 1.0 Guardado.qml
 
 singleton Paths 1.0 Paths.qml
 singleton Pildora 1.0 Pildora.qml
+Capsula 1.0 Capsula.qml
+singleton Submapas 1.0 Submapas.qml
 
 #  Los datos vivos del sistema. Leer suele ser libre; lo que cambia algo pide
 #  su permiso declarado — y el portapapeles pide permiso hasta para leerlo.
