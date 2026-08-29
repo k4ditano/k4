@@ -168,16 +168,26 @@ FadeIn {
 
                             IslandLabel {
                                 text: {
-                                    if (tarjeta.modelData.id === "ram")
-                                        return Sistema.ramUsada.toFixed(1) + " / "
+                                    //  El swap va CON la memoria, que es de
+                                    //  lo que habla. Estaba en la tarjeta de
+                                    //  la CPU —de relleno, porque era la única
+                                    //  sin segundo dato— y ahí no significaba
+                                    //  nada: quien mira «swap 1,7 GB» debajo
+                                    //  de un 13 % de CPU lee dos cosas que no
+                                    //  tienen que ver.
+                                    if (tarjeta.modelData.id === "ram") {
+                                        const base = Sistema.ramUsada.toFixed(1) + " / "
                                             + Sistema.ramTotal.toFixed(1) + Idioma.t(" GB")
+                                        return Sistema.swapTotal > 0 && Sistema.swapUsada > 0.05
+                                            ? base + Idioma.t(" · swap ")
+                                              + Sistema.swapUsada.toFixed(1)
+                                            : base
+                                    }
                                     if (tarjeta.esGpu)
                                         return Math.round(Sistema.gpuMemUsada) + " / "
                                             + Math.round(Sistema.gpuMemTotal) + Idioma.t(" MB")
                                     if (tarjeta.esRed)
                                         return "↑ " + Sistema.tasa(Sistema.redTx)
-                                    if (Sistema.swapTotal > 0 && Sistema.swapUsada > 0.05)
-                                        return Idioma.t("swap ") + Sistema.swapUsada.toFixed(1) + Idioma.t(" GB")
                                     return ""
                                 }
                                 color: Theme.dim

@@ -25,7 +25,27 @@ Item {
         return m
     }
 
-    readonly property int cuantas: 45
+    //  ── cuántos huecos, mientras se llena ────────────────────────
+    //
+    //  La ventana son 45 muestras, pero solo se recogen MIENTRAS el módulo
+    //  está abierto: al abrirlo la historia empieza vacía y tarda un minuto y
+    //  medio en llenarse. Con los 45 huecos fijos, ese minuto y medio la
+    //  gráfica es una mota de dos píxeles pegada al borde derecho —una barra
+    //  entre cuarenta y cinco—, y la tarjeta parece rota en vez de recién
+    //  empezada. Que es exactamente lo que se ve al reiniciar la barra y
+    //  asomarse al panel.
+    //
+    //  Así que mientras se llena, los huecos son los que hay: tres muestras se
+    //  reparten el ancho en tres barras y se leen. El eje del tiempo deja de
+    //  ser fijo hasta que la ventana se completa —cada barra vale más rato al
+    //  principio—, y es un precio justo: aquí no hay eje ni etiquetas que
+    //  mentir, es un vistazo, y un vistazo a nada no vale nada.
+    //
+    //  Con suelo, que una sola muestra ocupando la tarjeta entera parecería
+    //  una barra de progreso y no una gráfica.
+    readonly property int minimo: 8
+    readonly property int cuantas: Math.max(minimo,
+        Math.min(45, valores.length))
     readonly property real anchoBarra: Math.max(1, (width - (cuantas - 1) * 1) / cuantas)
 
     Row {
