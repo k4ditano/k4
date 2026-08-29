@@ -516,32 +516,31 @@ Scope {
                       && typeof panelWindow.pluginVisible.reservaBarra === "number"
                       ? panelWindow.pluginVisible.reservaBarra : Theme.baseHeight))
 
-            // Redimensionar una layer surface cuesta un ciclo configure/ack, así
-            // que hacerlo por frame es lo que hacía parpadear el panel. La
-            // superficie crece una vez al empezar y encoge una vez al acabar;
-            // entre medias solo se anima la island dentro de ella.
-            //  El +44 durante un gesto: el empujón baja la island entera y sin
-            //  ese margen los píxeles desplazados se recortan contra el borde
-            //  de la superficie. Crece al empezar el gesto y el encogido lo
-            //  recoge el mismo temporizador de siempre.
-            readonly property int targetHeight: Math.min(Theme.maxIslandHeight,
-                panelWindow.altoIsla + 2 + (island.gestoEnCurso ? 44 : 0))
-            property int surfaceHeight: targetHeight
-
-            onTargetHeightChanged: {
-                if (targetHeight > surfaceHeight)
-                    surfaceHeight = targetHeight
-                else
-                    surfaceShrinkTimer.restart()
-            }
-
-            Timer {
-                id: surfaceShrinkTimer
-                interval: 520
-                onTriggered: panelWindow.surfaceHeight = panelWindow.targetHeight
-            }
-
-            implicitHeight: surfaceHeight
+            //  ── la superficie no cambia de tamaño NUNCA ───────────────
+            //
+            //  Redimensionar una layer surface cuesta un ciclo configure/ack, y
+            //  hasta que llega un frame del tamaño nuevo el compositor pinta el
+            //  buffer VIEJO estirado al tamaño nuevo. Crecer bajo demanda ponía
+            //  ese artefacto en los dos extremos de cada vista: el estirón al
+            //  abrir, y el fogonazo del encogido medio segundo después de
+            //  cerrar —los 520 ms del temporizador que había aquí—. Hacerlo de
+            //  una sola vez estrechaba la ventana de dolor; no la cerraba.
+            //
+            //  Así que la ventana es alta como la pantalla y se acabó: la
+            //  island se anima dentro, se retira dentro y los gestos la empujan
+            //  dentro —de ahí que sobre el margen de 44 px que se le daba al
+            //  empujón—.
+            //
+            //  Ser alta no le quita sitio a nadie ni se traga un clic de más:
+            //  `exclusiveZone` nunca dependió del tamaño de la superficie, y lo
+            //  que recibe entrada lo decide la MÁSCARA de aquí abajo. Fuera de
+            //  esa región los clics pasan de largo como si no hubiera nada.
+            //
+            //  `Theme.maxIslandHeight` no se va con esto: sigue siendo el techo
+            //  con el que miden los plugins (K4.Tema.altoMaximo). Lo que cambia
+            //  es de quién es el techo — era el de la superficie y ahora es el
+            //  de la island.
+            implicitHeight: panelWindow.screen.height
             //  Sin la island, la ventana no acepta ni un clic.
             //
             //  No basta con dejar de dibujarla: la región de entrada seguía
@@ -622,7 +621,10 @@ Scope {
                 property real fraccionSuave: Island.colocacion
                 x: (parent.width - width) * fraccionSuave
                 width: Math.min(parent.width, panelWindow.anchoIsla + Theme.wing * 2)
-                height: panelWindow.altoIsla
+                //  Acotada al padre igual que el ancho: una vista más alta que
+                //  la pantalla —hoy ninguna, el techo son los 880 de Theme— no
+                //  puede empujar la island fuera de la superficie donde vive.
+                height: Math.min(parent.height, panelWindow.altoIsla)
 
                 Behavior on fraccionSuave {
                     NumberAnimation {
@@ -767,9 +769,6 @@ Scope {
                         }
                     }
                 ]
-
-                readonly property bool gestoEnCurso: aniSacudida.running
-                    || aniEmpujon.running || aniTiron.running
 
                 SequentialAnimation {
                     id: aniSacudida
