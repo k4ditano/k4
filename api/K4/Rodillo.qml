@@ -32,7 +32,22 @@ Flickable {
     contentHeight: contentItem.childrenRect.height
     flickableDirection: Flickable.VerticalFlick
 
+    //  Y el cazarruedas va en el FLICKABLE, no en el contenido.
+    //
+    //  Todo lo que se declara dentro de un Flickable se reparenta a su
+    //  `contentItem`. Anclado a ese, este MouseArea se medía a sí mismo el
+    //  `contentHeight` —que sale de `contentItem.childrenRect`, que lo
+    //  incluía— y los dos se daban de comer: el recorrido solo podía subir,
+    //  hasta el del contenido más alto que se hubiera enseñado, y no bajaba
+    //  nunca. Cada página posterior a la más alta se quedaba con todo ese
+    //  scroll muerto por debajo de su contenido de verdad. Se veía en
+    //  Ajustes, que pasa TODAS las secciones por un solo Rodillo: después
+    //  de abrir Grabación, las cortas seguían desplazándose en balde.
+    //
+    //  Reparentado aquí cubre el hueco visible, se queda quieto mientras el
+    //  contenido se desplaza, y el contenido vuelve a medir solo contenido.
     MouseArea {
+        parent: rodillo
         //  Debajo de todo y sordo a los botones: pasa los clics a las filas.
         z: -1
         anchors.fill: parent
