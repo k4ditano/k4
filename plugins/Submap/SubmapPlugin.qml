@@ -71,6 +71,11 @@ K4.Plugin {
     }
 
     // ── los ajustes, guardados ────────────────────────────────
+    //
+    //  Se acota al LEER y no al recibir: por `cambiado` llega un entero ya
+    //  dentro de los límites —lo garantiza el tipo «numero»—, pero el
+    //  fichero de estado se puede editar a mano, y de ahí puede venir
+    //  cualquier cosa.
     function acotarLargo(v) {
         const n = Math.floor(Number(v))
         if (!isFinite(n))
@@ -110,15 +115,16 @@ K4.Plugin {
               glifo: 0xF0E73, tipo: "eleccion",
               alternativas: [{ codigo: "izquierda", nombre: K4.Idioma.t("Izquierda") },
                              { codigo: "derecha", nombre: K4.Idioma.t("Derecha") }] },
-            { id: "largoMaximo", tipo: "texto",
+            { id: "largoMaximo", tipo: "numero",
               nombre: K4.Idioma.t("Largo máximo"),
               desc: K4.Idioma.t("Píxeles hasta los que puede crecer; el nombre se recorta al pasarlos"),
-              pista: "300", glifo: 0xF046D }
+              glifo: 0xF046D,
+              min: 60, max: 1200, paso: 20, unidad: "px" }
         ]
         valores: ({
             mostrar: self.mostrar,
             lado: self.lado,
-            largoMaximo: String(self.largoMaximo)
+            largoMaximo: self.largoMaximo
         })
         onCambiado: function (id, valor) {
             if (id === "mostrar")

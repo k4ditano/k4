@@ -527,7 +527,10 @@ opciones: [
     { id: "clave", tipo: "texto", secreto: true,
       nombre: K4.Idioma.t("Clave de API"),
       desc: K4.Idioma.t("Se guarda donde tú digas; la barra no la retiene"),
-      pista: "sk-…", glifo: 0xF0306 }
+      pista: "sk-…", glifo: 0xF0306 },
+    { id: "ancho", tipo: "numero", nombre: K4.Idioma.t("Ancho"),
+      desc: K4.Idioma.t("Hasta dónde puede crecer"), glifo: 0xF046D,
+      min: 60, max: 1200, paso: 20, unidad: "px" }
 ]
 ```
 
@@ -541,6 +544,13 @@ binding for that, not a value computed once:
 //  Sin el programa detrás, la sección entera no sale.
 opciones: !Consola.esNuestra ? [] : [ /* … */ ]
 ```
+
+A number is two steppers with the value between them, for something you
+nudge rather than type — a width, a cap, a count. `min`, `max` and `paso`
+clamp it on every step and `unidad` is printed after the figure; what
+arrives through `cambiado` is already an INTEGER inside those bounds, so
+there is nothing for you to validate. A spent stepper stops answering
+instead of offering a value you were going to reject.
 
 A choice shows its `alternativas` as chips and `cambiado` delivers the
 chosen `codigo`. A text is a free field — a URL, a model, a key: `pista` is

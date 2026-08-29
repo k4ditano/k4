@@ -53,6 +53,13 @@ QtObject {
     //     `pista` es el texto gris del campo vacío y `secreto: true` lo
     //     tapa con puntos en cuanto se deja de teclear. El valor llega por
     //     `cambiado` al confirmar —Intro o clic fuera—, no tecla a tecla.
+    //   · "numero": dos pulsadores y la cifra en medio, para un valor que se
+    //     empuja en vez de teclearse — un ancho, unos píxeles, un tope.
+    //     `min`, `max` y `paso` lo acotan en cada pulsación (`paso` es 1 si
+    //     no dices otro) y `unidad` es lo que se pinta detrás de la cifra.
+    //     Lo que llega por `cambiado` ya es un ENTERO dentro de los límites,
+    //     así que no tienes que validar nada: un pulsador gastado deja de
+    //     responder en vez de ofrecerte un valor que ibas a rechazar.
     property var opciones: []
 
     //  Lo que vale cada opción AHORA, por su id. La barra lo lee al pintar.

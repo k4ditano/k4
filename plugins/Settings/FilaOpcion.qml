@@ -300,6 +300,119 @@ Rectangle {
             }
         }
 
+        //  ── opciones numéricas ────────────────────────
+        //  Un ancho, un alto, un número de píxeles: un valor
+        //  que se empuja, no que se teclea. Dos pulsadores y
+        //  la cifra en medio, en el mismo idioma de chips que
+        //  las respuestas de arriba — un campo con teclado
+        //  pediría escribir en una pantalla que nunca lo
+        //  necesitó, y encima habría que validar lo tecleado.
+        RowLayout {
+            id: numerico
+            visible: opcion.modelData.tipo === "numero"
+            Layout.alignment: Qt.AlignVCenter
+            spacing: 6
+
+            //  El valor de ahora, como número: lo que llega de
+            //  `Settings` después de un `poner` es un entero,
+            //  pero un fichero editado a mano puede traer una
+            //  cadena, y `parseInt` de nada es NaN — que se
+            //  pintaría como «NaN px» y acotaría a disparates.
+            readonly property int valor: {
+                const v = parseInt(Settings.valor(opcion.modelData.id), 10)
+                return isNaN(v) ? 0 : v
+            }
+
+            //  Un paso en un sentido, acotado a los límites de
+            //  la opción. Se acota AQUÍ además de en quien
+            //  guarde: el pulsador no puede ofrecer un valor
+            //  que luego alguien tenga que corregir.
+            function paso(cuantos) {
+                const salto = opcion.modelData.paso || 1
+                let n = numerico.valor + cuantos * salto
+                if (opcion.modelData.min !== undefined)
+                    n = Math.max(opcion.modelData.min, n)
+                if (opcion.modelData.max !== undefined)
+                    n = Math.min(opcion.modelData.max, n)
+                if (n !== numerico.valor)
+                    Settings.poner(opcion.modelData.id, n)
+            }
+
+            //  Un pulsador gastado no responde Y lo dice, al 35 %.
+            //  `enabled` y no solo opacidad, o enseñaría que
+            //  pulsar no hace nada.
+            //
+            //  El menos va por códice, como la × de más abajo: un
+            //  signo suelto en un `text:` se lo lleva el
+            //  extractor de textos y acaba pidiendo traducción.
+            Rectangle {
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 26
+                radius: 13
+                opacity: menosRaton.enabled ? 1 : 0.35
+                color: menosRaton.enabled && menosRaton.containsMouse
+                    ? Theme.surfaceHi : Theme.track
+
+                Behavior on color { ColorAnimation { duration: 120 } }
+
+                MouseArea {
+                    id: menosRaton
+                    enabled: opcion.modelData.min === undefined
+                        || numerico.valor > opcion.modelData.min
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: numerico.paso(-1)
+                }
+
+                IslandLabel {
+                    anchors.centerIn: parent
+                    text: String.fromCodePoint(0x2212)
+                    color: menosRaton.enabled ? Theme.ink : Theme.muted
+                    font.pixelSize: 14
+                }
+            }
+
+            IslandLabel {
+                text: numerico.valor
+                    + (opcion.modelData.unidad
+                       ? " " + opcion.modelData.unidad : "")
+                color: Theme.ink
+                font.pixelSize: 11
+                font.weight: Font.DemiBold
+                Layout.preferredWidth: 64
+                horizontalAlignment: Text.AlignHCenter
+            }
+
+            Rectangle {
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 26
+                radius: 13
+                opacity: masRaton.enabled ? 1 : 0.35
+                color: masRaton.enabled && masRaton.containsMouse
+                    ? Theme.surfaceHi : Theme.track
+
+                Behavior on color { ColorAnimation { duration: 120 } }
+
+                MouseArea {
+                    id: masRaton
+                    enabled: opcion.modelData.max === undefined
+                        || numerico.valor < opcion.modelData.max
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: numerico.paso(1)
+                }
+
+                IslandLabel {
+                    anchors.centerIn: parent
+                    text: String.fromCodePoint(0x002B)
+                    color: masRaton.enabled ? Theme.ink : Theme.muted
+                    font.pixelSize: 14
+                }
+            }
+        }
+
         // ── opciones de texto libre
         //  Una URL, un modelo, una clave de API: lo que un
         //  interruptor no puede decir. El valor se entrega
