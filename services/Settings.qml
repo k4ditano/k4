@@ -149,6 +149,13 @@ Singleton {
 
     readonly property var definicion: [
         {
+            //  El asa ESTABLE de cada sección, la que no cambia de
+            //  idioma. `grupo` se traduce, así que atar una tecla a él
+            //  («k4 settingsSection Apariencia») deja de funcionar en
+            //  cuanto la barra habla otra lengua: con la barra en inglés
+            //  el grupo se llama «Appearance» y el atajo no abría nada.
+            //  Esto no se enseña, solo se nombra.
+            id: "idioma",
             grupo: Idioma.t("Idioma"),
             glifo: 0xF05CA,
             desc: Idioma.t("En qué idioma habla la barra."),
@@ -160,6 +167,7 @@ Singleton {
             ]
         },
         {
+            id: "mazmorra",
             grupo: Idioma.t("Mazmorra"),
             glifo: 0xF04E5,
             desc: Idioma.t("El juego que vive en la píldora: si corre, si guarda y cuánto se le ve."),
@@ -190,6 +198,7 @@ Singleton {
             ]
         },
         {
+            id: "datos",
             grupo: Idioma.t("Datos personales"),
             glifo: 0xF0237,
             desc: Idioma.t("Qué puede saber de ti un plugin, y qué no."),
@@ -208,6 +217,7 @@ Singleton {
             ]
         },
         {
+            id: "captura",
             grupo: Idioma.t("Captura"),
             glifo: 0xF0100,
             desc: Idioma.t("Qué entra en la foto y qué hacer con ella después."),
@@ -222,6 +232,7 @@ Singleton {
             ]
         },
         {
+            id: "grabacion",
             grupo: Idioma.t("Grabación"),
             glifo: 0xF044A,
             desc: Idioma.t("Audio, cámara y calidad de lo que grabas."),
@@ -254,6 +265,7 @@ Singleton {
             ]
         },
         {
+            id: "editor",
             grupo: Idioma.t("Editor"),
             glifo: 0xF03EB,
             desc: Idioma.t("El editor que se abre cuando terminas de capturar."),
@@ -277,6 +289,7 @@ Singleton {
             ]
         },
         {
+            id: "island",
             grupo: Idioma.t("Island"),
             glifo: 0xF1513,
             desc: Idioma.t("Cuánto sitio se queda la barra, y cuándo se aparta."),
@@ -310,6 +323,7 @@ Singleton {
             ]
         },
         {
+            id: "apariencia",
             grupo: Idioma.t("Apariencia"),
             //  Palabras por las que el buscador debe encontrar esta sección.
             //  Hacen falta porque sus controles viven dentro de un widget y no
@@ -332,6 +346,7 @@ Singleton {
             opciones: []
         },
         {
+            id: "ventanas",
             grupo: Idioma.t("Ventanas"),
             //  Palabras por las que el buscador debe encontrar esta sección.
             //  Hacen falta porque sus controles viven dentro de un widget y no
@@ -348,6 +363,7 @@ Singleton {
             opciones: []
         },
         {
+            id: "efectos",
             grupo: Idioma.t("Efectos"),
             //  Palabras por las que el buscador debe encontrar esta sección.
             //  Hacen falta porque sus controles viven dentro de un widget y no
@@ -364,6 +380,7 @@ Singleton {
             opciones: []
         },
         {
+            id: "plugins",
             grupo: Idioma.t("Plugins"),
             glifo: 0xF0431,
             desc: Idioma.t("Lo que tienes instalado: encender, apagar y de dónde vino."),

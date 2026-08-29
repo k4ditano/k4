@@ -257,8 +257,15 @@ Scope {
         //  El tema ya no tiene pantalla propia: todo lo que se configura vive
         //  en Ajustes. Se conserva el verbo porque está atado en Hyprland y en
         //  el centro de control, y romper un atajo de alguien por mudar una
-        //  pantalla de sitio es de mala educación.
-        function theme(): void { _p("settings")?.abrir() }
+        //  pantalla de sitio es de mala educación. Ahora aterriza en la página
+        //  de apariencia, que es donde vive el color que configuraba.
+        function theme(): void { _p("settings")?.abrirPagina("fondos") }
+        //  Ajustes abierto por una página concreta, para atarlo a una tecla:
+        //  `k4 settingsSection apariencia`, `… island`, `… efectos`… Vale el
+        //  nombre de la sección o su id de vista.
+        function settingsSection(seccion: string): void {
+            _p("settings")?.abrirPagina(seccion)
+        }
         function weather(): void { _p("weather")?.toggle() }
         function tray(): void { _p("tray")?.toggle() }
         function game(): void { _p("game")?.toggle() }

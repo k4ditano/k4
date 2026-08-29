@@ -61,6 +61,23 @@ K4Plugin {
 
     function close() { cerrarVentana() }
 
+    // ── una página en la que aterrizar ────────────────────────────
+    //
+    //  `k4 settingsSection apariencia` y compañía apuntan aquí, y la ventana
+    //  aterriza en esa página al abrirse — o en el acto, si ya estaba abierta.
+    //  Vacío es arriba del todo, como siempre.
+    //
+    //  La nota se GASTA al llegar: la ventana la limpia en cuanto la usa, así
+    //  que cerrar y volver a abrir por la píldora empieza arriba otra vez. El
+    //  favor era para un atajo, no una casa nueva.
+    property string paginaPedida: ""
+
+    function abrirPagina(pagina) {
+        paginaPedida = String(pagina)
+        if (!ventanaAbierta)
+            abrirVentana()
+    }
+
     // ── la ventana ────────────────────────────────────────────────
     //
     //  Los ajustes en una superficie propia, con barra lateral. El panel de la
@@ -90,6 +107,11 @@ K4Plugin {
         target: "k4.settings"
         function toggle(): void { self.toggle() }
         function close(): void { self.close() }
+
+        //  Abrir por una página, para atarlo a una tecla:
+        //  `quickshell ipc call k4.settings abrirPagina apariencia`. Vale el
+        //  nombre de la sección o su `vista`, sin distinguir mayúsculas.
+        function abrirPagina(pagina: string): void { self.abrirPagina(pagina) }
 
         function alternar(id: string): void { Settings.alternar(id) }
 

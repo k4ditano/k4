@@ -121,13 +121,49 @@ K4.Ventana {
     }
 
     //  Ir a una sección por su nombre: lo usa el resultado de búsqueda que
-    //  ofrece una sección entera.
+    //  ofrece una sección entera, y también `k4 settingsSection <nombre>`.
+    //
+    //  Vale el `id` de la sección, el de su vista o el nombre que se ve
+    //  —«apariencia», «fondos» o «Apariencia»—, y sin distinguir mayúsculas:
+    //  quien ata una tecla lo escribe una vez, y equivocarse de caja tiene que
+    //  abrir arriba, no no abrir nada.
+    //
+    //  El `id` PRIMERO y por eso existe: `grupo` está traducido, así que con
+    //  la barra en inglés la sección se llama «Appearance» y un atajo atado a
+    //  «Apariencia» no abría nada. El nombre se sigue aceptando porque es lo
+    //  que ve quien lo escribe, pero el asa de verdad es el id.
     function irASeccion(nombre) {
-        for (let i = 0; i < ventana.lateral.length; ++i)
-            if (ventana.lateral[i].grupo === nombre) {
+        const n = String(nombre).toLowerCase()
+        for (let i = 0; i < ventana.lateral.length; ++i) {
+            const g = ventana.lateral[i]
+            if (String(g.id || "").toLowerCase() === n
+                    || String(g.vista || "").toLowerCase() === n
+                    || String(g.grupo).toLowerCase() === n) {
                 ventana.elegir(i)
                 return
             }
+        }
+    }
+
+    //  Aterrizar donde lo hayan pedido desde fuera (`k4 settingsSection`).
+    //
+    //  Se llama al abrir —la nota del plugin puede llegar ANTES de que la
+    //  ventana exista— y cada vez que la nota cambia, porque también puede
+    //  llegar con la ventana ya abierta: pulsar el atajo con Ajustes delante
+    //  tiene que llevarte igual, no perderse por haber llegado tarde.
+    //
+    //  Y se gasta aquí, ver `paginaPedida` en el plugin.
+    function aterrizar() {
+        const p = ventana.plugin ? ventana.plugin.paginaPedida : ""
+        if (!p || p.length === 0)
+            return
+        ventana.plugin.paginaPedida = ""
+        ventana.irASeccion(p)
+    }
+
+    Connections {
+        target: ventana.plugin
+        function onPaginaPedidaChanged() { ventana.aterrizar() }
     }
 
     function elegir(i) {
@@ -160,6 +196,7 @@ K4.Ventana {
     Component.onCompleted: {
         campo.forceActiveFocus()
         foco.start()
+        aterrizar()
     }
 
     //  Al volver el ratón, el campo recupera el foco. Al soltar el teclado se
