@@ -102,6 +102,11 @@ Singleton {
     // siempre, y al acercar el ratón la island ya se abre y ahí sí se ven —y
     // encima se pueden pulsar, que en la píldora no—.
     property bool bandejaEnPildora: false
+    //  Un clic fuera de la barra cierra lo que haya desplegado, igual que
+    //  Escape. shell.qml es quien lo hace: mientras hay una vista abierta, su
+    //  máscara de entrada cubre la pantalla y se gasta el toque en cerrarla.
+    //  Apagado es lo de antes: el clic pasa de largo a la ventana de debajo.
+    property bool cerrarConClicFuera: true
     // widgets/NotifStrip.qml: notificaciones recientes al pasar el ratón
     property bool notificacionesAlPasar: true
     // services/Notifs.qml: descartar las de una aplicación al ir a su ventana
@@ -293,6 +298,9 @@ Singleton {
                   nombre: Idioma.t("Cómo ocupa el sitio"),
                   desc: Idioma.t("Aparta las ventanas, flota sobre ellas o se esconde"),
                   glifo: 0xF003E },   // md-arrange_bring_to_front
+                { id: "cerrarConClicFuera", nombre: Idioma.t("Cerrar al clicar fuera"),
+                  desc: Idioma.t("Un clic fuera cierra lo abierto, como Escape"),
+                  glifo: 0xF015A },   // md-close_circle_outline
                 { id: "bandejaEnPildora", nombre: Idioma.t("Bandeja en la píldora"),
                   desc: Idioma.t("Iconos de las aplicaciones en segundo plano"), glifo: 0xF0FB0 },
                 { id: "notificacionesAlPasar", nombre: Idioma.t("Notificaciones al pasar el ratón"),
@@ -515,6 +523,7 @@ Singleton {
         "zoomAuto", "zoomNivel", "editorCodec", "editorSonoridad",
         "posicionBarra", "alineacionBarra", "reservaIsla",
         "huellaActiva", "huellaSteam", "huellaPaquetes",
+        "cerrarConClicFuera",
         "bandejaEnPildora", "notificacionesAlPasar", "notificacionesAlEnfocar",
         "accesosDirectos"
     ]

@@ -16,6 +16,11 @@ K4Plugin {
     priority: 50
     active: habilitado && Island.hovered
 
+    //  Sin cazador de clics: esto se abre AL PASAR EL RATÓN, no lo pide nadie,
+    //  y se va solo cuando el puntero se va. El mismo caso que el HUD del
+    //  volumen. Ver `closeOnClickOutside` en el contrato.
+    closeOnClickOutside: false
+
     // el módulo de bandeja; lo inyecta el host
     property var tray: null
     property var juego: null

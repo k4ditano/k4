@@ -14,6 +14,12 @@ K4Plugin {
     title: Idioma.t("Reproductor")
     priority: 55
 
+    //  Sin cazador de clics: esto solo aparece al pasar el ratón o en el asomo
+    //  de un cambio de pista —sin que nadie lo pida— y se va cuando el puntero
+    //  se va. El mismo caso que el HUD del volumen. Ver `closeOnClickOutside`
+    //  en el contrato.
+    closeOnClickOutside: false
+
     //  Al pasar el ratón —lo de siempre— y además durante el asomo.
     //
     //  El asomo NO pide `isPlaying`: al cambiar de pista hay reproductores que

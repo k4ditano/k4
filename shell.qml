@@ -287,6 +287,39 @@ Scope {
             readonly property var pluginVisible: root.activePlugin
                 && (root.activePlugin.name === "idle" || esPantallaActiva)
                 ? root.activePlugin : idlePlugin
+
+            //  ── el clic fuera cierra lo desplegado ────────────────────
+            //
+            //  Una vista desplegada —el centro de control, el lanzador— se
+            //  cierra con Escape; el puntero merece el mismo gesto. Mientras
+            //  haya una AQUÍ, la máscara de entrada incluye el cazador (ver
+            //  `mask`), así que un toque fuera de la island llega hasta la
+            //  superficie y la cierra por la misma puerta que usa Escape.
+            //
+            //  El clic se GASTA en cerrar y no llega a lo que hay debajo. Ese
+            //  es el trato, y es el bueno: lo que se ha pedido es que eso se
+            //  quite de en medio, no el enlace de detrás. Quien prefiera que
+            //  pase de largo lo apaga en Ajustes.
+            //
+            //  Solo la pantalla que la enseña, solo las vistas que lo quieren
+            //  (`closeOnClickOutside`) y que ha abierto alguien: las que salen
+            //  sin que nadie las pida (`transitorio`) se comerían clics
+            //  dirigidos a otra cosa.
+            //
+            //  Y nunca con la island apartada —un diálogo del sistema merece
+            //  todos sus clics— ni con la barra de viaje (`sinBarra`): ahí
+            //  `altoIsla` es cero y no hay island que enseñe nada, así que el
+            //  cazador cubriría la pantalla entera para no cerrar nada. Eso no
+            //  es un caso raro: es lo que pasa en la pantalla que el modo dual
+            //  se ha llevado al dock mientras abres el lanzador en ella.
+            readonly property bool cerrarConClicFuera: Settings.cerrarConClicFuera
+                && esPantallaActiva
+                && !Island.apartada
+                && !sinBarra
+                && root.activePlugin.closeOnClickOutside
+                && !root.activePlugin.transitorio
+                && root.activePlugin.islandHeight > Theme.baseHeight
+
             //  ── la barra apartada de UNA pantalla ─────────────────────
             //
             //  `activePlugin` es uno solo y global: gana el de más prioridad y
@@ -531,6 +564,10 @@ Scope {
             //  dentro —de ahí que sobre el margen de 44 px que se le daba al
             //  empujón—.
             //
+            //  Y desde que un clic fuera cierra lo desplegado hace falta
+            //  además para eso: el cazador (ver `cerrarConClicFuera`) solo
+            //  puede cazar donde tenga superficie debajo.
+            //
             //  Ser alta no le quita sitio a nadie ni se traga un clic de más:
             //  `exclusiveZone` nunca dependió del tamaño de la superficie, y lo
             //  que recibe entrada lo decide la MÁSCARA de aquí abajo. Fuera de
@@ -564,10 +601,51 @@ Scope {
             mask: Region {
                 item: Island.apartada ? null : island
 
+                //  La región del cazador: con una vista desplegada, la
+                //  superficie ENTERA recibe entrada —también donde no hay
+                //  island— para que el toque de fuera tenga dónde caer. Ver
+                //  `cazaClics`, y `cerrarConClicFuera` para cuándo.
+                Region {
+                    item: panelWindow.cerrarConClicFuera ? cazaClics : null
+                    intersection: Intersection.Combine
+                }
+
                 Region {
                     item: (Island.apartada || panelWindow.sinBarra
                            || !panelWindow.seEsconde) ? null : filo
                     intersection: Intersection.Combine
+                }
+            }
+
+            //  ── el cazador: dónde cae el toque de fuera ───────────────
+            //
+            //  No pinta nada y no cuesta nada; está para que un toque fuera de
+            //  la island, con una vista abierta, se reciba en vez de perderse.
+            //
+            //  Declarado ANTES que el filo y que la island a propósito: los dos
+            //  se apilan por encima, así que la island se queda todos los clics
+            //  que van a ella. Un toque en sus alas transparentes sí cierra, y
+            //  está bien: esa es la parte vacía de la propia barra.
+            //
+            //  Y NO `visible: false`, que un item oculto no recibe ratón. Con
+            //  nada abierto lo que lo deja inerte es la MÁSCARA, no la
+            //  visibilidad: fuera de la región de entrada aquí no llega nada.
+            Item {
+                id: cazaClics
+                anchors.fill: parent
+
+                TapHandler {
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+                    gesturePolicy: TapHandler.ReleaseWithinBounds
+                    onTapped: {
+                        //  Por la puerta de Escape, no por un atajo que la
+                        //  rodee: lo que haga la vista al cerrarse —quedarse
+                        //  para su animación de salida, ceder la island— sigue
+                        //  funcionando exactamente igual.
+                        const p = panelWindow.pluginVisible
+                        if (p && typeof p.close === "function")
+                            p.close()
+                    }
                 }
             }
 

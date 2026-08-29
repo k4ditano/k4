@@ -158,6 +158,26 @@ QtObject {
     property bool handlesBackgroundTap: false
     signal backgroundTapped()
 
+    //  ── ¿te cierra un clic fuera de la island? ────────────────────
+    //
+    //  Sí de fábrica, y lo mismo que ya hace Escape: si tu vista se cierra con
+    //  Escape —y se cierra, el host lo aplica a todas—, un toque fuera la
+    //  cierra igual. El clic se gasta en cerrarte y no llega a la ventana de
+    //  debajo, que es lo que quiere quien lo da.
+    //
+    //  Márcalo `false` si tu vista aparece SIN QUE NADIE LA PIDA y se va sola:
+    //  el reloj y el reproductor al pasar el ratón, el asomo de un cambio de
+    //  pista, el HUD del volumen. Ahí el toque de fuera no significa «cierra
+    //  esto» —nadie lo abrió— sino que iba dirigido a otra cosa, y comérselo
+    //  es robarle un clic al usuario. Lo que se va solo ya se va solo.
+    //
+    //  Lo transitorio (`transitorio`) no hace falta marcarlo: el host ya lo
+    //  excluye por su cuenta.
+    //
+    //  Y el usuario manda por encima de esto: en Ajustes → Island puede apagar
+    //  el clic fuera entero y volver a lo de antes.
+    property bool closeOnClickOutside: true
+
     // Módulos que se abren con el ratón y deben irse al sacarlo. El host emite
     // `hoverTimedOut` cuando el puntero lleva `hoverExitDelay` fuera de la
     // island; qué hacer entonces lo decide el plugin, porque no siempre es
