@@ -220,7 +220,12 @@ FadeIn {
 
                             IslandLabel {
                                 visible: (fila.modelData.etiqueta || "").length > 0
-                                text: fila.modelData.etiqueta
+                                //  La etiqueta la pone `tools/portapapeles.py`
+                                //  en español —«enlace», «orden», «código»— y
+                                //  aquí se pintaba cruda, con la línea de al
+                                //  lado ya traducida. Es prosa: pasa por
+                                //  `Idioma` como todo lo demás.
+                                text: Idioma.t(fila.modelData.etiqueta)
                                 color: Theme.blue
                                 font.pixelSize: 11
                                 font.weight: Font.DemiBold

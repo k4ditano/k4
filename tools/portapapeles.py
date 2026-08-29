@@ -77,17 +77,33 @@ RE_ORDEN = re.compile(r"^\s*(sudo|git|npm|pnpm|yarn|cargo|python3?|pip|docker|"
                       r"systemctl|pacman|yay|ssh|scp|curl|wget|make|cmake|kubectl)\b")
 
 
+#  ── una cadena que acaba en la BARRA ─────────────────────────────────
+#
+#  No hace nada: devuelve lo que le den. Está para MARCAR, porque estas
+#  cadenas son de interfaz aunque nazcan en un guion de línea de órdenes —las
+#  pinta la barra, en el idioma que le hayan puesto— y `tools/textos.py` las
+#  recoge buscando exactamente esta llamada.
+#
+#  Sin la marca no cuentan para la cobertura, y una cadena que no cuenta es
+#  una cadena que un día sale sin traducir y nadie se entera.
+def T(s):
+    return s
+
+
+#  Las etiquetas se pintan en la barra, así que van marcadas. Y siguen
+#  valiendo de clave: `T` devuelve lo que le den, y ClipboardView elige el
+#  glifo comparando con estas mismas palabras.
 def etiqueta(texto):
     if RE_URL.match(texto):
-        return "enlace"
+        return T("enlace")
     if RE_COLOR.match(texto):
-        return "color"
+        return T("color")
     if RE_RUTA.match(texto) and len(texto) < 300:
-        return "ruta"
+        return T("ruta")
     if RE_ORDEN.match(texto):
-        return "orden"
+        return T("orden")
     if "\n" in texto.strip() and re.search(r"[{};()=]|^\s{2,}", texto, re.M):
-        return "código"
+        return T("código")
     return ""
 
 
@@ -127,7 +143,9 @@ def guardar(tipo):
         mime = "text/plain"
     else:
         resumen = ""
-        marca = "imagen"
+        #  También se pinta, así que también va marcada. Y sigue siendo la
+        #  clave con la que el servicio distingue una imagen (`tipo`).
+        marca = T("imagen")
         mime = "image/png"
 
     ident = hashlib.sha1(bruto).hexdigest()[:16]

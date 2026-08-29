@@ -64,22 +64,45 @@ RE_ALIAS = re.compile(r'^\s*local\s+(\w+)\s*=\s*.*\b%s\b')
 # `local k4 = "quickshell ipc -p " .. raiz .. "/shell.qml call k4 "`
 RE_LOCAL_EXPR = re.compile(r'^\s*local\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?)\s*$')
 
-# Lo que hace cada despachador, en cristiano. Los que no estén salen con su
-# nombre limpio, que sigue diciendo bastante.
+#  Lo que hace cada despachador, en cristiano. Los que no estén salen con su
+#  nombre limpio, que sigue diciendo bastante.
+#
+#  Esto es español, y sale en la BARRA, que habla el idioma que le digan. Así
+#  que no viaja como texto ya montado: se manda la frase por un lado y su
+#  detalle por otro (ver `describir`), y quien la pinta la pasa por
+#  `Idioma.t()`. Antes se concatenaba aquí, y el panel de atajos era una
+#  columna en español dentro de una barra en inglés.
+#
+#  Y por eso cada frase de este fichero tiene que estar TAMBIÉN en
+#  traducciones/: son cadenas de interfaz aunque nazcan en un guion.
+#  ── una cadena que acaba en la BARRA ─────────────────────────────────
+#
+#  No hace nada: devuelve lo que le den. Está para MARCAR, porque estas
+#  cadenas son de interfaz aunque nazcan en un guion de línea de órdenes —las
+#  pinta la barra, en el idioma que le hayan puesto— y `tools/textos.py` las
+#  recoge buscando exactamente esta llamada.
+#
+#  Sin la marca no cuentan para la cobertura, y una cadena que no cuenta es
+#  una cadena que un día sale sin traducir y nadie se entera.
+def T(s):
+    return s
+
+
 VERBOS = {
-    "window.close": "Cerrar la ventana",
-    "window.fullscreen": "Pantalla completa",
-    "window.float": "Flotar o anclar la ventana",
-    "window.move": "Mover la ventana",
-    "window.resize": "Redimensionar",
-    "window.cycle_next": "Siguiente ventana",
-    "window.pin": "Fijar la ventana",
-    "window.pseudo": "Modo pseudo",
-    "focus": "Cambiar el foco",
-    "workspace": "Ir al espacio de trabajo",
-    "layout": "Cambiar la disposición",
-    "exit": "Salir de Hyprland",
-    "kill": "Matar una ventana",
+    "window.close": T("Cerrar la ventana"),
+    "window.fullscreen": T("Pantalla completa"),
+    "window.float": T("Flotar o anclar la ventana"),
+    "window.move": T("Mover la ventana"),
+    "window.resize": T("Redimensionar"),
+    "window.cycle_next": T("Siguiente ventana"),
+    "window.pin": T("Fijar la ventana"),
+    "window.pseudo": T("Modo pseudo"),
+    "focus": T("Cambiar el foco"),
+    "workspace": T("Ir al espacio de trabajo"),
+    "layout": T("Cambiar la disposición"),
+    "exit": T("Salir de Hyprland"),
+    "kill": T("Matar una ventana"),
+    "global": T("Atajo global"),
     "exec_cmd": "",              # se resuelve con el propio comando
 }
 
@@ -189,11 +212,26 @@ def hasta_cierre(texto):
 
 
 def describir(accion, vals):
+    """Qué hace un atajo, en tres piezas.
+
+    Devuelve `(frase, detalle, detalleFrase)`:
+
+      · `frase` es TRADUCIBLE y puede llevar un `%1` donde va lo demás. Vacía
+        significa «esto no es prosa, píntalo tal cual» — el nombre de un
+        despachador que no conocemos, una orden.
+      · `detalle` es el trozo CRUDO que rellena el `%1`: `left`, `togglesplit`,
+        un número. Son identificadores y no se traducen ni se deben traducir.
+      · `detalleFrase` es un `%1` que sí es prosa —«el número»— y por tanto va
+        a traducir también.
+
+    Solo uno de los dos últimos viene con algo. Montarlo es cosa de quien
+    pinta, que es el único que sabe en qué idioma habla la barra.
+    """
     accion = accion.strip().rstrip(")").strip()
 
     m = re.match(r'hl\.dsp\.([A-Za-z_.]+)\s*\((.*)$', accion, re.S)
     if not m:
-        return accion[:80]
+        return "", accion[:80], ""
 
     nombre, dentro = m.group(1), hasta_cierre(m.group(2))
 
@@ -207,14 +245,16 @@ def describir(accion, vals):
             m3 = re.search(r'call\s+k4(?:\.(\w+))?\s+(.*)$', orden)
             if m3:
                 modulo = (m3.group(1) + " ") if m3.group(1) else ""
-                return "k4 · " + modulo + m3.group(2).strip()
-            return "k4 · " + orden.split("call k4 ")[-1].strip()
+                return "", "k4 · " + modulo + m3.group(2).strip(), ""
+            return "", "k4 · " + orden.split("call k4 ")[-1].strip(), ""
         if orden.startswith("noctalia msg "):
-            return "noctalia · " + orden[len("noctalia msg "):].strip()
+            return "", "noctalia · " + orden[len("noctalia msg "):].strip(), ""
+        #  «Abrir» sí es prosa, así que va de frase con su hueco.
         if orden.startswith("uwsm app -- "):
-            return "Abrir " + orden[len("uwsm app -- "):].strip()
-        return orden[:70]
+            return T("Abrir %1"), orden[len("uwsm app -- "):].strip(), ""
+        return "", orden[:70], ""
 
+    conocido = nombre in VERBOS
     base = VERBOS.get(nombre, nombre.replace(".", " · ").replace("_", " "))
     detalle = ""
     for clave in ("direction", "mode", "action", "workspace", "monitor", "window"):
@@ -227,14 +267,31 @@ def describir(accion, vals):
         if m2 and m2.group(1).strip():
             detalle = m2.group(1).strip()
 
-    # En los atajos generados en bucle el detalle es la propia variable, que
-    # no dice nada: la combinación ya enseña el rango.
+    #  En los atajos generados en bucle el detalle es la propia variable, que
+    #  no dice nada: la combinación ya enseña el rango. Estos dos detalles son
+    #  PROSA, no identificadores, así que salen por `detalleFrase` y se
+    #  traducen; los demás («left», «togglesplit») son crudos y se quedan.
+    detalleFrase = ""
     if detalle in ("i", "key"):
-        detalle = "el número"
+        detalle, detalleFrase = "", T("el número")
     elif detalle.startswith("m~"):
-        detalle = "en este monitor"
+        detalle, detalleFrase = "", T("en este monitor")
 
-    return base + (" · " + detalle if detalle else "")
+    #  Un despachador que no conocemos no es prosa: su nombre limpio se pinta
+    #  tal cual y no se le pide traducción a nadie.
+    if not conocido:
+        return "", base + (" · " + detalle if detalle else ""), detalleFrase
+
+    #  La frase va SOLA, sin el « · » ni el detalle pegados. Se intentó
+    #  mandarla ya montada —«Cerrar la ventana · %1»— y no traducía nada: esa
+    #  cadena compuesta no está en la tabla, solo lo está la frase. Y tampoco
+    #  debería estarlo, porque el « · » es puntuación y no prosa: obligaría a
+    #  tener en traducciones/ una entrada por cada verbo Y por cada verbo con
+    #  detalle, el doble de cadenas para no decir nada nuevo.
+    #
+    #  Quien pinta las junta (`Atajos.hace`). Y si una frase necesita el hueco
+    #  en otro sitio —«Abrir %1», que no lleva separador— se lo pone ella.
+    return base, detalle, detalleFrase
 
 
 def leer():
@@ -295,9 +352,24 @@ def leer_fichero(lineas, vals):
         if "№" in combo:
             combo = combo.replace("№", "1–" + str(hasta))
 
+        frase, detalle, detalleFrase = describir(accion, vals)
+        #  `hace` se queda: es lo que se pinta si no hay traducción que valga
+        #  y lo que busca quien teclea en español. La barra prefiere `frase`,
+        #  y esto la monta igual que ella —ver `Atajos.hace`— para que las dos
+        #  digan lo mismo cuando el idioma es el de casa.
+        sufijo = detalle or detalleFrase
+        if not frase:
+            hace = sufijo
+        elif "%1" in frase:
+            hace = frase.replace("%1", sufijo)
+        else:
+            hace = frase + (" · " + sufijo if sufijo else "")
         salida.append({
             "combo": combo.strip(),
-            "hace": describir(accion, vals),
+            "hace": hace,
+            "frase": frase,
+            "detalle": detalle,
+            "detalleFrase": detalleFrase,
             "seccion": seccion,
         })
 

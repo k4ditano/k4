@@ -22,6 +22,29 @@ Singleton {
 
     function recargar() { lector.running = true }
 
+    //  Qué hace un atajo, en el idioma de la barra.
+    //
+    //  `tools/atajos.py` manda la frase y su detalle por separado justo para
+    //  esto: la frase es prosa —«Cerrar la ventana»— y pasa por `Idioma`,
+    //  mientras que el detalle suele ser un identificador —«left»,
+    //  «togglesplit»— y se queda como está. Traducirlo sería inventarse un
+    //  nombre para algo que el usuario escribió en su configuración.
+    //
+    //  Sin frase, `hace` tal cual: es un despachador que no conocemos o una
+    //  orden suya, y ahí no hay nada que traducir.
+    //  Y con el detalle detrás de un « · », salvo que la frase diga dónde va.
+    //  «Abrir %1» lo lleva dentro —el nombre de la aplicación es el objeto del
+    //  verbo, no una coletilla— y las demás lo quieren al final.
+    function hace(a) {
+        if (!a.frase || a.frase.length === 0)
+            return a.hace || ""
+        const d = a.detalleFrase && a.detalleFrase.length > 0
+            ? Idioma.t(a.detalleFrase) : (a.detalle || "")
+        if (a.frase.indexOf("%1") !== -1)
+            return Idioma.f(a.frase, d)
+        return Idioma.t(a.frase) + (d.length > 0 ? " · " + d : "")
+    }
+
     function filtrar(texto) {
         const q = (texto || "").trim().toLowerCase()
         if (q.length === 0)
@@ -30,8 +53,13 @@ Singleton {
         const salida = []
         for (let i = 0; i < lista.length; ++i) {
             const a = lista[i]
+            //  Se busca por lo que SE VE y también por el original: con la
+            //  barra en inglés, «close» tiene que encontrar el atajo, y quien
+            //  se sepa el nombre español no debe perderlo por cambiar de
+            //  idioma.
             if (a.combo.toLowerCase().indexOf(q) !== -1
-                || a.hace.toLowerCase().indexOf(q) !== -1
+                || atajos.hace(a).toLowerCase().indexOf(q) !== -1
+                || (a.hace || "").toLowerCase().indexOf(q) !== -1
                 || a.seccion.toLowerCase().indexOf(q) !== -1)
                 salida.push(a)
         }

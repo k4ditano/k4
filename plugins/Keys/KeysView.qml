@@ -172,7 +172,11 @@ FadeIn {
                         }
 
                         IslandLabel {
-                            text: fila.modelData.hace
+                            //  Por el servicio, que es quien sabe juntar la
+                            //  frase traducida con su detalle crudo. Aquí se
+                            //  pintaba `hace` a secas y era español dentro de
+                            //  una barra en inglés.
+                            text: Atajos.hace(fila.modelData)
                             color: Theme.ink
                             font.pixelSize: 11
                             elide: Text.ElideRight

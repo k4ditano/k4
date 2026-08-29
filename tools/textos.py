@@ -200,9 +200,47 @@ RE_PAR = re.compile(r'"([^"\n]+)"\s*:\s*"([^"\n]*)"')
 RE_ENVUELTA = re.compile(r'Idioma\.t\(\s*(["\'])((?:[^"\'\\\n]|\\.)*?)\1')
 
 
+#  `T("…")` en los guiones de `tools/`: cadenas que nacen en Python pero se
+#  pintan en la barra —los verbos del panel de atajos, las etiquetas del
+#  portapapeles—. Ver la función `T` en esos ficheros para el porqué.
+RE_MARCADA = re.compile(r'\bT\(\s*(["\'])((?:[^"\'\\\n]|\\.)*?)\1\s*\)')
+
+
+def guiones():
+    base = os.path.join(RAIZ, "tools")
+    for n in sorted(os.listdir(base)):
+        #  Este fichero no: documenta la marca con un ejemplo, y recogerse a
+        #  sí mismo metía el «…» del comentario en la lista de cadenas.
+        if n.endswith(".py") and n != os.path.basename(__file__):
+            yield os.path.join(base, n)
+
+
+def sin_comentarios(texto):
+    """Las líneas de código, sin las de comentario.
+
+    Basta con las que EMPIEZAN por almohadilla: es donde se explica la marca,
+    y una `T("…")` a media línea después de un `#` no se ha visto nunca. Un
+    analizador de verdad para esto sería pagar mucho por muy poco.
+    """
+    return "\n".join(l for l in texto.split("\n")
+                     if not l.lstrip().startswith("#"))
+
+
 def recolectar():
     """Todas las cadenas de la interfaz, envueltas o no, con dónde salen."""
     encontradas = {}
+
+    #  Lo que marcan los guiones. Va primero para que su procedencia salga en
+    #  el informe aunque la misma cadena aparezca luego en un .qml.
+    for ruta in guiones():
+        try:
+            texto = open(ruta, encoding="utf-8").read()
+        except OSError:
+            continue
+        rel = os.path.relpath(ruta, RAIZ)
+        for m in RE_MARCADA.finditer(sin_comentarios(texto)):
+            if m.group(2):
+                encontradas.setdefault(m.group(2), set()).add(rel)
     for ruta in ficheros():
         try:
             texto = open(ruta, encoding="utf-8").read()

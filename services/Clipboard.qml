@@ -48,8 +48,11 @@ Singleton {
     function titulo(e) {
         if (!e)
             return ""
+        //  «Imagen» es lo que SE LEE, así que se traduce. `e.tipo` no: esa
+        //  es la clave con la que el guion marca la entrada y con la que se
+        //  compara aquí y en la vista.
         if (e.tipo === "imagen")
-            return "Imagen · " + tamaño(e.bytes)
+            return Idioma.t("Imagen") + " · " + tamaño(e.bytes)
 
         const lineas = e.resumen.split("\n")
         for (let i = 0; i < lineas.length; ++i) {
@@ -65,14 +68,17 @@ Singleton {
         return n + " B"
     }
 
+    //  Cuánto hace, en el idioma de la barra. Las abreviaturas también: «min»
+    //  y «h» se salvan en español y en inglés por casualidad, pero no en ruso,
+    //  y media columna traducida es peor que ninguna.
     function hace(cuando) {
         const s = Math.max(0, Date.now() / 1000 - cuando)
-        if (s < 60) return "ahora"
+        if (s < 60) return Idioma.t("ahora")
         const m = Math.floor(s / 60)
-        if (m < 60) return m + " min"
+        if (m < 60) return m + Idioma.t(" min")
         const h = Math.floor(m / 60)
-        if (h < 24) return h + " h"
-        return Math.floor(h / 24) + " d"
+        if (h < 24) return h + Idioma.t(" h")
+        return Math.floor(h / 24) + Idioma.t(" d")
     }
 
     // ── órdenes ───────────────────────────────────────────────────
