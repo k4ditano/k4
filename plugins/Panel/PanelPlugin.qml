@@ -28,8 +28,15 @@ K4Plugin {
     property var sistema: null
 
     islandWidth: 860
-    // la reproducción compacta y los accesos en rejilla piden menos alto
-    islandHeight: tab === "controls" ? 268 : 400
+    //  La reproducción compacta y los accesos en rejilla piden menos alto.
+    //
+    //  Las cuentas de «controles»: cabecera 30 + tarjetas 78 + fila de
+    //  reproducción 62 + accesos 40 + 3 huecos de 12 = 246 px de contenido.
+    //  Con 268 de island quedaban 14 arriba y solo 8 abajo, así que la fila
+    //  de accesos moría pegada al borde mientras los lados guardaban 18
+    //  —medido—. Con 20 abajo son 280, y las pestañas de detalle suben a
+    //  404 para conservar el mismo hueco de contenido que tenían.
+    islandHeight: tab === "controls" ? 280 : 404
 
     // solo mientras se escribe la contraseña de una red
     //  El teclado entero mientras está abierto: «opcional» es OnDemand y

@@ -16,7 +16,7 @@ FadeIn {
         anchors.leftMargin: 18
         anchors.rightMargin: 18
         anchors.topMargin: 14
-        anchors.bottomMargin: 16
+        anchors.bottomMargin: 20
         spacing: 12
 
         // ── cabecera
