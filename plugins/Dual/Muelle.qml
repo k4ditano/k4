@@ -17,6 +17,24 @@ K4.Ventana {
 
     required property var plugin
 
+    //  ── un solo centro para todo el dock ─────────────────────────
+    //
+    //  Las piezas del dock —la zona que recoge el ratón, el cuerpo y la fila
+    //  de iconos— tienen ANCHOS DISTINTOS, así que no pueden calcular su sitio
+    //  cada una por su cuenta aunque usen la misma fórmula: `(pantalla − w)·f`
+    //  con tres `w` distintas da tres sitios distintos. Solo coinciden con la
+    //  alineación al 50 % —o al 0—, que es justo con lo que se probó, y por eso
+    //  coló.
+    //
+    //  Descentrado se veía: los iconos dejaban de ir concéntricos con el
+    //  cuerpo, asomaban por fuera de la silueta ANTES de que terminara de
+    //  abrirse, y al asentarse pegaban un salto para recolocarse.
+    //
+    //  Así que el sitio lo decide UNA cuenta, la del cuerpo, y las demás piezas
+    //  se centran en ella. Un solo punto de verdad y no tres que se parecen.
+    readonly property real xCuerpo: plugin.xDock(muelle.width, muelle.anchoLleno)
+    readonly property real centroDock: xCuerpo + muelle.anchoLleno / 2
+
     nombre: "k4-dual-muelle"
 
     //  El dock vive en la capa `Top`, que es la de un panel: por encima de las
@@ -356,10 +374,10 @@ K4.Ventana {
         height: muelle.retirado ? 4
             : (muelle.hayDesplegable ? muelle.height : muelle.altoAhora)
         //  Por la alineación del dock y no al centro: ver `alineacionDock` en
-        //  el plugin. Las tres piezas de aquí —la zona de entrada, el cuerpo y
-        //  la fila de iconos— salen de la misma cuenta, que si discrepan el
-        //  ratón se recoge en un sitio y el dibujo está en otro.
-        x: muelle.plugin.xDock(parent.width, width)
+        //  el plugin. Centrada en el cuerpo, como todo lo demás: ver
+        //  `centroDock`. Si esta discrepara, el ratón se recogería en un sitio
+        //  y el dibujo estaría en otro.
+        x: muelle.centroDock - width / 2
         anchors.bottom: parent.bottom
         visible: muelle.mostrando
     }
@@ -419,7 +437,7 @@ K4.Ventana {
         //  se crea una vez y lo que se anima es geometría.
         width: muelle.anchoLleno
         height: muelle.alto + muelle.altoCajon
-        x: muelle.plugin.xDock(parent.width, width)
+        x: muelle.xCuerpo
         anchors.bottom: parent.bottom
         //  El escondite, por el ancla y no por una transformada: esta pieza ya
         //  lleva el espejo de aquí abajo, y en una lista de transformadas quién
@@ -518,8 +536,9 @@ K4.Ventana {
         Row {
             id: fila
             //  `capa` ocupa la ventana entera, así que centrarse en ella era
-            //  centrarse en la pantalla. La fila va donde va el cuerpo.
-            x: muelle.plugin.xDock(parent.width, width)
+            //  centrarse en la pantalla. La fila va centrada EN EL CUERPO, que
+            //  es más ancho que ella: con su propia cuenta se descolgaba.
+            x: muelle.centroDock - width / 2
             anchors.bottom: parent.bottom
             height: muelle.altoDock
             spacing: 0
