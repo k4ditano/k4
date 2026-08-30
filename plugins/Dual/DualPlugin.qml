@@ -387,17 +387,25 @@ K4.Plugin {
     //  siempre.
     //
     //  La GOTA no. Es una caída —cuello que adelgaza, cintura que se rompe,
-    //  aterrizaje contra el canto— y una caída tiene una dirección: la de la
-    //  gravedad. Con el dock en un lateral —o con la barra de canto, que la
-    //  soltaría tumbada— no hay hacia dónde caer, así que en vez de fingirlo se
-    //  cuenta con el viaje, que sí sabe ir hasta allí. Y no en seco: quedarse
-    //  sin nada era peor que contar lo mismo de otra manera.
+    //  aterrizaje contra el canto— y una caída tiene UN sentido: hacia abajo.
+    //  Así que solo se cuenta cuando la barra está arriba y el dock abajo, que
+    //  es la única pareja en la que caer significa algo. En cualquier otra se
+    //  cuenta con el viaje, que sí sabe ir a los cuatro bordes. Y no en seco:
+    //  quedarse sin nada era peor que contar lo mismo de otra manera.
+    //
+    //  Estuvo pedida solo por «que ninguno de los dos vaya de canto», y eso
+    //  dejaba pasar la barra ABAJO con el dock arriba: los dos horizontales,
+    //  las cuentas válidas… y la gota no caía. Grabado a 60 fps: el trozo se
+    //  quedaba pegado al canto de abajo —`y = 1063` en los cuarenta fotogramas
+    //  que duraba—, se deslizaba de lado hasta la x del dock y desaparecía, y
+    //  el dock salía arriba de la nada. Una caída hacia arriba no es media
+    //  caída: es ninguna.
     //
     //  Se intentó girar la escena de la gota entera. Funciona con los bordes
     //  ENFRENTADOS y se rompe con los adyacentes: el trozo sale ya de canto de
     //  una barra que es horizontal, y el salto está al principio, que es donde
     //  más canta. Una gota que cae de lado no es una gota.
-    readonly property bool gotaCabe: !dockVertical && !barraVertical
+    readonly property bool gotaCabe: ladoBarra === "arriba" && ladoDock === "abajo"
     readonly property string efectoActivo: (efectoPedido === "gota" && !gotaCabe)
         ? "viaje" : efectoPedido
     readonly property bool esGota: efectoActivo === "gota"
