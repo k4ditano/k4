@@ -146,7 +146,10 @@ Item {
         return { x: gota._x0, y: gota._y1 - u }
     }
 
-    readonly property var puntos: {
+    //  El camino Y el sentido en que se recorre, juntos: el ángulo del trozo
+    //  necesita el sentido, y calcularlo aparte sería tener dos veces la misma
+    //  decisión con dos sitios donde discrepar.
+    readonly property var ruta: {
         const s0 = gota._s(gota.salida)
         const s1 = gota._s(gota.destino)
         //  Cada trozo va por donde MENOS le queda, y `lado` solo desempata.
@@ -203,8 +206,36 @@ Item {
             fuera.push(paradas[i].p)
 
         fuera.push({ x: gota.destino.x, y: gota.destino.y })
-        return fuera
+        return { puntos: fuera, sentido: dir }
     }
+
+    readonly property var puntos: gota.ruta.puntos
+
+    //  ── con qué inclinación va ───────────────────────────────────
+    //
+    //  El lado fundido tiene que mirar SIEMPRE hacia afuera, así que el ángulo
+    //  es el del borde por el que va: 0 arriba, 90 a la derecha, 180 abajo y
+    //  −90 a la izquierda. Se cuenta desde el borde del que SE DESPEGA y se le
+    //  suma un cuarto de vuelta por esquina doblada.
+    //
+    //  Antes se contaba desde cero a secas, que es como decir «la barra está
+    //  arriba». Con la barra de canto los trozos salían tumbados de un borde
+    //  vertical y llegaban de pie al de abajo: dos torres corriendo por el
+    //  suelo. Visto en pantalla, no deducido.
+    readonly property real anguloSalida: {
+        const s = gota._s(gota.salida)
+        if (s < gota._w) return 0
+        if (s < gota._w + gota._h) return 90
+        if (s < 2 * gota._w + gota._h) return 180
+        return -90
+    }
+
+    //  Y el cuarto de vuelta lo da el SENTIDO DE LA MARCHA, no qué trozo es.
+    //  Yendo con las agujas se dobla hacia la derecha y contra ellas hacia la
+    //  izquierda, y eso vale igual para los dos trozos. Sacándolo de `lado`
+    //  coincidía solo mientras cada trozo se iba por su costado; en cuanto los
+    //  dos toman el mismo —bordes adyacentes— uno de ellos giraba al revés.
+    readonly property real giro: gota.ruta.sentido > 0 ? 90 : -90
 
     function _len(a, b) { return Math.hypot(b.x - a.x, b.y - a.y) }
 
@@ -254,7 +285,8 @@ Item {
     //  reparten poco a poco, así que el giro acompaña a la curva en vez de
     //  pegar un salto al entrar y otro al salir.
     function estadoEn(u) {
-        const giro = gota.lado < 0 ? -90 : 90
+        const base = gota.anguloSalida
+        const giro = gota.giro
         let resto = Math.max(0, Math.min(1, u)) * gota.largoTotal
         let esquinas = 0
         const ts = gota.tramos
@@ -272,12 +304,12 @@ Item {
             if (tr.tipo === "recta")
                 return { x: tr.a.x + (tr.b.x - tr.a.x) * k,
                          y: tr.a.y + (tr.b.y - tr.a.y) * k,
-                         ang: esquinas * giro }
+                         ang: base + esquinas * giro }
             const m = 1 - k
             return {
                 x: m * m * tr.a.x + 2 * m * k * tr.c.x + k * k * tr.b.x,
                 y: m * m * tr.a.y + 2 * m * k * tr.c.y + k * k * tr.b.y,
-                ang: (esquinas + k) * giro
+                ang: base + (esquinas + k) * giro
             }
         }
         //  Al final, tantos cuartos de vuelta como esquinas tenga el camino.
@@ -288,7 +320,7 @@ Item {
             if (ts[j].tipo === "codo")
                 codos += 1
         const f = gota.puntos[gota.puntos.length - 1]
-        return { x: f.x, y: f.y, ang: codos * giro }
+        return { x: f.x, y: f.y, ang: base + codos * giro }
     }
 
     readonly property var ahora: gota.estadoEn(gota.t)
