@@ -62,23 +62,55 @@ K4.Ventana {
 
     Item { id: nada; width: 0; height: 0 }
 
-    //  Los dos trozos acaban A RAS del borde de abajo —a medio grosor del
-    //  canto, igual que iban por el lateral—, no centrados en el alto del dock.
-    readonly property real reposoY: height - K4.Tema.altoPlegado / 2
-
     //  0 arriba (en la barra) · 1 abajo (juntas).
     property real t: 0
+
+    //  ── a dónde van los trozos ──────────────────────────────────
+    //
+    //  El destino lo pone la ESCENA y no el plugin porque hace falta el tamaño
+    //  de la pantalla y el plugin solo guarda su nombre. Aquí la ventana ES la
+    //  pantalla, así que sale de `width`/`height` sin preguntarle a nadie.
+    //
+    //  Sale del mismo `centroDock()` y del mismo ancho que ancla el muelle: si
+    //  discreparan, los trozos aterrizarían a un palmo de donde nace el dock y
+    //  se vería el salto.
+    //
+    //  Y a RAS del canto —a medio grosor—, que es como iban por el borde: no
+    //  centrados en lo hondo que sea el dock.
+    readonly property real ras: K4.Tema.altoPlegado / 2
+
+    readonly property point centroDock: {
+        const p = escena.plugin
+        const largo = p.dockVertical ? escena.height : escena.width
+        const c = p.centroDock(largo, p.anchoDock)
+        if (p.ladoDock === "arriba")
+            return Qt.point(c, escena.ras)
+        if (p.ladoDock === "abajo")
+            return Qt.point(c, escena.height - escena.ras)
+        if (p.ladoDock === "izquierda")
+            return Qt.point(escena.ras, c)
+        return Qt.point(escena.width - escena.ras, c)
+    }
+
+    //  Y las dos mitades del dock, separadas por su eje largo igual que se
+    //  separaron arriba. El trozo de la izquierda va al extremo que le pilla
+    //  más cerca —el de menos coordenada— y por eso los dos caminos no se
+    //  cruzan por mucho que vayan los dos por el mismo costado.
+    readonly property point destinoIzq: escena.plugin.dockVertical
+        ? Qt.point(centroDock.x, centroDock.y - escena.plugin.largoTrozo / 2)
+        : Qt.point(centroDock.x - escena.plugin.largoTrozo / 2, centroDock.y)
+
+    readonly property point destinoDer: escena.plugin.dockVertical
+        ? Qt.point(centroDock.x, centroDock.y + escena.plugin.largoTrozo / 2)
+        : Qt.point(centroDock.x + escena.plugin.largoTrozo / 2, centroDock.y)
 
     // ── los dos trozos ──────────────────────────────────────────
     Gota {
         id: izquierda
         lado: -1
         largoTrozo: escena.plugin.largoTrozo
-        salidaX: escena.plugin.origenIzqX
-        salidaY: escena.plugin.origenY
-        finalX: escena.plugin.centroDock(escena.width, escena.plugin.anchoDock)
-            - escena.plugin.largoTrozo / 2
-        finalY: escena.reposoY
+        salida: escena.plugin.salidaIzq
+        destino: escena.destinoIzq
         t: escena.t
     }
 
@@ -86,11 +118,8 @@ K4.Ventana {
         id: derecha
         lado: 1
         largoTrozo: escena.plugin.largoTrozo
-        salidaX: escena.plugin.origenDerX
-        salidaY: escena.plugin.origenY
-        finalX: escena.plugin.centroDock(escena.width, escena.plugin.anchoDock)
-            + escena.plugin.largoTrozo / 2
-        finalY: escena.reposoY
+        salida: escena.plugin.salidaDer
+        destino: escena.destinoDer
         t: escena.t
     }
 

@@ -104,8 +104,8 @@ K4.Plugin {
     //  0 %» quiere decir «su borde izquierdo contra el canto»— y quien tiene
     //  que aterrizar en el mismo sitio es el viaje. Con el ancho de la barra en
     //  su lugar, centrado daba igual —los dos son `largo / 2`— pero corrido a
-    //  un extremo los trozos caían donde el dock NO estaba: medido con el dock
-    //  al 0 %, aterrizaban en 88 y el dock nacía en 284.
+    //  un extremo los trozos caían donde el dock NO estaba, y el relevo pegaba
+    //  el salto que se veía.
     readonly property real anchoDock: muelle.anchoLleno
     readonly property bool fuera: modo !== "barra"
 
@@ -196,6 +196,14 @@ K4.Plugin {
     //  origenes y no de una property más para que no puedan discrepar.
     readonly property real origenX: (origenIzqX + origenDerX) / 2
 
+    //  Y de ahí, los dos puntos de salida en coordenadas de pantalla. Los pide
+    //  la escena tal cual: el trozo ya no sabe por qué borde va, solo de dónde
+    //  sale y a dónde tiene que llegar.
+    readonly property point salidaIzq: barraVertical
+        ? Qt.point(origenY, origenIzqX) : Qt.point(origenIzqX, origenY)
+    readonly property point salidaDer: barraVertical
+        ? Qt.point(origenY, origenDerX) : Qt.point(origenDerX, origenY)
+
     //  Y en qué pantalla pasa todo. Con dos monitores esto no es un detalle:
     //  `K4.Isla.rect` da la island de la pantalla PRINCIPAL, y si la barra que
     //  se va está en la otra, las gotas salían de un punto que ni siquiera cae
@@ -217,7 +225,12 @@ K4.Plugin {
         //  sobre ellos antes de partirse, igual que abajo se ve el dock
         //  recogiéndose sobre ellos antes de salir. Midiendo lo mismo que la
         //  barra no había nada que encoger y el paso se daba de golpe.
-        anchoLleno = r.ancho - ala * 2
+        //  Por el eje LARGO de la barra, que en un lateral es el alto. Con
+        //  `r.ancho` a secas, una barra vertical daba un trozo del ancho de la
+        //  píldora —lo estrecho— y los dos puntos de salida separados a lo
+        //  ancho de algo que no se extiende a lo ancho.
+        const largoBarra = barraVertical ? r.alto : r.ancho
+        anchoLleno = largoBarra - ala * 2
         //  Con un suelo: por debajo de unos 56 px el trozo deja de parecerse a
         //  un cacho de barra por mucho que las esquinas se acoten.
         //  Anchos de sobra para que se lean APLANADOS: con la píldora desnuda
@@ -233,11 +246,14 @@ K4.Plugin {
         //  contracción de arriba era en realidad un ensanchamiento, y al
         //  partirse y al reencontrarse quedaban desproporcionados. El suelo de
         //  ahora es solo el mínimo para que la silueta se trace.
-        largoTrozo = Math.max(56, Math.round(r.ancho * 0.36))
-        const centro = r.x + r.ancho / 2
+        largoTrozo = Math.max(56, Math.round(largoBarra * 0.36))
+        //  `origenIzqX`/`origenDerX` corren por el eje largo y `origenY` por el
+        //  corto, sea cual sea el borde: así los dos trozos se separan SIEMPRE
+        //  a lo largo de la barra, que es por donde se parte.
+        const centro = barraVertical ? (r.y + r.alto / 2) : (r.x + r.ancho / 2)
         origenIzqX = centro - largoTrozo / 2
         origenDerX = centro + largoTrozo / 2
-        origenY = r.y + r.alto / 2
+        origenY = barraVertical ? (r.x + r.ancho / 2) : (r.y + r.alto / 2)
     }
 
     readonly property var preferidas: [
@@ -361,19 +377,29 @@ K4.Plugin {
     property string efectoPedido: "viaje"
     property bool ambasActiva: false
 
-    //  ── de canto, el cambio se hace en seco ──────────────────────
+    //  ── qué efecto se puede contar en cada pareja de bordes ──────
     //
-    //  La gota y el viaje están escritos para el eje vertical: la gota es una
-    //  CAÍDA —cuello que adelgaza, cintura que se rompe, aterrizaje contra el
-    //  canto— y el viaje manda dos trozos por los bordes hasta juntarse abajo.
-    //  Nada de eso es una dirección que se pueda girar: es gravedad.
+    //  El VIAJE vale para todas. Lo que cuenta es «el trozo se despega y se va
+    //  bordeando la pantalla hasta el otro», y eso no tiene eje: el camino se
+    //  calcula del punto de salida al de destino por el perímetro, y la pieza
+    //  gira al doblar cada esquina porque el ángulo sale de cuántas lleva
+    //  dobladas. Con la barra arriba y el dock abajo da exactamente lo de
+    //  siempre.
     //
-    //  Así que con el dock en un lateral se hace en seco, y no se finge. Una
-    //  gota que cae de lado no es una gota, es una etiqueta que pone AGUA.
+    //  La GOTA no. Es una caída —cuello que adelgaza, cintura que se rompe,
+    //  aterrizaje contra el canto— y una caída tiene una dirección: la de la
+    //  gravedad. Con el dock en un lateral —o con la barra de canto, que la
+    //  soltaría tumbada— no hay hacia dónde caer, así que en vez de fingirlo se
+    //  cuenta con el viaje, que sí sabe ir hasta allí. Y no en seco: quedarse
+    //  sin nada era peor que contar lo mismo de otra manera.
     //
-    //  Va aquí y no en cada sitio que pregunta por el efecto: son seis, y el
-    //  que se olvidara pintaría media escena de un efecto que no está pasando.
-    readonly property string efectoActivo: dockVertical ? "seco" : efectoPedido
+    //  Se intentó girar la escena de la gota entera. Funciona con los bordes
+    //  ENFRENTADOS y se rompe con los adyacentes: el trozo sale ya de canto de
+    //  una barra que es horizontal, y el salto está al principio, que es donde
+    //  más canta. Una gota que cae de lado no es una gota.
+    readonly property bool gotaCabe: !dockVertical && !barraVertical
+    readonly property string efectoActivo: (efectoPedido === "gota" && !gotaCabe)
+        ? "viaje" : efectoPedido
     readonly property bool esGota: efectoActivo === "gota"
 
     //  ── el reparto del tiempo de la gota ─────────────────────────
@@ -411,6 +437,9 @@ K4.Plugin {
         return (v === "abajo" || v === "izquierda" || v === "derecha")
             ? v : "arriba"
     }
+
+    readonly property bool barraVertical: ladoBarra === "izquierda"
+                                         || ladoBarra === "derecha"
 
     readonly property var opuestos: ({ arriba: "abajo", abajo: "arriba",
                                        izquierda: "derecha",
