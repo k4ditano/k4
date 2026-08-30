@@ -99,6 +99,53 @@ Wrap every user-facing string in `K4.Idioma.t("…")` and format with
 `K4.Idioma.f("%1 things", n)`. Source strings are Spanish; `en.json` and
 friends translate, and missing entries fall back to the original.
 
+`python3 tools/textos.py` reports coverage per language and `textos.py
+plantilla` rebuilds the template a translator fills in.
+
+### Strings that are born in a script
+
+A tool under `tools/` is a command-line program and speaks Spanish — its
+audience is whoever runs it. But some of what it prints is not for that
+person: it travels up as JSON and the BAR paints it, in whatever language the
+bar is set to. The shortcut panel's verbs and the clipboard's type labels are
+exactly that.
+
+Those are interface strings even though they live in Python, and they have to
+be marked, because `tools/textos.py` reads `.qml` and would never see them:
+
+```python
+#  Identity function. It exists to MARK: textos.py collects exactly this call.
+def T(s):
+    return s
+
+
+VERBOS = {
+    "window.close": T("Cerrar la ventana"),
+    "focus": T("Cambiar el foco"),
+}
+```
+
+Marked, they count towards coverage like any other string. Unmarked they do
+not, which does not mean "untranslated" — it means **nobody will ever be told
+they are untranslated**, and one day they show up in Spanish inside an English
+bar. That is how 23 of them went unnoticed.
+
+Two rules that follow from how they are consumed:
+
+- **Send the phrase and its detail apart.** `"Cerrar la ventana"` is prose and
+  gets translated; `left`, `togglesplit` or a workspace number are
+  identifiers the user wrote in their own config, and translating those would
+  be inventing a name for their setup. Whoever paints joins them — it is the
+  only side that knows the language.
+- **Keep punctuation out of the translatable string.** Shipping
+  `"Cerrar la ventana · %1"` looks convenient and translates nothing: that
+  composed string is not in the table, only the phrase is. And it should not
+  be, or every verb would need a second entry for its version with a detail.
+
+This applies to the repo's own `tools/`. A plugin that ships its own script is
+not scanned — route its user-facing text through `K4.Idioma.t()` on the QML
+side instead, where it will be picked up.
+
 ## Processes: `K4.Process`
 
 `K4.Process` wraps an external process and provides two output modes:

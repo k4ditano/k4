@@ -14,6 +14,26 @@ cadenas repartidas por setenta ficheros, inventar un identificador para cada
 una es mucho trabajo, se desincroniza sola y deja al traductor mirando
 etiquetas en vez de frases. Así, además, lo que no esté traducido sale en
 español en vez de salir roto.
+
+De dónde salen las cadenas
+--------------------------
+
+De los `.qml` de widgets/, services/ y plugins/ —las propiedades conocidas
+(`text:`, `title:`…) y cualquier `Idioma.t("…")` esté donde esté—, y además de
+los guiones de `tools/` que marquen las suyas con `T("…")`.
+
+Esa marca hace falta porque un guion de aquí es un programa de línea de
+órdenes y habla español, pero parte de lo que imprime NO es para quien lo
+ejecuta: sube en JSON y lo pinta la barra, en el idioma que le hayan puesto.
+Los verbos del panel de atajos y las etiquetas del portapapeles son eso.
+
+`T` no hace nada —devuelve lo que le den— y por eso sirve de clave igual que
+antes. Está solo para que esta herramienta las vea. Sin marcar no cuentan, y
+no contar no significa «sin traducir»: significa que NADIE va a avisar de que
+están sin traducir. Así pasaron 23 desapercibidas.
+
+Este fichero no se recoge a sí mismo, y las líneas de comentario tampoco: si
+no, el ejemplo de aquí arriba entraría en la lista.
 """
 
 import json
