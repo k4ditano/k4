@@ -327,9 +327,26 @@ Rectangle {
             //  la opción. Se acota AQUÍ además de en quien
             //  guarde: el pulsador no puede ofrecer un valor
             //  que luego alguien tenga que corregir.
+            //
+            //  Y al SIGUIENTE punto de la rejilla, no al valor
+            //  actual más el paso. Sumando a pelo, un valor que
+            //  no esté en la rejilla no vuelve a ella nunca: con
+            //  la alineación en 48 y paso de 5, el más lleva a 53
+            //  y el menos a 43, y el 50 —el centro, que es lo que
+            //  quiere casi todo el mundo— queda entre dos
+            //  pulsaciones para siempre. Pasó en cuanto se
+            //  arrastró la barra a un punto cualquiera.
+            //
+            //  La rejilla se cuenta desde `min` y no desde cero,
+            //  que hay opciones que no empiezan ahí.
             function paso(cuantos) {
                 const salto = opcion.modelData.paso || 1
-                let n = numerico.valor + cuantos * salto
+                const base = opcion.modelData.min !== undefined
+                    ? opcion.modelData.min : 0
+                const cuantos_ = (numerico.valor - base) / salto
+                let n = base + salto * (cuantos > 0
+                    ? Math.floor(cuantos_) + 1
+                    : Math.ceil(cuantos_) - 1)
                 if (opcion.modelData.min !== undefined)
                     n = Math.max(opcion.modelData.min, n)
                 if (opcion.modelData.max !== undefined)
