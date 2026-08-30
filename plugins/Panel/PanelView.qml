@@ -161,6 +161,13 @@ FadeIn {
                 id: wifiTile
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                //  Teñida cuando la radio está APAGADA, no cuando está puesta.
+                //  Esta tarjeta existe para contestar «¿estoy conectado?», y
+                //  la respuesta que hay que cazar al vuelo es la que no
+                //  esperas. Encendida es lo normal: teñirla sería pintar de
+                //  color el noventa y nueve por ciento del tiempo.
+                activa: !Wifi.activada
+                colorActiva: Theme.realce(Theme.yellow)
                 // el círculo del icono lleva su propio MouseArea encima, así
                 // que pulsarlo conmuta la radio y el resto abre el detalle
                 onPulsada: view.plugin.openTab("wifi")
@@ -301,6 +308,12 @@ FadeIn {
                 //  detalle, igual que en el de Wi‑Fi.
                 onPulsada: view.plugin.openTab("sonido")
 
+                //  Y teñida al silenciar, por la misma razón: es el estado que
+                //  sorprende —«¿por qué no suena nada?»— y hasta ahora era
+                //  invisible aquí, ver el subtítulo de abajo.
+                activa: Audio.muted
+                colorActiva: Theme.realce(Theme.red)
+
                 ColumnLayout {
                     anchors.left: parent.left
                     anchors.right: parent.right
@@ -319,9 +332,16 @@ FadeIn {
                         IslandLabel {
                             //  Qué aparato suena, que es lo que se viene a
                             //  mirar aquí; el volumen ya lo dice la barra.
-                            text: Audio.salidaActiva
+                            //
+                            //  Salvo silenciado, que MANDA sobre el aparato.
+                            //  «Silenciado» solo salía cuando no había salida
+                            //  activa —o sea, casi nunca—, así que con unos
+                            //  cascos puestos la tarjeta decía «G733» tan
+                            //  tranquila y del silencio no se enteraba nadie.
+                            text: Audio.muted ? Idioma.t("Silenciado")
+                                : Audio.salidaActiva
                                 ? Audio.nombreDe(Audio.salidaActiva)
-                                : (Audio.muted ? Idioma.t("Silenciado") : Audio.volume + "%")
+                                : Audio.volume + "%"
                             color: Theme.muted
                             font.pixelSize: 11
                             elide: Text.ElideRight

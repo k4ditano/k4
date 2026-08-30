@@ -62,6 +62,21 @@ Singleton {
                                     tinteColor.b, tinteFuerza))
     }
 
+    //  ── una tarjeta que quiere que la mires ──────────────────────
+    //
+    //  La superficie de siempre, teñida con un color que significa algo. Para
+    //  el estado que NO te esperas —el sonido silenciado, la radio apagada—,
+    //  no para el estado normal: si la tarjeta de Wi‑Fi estuviera azul todo el
+    //  día, el azul dejaría de decir nada. Una señal que está siempre puesta
+    //  no es una señal.
+    //
+    //  El 0,16 es lo justo para que se distinga de un vistazo sin convertir el
+    //  centro de control en un semáforo, y va aquí y no en cada tarjeta para
+    //  que todas griten lo mismo de fuerte.
+    function realce(color) {
+        return Qt.tint(surface, Qt.rgba(color.r, color.g, color.b, 0.16))
+    }
+
     //  `fuerza` 0..1 se recorta a 0.45; `duracionMs` 0 es «hasta destintar».
     //  Última llamada gana: el arbitraje fino no compensa aquí, porque teñir
     //  es cosmético y quien molesta se apaga en Ajustes.
