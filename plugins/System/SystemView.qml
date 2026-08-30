@@ -43,32 +43,12 @@ FadeIn {
                 Layout.alignment: Qt.AlignVCenter
             }
 
-            IslandLabel {
-                text: Sistema.cpuHilos > 0 ? Sistema.cpuHilos + Idioma.t(" hilos") : ""
-                color: Theme.dim
-                font.pixelSize: 10
-                Layout.alignment: Qt.AlignVCenter
-            }
-
+            //  Las cifras que no cambian en dos minutos —disco, nvme, hilos—
+            //  ya no viven aquí: se apretaban a 10 px contra la × en la
+            //  esquina, que es donde va lo que no importa, y sí importan. Han
+            //  bajado a su propia fila (ver «tres cifras que se miran de
+            //  refilón»), y la cabecera se queda con el título y el cierre.
             Item { Layout.fillWidth: true }
-
-            // el disco no cambia en dos minutos: no merece gráfica, solo cifra
-            IslandLabel {
-                visible: Sistema.discoTotal > 0
-                text: Idioma.t("disco ") + Math.round(Sistema.discoUsado) + " / "
-                    + Math.round(Sistema.discoTotal) + Idioma.t(" GB")
-                color: Theme.dim
-                font.pixelSize: 10
-                Layout.alignment: Qt.AlignVCenter
-            }
-
-            IslandLabel {
-                visible: Sistema.tempNvme > 0
-                text: Idioma.t("nvme ") + Sistema.grados(Sistema.tempNvme)
-                color: Theme.dim
-                font.pixelSize: 10
-                Layout.alignment: Qt.AlignVCenter
-            }
 
             MediaButton {
                 glyph: Theme.ico.close
@@ -211,6 +191,66 @@ FadeIn {
                                 if (tarjeta.esGpu) return Sistema.gpuHist
                                 return Sistema.redHist
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        //  ── tres cifras que se miran de refilón ───────────────────
+        //
+        //  Disco, temperatura del disco y núcleos: lo que no se mueve en dos
+        //  minutos y por eso no merece gráfica, pero sí merece leerse. Con la
+        //  misma forma de tarjeta que las cuatro de arriba —rótulo tenue
+        //  encima, cifra debajo— para que la pantalla tenga UNA gramática y no
+        //  dos: lo de arriba se vigila, esto se consulta.
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.topMargin: 1
+            spacing: 8
+
+            Repeater {
+                model: [
+                    { clave: "disco", nombre: Idioma.t("Disco"),
+                      hay: Sistema.discoTotal > 0,
+                      valor: Math.round(Sistema.discoUsado) + " / "
+                             + Math.round(Sistema.discoTotal) + Idioma.t(" GB") },
+                    { clave: "nvme", nombre: Idioma.t("Temperatura"),
+                      hay: Sistema.tempNvme > 0,
+                      valor: Sistema.grados(Sistema.tempNvme) },
+                    { clave: "hilos", nombre: Idioma.t("Núcleos"),
+                      hay: Sistema.cpuHilos > 0,
+                      valor: String(Sistema.cpuHilos) }
+                ]
+
+                delegate: Rectangle {
+                    required property var modelData
+                    //  La que no tenga dato no deja un hueco: se va y las
+                    //  otras se reparten el ancho. Un portátil sin nvme no
+                    //  tiene por qué enseñar una tarjeta con un guion.
+                    visible: modelData.hay
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 38
+                    radius: 11
+                    color: Theme.surface
+
+                    ColumnLayout {
+                        anchors.centerIn: parent
+                        spacing: 0
+
+                        IslandLabel {
+                            text: modelData.nombre
+                            color: Theme.dim
+                            font.pixelSize: 9
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+
+                        IslandLabel {
+                            text: modelData.valor
+                            color: Theme.ink
+                            font.pixelSize: 11
+                            font.weight: Font.DemiBold
+                            Layout.alignment: Qt.AlignHCenter
                         }
                     }
                 }
