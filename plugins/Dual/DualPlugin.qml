@@ -96,6 +96,17 @@ K4.Plugin {
     //  Lo que medía la barra al empezar, y lo que miden los dos trozos juntos.
     property real anchoLleno: 0
     readonly property real anchoSemilla: largoTrozo * 2 - ala * 2
+
+    //  Lo ANCHO QUE ES EL DOCK a lo largo de su borde, que no es lo ancho que
+    //  era la barra: sale del número de aplicaciones, no del rect de la island.
+    //
+    //  Hace falta fuera del muelle porque el dock se coloca por ese ancho —«al
+    //  0 %» quiere decir «su borde izquierdo contra el canto»— y quien tiene
+    //  que aterrizar en el mismo sitio es el viaje. Con el ancho de la barra en
+    //  su lugar, centrado daba igual —los dos son `largo / 2`— pero corrido a
+    //  un extremo los trozos caían donde el dock NO estaba: medido con el dock
+    //  al 0 %, aterrizaban en 88 y el dock nacía en 284.
+    readonly property real anchoDock: muelle.anchoLleno
     readonly property bool fuera: modo !== "barra"
 
     //  «Ya está puesto abajo»: el dock ha llegado Y ha terminado de crecer.
