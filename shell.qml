@@ -285,7 +285,16 @@ Scope {
 
             //  La barra vive en el borde que diga Ajustes. El resto del
             //  fichero pregunta `abajo` en vez de repetir la comparación.
-            readonly property bool abajo: Settings.posicionBarra === "abajo"
+            //  El borde en el que vive la BARRA, que es la casa de la píldora.
+            //  Lo que se abre puede tener otro (ver `ladoPedido`).
+            readonly property string ladoBarra: {
+                const v = Settings.posicionBarra
+                return (v === "abajo" || v === "izquierda" || v === "derecha")
+                    ? v : "arriba"
+            }
+            readonly property bool barraVertical: ladoBarra === "izquierda"
+                                                  || ladoBarra === "derecha"
+            readonly property bool abajo: ladoBarra === "abajo"
 
             // Solo la pantalla propietaria enseña la acción global. Las demás
             // siguen con su píldora, que sí pertenece a todos los monitores.
@@ -311,7 +320,7 @@ Scope {
             readonly property string ladoPedido: {
                 const p = pluginVisible
                 const l = p ? Settings.ladoDe(p.name) : ""
-                return l.length > 0 ? l : (abajo ? "abajo" : "arriba")
+                return l.length > 0 ? l : ladoBarra
             }
 
             //  ── cambiar de borde se CORTA, no se anima ────────────────
@@ -332,10 +341,27 @@ Scope {
             //  le acompaña de un corte, sin Behavior: se pasa de la vista en su
             //  borde a la píldora en el suyo en un fotograma. Un corte limpio
             //  se lee; una morfosis a través de la pantalla, no.
-            property string ladoIsla: abajo ? "abajo" : "arriba"
+            property string ladoIsla: ladoBarra
             onLadoPedidoChanged: ladoIsla = ladoPedido
             readonly property bool islaVertical: ladoIsla === "izquierda"
                                                  || ladoIsla === "derecha"
+
+            //  ── de canto: la píldora gira, las vistas no ──────────────
+            //
+            //  En un lateral hay dos cosas distintas y conviene no mezclarlas:
+            //
+            //   · una VISTA que se abre ahí es un panel, y se apoya en el borde
+            //     conservando su maquetación: el lanzador sigue siendo ancho.
+            //   · la PÍLDORA es una tira, y una tira en un lateral va de canto.
+            //     Su contenido —carátula, hora, indicadores— es una fila, y
+            //     girarla un cuarto de vuelta la reaprovecha entera en vez de
+            //     inventar una segunda maquetación que habría que mantener al
+            //     lado de la primera.
+            //
+            //  Lo que las separa es el alto que piden: la píldora no pasa de la
+            //  franja plegada y cualquier cosa que se despliegue, sí.
+            readonly property bool girada: islaVertical && !!pluginVisible
+                && pluginVisible.islandHeight <= Theme.baseHeight
 
             //  Y por dónde de ese borde. La de la vista si la trae; si no, la
             //  de la barra —que incluye lo que un plugin pida temporalmente
@@ -536,10 +562,18 @@ Scope {
                     && !panelWindow.sinBarra && !panelWindow.hayQueEnsenar
             }
 
-            anchors.top: !abajo
-            anchors.bottom: abajo
-            anchors.left: true
-            anchors.right: true
+            //  Tres bordes anclados y uno libre, y el libre es el de enfrente
+            //  del que ocupa la barra: sin un borde libre no hay borde del que
+            //  quitar sitio y el compositor ignora la zona exclusiva.
+            //
+            //    arriba     top + left + right      (bottom libre)
+            //    abajo      bottom + left + right   (top libre)
+            //    izquierda  left + top + bottom     (right libre)
+            //    derecha    right + top + bottom    (left libre)
+            anchors.top: barraVertical || !abajo
+            anchors.bottom: barraVertical || abajo
+            anchors.left: !barraVertical || ladoBarra === "izquierda"
+            anchors.right: !barraVertical || ladoBarra === "derecha"
             color: "transparent"
             aboveWindows: true
             focusable: true
@@ -635,7 +669,13 @@ Scope {
             //  con el que miden los plugins (K4.Tema.altoMaximo). Lo que cambia
             //  es de quién es el techo — era el de la superficie y ahora es el
             //  de la island.
+            //  Y el eje que no atan las anclas lo da la pantalla. Se ponen los
+            //  dos: con la barra arriba manda el alto —el ancho lo dan las
+            //  anclas de los lados— y de canto es al revés. Poner el que no
+            //  toca no estorba, porque un eje anclado por sus dos extremos
+            //  ignora su tamaño implícito.
             implicitHeight: panelWindow.screen.height
+            implicitWidth: panelWindow.screen.width
             //  Sin la island, la ventana no acepta ni un clic.
             //
             //  No basta con dejar de dibujarla: la región de entrada seguía
@@ -717,13 +757,18 @@ Scope {
             //  una tira de punta a punta se traga los clics de todo el borde
             //  —las pestañas del navegador, la cruz de una ventana maximizada—
             //  y eso no lo ha pedido nadie.
+            //  Y por el borde que ocupe la barra: de canto es una tira
+            //  vertical, tan alta como la island y de cuatro píxeles de ancho.
             Item {
                 id: filo
-                x: island.x
-                width: island.width
-                height: 4
-                anchors.top: panelWindow.abajo ? undefined : parent.top
-                anchors.bottom: panelWindow.abajo ? parent.bottom : undefined
+                x: panelWindow.barraVertical
+                    ? (panelWindow.ladoBarra === "derecha"
+                       ? parent.width - width : 0)
+                    : island.x
+                y: panelWindow.barraVertical ? island.y
+                    : (panelWindow.abajo ? parent.height - height : 0)
+                width: panelWindow.barraVertical ? 4 : island.width
+                height: panelWindow.barraVertical ? island.height : 4
                 //  Invisible, pero NO `visible: false`: un item oculto no
                 //  recibe ratón, y recibirlo es para lo único que existe.
                 opacity: 0
@@ -847,12 +892,18 @@ Scope {
                 //  padre en los dos ejes: una vista más honda que la pantalla
                 //  —hoy ninguna, el techo son los 880 de Theme— no puede
                 //  empujar la island fuera de la superficie donde vive.
-                readonly property real anchoObjetivo: panelWindow.islaVertical
-                    ? Math.min(parent.width, panelWindow.anchoIsla)
-                    : Math.min(parent.width, panelWindow.anchoIsla + Theme.wing * 2)
-                readonly property real altoObjetivo: panelWindow.islaVertical
-                    ? Math.min(parent.height, panelWindow.altoIsla + Theme.wing * 2)
-                    : Math.min(parent.height, panelWindow.altoIsla)
+                //  De canto se cambian los papeles: lo hondo pasa a ser el
+                //  ALTO de la píldora —su franja de 34— y lo largo, su ancho.
+                readonly property real anchoObjetivo: panelWindow.girada
+                    ? Math.min(parent.width, panelWindow.altoIsla)
+                    : (panelWindow.islaVertical
+                       ? Math.min(parent.width, panelWindow.anchoIsla)
+                       : Math.min(parent.width, panelWindow.anchoIsla + Theme.wing * 2))
+                readonly property real altoObjetivo: panelWindow.girada
+                    ? Math.min(parent.height, panelWindow.anchoIsla + Theme.wing * 2)
+                    : (panelWindow.islaVertical
+                       ? Math.min(parent.height, panelWindow.altoIsla + Theme.wing * 2)
+                       : Math.min(parent.height, panelWindow.altoIsla))
 
                 //  El corte: mientras dura, las animaciones de tamaño Y de
                 //  posición se apagan, y la island salta de una vez a lo que
@@ -1037,10 +1088,23 @@ Scope {
                     //  justo lo que este modo viene a no hacer.
                     Translate {
                         id: retiroTr
-                        y: panelWindow.retirada
+                        //  Se va POR SU BORDE, así que el eje del escondite es
+                        //  el del borde: de canto sale por los lados.
+                        x: panelWindow.retirada && panelWindow.barraVertical
+                            ? (panelWindow.ladoBarra === "derecha"
+                               ? island.width + 6 : -(island.width + 6))
+                            : 0
+                        y: panelWindow.retirada && !panelWindow.barraVertical
                             ? (panelWindow.abajo ? island.height + 6
                                                  : -(island.height + 6))
                             : 0
+
+                        Behavior on x {
+                            NumberAnimation {
+                                duration: 360
+                                easing.type: Easing.OutCubic
+                            }
+                        }
 
                         //  La misma curva en los dos sentidos, y no una por
                         //  sentido atada a `retirada`: la `y` se recalcula
@@ -1233,9 +1297,22 @@ Scope {
                     Item {
                         width: panelWindow.anchoIsla
                         height: panelWindow.altoIsla
-                        x: panelWindow.islaVertical
-                            ? 0 : Math.round((parent.width - width) / 2)
-                        y: panelWindow.islaVertical
+
+                        //  Un cuarto de vuelta cuando la píldora va de canto, y
+                        //  hacia donde se lee: en el borde izquierdo el texto
+                        //  sube y en el derecho baja, que es como se rotula un
+                        //  lomo. Girando SIEMPRE igual, en un lado quedaría del
+                        //  revés.
+                        rotation: panelWindow.girada
+                            ? (panelWindow.ladoIsla === "izquierda" ? -90 : 90) : 0
+                        transformOrigin: Item.Center
+
+                        //  Girada se centra en los dos ejes: la rotación es
+                        //  sobre su propio centro, así que centrando la caja
+                        //  queda centrada también su huella girada.
+                        x: (panelWindow.girada || !panelWindow.islaVertical)
+                            ? Math.round((parent.width - width) / 2) : 0
+                        y: (panelWindow.girada || panelWindow.islaVertical)
                             ? Math.round((parent.height - height) / 2) : 0
 
                         Repeater {

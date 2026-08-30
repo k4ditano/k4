@@ -29,8 +29,10 @@ ColumnLayout {
     //  barra de fábrica, o la previsualización mentiría en un arranque limpio.
     readonly property string donde: {
         const v = Settings.valor("posicionBarra")
-        return v === "abajo" ? "abajo" : "arriba"
+        return (v === "abajo" || v === "izquierda" || v === "derecha")
+            ? v : "arriba"
     }
+    readonly property bool deCanto: donde === "izquierda" || donde === "derecha"
 
     readonly property int alineacion: {
         if (previo.alineacionArrastre >= 0)
@@ -181,10 +183,14 @@ ColumnLayout {
 
             readonly property real margen: Math.max(1, previo.huecos * barrita.escala)
 
-            x: margen
+            //  Se aparta por el borde en el que esté la barra: de canto, el
+            //  hueco se lo quita al ancho y no al alto.
+            x: margen + (previo.donde === "izquierda" ? hueco : 0)
             width: parent.width - margen * 2
-            y: (previo.donde === "arriba" ? hueco : 0) + margen
-            height: parent.height - hueco - margen * 2
+                   - (previo.deCanto ? hueco : 0)
+            y: margen + (previo.donde === "arriba" ? hueco : 0)
+            height: parent.height - margen * 2
+                    - (previo.deCanto ? 0 : hueco)
             radius: Math.max(2, 8 * barrita.escala)
             color: Qt.rgba(0.09, 0.11, 0.14, 0.88)
             border.width: 1
@@ -216,12 +222,21 @@ ColumnLayout {
             readonly property real escala: parent.height / previo.altoPantalla
             readonly property real anchoReal: Math.max(160, Island.rect.ancho || 380)
 
-            width: Math.max(24, anchoReal * escala)
-            height: previo.escondida ? 3 : Math.max(4, Theme.baseHeight * escala)
+            //  De canto se cambian los papeles, igual que en la barra de
+            //  verdad: lo que mide la island a lo largo pasa al alto.
+            readonly property real largo: Math.max(24, anchoReal * escala)
+            readonly property real hondo: previo.escondida ? 3
+                : Math.max(4, Theme.baseHeight * escala)
 
-            x: Math.round((parent.width - width) * previo.alineacion / 100)
-            y: previo.donde === "arriba"
-                ? 0 : parent.height - height
+            width: previo.deCanto ? hondo : largo
+            height: previo.deCanto ? largo : hondo
+
+            x: previo.deCanto
+                ? (previo.donde === "derecha" ? parent.width - width : 0)
+                : Math.round((parent.width - width) * previo.alineacion / 100)
+            y: previo.deCanto
+                ? Math.round((parent.height - height) * previo.alineacion / 100)
+                : (previo.donde === "arriba" ? 0 : parent.height - height)
 
             //  Sin animación mientras se arrastra: la barra tiene que ir
             //  pegada al dedo. Con los 220 ms puestos va a remolque y parece
@@ -230,6 +245,7 @@ ColumnLayout {
                 enabled: previo.alineacionArrastre < 0
                 NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
             }
+            Behavior on width { NumberAnimation { duration: 200 } }
             Behavior on y { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
             Behavior on height { NumberAnimation { duration: 200 } }
 
@@ -242,7 +258,7 @@ ColumnLayout {
                 ala: Math.max(1, Theme.wing * barrita.escala)
                 cuerpoRadio: Math.max(1, 20 * barrita.escala)
                 relleno: Theme.islandBg
-                reflejada: previo.donde === "abajo"
+                lado: previo.donde
             }
 
             //  El filo, para la opción escondida.
@@ -270,21 +286,27 @@ ColumnLayout {
             //  Un porcentaje a partir de una x, para algo de ancho `w`: el
             //  centro de la pieza sigue al puntero, que es como se coge una
             //  cosa con la mano.
-            function fraccion(x, w) {
-                const libre = pantalla.width - w
+            //  De canto se arrastra por el otro eje: la barra corre a lo
+            //  largo de SU borde, así que lo que manda es la `y`.
+            function fraccion(v, medida) {
+                const libre = (previo.deCanto ? pantalla.height : pantalla.width) - medida
                 if (libre <= 0)
                     return -1
                 return previo.conIman(
-                    Math.round(Math.max(0, Math.min(1, (x - w / 2) / libre)) * 100))
+                    Math.round(Math.max(0, Math.min(1, (v - medida / 2) / libre)) * 100))
             }
 
-            function colocar(x) {
+            function colocar(x, y) {
                 if (previo.cogido === "dock") {
+                    //  El dock vive abajo pase lo que pase, así que su
+                    //  arrastre es siempre horizontal.
                     const f = fraccion(x, muellecito.width)
                     if (f >= 0)
                         previo.dockArrastre = f
                 } else {
-                    const f = fraccion(x, barrita.width)
+                    const v = previo.deCanto ? y : x
+                    const m = previo.deCanto ? barrita.height : barrita.width
+                    const f = fraccion(v, m)
                     if (f >= 0)
                         previo.alineacionArrastre = f
                 }
@@ -293,11 +315,16 @@ ColumnLayout {
             //  Quién se coge: la barra si aprietas en su mitad, el dock si
             //  aprietas en la contraria y hay dock. Sin dock siempre la barra,
             //  que si no media pantalla no haría nada.
+            //
+            //  Con la barra de canto no comparten eje —ella en un lateral, el
+            //  dock abajo— así que lo que decide es la franja de abajo.
             function quienEn(y) {
-                const arribaBarra = previo.donde === "arriba"
-                const enMitadDeArriba = y < pantalla.height / 2
                 if (!previo.hayDock)
                     return "barra"
+                if (previo.deCanto)
+                    return y > pantalla.height * 0.75 ? "dock" : "barra"
+                const arribaBarra = previo.donde === "arriba"
+                const enMitadDeArriba = y < pantalla.height / 2
                 return enMitadDeArriba === arribaBarra ? "barra" : "dock"
             }
 
@@ -313,9 +340,9 @@ ColumnLayout {
 
             onPressed: function (ev) {
                 previo.cogido = quienEn(ev.y)
-                colocar(ev.x)
+                colocar(ev.x, ev.y)
             }
-            onPositionChanged: function (ev) { if (pressed) colocar(ev.x) }
+            onPositionChanged: function (ev) { if (pressed) colocar(ev.x, ev.y) }
             onReleased: soltar()
             //  Un gesto que se va de la ventana sin soltar no deja el croquis
             //  mintiendo: se guarda igual que si hubiera soltado dentro.
@@ -342,9 +369,13 @@ ColumnLayout {
 
             //  Por su alineación, la misma cuenta que la barra.
             x: Math.round((parent.width - width) * previo.alineacionDock / 100)
-            y: previo.donde === "arriba"
-                ? parent.height - height - Math.round(4 * barrita.escala * 4)
-                : Math.round(4 * barrita.escala * 4)
+            //  El dock vive SIEMPRE en el borde de abajo: eso es el modo dual.
+            //  La regla de «al lado contrario de la barra» solo tenía sentido
+            //  cuando los bordes eran dos, y con la barra de canto ponía el
+            //  dock arriba, donde no está.
+            y: previo.donde === "abajo"
+                ? Math.round(4 * barrita.escala * 4)
+                : parent.height - height - Math.round(4 * barrita.escala * 4)
 
             Behavior on y { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
             //  Pegado al dedo mientras se arrastra, igual que la barra.

@@ -83,7 +83,10 @@ Singleton {
     //  En qué borde vive la barra. shell.qml ancla la ventana, voltea la
     //  silueta y orienta los gestos con esto; los plugins lo leen por
     //  K4.Isla.posicion para adaptar lo que pinten fuera.
-    property string posicionBarra: "arriba"     // arriba · abajo
+    //  En los laterales la píldora se pone de canto: gira su contenido un
+    //  cuarto de vuelta en vez de reinventarlo. Las vistas que se ABREN no
+    //  giran nunca — ver `colocacionVistas`.
+    property string posicionBarra: "arriba"     // arriba · abajo · izquierda · derecha
     //  En qué punto del borde se centra la island, en tanto por ciento del
     //  ancho libre: 50 es el centro de siempre. Un plugin puede desplazarla
     //  TEMPORALMENTE con K4.Isla.colocar; esto es la base a la que vuelve.
@@ -343,7 +346,7 @@ Singleton {
             opciones: [
                 { id: "posicionBarra", tipo: "eleccion", de: "posiciones",
                   nombre: Idioma.t("Dónde vive la barra"),
-                  desc: Idioma.t("La island y sus alas se voltean solas"),
+                  desc: Idioma.t("La island y sus alas se voltean solas; de canto, la píldora gira"),
                   glifo: 0xF10A9 },
                 //  Un número y no tres chips. Izquierda, centro y derecha
                 //  eran quince, cincuenta y ochenta y cinco, y un cuarto o un
@@ -509,7 +512,9 @@ Singleton {
             return [{ codigo: 30, nombre: "30" },
                     { codigo: 60, nombre: "60" }]
         if (de === "posiciones")
-            return [{ codigo: "arriba", nombre: Idioma.t("Arriba") },
+            return [{ codigo: "izquierda", nombre: Idioma.t("Izquierda") },
+                    { codigo: "derecha", nombre: Idioma.t("Derecha") },
+                    { codigo: "arriba", nombre: Idioma.t("Arriba") },
                     { codigo: "abajo",  nombre: Idioma.t("Abajo") }]
         //  De menos a más, que es como se lee una escala: quitar sitio
         //  siempre, quitarlo salvo cuando estorba, no quitarlo, y no estar.
