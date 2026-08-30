@@ -303,10 +303,16 @@ Singleton {
                   nombre: Idioma.t("Dónde vive la barra"),
                   desc: Idioma.t("La island y sus alas se voltean solas"),
                   glifo: 0xF10A9 },
-                { id: "alineacionBarra", tipo: "eleccion", de: "alineaciones",
+                //  Un número y no tres chips. Izquierda, centro y derecha
+                //  eran quince, cincuenta y ochenta y cinco, y un cuarto o un
+                //  tercio no eran ninguno de los tres. Quien quiera señalar en
+                //  vez de contar lo arrastra en el croquis de aquí arriba; esto
+                //  es la cifra exacta, y siempre dice dónde estás de verdad.
+                { id: "alineacionBarra", tipo: "numero",
                   nombre: Idioma.t("Alineación de la island"),
-                  desc: Idioma.t("En qué punto del borde se coloca"),
-                  glifo: 0xF11C3 },
+                  desc: Idioma.t("En qué punto del borde se coloca; también se arrastra en el croquis"),
+                  glifo: 0xF11C3,
+                  min: 0, max: 100, paso: 5, unidad: "%" },
                 { id: "reservaIsla", tipo: "eleccion", de: "reservas",
                   nombre: Idioma.t("Cómo ocupa el sitio"),
                   desc: Idioma.t("Aparta las ventanas, flota sobre ellas o se esconde"),
@@ -457,10 +463,6 @@ Singleton {
                     { codigo: "completa",  nombre: Idioma.t("Fuera a pantalla completa") },
                     { codigo: "encima",    nombre: Idioma.t("Encima") },
                     { codigo: "escondida", nombre: Idioma.t("Escondida") }]
-        if (de === "alineaciones")
-            return [{ codigo: 15, nombre: Idioma.t("Izquierda") },
-                    { codigo: 50, nombre: Idioma.t("Centro") },
-                    { codigo: 85, nombre: Idioma.t("Derecha") }]
         if (de === "niveles")
             //  Etiquetas y no números: «2,5» no le dice nada a nadie, y lo que se
             //  quiere elegir es cuánto se nota.

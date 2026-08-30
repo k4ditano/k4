@@ -33,6 +33,8 @@ ColumnLayout {
     }
 
     readonly property int alineacion: {
+        if (previo.alineacionArrastre >= 0)
+            return previo.alineacionArrastre
         const v = parseInt(Settings.valor("alineacionBarra"), 10)
         return isNaN(v) ? 50 : v
     }
@@ -84,8 +86,32 @@ ColumnLayout {
         return v === "reserva" || v === "completa"
     }
 
+    //  ── y se puede señalar, no solo mirar ────────────────────────
+    //
+    //  La alineación era tres botones —izquierda, centro, derecha; quince,
+    //  cincuenta, ochenta y cinco— y un cuarto, un tercio o el filo mismo no
+    //  eran ninguno de los tres. Una colocación es un PUNTO, y los puntos se
+    //  eligen señalando: se arrastra sobre el croquis y la barra va detrás.
+    //
+    //  Mientras se arrastra manda este valor y no el guardado, y el guardado
+    //  no se toca hasta soltar: `Settings.poner` escribe el fichero, y hacerlo
+    //  en cada píxel del recorrido serían cien escrituras para un gesto. La
+    //  barra de verdad llega al soltar, con su muelle de siempre.
+    property int alineacionArrastre: -1
+
+    //  Con imán en los tres de antes. Sin él, clavar el centro exacto pide un
+    //  pulso que nadie tiene, y el centro es lo que quiere casi todo el mundo.
+    function conIman(v) {
+        const puntos = [15, 50, 85]
+        for (let i = 0; i < puntos.length; ++i)
+            if (Math.abs(v - puntos[i]) <= 3)
+                return puntos[i]
+        return v
+    }
+
     // ── la pantalla ───────────────────────────────────────────────
     Rectangle {
+        id: pantalla
         Layout.fillWidth: true
         Layout.preferredHeight: Math.round(width * 9 / 16)
         Layout.maximumHeight: 360
@@ -180,7 +206,13 @@ ColumnLayout {
             y: previo.donde === "arriba"
                 ? 0 : parent.height - height
 
-            Behavior on x { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+            //  Sin animación mientras se arrastra: la barra tiene que ir
+            //  pegada al dedo. Con los 220 ms puestos va a remolque y parece
+            //  que el croquis no te hace caso.
+            Behavior on x {
+                enabled: previo.alineacionArrastre < 0
+                NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+            }
             Behavior on y { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
             Behavior on height { NumberAnimation { duration: 200 } }
 
@@ -202,6 +234,44 @@ ColumnLayout {
                 visible: previo.escondida
                 radius: height / 2
                 color: Qt.rgba(1, 1, 1, 0.30)
+            }
+        }
+
+        //  Quien recoge el gesto. Va DESPUÉS de la barra a propósito, para
+        //  quedar por encima de ella: si no, arrastrar empezando justo sobre
+        //  la barra —que es lo que hace todo el mundo— no cogería el ratón.
+        //
+        //  Se apunta al CENTRO de la barra, no a su borde izquierdo: se
+        //  arrastra la barra, y una barra que se coloca por su esquina se
+        //  siente descolgada de la mano.
+        MouseArea {
+            id: gesto
+            anchors.fill: parent
+            cursorShape: Qt.SizeHorCursor
+            preventStealing: true
+
+            function colocar(x) {
+                const libre = pantalla.width - barrita.width
+                if (libre <= 0)
+                    return
+                const f = (x - barrita.width / 2) / libre
+                previo.alineacionArrastre = previo.conIman(
+                    Math.round(Math.max(0, Math.min(1, f)) * 100))
+            }
+
+            onPressed: function (ev) { colocar(ev.x) }
+            onPositionChanged: function (ev) { if (pressed) colocar(ev.x) }
+            onReleased: {
+                if (previo.alineacionArrastre >= 0)
+                    Settings.poner("alineacionBarra", previo.alineacionArrastre)
+                previo.alineacionArrastre = -1
+            }
+            //  Un gesto que se va de la ventana sin soltar no deja el croquis
+            //  mintiendo: se guarda igual que si hubiera soltado dentro.
+            onCanceled: {
+                if (previo.alineacionArrastre >= 0)
+                    Settings.poner("alineacionBarra", previo.alineacionArrastre)
+                previo.alineacionArrastre = -1
             }
         }
 
