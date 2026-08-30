@@ -297,6 +297,55 @@ Scope {
                 && (root.activePlugin.name === "idle" || esPantallaActiva)
                 ? root.activePlugin : idlePlugin
 
+            //  ── por qué borde se abre lo que se enseña ────────────────
+            //
+            //  El suyo si lo tiene puesto (Ajustes → Colocación), y si no el de
+            //  la barra. La píldora nunca tiene: su casa es la sección Island.
+            //
+            //  Que la island viva en cualquiera de los cuatro bordes sale casi
+            //  gratis desde que la superficie es alta como la pantalla: la
+            //  island se coloca DENTRO de ella con x e y, así que no hay que
+            //  tocar ni un ancla de la capa ni la zona exclusiva. Lo que se
+            //  reserva lo sigue reservando la barra en su borde de siempre,
+            //  porque la píldora va a volver ahí.
+            readonly property string ladoPedido: {
+                const p = pluginVisible
+                const l = p ? Settings.ladoDe(p.name) : ""
+                return l.length > 0 ? l : (abajo ? "abajo" : "arriba")
+            }
+
+            //  ── cambiar de borde se CORTA, no se anima ────────────────
+            //
+            //  Un cambio de borde es un cambio de sitio, y la island no sabe
+            //  contarlo: sus animaciones son de tamaño, no de viaje. Dejando
+            //  que corran, al cerrarse una vista colocada pasaba esto —visto
+            //  las dos veces al probarlo—:
+            //
+            //   · con el borde cambiando en el acto, el tamaño de la vista se
+            //     encogía YA en el borde nuevo, y como el contenido se va
+            //     antes, eran 440 ms de rectángulo NEGRO plantado arriba;
+            //   · esperando a que se encogiera para cambiarlo, la píldora se
+            //     quedaba medio segundo pegada al lateral y luego saltaba.
+            //
+            //  Los dos son lo mismo: una animación de tamaño contando un viaje
+            //  que no es suyo. Así que el borde cambia en el acto Y el tamaño
+            //  le acompaña de un corte, sin Behavior: se pasa de la vista en su
+            //  borde a la píldora en el suyo en un fotograma. Un corte limpio
+            //  se lee; una morfosis a través de la pantalla, no.
+            property string ladoIsla: abajo ? "abajo" : "arriba"
+            onLadoPedidoChanged: ladoIsla = ladoPedido
+            readonly property bool islaVertical: ladoIsla === "izquierda"
+                                                 || ladoIsla === "derecha"
+
+            //  Y por dónde de ese borde. La de la vista si la trae; si no, la
+            //  de la barra —que incluye lo que un plugin pida temporalmente
+            //  por `K4.Isla.colocar`—.
+            readonly property real fraccionIsla: {
+                const p = pluginVisible
+                const a = p ? Settings.alineacionDe(p.name) : -1
+                return a >= 0 ? a / 100 : Island.colocacion
+            }
+
             //  ── el clic fuera cierra lo desplegado ────────────────────
             //
             //  Una vista desplegada —el centro de control, el lanzador— se
@@ -689,8 +738,6 @@ Scope {
 
             Item {
                 id: island
-                anchors.top: panelWindow.abajo ? undefined : parent.top
-                anchors.bottom: panelWindow.abajo ? parent.bottom : undefined
 
                 // Ver services/Island.qml: apartarse para las capturas y
                 // mientras haya un diálogo del sistema abierto.
@@ -705,7 +752,7 @@ Scope {
                 //  —como hacía el ancla al centro— y no va a remolque con su
                 //  propia animación, que era lo que descentraba la island al
                 //  abrir y cerrar módulos.
-                property real fraccionSuave: Island.colocacion
+                property real fraccionSuave: panelWindow.fraccionIsla
 
                 //  ── crecer hacia UN solo lado ────────────────────
                 //
@@ -733,17 +780,75 @@ Scope {
                 //  píldora cede unos píxeles —solo pasa en los extremos de la
                 //  alineación— y el contenido viaja con la silueta, que es lo
                 //  que importa: dibujo y contenido no se separan nunca.
-                readonly property real xQuerida: (parent.width - width) * fraccionSuave
-                    + extDerecha * fraccionSuave
-                    - extIzquierda * (1 - fraccionSuave)
-                x: Math.max(0, Math.min(parent.width - width, xQuerida))
-                width: Math.min(parent.width, panelWindow.anchoIsla + Theme.wing * 2)
-                //  Acotada al padre igual que el ancho: una vista más alta que
-                //  la pantalla —hoy ninguna, el techo son los 880 de Theme— no
-                //  puede empujar la island fuera de la superficie donde vive.
-                height: Math.min(parent.height, panelWindow.altoIsla)
+                //  ── clavada a su borde, suelta por el otro eje ───
+                //
+                //  Un eje lo fija el borde y el otro lleva la alineación. Las
+                //  extensiones de flanco solo corrigen el eje horizontal
+                //  porque solo las lleva la píldora, y la píldora vive siempre
+                //  en el borde de la barra.
+                readonly property real libre: panelWindow.islaVertical
+                    ? parent.height - height : parent.width - width
+                readonly property real corrimiento: panelWindow.islaVertical ? 0
+                    : extDerecha * fraccionSuave - extIzquierda * (1 - fraccionSuave)
+                readonly property real aLoLargo: Math.max(0, Math.min(libre,
+                    libre * fraccionSuave + corrimiento))
+
+                x: panelWindow.islaVertical
+                    ? (panelWindow.ladoIsla === "derecha" ? parent.width - width : 0)
+                    : aLoLargo
+                y: panelWindow.islaVertical
+                    ? aLoLargo
+                    : (panelWindow.ladoIsla === "abajo" ? parent.height - height : 0)
+
+                //  Las alas alargan la caja A LO LARGO del borde, así que en
+                //  los laterales suman al alto y no al ancho. Y acotada al
+                //  padre en los dos ejes: una vista más honda que la pantalla
+                //  —hoy ninguna, el techo son los 880 de Theme— no puede
+                //  empujar la island fuera de la superficie donde vive.
+                readonly property real anchoObjetivo: panelWindow.islaVertical
+                    ? Math.min(parent.width, panelWindow.anchoIsla)
+                    : Math.min(parent.width, panelWindow.anchoIsla + Theme.wing * 2)
+                readonly property real altoObjetivo: panelWindow.islaVertical
+                    ? Math.min(parent.height, panelWindow.altoIsla + Theme.wing * 2)
+                    : Math.min(parent.height, panelWindow.altoIsla)
+
+                //  El corte: mientras dura, las animaciones de tamaño Y de
+                //  posición se apagan, y la island salta de una vez a lo que
+                //  mide en su borde nuevo.
+                //
+                //  Con `Qt.callLater` no bastaba —se probó—: vuelve al final de
+                //  la vuelta actual del bucle, antes de que los bindings de
+                //  tamaño se hayan releído, así que la animación se reenganchaba
+                //  y la silueta de la vista viajaba entera al borde nuevo para
+                //  encoger allí. O sea, el rectángulo negro otra vez, más corto.
+                //  Dos fotogramas de margen y salta de verdad.
+                property bool cortando: false
+
+                Timer {
+                    id: corte
+                    interval: 32
+                    onTriggered: island.cortando = false
+                }
+
+                Connections {
+                    target: panelWindow
+                    function onLadoIslaChanged() {
+                        island.cortando = true
+                        corte.restart()
+                    }
+                }
+
+                width: anchoObjetivo
+                height: altoObjetivo
+
+                Behavior on y {
+                    enabled: panelWindow.islaVertical && !island.cortando
+                    NumberAnimation { duration: 440; easing.type: Easing.OutBack
+                                      easing.overshoot: 0.42 }
+                }
 
                 Behavior on fraccionSuave {
+                    enabled: !island.cortando
                     NumberAnimation {
                         duration: 440
                         easing.type: Easing.OutBack
@@ -751,7 +856,13 @@ Scope {
                     }
                 }
 
-                readonly property real bodyRadius: Math.min(32, height / 2)
+                //  El redondeo del cuerpo sale de lo HONDO, que es lo que se
+                //  mete hacia dentro de la pantalla: en los laterales eso es el
+                //  ancho. Con el alto a secas, una vista pegada a un lateral
+                //  salía con las esquinas de un estadio.
+                readonly property real hondoIsla: panelWindow.islaVertical
+                    ? width : height
+                readonly property real bodyRadius: Math.min(32, hondoIsla / 2)
 
                 // ESC cierra el módulo que esté abierto, sea cual sea.
                 //
@@ -804,6 +915,7 @@ Scope {
                 }
 
                 Behavior on width {
+                    enabled: !island.cortando
                     NumberAnimation {
                         duration: 440
                         easing.type: Easing.OutBack
@@ -812,6 +924,7 @@ Scope {
                 }
 
                 Behavior on height {
+                    enabled: !island.cortando
                     NumberAnimation {
                         duration: 400
                         easing.type: Easing.OutBack
@@ -824,6 +937,7 @@ Scope {
                 //  K4.Isla.rect: coordenadas de pantalla, solo la principal.
                 //  Un plugin con K4.Ventana ancla aquí lo que asoma.
                 onXChanged: publicarRect()
+                onYChanged: publicarRect()
                 onWidthChanged: publicarRect()
                 onHeightChanged: publicarRect()
                 Component.onCompleted: {
@@ -831,11 +945,15 @@ Scope {
                     forceActiveFocus()      // el ESC de arriba; ver por qué
                 }
 
+                //  La `y` de verdad y no una deducida del borde: desde que la
+                //  superficie es alta como la pantalla, la x y la y de la
+                //  island YA son coordenadas de pantalla. Deducirla del borde
+                //  daba la buena de casualidad mientras solo hubo dos lados, y
+                //  mentía en cuanto una vista se abre pegada a un lateral —que
+                //  es de donde cuelgan trece plugins por `K4.Isla.rect`—.
                 function publicarRect() {
                     Island.publicarRect(panelWindow.screen.name, {
-                        x: island.x,
-                        y: panelWindow.abajo
-                            ? panelWindow.screen.height - island.height : 0,
+                        x: island.x, y: island.y,
                         ancho: island.width, alto: island.height
                     }, panelWindow.modelData === Quickshell.screens[0])
                 }
@@ -849,8 +967,26 @@ Scope {
                 //
                 //  Un desplazamiento del contenido, nunca de la ventana: mover
                 //  una layer surface reajustaría el escritorio entero.
+                //  ── los gestos, en los ejes del BORDE ────────────
+                //
+                //  Un gesto habla de la island respecto a su borde: el empujón
+                //  y el tirón la meten hacia dentro de la pantalla, la sacudida
+                //  la mueve a lo largo del canto. Con las dos animaciones
+                //  atadas a la `y` del translate, una vista pegada a un lateral
+                //  recibía el empujón deslizándose por el borde y la sacudida
+                //  separándose de él: los dos gestos cambiados.
+                //
+                //  Así que se animan dos escalares —`empuje` hacia dentro,
+                //  `vaiven` a lo largo— y el translate los reparte por eje.
+                property real empuje: 0
+                property real vaiven: 0
+
                 transform: [
-                    Translate { id: gestoTr },
+                    Translate {
+                        id: gestoTr
+                        x: panelWindow.islaVertical ? island.empuje : island.vaiven
+                        y: panelWindow.islaVertical ? island.vaiven : island.empuje
+                    },
                     //  ── y el escondite, por el mismo camino ──────────
                     //
                     //  La que se retira se va POR EL BORDE, y también
@@ -890,31 +1026,36 @@ Scope {
                 SequentialAnimation {
                     id: aniSacudida
                     property real f: 1
-                    NumberAnimation { target: gestoTr; property: "x"; to: -8 * aniSacudida.f; duration: 40 }
-                    NumberAnimation { target: gestoTr; property: "x"; to: 7 * aniSacudida.f; duration: 70 }
-                    NumberAnimation { target: gestoTr; property: "x"; to: -5 * aniSacudida.f; duration: 70 }
-                    NumberAnimation { target: gestoTr; property: "x"; to: 3 * aniSacudida.f; duration: 60 }
-                    NumberAnimation { target: gestoTr; property: "x"; to: 0; duration: 60; easing.type: Easing.OutQuad }
+                    NumberAnimation { target: island; property: "vaiven"; to: -8 * aniSacudida.f; duration: 40 }
+                    NumberAnimation { target: island; property: "vaiven"; to: 7 * aniSacudida.f; duration: 70 }
+                    NumberAnimation { target: island; property: "vaiven"; to: -5 * aniSacudida.f; duration: 70 }
+                    NumberAnimation { target: island; property: "vaiven"; to: 3 * aniSacudida.f; duration: 60 }
+                    NumberAnimation { target: island; property: "vaiven"; to: 0; duration: 60; easing.type: Easing.OutQuad }
                 }
 
                 //  Los gestos verticales empujan hacia DENTRO de la pantalla:
                 //  con la barra abajo, el empujón y el tirón van hacia arriba.
-                readonly property real gestoDir: panelWindow.abajo ? -1 : 1
+                //  Hacia DENTRO de la pantalla: desde arriba y desde la
+                //  izquierda es positivo; desde abajo y desde la derecha, al
+                //  revés.
+                readonly property real gestoDir:
+                    (panelWindow.ladoIsla === "abajo"
+                     || panelWindow.ladoIsla === "derecha") ? -1 : 1
 
                 SequentialAnimation {
                     id: aniEmpujon
                     property real f: 1
-                    NumberAnimation { target: gestoTr; property: "y"; to: 26 * aniEmpujon.f * island.gestoDir; duration: 150; easing.type: Easing.OutQuad }
-                    NumberAnimation { target: gestoTr; property: "y"; to: 0; duration: 320; easing.type: Easing.OutBack; easing.overshoot: 1.4 }
+                    NumberAnimation { target: island; property: "empuje"; to: 26 * aniEmpujon.f * island.gestoDir; duration: 150; easing.type: Easing.OutQuad }
+                    NumberAnimation { target: island; property: "empuje"; to: 0; duration: 320; easing.type: Easing.OutBack; easing.overshoot: 1.4 }
                 }
 
                 SequentialAnimation {
                     id: aniTiron
                     property real f: 1
-                    NumberAnimation { target: gestoTr; property: "y"; to: 10 * aniTiron.f * island.gestoDir; duration: 90; easing.type: Easing.OutQuad }
-                    NumberAnimation { target: gestoTr; property: "y"; to: 2 * island.gestoDir; duration: 90 }
-                    NumberAnimation { target: gestoTr; property: "y"; to: 12 * aniTiron.f * island.gestoDir; duration: 90 }
-                    NumberAnimation { target: gestoTr; property: "y"; to: 0; duration: 140; easing.type: Easing.OutQuad }
+                    NumberAnimation { target: island; property: "empuje"; to: 10 * aniTiron.f * island.gestoDir; duration: 90; easing.type: Easing.OutQuad }
+                    NumberAnimation { target: island; property: "empuje"; to: 2 * island.gestoDir; duration: 90 }
+                    NumberAnimation { target: island; property: "empuje"; to: 12 * aniTiron.f * island.gestoDir; duration: 90 }
+                    NumberAnimation { target: island; property: "empuje"; to: 0; duration: 140; easing.type: Easing.OutQuad }
                 }
 
                 Connections {
@@ -923,7 +1064,7 @@ Scope {
                         //  Corta el que hubiera: dos gestos a la vez son un
                         //  temblor sin forma.
                         aniSacudida.stop(); aniEmpujon.stop(); aniTiron.stop()
-                        gestoTr.x = 0; gestoTr.y = 0
+                        island.vaiven = 0; island.empuje = 0
                         if (nombre === "sacudida") { aniSacudida.f = fuerza; aniSacudida.start() }
                         else if (nombre === "empujon") { aniEmpujon.f = fuerza; aniEmpujon.start() }
                         else if (nombre === "tiron") { aniTiron.f = fuerza; aniTiron.start() }
@@ -1004,14 +1145,20 @@ Scope {
                     ala: Theme.wing
                     cuerpoRadio: island.bodyRadius
                     relleno: Theme.islandBg
-                    reflejada: panelWindow.abajo
+                    //  Y no `reflejada`, que era el caso especial del borde de
+                    //  abajo de cuando solo había dos lados.
+                    lado: panelWindow.ladoIsla
                 }
 
                 // ── zona de contenido (dentro del cuerpo, sin las alas)
+                //  Las alas están en los extremos DEL BORDE, así que el hueco
+                //  que hay que dejarles cambia de eje con el lado.
                 Item {
                     anchors.fill: parent
-                    anchors.leftMargin: Theme.wing
-                    anchors.rightMargin: Theme.wing
+                    anchors.leftMargin: panelWindow.islaVertical ? 0 : Theme.wing
+                    anchors.rightMargin: panelWindow.islaVertical ? 0 : Theme.wing
+                    anchors.topMargin: panelWindow.islaVertical ? Theme.wing : 0
+                    anchors.bottomMargin: panelWindow.islaVertical ? Theme.wing : 0
                     clip: true
 
                     // Debajo de toda vista: los botones y sliders se quedan sus
@@ -1026,11 +1173,28 @@ Scope {
 
                     // Se dispone al tamaño final y se destapa con el clip, así
                     // que no hay recálculo de layout durante la animación.
+                    //  Pegado al borde por el eje del hondo y centrado por el
+                    //  otro. La vista NO gira: en un lateral sigue siendo tan
+                    //  ancha como siempre, lo que cambia es contra qué borde se
+                    //  apoya.
+                    //  Por `x`/`y` y SIN anclas, aunque anclar sea lo natural.
+                    //
+                    //  Se probó con anclas conmutadas —`anchors.top` a
+                    //  `undefined` cuando el borde es lateral y al revés— y
+                    //  deja la barra rota: poner un ancla a `undefined` no
+                    //  siempre suelta la que ya estaba, así que después de ir
+                    //  a un lateral y volver, el contenido se quedaba con dos
+                    //  anclas peleándose y la píldora volvía VACÍA. Una caja
+                    //  negra sin hora ni indicadores, y sin un solo error.
+                    //
+                    //  Dos bindings no tienen ese problema: se reevalúan y ya.
                     Item {
-                        anchors.top: parent.top
-                        anchors.horizontalCenter: parent.horizontalCenter
                         width: panelWindow.anchoIsla
                         height: panelWindow.altoIsla
+                        x: panelWindow.islaVertical
+                            ? 0 : Math.round((parent.width - width) / 2)
+                        y: panelWindow.islaVertical
+                            ? Math.round((parent.height - height) / 2) : 0
 
                         Repeater {
                             //  Las instancias vivas del gestor. Cuando esto

@@ -102,6 +102,48 @@ Singleton {
     // siempre, y al acercar el ratón la island ya se abre y ahí sí se ven —y
     // encima se pueden pulsar, que en la píldora no—.
     property bool bandejaEnPildora: false
+    //  ── por qué borde se abre cada vista ──────────────────────────
+    //
+    //  `{ "<id de plugin>": { lado, alineacion } }`, y VACÍO de fábrica: una
+    //  vista sin entrada se abre exactamente donde se abría siempre, así que
+    //  al actualizar no se mueve nada.
+    //
+    //  La píldora no entra en esto. Ella y sus vistas al pasar el ratón viven
+    //  donde diga la sección Island, que es su casa; lo que elige borde es lo
+    //  que ABRES, que es lo que a veces quieres en otro sitio —el lanzador a
+    //  la izquierda, la captura abajo— sin mudar la barra entera.
+    property var colocacionVistas: ({})
+
+    function ladoDe(id) {
+        const c = colocacionVistas[id]
+        const l = c && c.lado ? String(c.lado) : ""
+        return (l === "arriba" || l === "abajo"
+                || l === "izquierda" || l === "derecha") ? l : ""
+    }
+
+    //  −1 cuando la vista no dice nada: entonces manda la de la barra, con lo
+    //  que un plugin pueda estar pidiendo por `K4.Isla.colocar`.
+    function alineacionDe(id) {
+        const c = colocacionVistas[id]
+        if (!c || c.alineacion === undefined)
+            return -1
+        const n = Math.floor(Number(c.alineacion))
+        return isFinite(n) ? Math.max(0, Math.min(100, n)) : -1
+    }
+
+    function colocarVista(id, lado, alineacion) {
+        const d = {}
+        for (const k in colocacionVistas)
+            d[k] = colocacionVistas[k]
+        if (!lado || lado.length === 0)
+            delete d[id]
+        else
+            d[id] = { lado: lado, alineacion: Math.max(0, Math.min(100,
+                        Math.floor(Number(alineacion)) || 0)) }
+        colocacionVistas = d
+        guardar()
+    }
+
     //  Un clic fuera de la barra cierra lo que haya desplegado, igual que
     //  Escape. shell.qml es quien lo hace: mientras hay una vista abierta, su
     //  máscara de entrada cubre la pantalla y se gasta el toque en cerrarla.
@@ -523,7 +565,7 @@ Singleton {
         "zoomAuto", "zoomNivel", "editorCodec", "editorSonoridad",
         "posicionBarra", "alineacionBarra", "reservaIsla",
         "huellaActiva", "huellaSteam", "huellaPaquetes",
-        "cerrarConClicFuera",
+        "cerrarConClicFuera", "colocacionVistas",
         "bandejaEnPildora", "notificacionesAlPasar", "notificacionesAlEnfocar",
         "accesosDirectos"
     ]
