@@ -274,7 +274,43 @@ K4.Ventana {
     //  item. Con la escala negativa funcionaba igual, pero es de las cosas que
     //  uno no quiere tener que volver a comprobar: este item no pinta nada, no
     //  lleva transformadas y solo marca el rectángulo bueno.
-    zonaActiva: zona
+    //  La región de entrada NO puede ser `zona`: está dentro del marco
+    //  girado, y la máscara de la capa se calcula sin la rotación, así que con
+    //  el dock de canto el hueco por el que entran los clics se quedaba donde
+    //  habría estado sin girar. Medido: con el dock abajo, el puntero encima da
+    //  `ratonX = 960`; a la izquierda, −9999 en el dock Y en el sitio de antes.
+    //  O sea, el dock se veía y no se podía tocar.
+    zonaActiva: zonaEntrada
+
+    //  El mismo rectángulo que `zona`, pero en coordenadas de PANTALLA y sin
+    //  girar. La cuenta es el mapeo del marco: un punto (px, py) del marco cae
+    //  en la pantalla en
+    //     abajo      (px, py)
+    //     arriba     (W − px, H − py)
+    //     izquierda  (W − py, px)
+    //     derecha    (py, H − px)
+    //  y de ahí sale la caja de cada lado. Dentro de ella, Qt ya reparte los
+    //  clics a los hijos girados por su cuenta.
+    Item {
+        id: zonaEntrada
+
+        readonly property real largo: zona.width
+        readonly property real hondo: zona.height
+        readonly property real zx: zona.x
+        readonly property string lado: muelle.plugin.ladoDock
+
+        width: muelle.plugin.dockVertical ? hondo : largo
+        height: muelle.plugin.dockVertical ? largo : hondo
+
+        x: lado === "izquierda" ? 0
+            : lado === "derecha" ? muelle.width - hondo
+            : lado === "arriba" ? muelle.width - zx - largo
+            : zx
+        y: lado === "izquierda" ? zx
+            : lado === "derecha" ? muelle.height - zx - largo
+            : lado === "arriba" ? 0
+            : muelle.height - hondo
+    }
 
     //  Con un menú o el selector desplegado, la zona se agranda a toda la
     //  ventana: es lo que permite que un clic FUERA lo cierre. Sin eso, la
@@ -1391,7 +1427,14 @@ K4.Ventana {
         //  con ella, el cajón se mete en el dock —que es de donde había salido—
         //  y la rejilla baja con él.
         height: muelle.altoCajon * muelle.cajonAbierto
-        anchors.horizontalCenter: marco.horizontalCenter
+        //  Sobre el DOCK y no sobre el centro de la pantalla.
+        //
+        //  Anclado al centro del marco, el cajón se abría en medio aunque el
+        //  dock estuviera en un extremo: se veía en cuanto el dock dejó de
+        //  estar centrado, o sea desde que tiene alineación propia. Sale del
+        //  mismo `centroDock` que la tira, que es el único sitio donde está
+        //  escrito dónde vive el dock.
+        x: muelle.centroDock - width / 2
         anchors.bottom: marco.bottom
         anchors.bottomMargin: muelle.altoDock - muelle.retiro
 
