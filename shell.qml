@@ -782,16 +782,58 @@ Scope {
                 //  que importa: dibujo y contenido no se separan nunca.
                 //  ── clavada a su borde, suelta por el otro eje ───
                 //
-                //  Un eje lo fija el borde y el otro lleva la alineación. Las
-                //  extensiones de flanco solo corrigen el eje horizontal
-                //  porque solo las lleva la píldora, y la píldora vive siempre
-                //  en el borde de la barra.
-                readonly property real libre: panelWindow.islaVertical
-                    ? parent.height - height : parent.width - width
+                //  Un eje lo fija el borde y el otro lleva la alineación.
+                //
+                //  Y se abre DESDE DONDE ESTÁ, no a una fracción del hueco.
+                //  Antes la x salía de `(largo − w) · f`, o sea de un tanto por
+                //  ciento del hueco LIBRE, y el hueco libre encoge cuando la
+                //  island crece: al abrirse se deslizaba. El borde izquierdo se
+                //  movía `−f·Δ` y el derecho `+(1−f)·Δ`, así que el centro
+                //  viajaba `(0,5 − f)·Δ`. Con la barra centrada eso es cero y
+                //  por eso no se notó nunca; descentrada, no. Medido con la
+                //  alineación al 77 %: el centro se iba 184 px a la izquierda
+                //  al abrir el centro de control, y el panel acababa sin estar
+                //  encima de la píldora de la que había salido.
+                //
+                //  Ahora la referencia es el centro que tiene la PÍLDORA, y
+                //  crece a los dos lados por igual hasta que topa con un borde
+                //  —y entonces sí crece solo hacia dentro, que es lo único que
+                //  puede hacer—. La píldora no se mueve ni un píxel: con su
+                //  propio ancho, la cuenta da exactamente lo de antes.
+                //
+                //  En un lateral no hay píldora de la que salir, así que la
+                //  referencia es la fracción de la pantalla a secas.
+                readonly property real largoLibre: panelWindow.islaVertical
+                    ? parent.height : parent.width
+                readonly property real medida: panelWindow.islaVertical
+                    ? height : width
+
+                readonly property real largoPildora: {
+                    const idle = panelWindow.idlePlugin
+                    return (idle ? idle.islandWidth : 176) + Theme.wing * 2
+                }
+
+                readonly property real centroRef: panelWindow.islaVertical
+                    ? largoLibre * fraccionSuave
+                    : (largoLibre - largoPildora) * fraccionSuave
+                      + largoPildora / 2
+
+                //  Lo que la cápsula tiene que compensar para que el cuerpo de
+                //  la píldora no se mueva.
+                //
+                //  La MISMA cuenta que con el modelo viejo, y no es casualidad:
+                //  `largoPildora` ya incluye la extensión, así que al crecer E
+                //  el centro de referencia se mueve `(0,5 − f)·E` y la mitad
+                //  del ancho `0,5·E`, y la x acaba moviéndose `−f·E`, igual que
+                //  antes. Se probó a cambiarla a E/2 «porque ahora crece desde
+                //  el centro» y el cuerpo se iba 31 px: la derivada manda más
+                //  que la intuición.
                 readonly property real corrimiento: panelWindow.islaVertical ? 0
                     : extDerecha * fraccionSuave - extIzquierda * (1 - fraccionSuave)
+
+                readonly property real libre: largoLibre - medida
                 readonly property real aLoLargo: Math.max(0, Math.min(libre,
-                    libre * fraccionSuave + corrimiento))
+                    centroRef - medida / 2 + corrimiento))
 
                 x: panelWindow.islaVertical
                     ? (panelWindow.ladoIsla === "derecha" ? parent.width - width : 0)
