@@ -802,6 +802,16 @@ K4.Ventana {
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: active && item
                                         ? item.implicitHeight : 0
+                                    active: bloque.modelData.vista === "colocacion"
+                                            && bloque.modelData.atajo === undefined
+                                    sourceComponent: Component { ColocacionVistas {} }
+                                }
+
+                                Loader {
+                                    visible: active
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: active && item
+                                        ? item.implicitHeight : 0
                                     active: bloque.modelData.vista === "ventanas"
                                             && bloque.modelData.atajo === undefined
                                     sourceComponent: Component {

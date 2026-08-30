@@ -6,6 +6,7 @@
 FilaOpcion 1.0 FilaOpcion.qml
 FilaPlugin 1.0 FilaPlugin.qml
 PrevioIsland 1.0 PrevioIsland.qml
+ColocacionVistas 1.0 ColocacionVistas.qml
 SettingsPlugin 1.0 SettingsPlugin.qml
 VentanaAjustes 1.0 VentanaAjustes.qml
 Version 1.0 Version.qml

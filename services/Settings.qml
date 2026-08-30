@@ -394,6 +394,19 @@ Singleton {
             opciones: []
         },
         {
+            id: "colocacion",
+            grupo: Idioma.t("Colocación"),
+            //  Palabras por las que el buscador debe encontrar esta sección:
+            //  sus controles viven dentro de un widget y no como `opciones`.
+            claves: ["colocacion", "colocación", "placement", "lado", "side",
+                     "borde", "edge", "izquierda", "derecha", "left", "right",
+                     "lateral", "lanzador", "launcher"],
+            glifo: 0xF11C3,
+            desc: Idioma.t("Por qué borde de la pantalla se abre cada módulo."),
+            vista: "colocacion",
+            opciones: []
+        },
+        {
             id: "ventanas",
             grupo: Idioma.t("Ventanas"),
             //  Palabras por las que el buscador debe encontrar esta sección.
