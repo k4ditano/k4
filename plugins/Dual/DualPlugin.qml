@@ -271,6 +271,9 @@ K4.Plugin {
                 self.reservaDock = d.reservaDock
             //  Acotada al leer: el fichero se puede editar a mano y un dock
             //  al 300 % se iría de la pantalla sin decir por qué.
+            if (d && ["arriba", "abajo", "izquierda", "derecha"]
+                    .indexOf(d.ladoDock) >= 0)
+                self.ladoDockPedido = d.ladoDock
             if (d && d.alineacionDock !== undefined) {
                 const a = Math.floor(Number(d.alineacionDock))
                 if (isFinite(a))
@@ -285,6 +288,7 @@ K4.Plugin {
             return
         guardado.guardar({ apps: idsDock, efecto: efecto, ambas: ambas,
                            reservaDock: reservaDock,
+                           ladoDock: ladoDockPedido,
                            alineacionDock: alineacionDock })
     }
 
@@ -343,8 +347,22 @@ K4.Plugin {
     //  cambiarlos con el dock puesto dejaba la barra apartada por un efecto y
     //  devuelta por otro: la gota se iba a buscarla donde el viaje la había
     //  dejado, y no había nadie.
-    property string efectoActivo: "viaje"
+    property string efectoPedido: "viaje"
     property bool ambasActiva: false
+
+    //  ── de canto, el cambio se hace en seco ──────────────────────
+    //
+    //  La gota y el viaje están escritos para el eje vertical: la gota es una
+    //  CAÍDA —cuello que adelgaza, cintura que se rompe, aterrizaje contra el
+    //  canto— y el viaje manda dos trozos por los bordes hasta juntarse abajo.
+    //  Nada de eso es una dirección que se pueda girar: es gravedad.
+    //
+    //  Así que con el dock en un lateral se hace en seco, y no se finge. Una
+    //  gota que cae de lado no es una gota, es una etiqueta que pone AGUA.
+    //
+    //  Va aquí y no en cada sitio que pregunta por el efecto: son seis, y el
+    //  que se olvidara pintaría media escena de un efecto que no está pasando.
+    readonly property string efectoActivo: dockVertical ? "seco" : efectoPedido
     readonly property bool esGota: efectoActivo === "gota"
 
     //  ── el reparto del tiempo de la gota ─────────────────────────
@@ -367,16 +385,43 @@ K4.Plugin {
     //  Una sola fuente para los seis sitios: si el destino de la gota y el
     //  ancla del muelle discreparan, la gota aterrizaría a un palmo de donde
     //  nace el dock y se vería el salto.
+    //  ── en qué borde vive el dock ────────────────────────────────
+    //
+    //  «abajo» de fábrica, que es donde ha vivido siempre.
+    //
+    //  Y NUNCA en el mismo borde que la barra, que se taparían: si coinciden,
+    //  el dock cede y se va al de enfrente. Cede el dock y no la barra porque
+    //  la barra es la casa —lo dice la sección Island— y porque eso es lo que
+    //  el modo dual ha hecho siempre: la barra arriba, el dock abajo.
+    property string ladoDockPedido: "abajo"
+
+    readonly property string ladoBarra: {
+        const v = K4.Isla.posicion
+        return (v === "abajo" || v === "izquierda" || v === "derecha")
+            ? v : "arriba"
+    }
+
+    readonly property var opuestos: ({ arriba: "abajo", abajo: "arriba",
+                                       izquierda: "derecha",
+                                       derecha: "izquierda" })
+
+    readonly property string ladoDock: ladoDockPedido === ladoBarra
+        ? opuestos[ladoBarra] : ladoDockPedido
+
+    readonly property bool dockVertical: ladoDock === "izquierda"
+                                         || ladoDock === "derecha"
+
     property int alineacionDock: 50
     readonly property real fraccionDock: Math.max(0, Math.min(100, alineacionDock)) / 100
 
-    //  La x de algo de ancho `w` dentro de una pantalla de ancho `pantallaAncho`,
-    //  colocado por esa fracción. La misma cuenta que usa la island.
-    function xDock(pantallaAncho, w) {
-        return Math.round(Math.max(0, pantallaAncho - w) * fraccionDock)
+    //  Dónde empieza algo de largo `w` en un borde de largo `largo`, colocado
+    //  por esa fracción. La misma cuenta que usa la island, y vale para los dos
+    //  ejes: en un lateral el «largo» del borde es el alto de la pantalla.
+    function xDock(largo, w) {
+        return Math.round(Math.max(0, largo - w) * fraccionDock)
     }
-    function centroDock(pantallaAncho, w) {
-        return xDock(pantallaAncho, w) + w / 2
+    function centroDock(largo, w) {
+        return xDock(largo, w) + w / 2
     }
 
     readonly property int gotaDura: 1000
@@ -425,6 +470,18 @@ K4.Plugin {
                 { codigo: "escondida", nombre: K4.Idioma.t("Escondida") }
             ]
         }, {
+            id: "ladoDock",
+            tipo: "eleccion",
+            nombre: K4.Idioma.t("Dónde vive el dock"),
+            desc: K4.Idioma.t("Nunca en el mismo borde que la barra: si coinciden, el dock se va al de enfrente"),
+            glifo: 0xF10A9,
+            alternativas: [
+                { codigo: "abajo", nombre: K4.Idioma.t("Abajo") },
+                { codigo: "arriba", nombre: K4.Idioma.t("Arriba") },
+                { codigo: "izquierda", nombre: K4.Idioma.t("Izquierda") },
+                { codigo: "derecha", nombre: K4.Idioma.t("Derecha") }
+            ]
+        }, {
             id: "alineacionDock",
             tipo: "numero",
             nombre: K4.Idioma.t("Alineación del dock"),
@@ -434,6 +491,7 @@ K4.Plugin {
         }]
         valores: ({ efecto: self.efecto, ambas: self.ambas,
                     reservaDock: self.reservaDock,
+                    ladoDock: self.ladoDockPedido,
                     alineacionDock: self.alineacionDock })
         onCambiado: function (id, valor) {
             if (id === "efecto")
@@ -442,6 +500,8 @@ K4.Plugin {
                 self.ambas = !!valor
             else if (id === "reservaDock")
                 self.reservaDock = String(valor)
+            else if (id === "ladoDock")
+                self.ladoDockPedido = String(valor)
             else if (id === "alineacionDock")
                 self.alineacionDock = Math.max(0, Math.min(100,
                     Math.floor(Number(valor)) || 0))
@@ -757,7 +817,7 @@ K4.Plugin {
         pedidoPendiente = false
 
         //  Los dos ajustes, congelados para la ida y la vuelta.
-        efectoActivo = efectos.indexOf(efecto) >= 0 ? efecto : "viaje"
+        efectoPedido = efectos.indexOf(efecto) >= 0 ? efecto : "viaje"
         ambasActiva = ambas
 
         congelarOrigen()
@@ -1030,11 +1090,18 @@ K4.Plugin {
         pantalla: self.pantalla
         visible: muelle.mostrando
         encima: false
-        pegadaArriba: false
+        //  Suelta el borde de ENFRENTE del que ocupa el dock: sin un borde
+        //  libre no hay borde del que quitar. Y el eje que no atan las anclas
+        //  lo da lo hondo que sea el dock.
+        pegadaArriba: self.ladoDock !== "abajo"
+        pegadaAbajo: self.ladoDock !== "arriba"
+        pegadaIzquierda: self.ladoDock !== "derecha"
+        pegadaDerecha: self.ladoDock !== "izquierda"
         implicitHeight: Math.round(muelle.altoDock)
+        implicitWidth: Math.round(muelle.altoDock)
         //  Y solo si el dock reserva. En «encima» y en «escondida» esta franja
         //  sigue existiendo —no cuesta nada, no pinta y no recoge un clic— pero
-        //  no pide sitio: el escritorio llega hasta abajo del todo.
+        //  no pide sitio: el escritorio llega hasta el borde.
         reserva: (muelle.mostrando && self.dockReserva)
             ? Math.round(muelle.altoDock) : 0
 
