@@ -355,7 +355,11 @@ K4.Ventana {
         //  donde se le llama, porque el sensor del ratón se queda aquí abajo.
         height: muelle.retirado ? 4
             : (muelle.hayDesplegable ? muelle.height : muelle.altoAhora)
-        anchors.horizontalCenter: parent.horizontalCenter
+        //  Por la alineación del dock y no al centro: ver `alineacionDock` en
+        //  el plugin. Las tres piezas de aquí —la zona de entrada, el cuerpo y
+        //  la fila de iconos— salen de la misma cuenta, que si discrepan el
+        //  ratón se recoge en un sitio y el dibujo está en otro.
+        x: muelle.plugin.xDock(parent.width, width)
         anchors.bottom: parent.bottom
         visible: muelle.mostrando
     }
@@ -415,7 +419,7 @@ K4.Ventana {
         //  se crea una vez y lo que se anima es geometría.
         width: muelle.anchoLleno
         height: muelle.alto + muelle.altoCajon
-        anchors.horizontalCenter: parent.horizontalCenter
+        x: muelle.plugin.xDock(parent.width, width)
         anchors.bottom: parent.bottom
         //  El escondite, por el ancla y no por una transformada: esta pieza ya
         //  lleva el espejo de aquí abajo, y en una lista de transformadas quién
@@ -513,7 +517,9 @@ K4.Ventana {
 
         Row {
             id: fila
-            anchors.horizontalCenter: parent.horizontalCenter
+            //  `capa` ocupa la ventana entera, así que centrarse en ella era
+            //  centrarse en la pantalla. La fila va donde va el cuerpo.
+            x: muelle.plugin.xDock(parent.width, width)
             anchors.bottom: parent.bottom
             height: muelle.altoDock
             spacing: 0

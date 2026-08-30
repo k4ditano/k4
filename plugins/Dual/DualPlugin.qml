@@ -269,6 +269,13 @@ K4.Plugin {
                 self.ambas = !!d.ambas
             if (d && self.reservas.indexOf(d.reservaDock) >= 0)
                 self.reservaDock = d.reservaDock
+            //  Acotada al leer: el fichero se puede editar a mano y un dock
+            //  al 300 % se iría de la pantalla sin decir por qué.
+            if (d && d.alineacionDock !== undefined) {
+                const a = Math.floor(Number(d.alineacionDock))
+                if (isFinite(a))
+                    self.alineacionDock = Math.max(0, Math.min(100, a))
+            }
             self.cargado = true
         }
     }
@@ -277,7 +284,8 @@ K4.Plugin {
         if (!cargado)
             return
         guardado.guardar({ apps: idsDock, efecto: efecto, ambas: ambas,
-                           reservaDock: reservaDock })
+                           reservaDock: reservaDock,
+                           alineacionDock: alineacionDock })
     }
 
     //  ── el efecto del cambio ─────────────────────────────────────
@@ -345,6 +353,32 @@ K4.Plugin {
     //  encoge cuando el cuello se rompe, y al subir tiene que estar puesta antes
     //  de que el cuello la alcance. Dos sitios con los mismos números es un
     //  sitio donde olvidarse de uno.
+    //  ── dónde se pone el dock a lo largo de su borde ─────────────
+    //
+    //  El dock estaba clavado al centro de la pantalla —tres anclas en el
+    //  muelle, el destino de los dos trozos del viaje y el suelo de la gota,
+    //  todos `ancho / 2`— mientras que la barra lleva su alineación desde
+    //  siempre. O sea que se podía correr la barra y el dock se quedaba.
+    //
+    //  Ahora tiene la suya, y es INDEPENDIENTE de la de la barra: son dos
+    //  sitios distintos de la pantalla y no tienen por qué compartir gusto.
+    //  Cincuenta de fábrica, que es donde estaba.
+    //
+    //  Una sola fuente para los seis sitios: si el destino de la gota y el
+    //  ancla del muelle discreparan, la gota aterrizaría a un palmo de donde
+    //  nace el dock y se vería el salto.
+    property int alineacionDock: 50
+    readonly property real fraccionDock: Math.max(0, Math.min(100, alineacionDock)) / 100
+
+    //  La x de algo de ancho `w` dentro de una pantalla de ancho `pantallaAncho`,
+    //  colocado por esa fracción. La misma cuenta que usa la island.
+    function xDock(pantallaAncho, w) {
+        return Math.round(Math.max(0, pantallaAncho - w) * fraccionDock)
+    }
+    function centroDock(pantallaAncho, w) {
+        return xDock(pantallaAncho, w) + w / 2
+    }
+
     readonly property int gotaDura: 1000
     readonly property real gotaCorte: 0.34      // se rompe el cuello
     readonly property real gotaSuelo: 0.86      // toca el borde de abajo
@@ -390,9 +424,17 @@ K4.Plugin {
                 { codigo: "encima",    nombre: K4.Idioma.t("Encima") },
                 { codigo: "escondida", nombre: K4.Idioma.t("Escondida") }
             ]
+        }, {
+            id: "alineacionDock",
+            tipo: "numero",
+            nombre: K4.Idioma.t("Alineación del dock"),
+            desc: K4.Idioma.t("En qué punto del borde de abajo se coloca; también se arrastra en el croquis de la Island"),
+            glifo: 0xF11C3,
+            min: 0, max: 100, paso: 5, unidad: "%"
         }]
         valores: ({ efecto: self.efecto, ambas: self.ambas,
-                    reservaDock: self.reservaDock })
+                    reservaDock: self.reservaDock,
+                    alineacionDock: self.alineacionDock })
         onCambiado: function (id, valor) {
             if (id === "efecto")
                 self.efecto = String(valor)
@@ -400,6 +442,9 @@ K4.Plugin {
                 self.ambas = !!valor
             else if (id === "reservaDock")
                 self.reservaDock = String(valor)
+            else if (id === "alineacionDock")
+                self.alineacionDock = Math.max(0, Math.min(100,
+                    Math.floor(Number(valor)) || 0))
             else
                 return
             self.guardarDock()

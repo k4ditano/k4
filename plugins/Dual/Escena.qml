@@ -76,7 +76,8 @@ K4.Ventana {
         largoTrozo: escena.plugin.largoTrozo
         salidaX: escena.plugin.origenIzqX
         salidaY: escena.plugin.origenY
-        finalX: escena.width / 2 - escena.plugin.largoTrozo / 2
+        finalX: escena.plugin.centroDock(escena.width, escena.plugin.anchoLleno)
+            - escena.plugin.largoTrozo / 2
         finalY: escena.reposoY
         t: escena.t
     }
@@ -87,7 +88,8 @@ K4.Ventana {
         largoTrozo: escena.plugin.largoTrozo
         salidaX: escena.plugin.origenDerX
         salidaY: escena.plugin.origenY
-        finalX: escena.width / 2 + escena.plugin.largoTrozo / 2
+        finalX: escena.plugin.centroDock(escena.width, escena.plugin.anchoLleno)
+            + escena.plugin.largoTrozo / 2
         finalY: escena.reposoY
         t: escena.t
     }

@@ -99,6 +99,23 @@ ColumnLayout {
     //  barra de verdad llega al soltar, con su muelle de siempre.
     property int alineacionArrastre: -1
 
+    //  Y el dock tiene la suya, que es OTRA: son dos sitios distintos de la
+    //  pantalla y no tienen por qué compartir gusto. Vive en el plugin `dual`,
+    //  así que se lee y se escribe con el prefijo de los de fuera.
+    readonly property int alineacionDock: {
+        if (previo.dockArrastre >= 0)
+            return previo.dockArrastre
+        const v = parseInt(Settings.valor("ext_dual_alineacionDock"), 10)
+        return isNaN(v) ? 50 : v
+    }
+    property int dockArrastre: -1
+
+    //  Qué se está arrastrando: se decide al APRETAR, por la mitad de la
+    //  pantalla en la que se apriete. La barra vive en su borde y el dock en el
+    //  contrario, así que coges lo que estás señalando y no hace falta apuntar
+    //  a una tira de cuatro píxeles.
+    property string cogido: ""
+
     //  Con imán en los tres de antes. Sin él, clavar el centro exacto pide un
     //  pulso que nadie tiene, y el centro es lo que quiere casi todo el mundo.
     function conIman(v) {
@@ -250,29 +267,59 @@ ColumnLayout {
             cursorShape: Qt.SizeHorCursor
             preventStealing: true
 
-            function colocar(x) {
-                const libre = pantalla.width - barrita.width
+            //  Un porcentaje a partir de una x, para algo de ancho `w`: el
+            //  centro de la pieza sigue al puntero, que es como se coge una
+            //  cosa con la mano.
+            function fraccion(x, w) {
+                const libre = pantalla.width - w
                 if (libre <= 0)
-                    return
-                const f = (x - barrita.width / 2) / libre
-                previo.alineacionArrastre = previo.conIman(
-                    Math.round(Math.max(0, Math.min(1, f)) * 100))
+                    return -1
+                return previo.conIman(
+                    Math.round(Math.max(0, Math.min(1, (x - w / 2) / libre)) * 100))
             }
 
-            onPressed: function (ev) { colocar(ev.x) }
-            onPositionChanged: function (ev) { if (pressed) colocar(ev.x) }
-            onReleased: {
+            function colocar(x) {
+                if (previo.cogido === "dock") {
+                    const f = fraccion(x, muellecito.width)
+                    if (f >= 0)
+                        previo.dockArrastre = f
+                } else {
+                    const f = fraccion(x, barrita.width)
+                    if (f >= 0)
+                        previo.alineacionArrastre = f
+                }
+            }
+
+            //  Quién se coge: la barra si aprietas en su mitad, el dock si
+            //  aprietas en la contraria y hay dock. Sin dock siempre la barra,
+            //  que si no media pantalla no haría nada.
+            function quienEn(y) {
+                const arribaBarra = previo.donde === "arriba"
+                const enMitadDeArriba = y < pantalla.height / 2
+                if (!previo.hayDock)
+                    return "barra"
+                return enMitadDeArriba === arribaBarra ? "barra" : "dock"
+            }
+
+            function soltar() {
                 if (previo.alineacionArrastre >= 0)
                     Settings.poner("alineacionBarra", previo.alineacionArrastre)
+                if (previo.dockArrastre >= 0)
+                    Settings.poner("ext_dual_alineacionDock", previo.dockArrastre)
                 previo.alineacionArrastre = -1
+                previo.dockArrastre = -1
+                previo.cogido = ""
             }
+
+            onPressed: function (ev) {
+                previo.cogido = quienEn(ev.y)
+                colocar(ev.x)
+            }
+            onPositionChanged: function (ev) { if (pressed) colocar(ev.x) }
+            onReleased: soltar()
             //  Un gesto que se va de la ventana sin soltar no deja el croquis
             //  mintiendo: se guarda igual que si hubiera soltado dentro.
-            onCanceled: {
-                if (previo.alineacionArrastre >= 0)
-                    Settings.poner("alineacionBarra", previo.alineacionArrastre)
-                previo.alineacionArrastre = -1
-            }
+            onCanceled: soltar()
         }
 
         //  Y el dock, al lado contrario de la barra: es donde vive.
@@ -293,12 +340,18 @@ ColumnLayout {
             border.width: 1
             border.color: Qt.rgba(1, 1, 1, 0.12)
 
-            x: Math.round((parent.width - width) / 2)
+            //  Por su alineación, la misma cuenta que la barra.
+            x: Math.round((parent.width - width) * previo.alineacionDock / 100)
             y: previo.donde === "arriba"
                 ? parent.height - height - Math.round(4 * barrita.escala * 4)
                 : Math.round(4 * barrita.escala * 4)
 
             Behavior on y { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+            //  Pegado al dedo mientras se arrastra, igual que la barra.
+            Behavior on x {
+                enabled: previo.dockArrastre < 0
+                NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+            }
 
             Row {
                 anchors.centerIn: parent
@@ -337,7 +390,7 @@ ColumnLayout {
     IslandLabel {
         Layout.fillWidth: true
         visible: previo.hayDock
-        text: Idioma.t("El dock sale en el croquis, pero sus ajustes están en Plugins, dentro de «Modo dual».")
+        text: Idioma.t("El dock también se arrastra aquí; sus demás ajustes están en Plugins, dentro de «Modo dual».")
         color: Theme.dim
         font.pixelSize: 10
         wrapMode: Text.WordWrap

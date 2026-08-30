@@ -92,11 +92,13 @@ K4.Ventana {
         + K4.Tema.altoPlegado / 2
 
     //  Y dónde acaba abajo: el centro de la semilla del dock, a ras del borde.
-    //  La semilla está SIEMPRE centrada en la pantalla —el dock lo está— así que
-    //  con la barra descentrada la gota viaja en diagonal, hacia donde la
-    //  llaman, en vez de estrellarse a un palmo de donde va a nacer el dock. Con
-    //  la barra centrada, que es lo de fábrica, no se desvía ni un píxel.
-    readonly property real xSuelo: caida.width / 2
+    //  La semilla sale donde vaya a salir el dock —su alineación, ver
+    //  `alineacionDock`— así que con la barra y el dock en puntos distintos la
+    //  gota viaja en diagonal, hacia donde la llaman, en vez de estrellarse a un
+    //  palmo de donde va a nacer el dock. Con los dos en el mismo sitio, que es
+    //  lo de fábrica, no se desvía ni un píxel.
+    readonly property real xSuelo: caida.plugin.centroDock(caida.width,
+                                                           caida.plugin.anchoLleno)
 
     //  La semilla: el ancho y el grosor con los que el dock —y la barra— empiezan
     //  a crecer. Los dos charcos tienen que acabar EXACTAMENTE ahí o el relevo
