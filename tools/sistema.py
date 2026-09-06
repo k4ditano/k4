@@ -165,16 +165,21 @@ def disco():
 
 # ── GPU ──────────────────────────────────────────────────────────────
 #
-#  nvidia-smi tarda lo suyo en arrancar, así que se pregunta una vuelta sí y
-#  otra no: a dos segundos por muestra sigue siendo información fresca y se
-#  ahorra la mitad de los procesos.
+#  NVIDIA habla por nvidia-smi, que tarda lo suyo en arrancar, así que se
+#  pregunta una vuelta sí y otra no: a dos segundos por muestra sigue siendo
+#  información fresca y se ahorra la mitad de los procesos.
+#
+#  AMD no necesita herramienta: el kernel publica uso, memoria y temperatura
+#  en /sys/class/drm, y leerlos no cuesta nada. Se pregunta cada vuelta y
+#  sólo si no hay NVIDIA, que si la máquina tiene las dos manda la NVIDIA —
+#  que será la discreta— y no hay que discutirlo cada dos segundos.
 
 CONSULTA_GPU = ["nvidia-smi",
                 "--query-gpu=name,utilization.gpu,temperature.gpu,memory.used,memory.total",
                 "--format=csv,noheader,nounits"]
 
 
-def gpu():
+def gpu_nvidia():
     try:
         r = subprocess.run(CONSULTA_GPU, capture_output=True, text=True, timeout=4)
     except Exception:
@@ -196,6 +201,108 @@ def gpu():
         }
     except ValueError:
         return None
+
+
+def _entero(ruta, base=10):
+    try:
+        with open(ruta) as f:
+            return int(f.read().strip(), base)
+    except (OSError, ValueError):
+        return 0
+
+
+def _temp_gpu(device):
+    hw = os.path.join(device, "hwmon")
+    try:
+        chips = sorted(os.listdir(hw))
+    except OSError:
+        return 0
+    for chip in chips:
+        miles = _entero(os.path.join(hw, chip, "temp1_input"))
+        if miles > 0:
+            return miles / 1000.0
+    return 0
+
+
+#  Los nombres comerciales no están en el kernel: sysfs da 1002:73df y el
+#  humano quiere «Radeon RX…». La base de /usr/share/hwdata/pci.ids lo dice,
+#  y se resuelve una vez por modelo, no una vez por muestra.
+
+_nombres_pci = {}
+
+
+def _nombre_gpu(device):
+    vendor = format(_entero(os.path.join(device, "vendor"), 16), "04x")
+    device_id = format(_entero(os.path.join(device, "device"), 16), "04x")
+    clave = vendor + ":" + device_id
+    if clave in _nombres_pci:
+        return _nombres_pci[clave]
+
+    nombre = ""
+    try:
+        with open("/usr/share/hwdata/pci.ids", encoding="utf-8", errors="replace") as f:
+            dentro = False
+            for linea in f:
+                #  La base mete comentarios DE DENTRO de cada bloque; una
+                #  línea suelta no es otro vendedor, no hay que resetear.
+                if linea.startswith("#"):
+                    continue
+                if not linea.startswith("\t"):
+                    dentro = linea.startswith(vendor + "  ")
+                    continue
+                if not dentro or linea.startswith("\t\t"):
+                    continue
+                if linea[1:5] == device_id:
+                    nombre = linea[6:].strip()
+                    break
+    except OSError:
+        pass
+
+    #  pci.ids esconde el nombre comercial entre corchetes tras el nombre del
+    #  chip —«Navi 22 [Radeon RX…]»—, y el que importa es el de dentro.
+    a, b = nombre.find("["), nombre.rfind("]")
+    if 0 <= a < b:
+        nombre = nombre[a + 1:b]
+
+    _nombres_pci[clave] = nombre or "Radeon"
+    return _nombres_pci[clave]
+
+
+def gpu_amd():
+    #  La tarjeta con más VRAM suele ser la discreta, que es la que uno
+    #  vigila: la integrada comparte memoria y su «total» es un cacho del
+    #  sistema. La otra se ignora.
+    mejor = None
+    try:
+        tarjetas = sorted(os.listdir("/sys/class/drm"))
+    except OSError:
+        return None
+    for c in tarjetas:
+        if not c.startswith("card") or not c[4:].isdigit():
+            continue
+        device = os.path.join("/sys/class/drm", c, "device")
+        #  gpu_busy_percent es lo que dice «soy amdgpu y doy uso»: sin él
+        #  la tarjeta se descarta, que un cero inventado no entre como dato.
+        try:
+            with open(os.path.join(device, "gpu_busy_percent")) as f:
+                ocupado = int(f.read().strip())
+        except (OSError, ValueError):
+            continue
+        total = _entero(os.path.join(device, "mem_info_vram_total"))
+        if mejor is not None and total <= mejor["_total"]:
+            continue
+        mejor = {
+            "_total": total,
+            "nombre": _nombre_gpu(device),
+            "uso": ocupado,
+            "temp": _temp_gpu(device),
+            "memUsada": round(_entero(os.path.join(device, "mem_info_vram_used")) / 1048576.0),
+            "memTotal": round(total / 1048576.0),
+        }
+    if mejor is None:
+        return None
+    del mejor["_total"]
+    return mejor
 
 
 # ── procesos ─────────────────────────────────────────────────────────
@@ -246,6 +353,7 @@ def main():
     antesRed = lee_red()
     antesProc = lee_procesos()
     ultimoGpu = None
+    hayNvidia = False
     vuelta = 0
 
     while True:
@@ -259,7 +367,14 @@ def main():
         tempCpu, tempNvme = temperaturas()
 
         if vuelta % 2 == 1 or ultimoGpu is None:
-            ultimoGpu = gpu()
+            nvidia = gpu_nvidia()
+            if nvidia:
+                ultimoGpu = nvidia
+                hayNvidia = True
+        if not hayNvidia:
+            amd = gpu_amd()
+            if amd:
+                ultimoGpu = amd
 
         muestra = {
             "cpu": {"uso": round(uso_cpu(antesCpu, ahoraCpu), 1),
