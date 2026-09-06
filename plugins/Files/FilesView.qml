@@ -97,9 +97,9 @@ FadeIn {
             // ── dónde buscar y qué
             Repeater {
                 model: [
-                    { id: "ambito", texto: "Todo el sistema" },
-                    { id: "archivo", texto: "Solo archivos" },
-                    { id: "dir", texto: "Solo carpetas" }
+                    { id: "ambito", texto: Idioma.t("Todo el sistema") },
+                    { id: "archivo", texto: Idioma.t("Solo archivos") },
+                    { id: "dir", texto: Idioma.t("Solo carpetas") }
                 ]
 
                 delegate: Rectangle {

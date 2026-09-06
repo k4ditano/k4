@@ -1302,7 +1302,7 @@ Singleton {
                 const base = enemigoVidaBase * Math.pow(enemigoVidaCrec, oleada - 1)
                 for (let k = 0; k < 2; ++k) {
                     const cual = faunaPorBioma[bioma][(oleada + k) % faunaPorBioma[bioma].length]
-                    const esp = especies[cual] || ({ nombre: "Bicho", vida: 1, daño: 1 })
+                    const esp = especies[cual] || ({ nombre: Idioma.t("Bicho"), vida: 1, daño: 1 })
                     e.push({
                         vida: base * 0.8, vidaMax: base * 0.8,
                         daño: enemigoDañoBase * Math.pow(enemigoDañoCrec, oleada - 1) * 0.7,

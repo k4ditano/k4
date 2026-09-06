@@ -1809,7 +1809,7 @@ Singleton {
         for (let i = 0; i < marcadores.length; ++i)
             mayor = Math.max(mayor, Number(marcadores[i].id) || 0)
         marcadores = marcadores.concat([{ id: mayor + 1, t: a,
-                                          nombre: nombre || "Marcador" }])
+                                          nombre: nombre || Idioma.t("Marcador") }])
             .sort(function (x, y) { return x.t - y.t })
         persistir()
         return mayor + 1

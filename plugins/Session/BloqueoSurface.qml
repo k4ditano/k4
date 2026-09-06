@@ -57,7 +57,7 @@ K4.SuperficieBloqueo {
 
             IslandLabel {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: Clock.date.toLocaleDateString(Idioma.locale, "dddd, d 'de' MMMM")
+                text: Clock.date.toLocaleDateString(Idioma.locale, Idioma.t("dddd, d 'de' MMMM"))
                 color: Theme.muted
                 font.pixelSize: 17
             }

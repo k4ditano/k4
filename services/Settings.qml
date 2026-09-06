@@ -506,8 +506,8 @@ Singleton {
                     return { codigo: s.nombre, nombre: s.etiqueta }
                 }))
         if (de === "codecs")
-            return [{ codigo: "h264", nombre: "H.264" },
-                    { codigo: "hevc", nombre: "HEVC" }]
+            return [{ codigo: "h264", nombre: Idioma.t("H.264") },
+                    { codigo: "hevc", nombre: Idioma.t("HEVC") }]
         if (de === "fps")
             return [{ codigo: 30, nombre: "30" },
                     { codigo: 60, nombre: "60" }]

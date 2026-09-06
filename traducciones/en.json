@@ -759,7 +759,6 @@
   "Sombra": "Shadow",
   "Sonoridad de YouTube": "YouTube loudness",
   "Transición en los cortes": "Transition at the cuts",
-  "colorFondo": "colorFondo",
   "los puntos del vídeo y los rombos del bloque se arrastran · clic derecho quita": "drag the dots on the video and the diamonds on the block · right-click removes",
   "Sistema al día": "System up to date",
   "La actualización falló": "The update failed",
@@ -1041,7 +1040,7 @@
   "Un momento…": "One moment…",
   "Usa el ordenador: el huevo rompe andando": "Use the computer: the egg hatches as you go",
   "Usuario": "User",
-  "V / ": "V / ",
+  "V / ": "W / ",
   "VS": "VS",
   "Velocidad (más alto = más rápido)": "Speed (higher = faster)",
   "Ventana": "Window",
@@ -1430,5 +1429,6 @@
   "No se ha podido ir a esa ventana": "Could not switch to that window",
   "Todas las ventanas sobre un plano": "Every window on one plane",
   "Rueda al revés": "Invert the wheel",
-  "Acercarse girando hacia abajo en vez de hacia arriba": "Scroll down to zoom in instead of up"
+  "Acercarse girando hacia abajo en vez de hacia arriba": "Scroll down to zoom in instead of up",
+  "D": "L"
 }

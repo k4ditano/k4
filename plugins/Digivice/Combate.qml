@@ -543,7 +543,7 @@ Item {
 
             K4.Etiqueta {
                 anchors.centerIn: parent
-                text: "VS"
+                text: Idioma.t("VS")
                 font.pixelSize: 26
                 font.weight: Font.Bold
                 color: "#e8b45a"
@@ -881,7 +881,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         text: self.aliadoUsado ? Idioma.t("ya vino")
                             : !Digivice.puedeLlamar ? Idioma.t("sin ⚡")
-                            : "L · " + Digivice.costeLlamada + "⚡"
+                            : Idioma.t("L · ") + Digivice.costeLlamada + "⚡"
                         font.pixelSize: 10
                         font.weight: Digivice.puedeLlamar && !self.aliadoUsado
                                    ? Font.Bold : Font.Normal

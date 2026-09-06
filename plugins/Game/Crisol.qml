@@ -325,7 +325,7 @@ Item {
                     if (!crisol.compatible)
                         return Idioma.t("no son iguales")
                     if (!crisol.lleno)
-                        return Idioma.f("faltan %1",
+                        return Idioma.f(Idioma.t("faltan %1"),
                                         crisol.huecos - crisol.puestas.length)
                     return Idioma.t("FUNDIR")
                 }
