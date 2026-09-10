@@ -221,15 +221,15 @@ Singleton {
     //  Los "fields" de la API, que son afinidades de especie, se usan como
     //  mapa. Sale gratis y además agrupa bichos que pegan entre sí.
     readonly property var zonas: [
-        { id: "Nature Spirits",    nombre: "Bosque Verde" },
-        { id: "Deep Savers",       nombre: "Mar Profundo" },
-        { id: "Wind Guardians",    nombre: "Cielo Roto" },
-        { id: "Jungle Troopers",   nombre: "Jungla" },
-        { id: "Dragon's Roar",     nombre: "Rugido del Dragón" },
-        { id: "Metal Empire",      nombre: "Imperio de Metal" },
-        { id: "Nightmare Soldiers", nombre: "Pesadilla" },
-        { id: "Virus Busters",     nombre: "Orden" },
-        { id: "Dark Area",         nombre: "Área Oscura" }
+        { id: "Nature Spirits",    nombre: Idioma.t("Bosque Verde") },
+        { id: "Deep Savers",       nombre: Idioma.t("Mar Profundo") },
+        { id: "Wind Guardians",    nombre: Idioma.t("Cielo Roto") },
+        { id: "Jungle Troopers",   nombre: Idioma.t("Jungla") },
+        { id: "Dragon's Roar",     nombre: Idioma.t("Rugido del Dragón") },
+        { id: "Metal Empire",      nombre: Idioma.t("Imperio de Metal") },
+        { id: "Nightmare Soldiers", nombre: Idioma.t("Pesadilla") },
+        { id: "Virus Busters",     nombre: Idioma.t("Orden") },
+        { id: "Dark Area",         nombre: Idioma.t("Área Oscura") }
     ]
 
     // ── andar ─────────────────────────────────────────────────────
@@ -1749,9 +1749,9 @@ Singleton {
     //  en duro fallar del todo cuesta ánimo, y por eso elegir dificultad es
     //  una decisión y no un ajuste.
     readonly property var dificultades: [
-        { id: "facil",  nombre: "Suave",  factor: 1, castigo: false },
-        { id: "normal", nombre: "Normal", factor: 2, castigo: false },
-        { id: "duro",   nombre: "Duro",   factor: 3, castigo: true }
+        { id: "facil",  nombre: Idioma.t("Suave"),  factor: 1, castigo: false },
+        { id: "normal", nombre: Idioma.t("Normal"), factor: 2, castigo: false },
+        { id: "duro",   nombre: Idioma.t("Duro"),   factor: 3, castigo: true }
     ]
     property string dificultad: "normal"
 

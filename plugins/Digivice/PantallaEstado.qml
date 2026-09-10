@@ -132,7 +132,7 @@ Item {
 
             K4.Etiqueta {
                 width: parent.width
-                text: Digivice.victorias + "V / " + Digivice.derrotas + "D"
+                text: Digivice.victorias + Idioma.t("V / ") + Digivice.derrotas + Idioma.t("D")
                 font.pixelSize: 12
                 color: "#8fbf9c"
             }

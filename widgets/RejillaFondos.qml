@@ -310,7 +310,7 @@ ColumnLayout {
                         anchors.centerIn: parent
                         textFormat: Text.PlainText
                         text: /\.(gif|apng)$/i.test(wallCell.modelData)
-                            ? "GIF" : Idioma.t("vídeo")
+                            ? Idioma.t("GIF") : Idioma.t("vídeo")
                         color: Theme.ink
                         font.pixelSize: 8
                         font.weight: Font.DemiBold

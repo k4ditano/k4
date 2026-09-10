@@ -130,7 +130,7 @@ Item {
 
             K4.Etiqueta {
                 width: parent.width * 0.42
-                text: self.ficha ? "N.º " + ("000" + self.ficha.id).slice(-3) : ""
+                text: self.ficha ? Idioma.t("N.º ") + ("000" + self.ficha.id).slice(-3) : ""
                 font.pixelSize: 12
                 color: "#8fbf9c"
             }

@@ -757,7 +757,6 @@
   "Sombra": "Тень",
   "Sonoridad de YouTube": "Громкость YouTube",
   "Transición en los cortes": "Переход на стыках",
-  "colorFondo": "цветФона",
   "los puntos del vídeo y los rombos del bloque se arrastran · clic derecho quita": "точки на видео и ромбы на блоке можно перетаскивать · правый клик удаляет",
   "Sistema al día": "Система обновлена",
   "La actualización falló": "Сбой обновления",
@@ -1430,5 +1429,6 @@
   "No se ha podido ir a esa ventana": "Не удалось перейти к этому окну",
   "Todas las ventanas sobre un plano": "Все окна на одной плоскости",
   "Rueda al revés": "Инвертировать колёсико",
-  "Acercarse girando hacia abajo en vez de hacia arriba": "Приближать колёсиком вниз, а не вверх"
+  "Acercarse girando hacia abajo en vez de hacia arriba": "Приближать колёсиком вниз, а не вверх",
+  "D": "D"
 }

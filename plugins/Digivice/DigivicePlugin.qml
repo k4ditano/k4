@@ -14,7 +14,7 @@ K4Plugin {
     id: self
 
     name: "digivice"
-    title: "Digivice"
+    title: Idioma.t("Digivice")
     priority: 63
     active: habilitado && abierto
 
@@ -508,9 +508,9 @@ K4Plugin {
         //  quien no oiga nada pueda averiguar si es el fichero o el altavoz.
         function pitar(nombre: string): string {
             if (!self.zumbador)
-                return "la vista no está abierta"
+                return Idioma.t("la vista no está abierta")
             self.zumbador.sonar(nombre)
-            return "sonando " + nombre
+            return Idioma.t("sonando ") + nombre
         }
 
         function sonidos(): string {

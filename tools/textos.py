@@ -64,7 +64,7 @@ PROPIEDADES = ("text", "texto", "nombre", "desc", "papel", "titulo", "grupo",
 NO_TEXTO = ("id", "source", "command", "target", "path", "icono", "glifo",
             "tipo", "efecto", "forma", "clase", "hueco", "sprite", "color",
             "de", "requiere", "afinidad", "codigo", "reto", "valor", "etiqueta",
-            "family", "objectName", "sufijo", "prefijo")
+            "family", "objectName", "sufijo", "prefijo", "campo")
 
 RE_ABRE = re.compile(r'\b(' + "|".join(PROPIEDADES) + r')\s*:')
 RE_ANTES = re.compile(r'\b(' + "|".join(NO_TEXTO) + r')\s*:\s*$')
