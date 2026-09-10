@@ -366,15 +366,17 @@ def main():
 
         tempCpu, tempNvme = temperaturas()
 
+        #  Una lectura que falla deja la GPU vacía, no con la muestra de antes:
+        #  repetirla dibuja una gráfica plana que parece viva. Pasa de verdad
+        #  con nvidia-smi tras actualizar el driver sin reiniciar. Vacía, la
+        #  tarjeta se queda quieta y la vuelta siguiente vuelve a preguntar.
         if vuelta % 2 == 1 or ultimoGpu is None:
             nvidia = gpu_nvidia()
-            if nvidia:
+            hayNvidia = hayNvidia or nvidia is not None
+            if hayNvidia:
                 ultimoGpu = nvidia
-                hayNvidia = True
         if not hayNvidia:
-            amd = gpu_amd()
-            if amd:
-                ultimoGpu = amd
+            ultimoGpu = gpu_amd()
 
         muestra = {
             "cpu": {"uso": round(uso_cpu(antesCpu, ahoraCpu), 1),
